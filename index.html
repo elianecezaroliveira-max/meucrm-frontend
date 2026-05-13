@@ -1,559 +1,379 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MeuCRM</title>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <style>
-    :root {
-      --bg: #0e0f11;
-      --surface: #16181c;
-      --surface2: #1e2026;
-      --border: #2a2d35;
-      --green: #22c55e;
-      --green-dim: #166534;
-      --text: #f1f5f9;
-      --muted: #64748b;
-      --accent: #3b82f6;
-      --sent: #1d4ed8;
-      --received: #1e2026;
-    }
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>MeuCRM</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: #111b21; color: #e9edef; height: 100vh; display: flex; flex-direction: column; }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+  /* TOPBAR */
+  #topbar { background: #202c33; padding: 10px 16px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #2a3942; }
+  #topbar h1 { font-size: 18px; font-weight: 700; color: #00a884; flex: 1; }
+  #server-status { font-size: 11px; color: #8696a0; }
+  #server-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #8696a0; margin-right: 4px; }
+  #server-dot.online { background: #00a884; }
+  #btn-accounts { background: #2a3942; border: none; color: #e9edef; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+  #btn-accounts:hover { background: #3b4a54; }
 
-    body {
-      font-family: 'DM Sans', sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
+  /* LAYOUT */
+  #layout { display: flex; flex: 1; overflow: hidden; }
 
-    /* ── Top Bar ── */
-    header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 20px;
-      height: 52px;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
-    }
-    .logo { font-size: 15px; font-weight: 600; letter-spacing: -0.3px; }
-    .logo span { color: var(--green); }
-    .status-dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: var(--green);
-      box-shadow: 0 0 6px var(--green);
-      animation: pulse 2s infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
-    }
+  /* SIDEBAR */
+  #sidebar { width: 340px; background: #111b21; border-right: 1px solid #2a3942; display: flex; flex-direction: column; }
+  #account-selector { padding: 10px 12px; background: #202c33; border-bottom: 1px solid #2a3942; }
+  #account-selector select { width: 100%; background: #2a3942; border: none; color: #e9edef; padding: 7px 10px; border-radius: 8px; font-size: 13px; cursor: pointer; }
+  #search-box { padding: 8px 12px; background: #111b21; }
+  #search-box input { width: 100%; background: #202c33; border: none; color: #e9edef; padding: 9px 14px; border-radius: 8px; font-size: 14px; }
+  #search-box input::placeholder { color: #8696a0; }
+  #contacts-list { flex: 1; overflow-y: auto; }
+  .contact-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #1e2b33; transition: background 0.15s; }
+  .contact-item:hover { background: #202c33; }
+  .contact-item.active { background: #2a3942; }
+  .contact-avatar { width: 46px; height: 46px; border-radius: 50%; background: #2a3942; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 600; color: #00a884; flex-shrink: 0; }
+  .contact-info { flex: 1; min-width: 0; }
+  .contact-name { font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .contact-preview { font-size: 13px; color: #8696a0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  #empty-contacts { padding: 24px 16px; text-align: center; color: #8696a0; font-size: 13px; line-height: 1.6; }
 
-    /* ── Main Layout ── */
-    .main { display: flex; flex: 1; overflow: hidden; }
+  /* CHAT */
+  #chat-area { flex: 1; display: flex; flex-direction: column; background: #0b141a; }
+  #chat-header { background: #202c33; padding: 12px 16px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #2a3942; min-height: 60px; }
+  #chat-header .avatar { width: 40px; height: 40px; border-radius: 50%; background: #2a3942; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 600; color: #00a884; flex-shrink: 0; }
+  #chat-header .info .name { font-size: 15px; font-weight: 600; }
+  #chat-header .info .phone { font-size: 12px; color: #8696a0; }
+  #messages-area { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 4px; }
+  .msg { max-width: 65%; padding: 8px 12px; border-radius: 8px; font-size: 14px; line-height: 1.4; position: relative; word-wrap: break-word; }
+  .msg.inbound { background: #202c33; align-self: flex-start; border-top-left-radius: 0; }
+  .msg.outbound { background: #005c4b; align-self: flex-end; border-top-right-radius: 0; }
+  .msg .time { font-size: 11px; color: #8696a0; text-align: right; margin-top: 4px; }
+  #input-area { background: #202c33; padding: 10px 16px; display: flex; align-items: center; gap: 10px; border-top: 1px solid #2a3942; }
+  #msg-input { flex: 1; background: #2a3942; border: none; color: #e9edef; padding: 10px 16px; border-radius: 24px; font-size: 15px; resize: none; outline: none; }
+  #msg-input::placeholder { color: #8696a0; }
+  #send-btn { background: #00a884; border: none; width: 44px; height: 44px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background 0.2s; }
+  #send-btn:hover { background: #017a62; }
+  #send-btn svg { width: 20px; height: 20px; fill: white; }
+  #no-chat { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #8696a0; gap: 12px; }
+  #no-chat svg { width: 64px; height: 64px; opacity: 0.3; }
 
-    /* ── Sidebar ── */
-    .sidebar {
-      width: 300px;
-      background: var(--surface);
-      border-right: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      flex-shrink: 0;
-    }
+  /* MODAL CONTAS */
+  #modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center; }
+  #modal-overlay.open { display: flex; }
+  #modal { background: #202c33; border-radius: 12px; width: 480px; max-width: 95vw; padding: 24px; }
+  #modal h2 { font-size: 17px; font-weight: 600; margin-bottom: 20px; color: #e9edef; }
+  #modal label { font-size: 12px; color: #8696a0; display: block; margin-bottom: 4px; margin-top: 14px; text-transform: uppercase; letter-spacing: 0.5px; }
+  #modal input { width: 100%; background: #2a3942; border: none; color: #e9edef; padding: 10px 14px; border-radius: 8px; font-size: 14px; }
+  #modal input::placeholder { color: #8696a0; }
+  #modal-hint { font-size: 12px; color: #8696a0; margin-top: 8px; line-height: 1.5; background: #1a2830; padding: 10px 12px; border-radius: 8px; border-left: 3px solid #00a884; }
+  #modal-actions { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+  .btn-cancel { background: #2a3942; border: none; color: #e9edef; padding: 9px 18px; border-radius: 8px; cursor: pointer; font-size: 14px; }
+  .btn-cancel:hover { background: #3b4a54; }
+  .btn-save { background: #00a884; border: none; color: white; padding: 9px 18px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; }
+  .btn-save:hover { background: #017a62; }
+  #accounts-list-modal { margin-bottom: 20px; }
+  .account-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #2a3942; border-radius: 8px; margin-bottom: 8px; }
+  .account-row .acc-name { flex: 1; font-size: 14px; font-weight: 500; }
+  .account-row .acc-id { font-size: 11px; color: #8696a0; }
+  .btn-delete { background: none; border: none; color: #ef4444; cursor: pointer; font-size: 16px; padding: 2px 6px; border-radius: 4px; }
+  .btn-delete:hover { background: #3b2020; }
+  #add-account-section h3 { font-size: 14px; color: #8696a0; margin-bottom: 12px; border-top: 1px solid #3b4a54; padding-top: 16px; }
 
-    .sidebar-header {
-      padding: 14px 16px 10px;
-      border-bottom: 1px solid var(--border);
-    }
+  /* SETUP */
+  #setup-overlay { display: none; position: fixed; inset: 0; background: #111b21; z-index: 200; align-items: center; justify-content: center; }
+  #setup-overlay.open { display: flex; }
+  #setup-box { background: #202c33; border-radius: 16px; padding: 32px; width: 420px; max-width: 95vw; }
+  #setup-box h2 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+  #setup-box p { font-size: 13px; color: #8696a0; margin-bottom: 24px; }
+  #setup-box label { font-size: 12px; color: #8696a0; display: block; margin-bottom: 6px; text-transform: uppercase; }
+  #setup-box input { width: 100%; background: #2a3942; border: none; color: #e9edef; padding: 12px 16px; border-radius: 10px; font-size: 15px; margin-bottom: 16px; }
+  #setup-btn { width: 100%; background: #00a884; border: none; color: white; padding: 13px; border-radius: 10px; font-size: 16px; font-weight: 700; cursor: pointer; }
+  #setup-btn:hover { background: #017a62; }
 
-    .sidebar-title {
-      font-size: 11px;
-      font-weight: 500;
-      color: var(--muted);
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      margin-bottom: 10px;
-    }
-
-    .search-box {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 7px 12px;
-    }
-    .search-box input {
-      background: none;
-      border: none;
-      outline: none;
-      color: var(--text);
-      font-family: 'DM Sans', sans-serif;
-      font-size: 13px;
-      width: 100%;
-    }
-    .search-box input::placeholder { color: var(--muted); }
-    .search-icon { color: var(--muted); font-size: 14px; }
-
-    .contacts-list { overflow-y: auto; flex: 1; }
-    .contacts-list::-webkit-scrollbar { width: 4px; }
-    .contacts-list::-webkit-scrollbar-track { background: transparent; }
-    .contacts-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-
-    .contact-item {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 12px 16px;
-      cursor: pointer;
-      border-bottom: 1px solid var(--border);
-      transition: background 0.15s;
-    }
-    .contact-item:hover { background: var(--surface2); }
-    .contact-item.active { background: var(--surface2); border-left: 2px solid var(--green); }
-
-    .avatar {
-      width: 38px; height: 38px;
-      border-radius: 50%;
-      background: var(--green-dim);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 14px; font-weight: 600;
-      color: var(--green);
-      flex-shrink: 0;
-    }
-
-    .contact-info { flex: 1; min-width: 0; }
-    .contact-name { font-size: 13px; font-weight: 500; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .contact-preview { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-    .contact-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
-    .contact-time { font-size: 10px; color: var(--muted); }
-    .unread-badge {
-      background: var(--green);
-      color: #000;
-      font-size: 10px;
-      font-weight: 600;
-      padding: 1px 6px;
-      border-radius: 10px;
-      min-width: 18px;
-      text-align: center;
-    }
-
-    .empty-contacts {
-      padding: 40px 20px;
-      text-align: center;
-      color: var(--muted);
-      font-size: 13px;
-      line-height: 1.6;
-    }
-
-    /* ── Chat Area ── */
-    .chat-area {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-
-    .chat-header {
-      padding: 12px 20px;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      flex-shrink: 0;
-    }
-    .chat-header .avatar { width: 34px; height: 34px; font-size: 13px; }
-    .chat-contact-name { font-size: 14px; font-weight: 500; }
-    .chat-contact-phone { font-size: 11px; color: var(--muted); }
-
-    .messages-area {
-      flex: 1;
-      overflow-y: auto;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    .messages-area::-webkit-scrollbar { width: 4px; }
-    .messages-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-
-    .message {
-      max-width: 65%;
-      padding: 9px 13px;
-      border-radius: 12px;
-      font-size: 13px;
-      line-height: 1.5;
-      animation: fadeIn 0.2s ease;
-    }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
-
-    .message.received {
-      background: var(--received);
-      border: 1px solid var(--border);
-      align-self: flex-start;
-      border-bottom-left-radius: 4px;
-    }
-    .message.sent {
-      background: var(--sent);
-      align-self: flex-end;
-      border-bottom-right-radius: 4px;
-    }
-    .message-time { font-size: 10px; color: var(--muted); margin-top: 4px; }
-    .message.sent .message-time { text-align: right; }
-
-    .empty-chat {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-      gap: 12px;
-      color: var(--muted);
-    }
-    .empty-chat-icon { font-size: 40px; opacity: 0.3; }
-    .empty-chat-text { font-size: 14px; }
-
-    .no-contact {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-      gap: 16px;
-      color: var(--muted);
-    }
-    .no-contact-icon { font-size: 48px; opacity: 0.15; }
-    .no-contact-text { font-size: 15px; }
-    .no-contact-sub { font-size: 12px; opacity: 0.6; }
-
-    /* ── Input Area ── */
-    .input-area {
-      padding: 14px 20px;
-      background: var(--surface);
-      border-top: 1px solid var(--border);
-      display: flex;
-      gap: 10px;
-      align-items: flex-end;
-      flex-shrink: 0;
-    }
-    .message-input {
-      flex: 1;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 10px 14px;
-      color: var(--text);
-      font-family: 'DM Sans', sans-serif;
-      font-size: 13px;
-      resize: none;
-      outline: none;
-      max-height: 120px;
-      transition: border-color 0.15s;
-    }
-    .message-input:focus { border-color: var(--accent); }
-    .message-input::placeholder { color: var(--muted); }
-
-    .send-btn {
-      background: var(--green);
-      color: #000;
-      border: none;
-      border-radius: 10px;
-      width: 40px; height: 40px;
-      display: flex; align-items: center; justify-content: center;
-      cursor: pointer;
-      font-size: 16px;
-      transition: opacity 0.15s, transform 0.1s;
-      flex-shrink: 0;
-    }
-    .send-btn:hover { opacity: 0.85; }
-    .send-btn:active { transform: scale(0.95); }
-    .send-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-
-    /* ── Config Modal ── */
-    .modal-overlay {
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,0.7);
-      display: flex; align-items: center; justify-content: center;
-      z-index: 100;
-    }
-    .modal {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 28px;
-      width: 440px;
-      max-width: 95vw;
-    }
-    .modal h2 { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
-    .modal p { font-size: 13px; color: var(--muted); margin-bottom: 20px; line-height: 1.5; }
-    .modal label { font-size: 11px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; display: block; margin-bottom: 6px; }
-    .modal input {
-      width: 100%;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 10px 12px;
-      color: var(--text);
-      font-family: 'DM Mono', monospace;
-      font-size: 12px;
-      outline: none;
-      margin-bottom: 14px;
-    }
-    .modal input:focus { border-color: var(--accent); }
-    .modal-btn {
-      width: 100%;
-      background: var(--green);
-      color: #000;
-      border: none;
-      border-radius: 8px;
-      padding: 11px;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      margin-top: 4px;
-    }
-    .modal-btn:hover { opacity: 0.9; }
-
-    .loading { color: var(--muted); font-size: 12px; padding: 20px; text-align: center; }
-  </style>
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #3b4a54; border-radius: 3px; }
+</style>
 </head>
 <body>
 
-<!-- Config Modal -->
-<div class="modal-overlay" id="configModal">
-  <div class="modal">
+<!-- SETUP INICIAL -->
+<div id="setup-overlay">
+  <div id="setup-box">
     <h2>⚙️ Configurar MeuCRM</h2>
     <p>Cole a URL do seu servidor Railway para conectar à interface. Você só precisa fazer isso uma vez.</p>
-    <label>URL do servidor (Railway)</label>
-    <input type="text" id="serverUrl" placeholder="https://meucrm-backend-production-d4f4.up.railway.app" />
-    <button class="modal-btn" onclick="saveConfig()">Conectar →</button>
+    <label>URL DO SERVIDOR (RAILWAY)</label>
+    <input type="text" id="setup-url" placeholder="https://meucrm-backend-xxxx.up.railway.app" />
+    <button id="setup-btn" onclick="saveServer()">Conectar →</button>
   </div>
 </div>
 
-<!-- App -->
-<header>
-  <div class="logo">Meu<span>CRM</span></div>
-  <div style="display:flex;align-items:center;gap:8px">
-    <span style="font-size:12px;color:var(--muted)" id="serverLabel"></span>
-    <div class="status-dot"></div>
-  </div>
-</header>
-
-<div class="main">
-  <!-- Sidebar -->
-  <div class="sidebar">
-    <div class="sidebar-header">
-      <div class="sidebar-title">Conversas</div>
-      <div class="search-box">
-        <span class="search-icon">🔍</span>
-        <input type="text" placeholder="Buscar contato..." id="searchInput" oninput="filterContacts()" />
+<!-- MODAL CONTAS -->
+<div id="modal-overlay">
+  <div id="modal">
+    <h2>📱 Contas de WhatsApp</h2>
+    <div id="accounts-list-modal"></div>
+    <div id="add-account-section">
+      <h3>➕ Adicionar nova conta</h3>
+      <label>Nome da conta (ex: Empresa ABC)</label>
+      <input type="text" id="acc-name" placeholder="Minha Empresa" />
+      <label>Phone Number ID</label>
+      <input type="text" id="acc-phone-id" placeholder="938974509306370" />
+      <label>Token de Acesso</label>
+      <input type="text" id="acc-token" placeholder="EAAxxxxxxx..." />
+      <div id="modal-hint">
+        💡 Esses dados ficam no <strong>Meta for Developers → Configuração da API</strong>.<br>
+        Cada conta do Facebook tem seu próprio Phone Number ID e Token.
       </div>
     </div>
-    <div class="contacts-list" id="contactsList">
-      <div class="loading">Carregando contatos...</div>
+    <div id="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Fechar</button>
+      <button class="btn-save" onclick="addAccount()">Salvar Conta</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOPBAR -->
+<div id="topbar">
+  <h1>MeuCRM</h1>
+  <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
+  <button id="btn-accounts" onclick="openModal()">📱 Contas</button>
+</div>
+
+<!-- LAYOUT -->
+<div id="layout">
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <div id="account-selector">
+      <select id="account-select" onchange="loadContacts()">
+        <option value="">Todas as contas</option>
+      </select>
+    </div>
+    <div id="search-box">
+      <input type="text" id="search-input" placeholder="🔍 Buscar contato..." oninput="filterContacts()" />
+    </div>
+    <div id="contacts-list">
+      <div id="empty-contacts">Nenhuma conversa ainda.<br>Envie uma mensagem pelo WhatsApp para o número de teste.</div>
     </div>
   </div>
 
-  <!-- Chat -->
-  <div class="chat-area" id="chatArea">
-    <div class="no-contact">
-      <div class="no-contact-icon">💬</div>
-      <div class="no-contact-text">Selecione uma conversa</div>
-      <div class="no-contact-sub">Suas mensagens do WhatsApp aparecerão aqui</div>
+  <!-- CHAT -->
+  <div id="chat-area">
+    <div id="no-chat">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z" fill="currentColor"/></svg>
+      <p>Selecione uma conversa</p>
+      <span style="font-size:13px">Suas mensagens do WhatsApp aparecerão aqui</span>
     </div>
   </div>
 </div>
 
 <script>
-  let SERVER_URL = '';
-  let contacts = [];
-  let activePhone = null;
-  let refreshInterval = null;
+let SERVER_URL = '';
+let currentPhone = null;
+let currentAccountId = null;
+let allContacts = [];
+let pollInterval = null;
 
-  // ── Config ──
-  function saveConfig() {
-    const url = document.getElementById('serverUrl').value.trim().replace(/\/$/, '');
-    if (!url.startsWith('http')) return alert('Cole a URL completa começando com https://');
-    SERVER_URL = url;
-    localStorage.setItem('meucrm_server', url);
-    document.getElementById('configModal').style.display = 'none';
-    document.getElementById('serverLabel').textContent = url.replace('https://', '');
-    loadContacts();
-    refreshInterval = setInterval(loadContacts, 10000);
+// ── SETUP ──
+function saveServer() {
+  const url = document.getElementById('setup-url').value.trim().replace(/\/$/, '');
+  if (!url) return alert('Digite a URL do servidor!');
+  localStorage.setItem('meucrm_server', url);
+  init(url);
+}
+
+async function init(url) {
+  SERVER_URL = url;
+  document.getElementById('server-url-label').textContent = url.replace('https://', '');
+  document.getElementById('setup-overlay').classList.remove('open');
+
+  try {
+    await fetch(url + '/');
+    document.getElementById('server-dot').classList.add('online');
+  } catch(e) {
+    document.getElementById('server-url-label').textContent = 'erro de conexão';
   }
 
-  // ── Load on start ──
-  window.onload = () => {
-    const saved = localStorage.getItem('meucrm_server');
-    if (saved) {
-      SERVER_URL = saved;
-      document.getElementById('serverUrl').value = saved;
-      document.getElementById('serverLabel').textContent = saved.replace('https://', '');
-      document.getElementById('configModal').style.display = 'none';
-      loadContacts();
-      refreshInterval = setInterval(loadContacts, 10000);
-    }
-  };
+  await loadAccounts();
+  await loadContacts();
+  startPolling();
+}
 
-  // ── Fetch contacts ──
-  async function loadContacts() {
-    try {
-      const res = await fetch(`${SERVER_URL}/contacts`);
-      const data = await res.json();
-      contacts = data;
-      renderContacts(data);
-    } catch (e) {
-      document.getElementById('contactsList').innerHTML =
-        '<div class="empty-contacts">❌ Não foi possível conectar ao servidor.<br>Verifique a URL nas configurações.</div>';
-    }
+// ── POLLING ──
+function startPolling() {
+  if (pollInterval) clearInterval(pollInterval);
+  pollInterval = setInterval(async () => {
+    await loadContacts(false);
+    if (currentPhone) await loadMessages(currentPhone, false);
+  }, 3000);
+}
+
+// ── CONTAS ──
+async function loadAccounts() {
+  try {
+    const res = await fetch(SERVER_URL + '/accounts');
+    const accounts = await res.json();
+    const sel = document.getElementById('account-select');
+    sel.innerHTML = '<option value="">Todas as contas</option>';
+    accounts.forEach(acc => {
+      const opt = document.createElement('option');
+      opt.value = acc.id;
+      opt.textContent = acc.name;
+      sel.appendChild(opt);
+    });
+    renderAccountsModal(accounts);
+  } catch(e) {}
+}
+
+function renderAccountsModal(accounts) {
+  const el = document.getElementById('accounts-list-modal');
+  if (!accounts.length) { el.innerHTML = '<p style="color:#8696a0;font-size:13px;margin-bottom:12px">Nenhuma conta conectada ainda.</p>'; return; }
+  el.innerHTML = accounts.map(acc => `
+    <div class="account-row">
+      <div>
+        <div class="acc-name">${acc.name}</div>
+        <div class="acc-id">ID: ${acc.phone_number_id}</div>
+      </div>
+      <button class="btn-delete" onclick="deleteAccount('${acc.id}')">🗑️</button>
+    </div>
+  `).join('');
+}
+
+async function addAccount() {
+  const name = document.getElementById('acc-name').value.trim();
+  const phone_number_id = document.getElementById('acc-phone-id').value.trim();
+  const token = document.getElementById('acc-token').value.trim();
+  if (!name || !phone_number_id || !token) return alert('Preencha todos os campos!');
+  try {
+    const res = await fetch(SERVER_URL + '/accounts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, phone_number_id, token })
+    });
+    const data = await res.json();
+    if (data.error) return alert('Erro: ' + data.error);
+    document.getElementById('acc-name').value = '';
+    document.getElementById('acc-phone-id').value = '';
+    document.getElementById('acc-token').value = '';
+    await loadAccounts();
+    alert('✅ Conta adicionada com sucesso!');
+  } catch(e) { alert('Erro ao conectar ao servidor.'); }
+}
+
+async function deleteAccount(id) {
+  if (!confirm('Remover esta conta?')) return;
+  await fetch(SERVER_URL + '/accounts/' + id, { method: 'DELETE' });
+  await loadAccounts();
+}
+
+function openModal() { document.getElementById('modal-overlay').classList.add('open'); loadAccounts(); }
+function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
+
+// ── CONTATOS ──
+async function loadContacts(render = true) {
+  try {
+    const accountId = document.getElementById('account-select').value;
+    let url = SERVER_URL + '/contacts';
+    if (accountId) url += '?account_id=' + accountId;
+    const res = await fetch(url);
+    allContacts = await res.json();
+    if (render) renderContacts(allContacts);
+  } catch(e) {}
+}
+
+function filterContacts() {
+  const q = document.getElementById('search-input').value.toLowerCase();
+  const filtered = allContacts.filter(c => c.name?.toLowerCase().includes(q) || c.phone?.includes(q));
+  renderContacts(filtered);
+}
+
+function renderContacts(contacts) {
+  const list = document.getElementById('contacts-list');
+  const empty = document.getElementById('empty-contacts');
+  if (!contacts.length) {
+    list.innerHTML = '';
+    list.appendChild(empty || createEmpty());
+    return;
   }
+  list.innerHTML = contacts.map(c => `
+    <div class="contact-item ${c.phone === currentPhone ? 'active' : ''}" onclick="selectContact('${c.phone}', '${c.name || ''}', '${c.account_id || ''}')">
+      <div class="contact-avatar">${(c.name || '?')[0].toUpperCase()}</div>
+      <div class="contact-info">
+        <div class="contact-name">${c.name || c.phone}</div>
+        <div class="contact-preview">${c.phone}</div>
+      </div>
+    </div>
+  `).join('');
+}
 
-  function renderContacts(list) {
-    const el = document.getElementById('contactsList');
-    if (!list.length) {
-      el.innerHTML = '<div class="empty-contacts">Nenhuma conversa ainda.<br>Envie uma mensagem pelo WhatsApp para o número de teste.</div>';
-      return;
-    }
-    el.innerHTML = list.map(c => `
-      <div class="contact-item ${c.phone === activePhone ? 'active' : ''}" onclick="openChat('${c.phone}', '${(c.name||c.phone).replace(/'/g,"\\'")}')">
-        <div class="avatar">${(c.name || c.phone)[0].toUpperCase()}</div>
-        <div class="contact-info">
-          <div class="contact-name">${c.name || c.phone}</div>
-          <div class="contact-preview">${c.phone}</div>
-        </div>
-        <div class="contact-meta">
-          <div class="contact-time">${formatTime(c.last_message_at || c.created_at)}</div>
-        </div>
+// ── CHAT ──
+async function selectContact(phone, name, accountId) {
+  currentPhone = phone;
+  currentAccountId = accountId || document.getElementById('account-select').value || '';
+  renderContacts(allContacts);
+
+  const chatArea = document.getElementById('chat-area');
+  chatArea.innerHTML = `
+    <div id="chat-header">
+      <div class="avatar">${(name || phone)[0].toUpperCase()}</div>
+      <div class="info">
+        <div class="name">${name || phone}</div>
+        <div class="phone">${phone}</div>
+      </div>
+    </div>
+    <div id="messages-area"></div>
+    <div id="input-area">
+      <textarea id="msg-input" placeholder="Digite uma mensagem..." rows="1" onkeydown="handleKey(event)"></textarea>
+      <button id="send-btn" onclick="sendMessage()">
+        <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+      </button>
+    </div>
+  `;
+  await loadMessages(phone);
+}
+
+async function loadMessages(phone, scroll = true) {
+  try {
+    const res = await fetch(SERVER_URL + '/messages/' + phone);
+    const msgs = await res.json();
+    const area = document.getElementById('messages-area');
+    if (!area) return;
+    area.innerHTML = msgs.map(m => `
+      <div class="msg ${m.direction}">
+        ${m.content}
+        <div class="time">${new Date(m.timestamp).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}</div>
       </div>
     `).join('');
-  }
+    if (scroll) area.scrollTop = area.scrollHeight;
+  } catch(e) {}
+}
 
-  function filterContacts() {
-    const q = document.getElementById('searchInput').value.toLowerCase();
-    const filtered = contacts.filter(c =>
-      (c.name||'').toLowerCase().includes(q) || c.phone.includes(q)
-    );
-    renderContacts(filtered);
-  }
+async function sendMessage() {
+  const input = document.getElementById('msg-input');
+  const message = input.value.trim();
+  if (!message || !currentPhone) return;
+  input.value = '';
 
-  // ── Open Chat ──
-  async function openChat(phone, name) {
-    activePhone = phone;
-    renderContacts(contacts);
+  try {
+    await fetch(SERVER_URL + '/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to: currentPhone, message, account_id: currentAccountId })
+    });
+    await loadMessages(currentPhone);
+  } catch(e) { alert('Erro ao enviar mensagem.'); }
+}
 
-    document.getElementById('chatArea').innerHTML = `
-      <div class="chat-header">
-        <div class="avatar">${name[0].toUpperCase()}</div>
-        <div>
-          <div class="chat-contact-name">${name}</div>
-          <div class="chat-contact-phone">${phone}</div>
-        </div>
-      </div>
-      <div class="messages-area" id="messagesArea">
-        <div class="loading">Carregando mensagens...</div>
-      </div>
-      <div class="input-area">
-        <textarea class="message-input" id="msgInput" rows="1" placeholder="Digite uma mensagem..." onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
-        <button class="send-btn" onclick="sendMessage()" id="sendBtn">➤</button>
-      </div>
-    `;
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
 
-    loadMessages(phone);
-  }
-
-  async function loadMessages(phone) {
-    try {
-      const res = await fetch(`${SERVER_URL}/messages/${phone}`);
-      const data = await res.json();
-      const area = document.getElementById('messagesArea');
-      if (!area) return;
-
-      if (!data.length) {
-        area.innerHTML = '<div class="empty-chat"><div class="empty-chat-icon">💬</div><div class="empty-chat-text">Nenhuma mensagem ainda</div></div>';
-        return;
-      }
-
-      area.innerHTML = data.map(m => `
-        <div class="message ${m.direction === 'outbound' ? 'sent' : 'received'}">
-          ${m.content}
-          <div class="message-time">${formatTime(m.timestamp || m.created_at)}</div>
-        </div>
-      `).join('');
-      area.scrollTop = area.scrollHeight;
-    } catch(e) {
-      console.error(e);
-    }
-  }
-
-  // ── Send ──
-  async function sendMessage() {
-    const input = document.getElementById('msgInput');
-    const msg = input?.value.trim();
-    if (!msg || !activePhone) return;
-
-    input.value = '';
-    input.style.height = 'auto';
-    document.getElementById('sendBtn').disabled = true;
-
-    // Mostra na tela imediatamente
-    const area = document.getElementById('messagesArea');
-    if (area) {
-      const div = document.createElement('div');
-      div.className = 'message sent';
-      div.innerHTML = `${msg}<div class="message-time">agora</div>`;
-      area.appendChild(div);
-      area.scrollTop = area.scrollHeight;
-    }
-
-    try {
-      await fetch(`${SERVER_URL}/send`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to: activePhone, message: msg })
-      });
-    } catch(e) {
-      console.error('Erro ao enviar:', e);
-    }
-
-    document.getElementById('sendBtn').disabled = false;
-  }
-
-  function handleKey(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  }
-
-  function autoResize(el) {
-    el.style.height = 'auto';
-    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
-  }
-
-  // ── Helpers ──
-  function formatTime(ts) {
-    if (!ts) return '';
-    const d = new Date(ts);
-    const now = new Date();
-    const diff = now - d;
-    if (diff < 60000) return 'agora';
-    if (diff < 3600000) return `${Math.floor(diff/60000)}min`;
-    if (diff < 86400000) return d.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
-    return d.toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit'});
-  }
+// ── INICIALIZAÇÃO ──
+window.onload = () => {
+  const saved = localStorage.getItem('meucrm_server');
+  if (saved) { init(saved); }
+  else { document.getElementById('setup-overlay').classList.add('open'); }
+};
 </script>
 </body>
 </html>
