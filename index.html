@@ -60,7 +60,7 @@
   /* MODAL CONTAS */
   #modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center; }
   #modal-overlay.open { display: flex; }
-  #modal { background: #202c33; border-radius: 12px; width: 480px; max-width: 95vw; padding: 24px; }
+  #modal { background: #202c33; border-radius: 12px; width: 520px; max-width: 95vw; padding: 24px; max-height: 90vh; overflow-y: auto; }
   #modal h2 { font-size: 17px; font-weight: 600; margin-bottom: 20px; color: #e9edef; }
   #modal label { font-size: 12px; color: #8696a0; display: block; margin-bottom: 4px; margin-top: 14px; text-transform: uppercase; letter-spacing: 0.5px; }
   #modal input { width: 100%; background: #2a3942; border: none; color: #e9edef; padding: 10px 14px; border-radius: 8px; font-size: 14px; }
@@ -73,11 +73,33 @@
   .btn-save:hover { background: #017a62; }
   #accounts-list-modal { margin-bottom: 20px; }
   .account-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #2a3942; border-radius: 8px; margin-bottom: 8px; }
-  .account-row .acc-name { flex: 1; font-size: 14px; font-weight: 500; }
-  .account-row .acc-id { font-size: 11px; color: #8696a0; }
+  .account-row .acc-info { flex: 1; }
+  .account-row .acc-name { font-size: 14px; font-weight: 500; }
+  .account-row .acc-id { font-size: 11px; color: #8696a0; margin-top: 2px; }
   .btn-delete { background: none; border: none; color: #ef4444; cursor: pointer; font-size: 16px; padding: 2px 6px; border-radius: 4px; }
   .btn-delete:hover { background: #3b2020; }
-  #add-account-section h3 { font-size: 14px; color: #8696a0; margin-bottom: 12px; border-top: 1px solid #3b4a54; padding-top: 16px; }
+
+  /* EMBEDDED SIGNUP SECTION */
+  #embedded-signup-section { border-top: 1px solid #3b4a54; padding-top: 20px; margin-top: 4px; }
+  #embedded-signup-section h3 { font-size: 14px; color: #e9edef; font-weight: 600; margin-bottom: 6px; }
+  #embedded-signup-section p { font-size: 12px; color: #8696a0; margin-bottom: 16px; line-height: 1.5; }
+  #btn-facebook-signup {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    width: 100%; background: #1877f2; border: none; color: white;
+    padding: 12px 20px; border-radius: 8px; cursor: pointer; font-size: 15px; font-weight: 600;
+    transition: background 0.2s;
+  }
+  #btn-facebook-signup:hover { background: #1464d8; }
+  #btn-facebook-signup:disabled { background: #2a3942; color: #8696a0; cursor: not-allowed; }
+  #btn-facebook-signup svg { width: 22px; height: 22px; fill: white; flex-shrink: 0; }
+  #signup-status { margin-top: 12px; font-size: 13px; padding: 10px 14px; border-radius: 8px; display: none; }
+  #signup-status.loading { background: #1a2830; color: #8696a0; display: block; }
+  #signup-status.success { background: #0d2e1f; color: #00a884; border: 1px solid #00a884; display: block; }
+  #signup-status.error { background: #2e0d0d; color: #ef4444; border: 1px solid #ef4444; display: block; }
+
+  /* ADD MANUAL SECTION */
+  #add-account-section { border-top: 1px solid #3b4a54; padding-top: 16px; margin-top: 16px; }
+  #add-account-section h3 { font-size: 13px; color: #8696a0; margin-bottom: 12px; }
 
   /* SETUP */
   #setup-overlay { display: none; position: fixed; inset: 0; background: #111b21; z-index: 200; align-items: center; justify-content: center; }
@@ -97,6 +119,19 @@
 </head>
 <body>
 
+<!-- SDK do Facebook (Embedded Signup) -->
+<script>
+  window.fbAsyncInit = function() {
+    FB.init({
+      appId: '974432981953702',
+      autoLogAppEvents: true,
+      xfbml: true,
+      version: 'v19.0'
+    });
+  };
+</script>
+<script async defer src="https://connect.facebook.net/en_US/sdk.js"></script>
+
 <!-- SETUP INICIAL -->
 <div id="setup-overlay">
   <div id="setup-box">
@@ -112,23 +147,40 @@
 <div id="modal-overlay">
   <div id="modal">
     <h2>📱 Contas de WhatsApp</h2>
+
+    <!-- Lista de contas existentes -->
     <div id="accounts-list-modal"></div>
+
+    <!-- EMBEDDED SIGNUP -->
+    <div id="embedded-signup-section">
+      <h3>🔗 Conectar via Facebook</h3>
+      <p>Clique no botão abaixo para fazer login no Facebook, selecionar seu portfólio empresarial e vincular sua conta WhatsApp Business ao CRM automaticamente.</p>
+      <button id="btn-facebook-signup" onclick="launchFBSignup()">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+        </svg>
+        Continuar com o Facebook
+      </button>
+      <div id="signup-status"></div>
+    </div>
+
+    <!-- ADICIONAR MANUALMENTE -->
     <div id="add-account-section">
-      <h3>➕ Adicionar nova conta</h3>
-      <label>Nome da conta (ex: Empresa ABC)</label>
+      <h3>➕ Adicionar manualmente (Phone Number ID + Token)</h3>
+      <label>Nome da conta</label>
       <input type="text" id="acc-name" placeholder="Minha Empresa" />
       <label>Phone Number ID</label>
       <input type="text" id="acc-phone-id" placeholder="938974509306370" />
       <label>Token de Acesso</label>
       <input type="text" id="acc-token" placeholder="EAAxxxxxxx..." />
       <div id="modal-hint">
-        💡 Esses dados ficam no <strong>Meta for Developers → Configuração da API</strong>.<br>
-        Cada conta do Facebook tem seu próprio Phone Number ID e Token.
+        💡 Dados disponíveis em <strong>Meta for Developers → Configuração da API</strong>.
       </div>
     </div>
+
     <div id="modal-actions">
       <button class="btn-cancel" onclick="closeModal()">Fechar</button>
-      <button class="btn-save" onclick="addAccount()">Salvar Conta</button>
+      <button class="btn-save" onclick="addAccount()">Salvar Manual</button>
     </div>
   </div>
 </div>
@@ -160,7 +212,7 @@
   <!-- CHAT -->
   <div id="chat-area">
     <div id="no-chat">
-      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z" fill="currentColor"/></svg>
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" fill="currentColor"/></svg>
       <p>Selecione uma conversa</p>
       <span style="font-size:13px">Suas mensagens do WhatsApp aparecerão aqui</span>
     </div>
@@ -186,14 +238,12 @@ async function init(url) {
   SERVER_URL = url;
   document.getElementById('server-url-label').textContent = url.replace('https://', '');
   document.getElementById('setup-overlay').classList.remove('open');
-
   try {
     await fetch(url + '/');
     document.getElementById('server-dot').classList.add('online');
   } catch(e) {
     document.getElementById('server-url-label').textContent = 'erro de conexão';
   }
-
   await loadAccounts();
   await loadContacts();
   startPolling();
@@ -208,6 +258,63 @@ function startPolling() {
   }, 3000);
 }
 
+// ── EMBEDDED SIGNUP FACEBOOK ──
+function launchFBSignup() {
+  const btn = document.getElementById('btn-facebook-signup');
+  const status = document.getElementById('signup-status');
+
+  // Abre o popup do Facebook Login for Business
+  FB.login(async function(response) {
+    if (response.authResponse) {
+      const code = response.authResponse.code;
+
+      btn.disabled = true;
+      status.className = 'loading';
+      status.textContent = '⏳ Conectando sua conta WhatsApp Business...';
+
+      try {
+        const res = await fetch(SERVER_URL + '/auth/whatsapp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code })
+        });
+        const data = await res.json();
+
+        if (data.error) {
+          status.className = 'error';
+          status.textContent = '❌ ' + data.error;
+        } else {
+          const count = data.accounts?.length || 0;
+          status.className = 'success';
+          status.textContent = `✅ ${count} número(s) vinculado(s) com sucesso!`;
+          await loadAccounts();
+          // Limpa status após 4 segundos
+          setTimeout(() => { status.style.display = 'none'; }, 4000);
+        }
+      } catch(e) {
+        status.className = 'error';
+        status.textContent = '❌ Erro ao comunicar com o servidor.';
+      }
+
+      btn.disabled = false;
+    } else {
+      // Usuário cancelou ou não autorizou
+      status.className = 'error';
+      status.textContent = '⚠️ Login cancelado ou não autorizado.';
+      setTimeout(() => { status.style.display = 'none'; }, 3000);
+    }
+  }, {
+    config_id: '2368591766886781', // Identificação da configuração do Embedded Signup
+    response_type: 'code',
+    override_default_response_type: true,
+    extras: {
+      setup: {},
+      featureType: '',
+      sessionInfoVersion: '3',
+    }
+  });
+}
+
 // ── CONTAS ──
 async function loadAccounts() {
   try {
@@ -218,7 +325,7 @@ async function loadAccounts() {
     accounts.forEach(acc => {
       const opt = document.createElement('option');
       opt.value = acc.id;
-      opt.textContent = acc.name;
+      opt.textContent = acc.name + (acc.phone_display ? ` (${acc.phone_display})` : '');
       sel.appendChild(opt);
     });
     renderAccountsModal(accounts);
@@ -227,14 +334,17 @@ async function loadAccounts() {
 
 function renderAccountsModal(accounts) {
   const el = document.getElementById('accounts-list-modal');
-  if (!accounts.length) { el.innerHTML = '<p style="color:#8696a0;font-size:13px;margin-bottom:12px">Nenhuma conta conectada ainda.</p>'; return; }
+  if (!accounts.length) {
+    el.innerHTML = '<p style="color:#8696a0;font-size:13px;margin-bottom:12px">Nenhuma conta conectada ainda.</p>';
+    return;
+  }
   el.innerHTML = accounts.map(acc => `
     <div class="account-row">
-      <div>
+      <div class="acc-info">
         <div class="acc-name">${acc.name}</div>
-        <div class="acc-id">ID: ${acc.phone_number_id}</div>
+        <div class="acc-id">${acc.phone_display || ''} · ID: ${acc.phone_number_id}</div>
       </div>
-      <button class="btn-delete" onclick="deleteAccount('${acc.id}')">🗑️</button>
+      <button class="btn-delete" onclick="deleteAccount('${acc.id}')" title="Remover conta">🗑️</button>
     </div>
   `).join('');
 }
@@ -289,14 +399,12 @@ function filterContacts() {
 
 function renderContacts(contacts) {
   const list = document.getElementById('contacts-list');
-  const empty = document.getElementById('empty-contacts');
   if (!contacts.length) {
-    list.innerHTML = '';
-    list.appendChild(empty || createEmpty());
+    list.innerHTML = '<div id="empty-contacts">Nenhuma conversa ainda.<br>Envie uma mensagem pelo WhatsApp para o número de teste.</div>';
     return;
   }
   list.innerHTML = contacts.map(c => `
-    <div class="contact-item ${c.phone === currentPhone ? 'active' : ''}" onclick="selectContact('${c.phone}', '${c.name || ''}', '${c.account_id || ''}')">
+    <div class="contact-item ${c.phone === currentPhone ? 'active' : ''}" onclick="selectContact('${c.phone}', '${(c.name || '').replace(/'/g, "\\'")}', '${c.account_id || ''}')">
       <div class="contact-avatar">${(c.name || '?')[0].toUpperCase()}</div>
       <div class="contact-info">
         <div class="contact-name">${c.name || c.phone}</div>
@@ -353,7 +461,6 @@ async function sendMessage() {
   const message = input.value.trim();
   if (!message || !currentPhone) return;
   input.value = '';
-
   try {
     await fetch(SERVER_URL + '/send', {
       method: 'POST',
