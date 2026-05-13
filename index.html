@@ -128,9 +128,18 @@
       xfbml: true,
       version: 'v19.0'
     });
+    console.log('✅ Facebook SDK carregado!');
   };
+
+  // Carrega o SDK dinamicamente
+  (function(d, s, id) {
+    var js, fjs = d.getElementsByTagName(s)[0];
+    if (d.getElementById(id)) return;
+    js = d.createElement(s); js.id = id;
+    js.src = "https://connect.facebook.net/en_US/sdk.js";
+    fjs.parentNode.insertBefore(js, fjs);
+  }(document, 'script', 'facebook-jssdk'));
 </script>
-<script async defer src="https://connect.facebook.net/en_US/sdk.js"></script>
 
 <!-- SETUP INICIAL -->
 <div id="setup-overlay">
@@ -262,6 +271,13 @@ function startPolling() {
 function launchFBSignup() {
   const btn = document.getElementById('btn-facebook-signup');
   const status = document.getElementById('signup-status');
+
+  // Verifica se o SDK carregou
+  if (typeof FB === 'undefined') {
+    status.className = 'error';
+    status.textContent = '❌ SDK do Facebook ainda carregando, aguarde 2 segundos e tente novamente.';
+    return;
+  }
 
   // Abre o popup do Facebook Login for Business
   FB.login(async function(response) {
