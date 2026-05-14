@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Política de Privacidade — MeuCRM</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700&family=DM+Sans:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+
+:root {
+  --bg: #0d0f14;
+  --surface: #151820;
+  --border: #1f2430;
+  --accent: #4f8ef7;
+  --accent-dim: rgba(79,142,247,0.12);
+  --text: #e8eaf0;
+  --muted: #7a7f96;
+  --heading-font: 'Sora', sans-serif;
+  --body-font: 'DM Sans', sans-serif;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--body-font);
+  font-weight: 300;
+  line-height: 1.8;
+  font-size: 15px;
+  min-height: 100vh;
+}
+
+/* subtle grid texture */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(79,142,247,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(79,142,247,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+header {
+  position: relative;
+  z-index: 1;
+  border-bottom: 1px solid var(--border);
+  padding: 28px 48px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.logo-mark {
+  width: 36px; height: 36px;
+  background: var(--accent);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--heading-font);
+  font-weight: 700;
+  font-size: 16px;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+header h1 {
+  font-family: var(--heading-font);
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+}
+
+header span {
+  color: var(--muted);
+  font-weight: 300;
+  margin-left: 4px;
+}
+
+main {
+  position: relative;
+  z-index: 1;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 64px 48px 96px;
+}
+
+.hero {
+  margin-bottom: 56px;
+  padding-bottom: 48px;
+  border-bottom: 1px solid var(--border);
+}
+
+.badge {
+  display: inline-block;
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-family: var(--heading-font);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  padding: 5px 12px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+}
+
+.hero h2 {
+  font-family: var(--heading-font);
+  font-size: clamp(28px, 4vw, 40px);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.8px;
+  margin-bottom: 16px;
+}
+
+.hero h2 em {
+  font-style: normal;
+  color: var(--accent);
+}
+
+.hero p {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+section {
+  margin-bottom: 40px;
+}
+
+section h3 {
+  font-family: var(--heading-font);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+section h3::before {
+  content: '';
+  display: block;
+  width: 3px;
+  height: 16px;
+  background: var(--accent);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+section p, section li {
+  color: #b0b5c8;
+  font-size: 14.5px;
+  line-height: 1.85;
+}
+
+section ul {
+  list-style: none;
+  padding-left: 0;
+  margin-top: 8px;
+}
+
+section ul li {
+  padding: 4px 0 4px 20px;
+  position: relative;
+}
+
+section ul li::before {
+  content: '–';
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px 24px;
+  margin-top: 12px;
+}
+
+.card strong {
+  font-family: var(--heading-font);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.card a {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.card a:hover { text-decoration: underline; }
+
+footer {
+  position: relative;
+  z-index: 1;
+  border-top: 1px solid var(--border);
+  padding: 28px 48px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+footer p { color: var(--muted); font-size: 13px; }
+
+footer a { color: var(--accent); text-decoration: none; font-size: 13px; }
+footer a:hover { text-decoration: underline; }
+
+@media (max-width: 600px) {
+  header, footer { padding: 20px 24px; }
+  main { padding: 40px 24px 72px; }
+}
+
+
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo-mark">M</div>
+  <h1>MeuCRM <span>/ Política de Privacidade</span></h1>
+</header>
+
+<main>
+  <div class="hero">
+    <span class="badge">Privacidade &amp; Dados</span>
+    <h2>Política de <em>Privacidade</em></h2>
+    <p>Última atualização: 13 de maio de 2026 &nbsp;·&nbsp; Versão 1.0</p>
+  </div>
+
+  <section>
+    <h3>1. Quem somos</h3>
+    <p>O <strong>MeuCRM</strong> é operado por <strong>Eliane Cezar de Oliveira</strong>, MEI inscrita sob o CNPJ de correspondente bancária no Brasil. Para dúvidas, entre em contato pelo e-mail abaixo.</p>
+  </section>
+
+  <section>
+    <h3>2. Quais dados coletamos</h3>
+    <p>Coletamos apenas os dados necessários para o funcionamento da plataforma:</p>
+    <ul>
+      <li>Nome, telefone e e-mail de leads e clientes cadastrados pelos usuários</li>
+      <li>Dados de acesso ao sistema (e-mail e senha criptografada)</li>
+      <li>Informações de uso da plataforma (logs de atividade, datas de acesso)</li>
+      <li>Dados fornecidos voluntariamente via integrações (ex.: Facebook Lead Ads)</li>
+    </ul>
+  </section>
+
+  <section>
+    <h3>3. Como usamos os dados</h3>
+    <ul>
+      <li>Exibir e gerenciar os leads e clientes dentro do sistema</li>
+      <li>Permitir o funcionamento das funcionalidades do CRM</li>
+      <li>Integrar com plataformas autorizadas pelo usuário (Meta, WhatsApp, etc.)</li>
+      <li>Melhorar a experiência e corrigir problemas técnicos</li>
+    </ul>
+  </section>
+
+  <section>
+    <h3>4. Compartilhamento de dados</h3>
+    <p>Não vendemos nem compartilhamos seus dados com terceiros para fins comerciais. Podemos compartilhar apenas com:</p>
+    <ul>
+      <li>Provedores de infraestrutura (Supabase, Railway, Vercel) para hospedagem e banco de dados</li>
+      <li>Plataformas integradas por você (ex.: Meta) mediante sua autorização explícita</li>
+      <li>Autoridades competentes, quando exigido por lei</li>
+    </ul>
+  </section>
+
+  <section>
+    <h3>5. Armazenamento e segurança</h3>
+    <p>Os dados são armazenados em servidores seguros com criptografia em trânsito (HTTPS/TLS) e em repouso. Utilizamos o Supabase como banco de dados, que segue padrões internacionais de segurança.</p>
+  </section>
+
+  <section>
+    <h3>6. Seus direitos (LGPD)</h3>
+    <p>De acordo com a Lei Geral de Proteção de Dados (Lei nº 13.709/2018), você tem direito a:</p>
+    <ul>
+      <li>Acessar, corrigir ou excluir seus dados pessoais</li>
+      <li>Revogar consentimentos previamente dados</li>
+      <li>Solicitar a portabilidade dos seus dados</li>
+      <li>Ser informado sobre o uso dos seus dados</li>
+    </ul>
+    <p style="margin-top:10px;">Para exercer esses direitos, entre em contato pelo e-mail abaixo.</p>
+  </section>
+
+  <section>
+    <h3>7. Cookies</h3>
+    <p>Utilizamos cookies estritamente necessários para manter sua sessão ativa. Não utilizamos cookies de rastreamento ou publicidade.</p>
+  </section>
+
+  <section>
+    <h3>8. Retenção de dados</h3>
+    <p>Seus dados são mantidos enquanto sua conta estiver ativa. Após o cancelamento, os dados são excluídos em até 30 dias, salvo obrigação legal.</p>
+  </section>
+
+  <section>
+    <h3>9. Contato</h3>
+    <div class="card">
+      <strong>Responsável pelo tratamento de dados</strong>
+      Eliane Cezar de Oliveira — MeuCRM<br>
+      <a href="mailto:elianecezaroliveira@gmail.com">elianecezaroliveira@gmail.com</a>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <p>© 2026 MeuCRM · Eliane Cezar de Oliveira</p>
+  <div style="display:flex;gap:20px;">
+    <a href="/terms.html">Termos de Serviço</a>
+    <a href="/data-deletion.html">Exclusão de Dados</a>
+  </div>
+</footer>
+
+</body>
+</html>
