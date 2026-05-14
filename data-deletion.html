@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Exclusão de Dados — MeuCRM</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700&family=DM+Sans:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0d0f14; --surface: #151820; --border: #1f2430;
+      --accent: #4f8ef7; --accent-dim: rgba(79,142,247,0.12);
+      --accent2: #f74f7a; --accent2-dim: rgba(247,79,122,0.10);
+      --text: #e8eaf0; --muted: #7a7f96;
+      --heading-font: 'Sora', sans-serif; --body-font: 'DM Sans', sans-serif;
+    }
+    html { scroll-behavior: smooth; }
+    body { background: var(--bg); color: var(--text); font-family: var(--body-font); font-weight: 300; line-height: 1.8; font-size: 15px; min-height: 100vh; }
+    body::before { content: ''; position: fixed; inset: 0; background-image: linear-gradient(rgba(79,142,247,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(79,142,247,0.03) 1px, transparent 1px); background-size: 40px 40px; pointer-events: none; z-index: 0; }
+    header { position: relative; z-index: 1; border-bottom: 1px solid var(--border); padding: 28px 48px; display: flex; align-items: center; gap: 14px; }
+    .logo-mark { width: 36px; height: 36px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-family: var(--heading-font); font-weight: 700; font-size: 16px; color: #fff; flex-shrink: 0; }
+    header h1 { font-family: var(--heading-font); font-size: 18px; font-weight: 600; letter-spacing: -0.3px; }
+    header span { color: var(--muted); font-weight: 300; margin-left: 4px; }
+    main { position: relative; z-index: 1; max-width: 760px; margin: 0 auto; padding: 64px 48px 96px; }
+    .hero { margin-bottom: 56px; padding-bottom: 48px; border-bottom: 1px solid var(--border); }
+    .badge { display: inline-block; background: var(--accent2-dim); color: var(--accent2); font-family: var(--heading-font); font-size: 11px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; padding: 5px 12px; border-radius: 4px; margin-bottom: 20px; }
+    .hero h2 { font-family: var(--heading-font); font-size: clamp(28px, 4vw, 40px); font-weight: 700; line-height: 1.2; letter-spacing: -0.8px; margin-bottom: 16px; }
+    .hero h2 em { font-style: normal; color: var(--accent2); }
+    .hero p { color: var(--muted); font-size: 14px; }
+    section { margin-bottom: 40px; }
+    section h3 { font-family: var(--heading-font); font-size: 16px; font-weight: 600; letter-spacing: -0.2px; margin-bottom: 12px; display: flex; align-items: center; gap: 10px; }
+    section h3::before { content: ''; display: block; width: 3px; height: 16px; background: var(--accent); border-radius: 2px; flex-shrink: 0; }
+    section p, section li { color: #b0b5c8; font-size: 14.5px; line-height: 1.85; }
+    section ul { list-style: none; padding-left: 0; margin-top: 8px; }
+    section ul li { padding: 4px 0 4px 20px; position: relative; }
+    section ul li::before { content: '–'; position: absolute; left: 0; color: var(--accent); }
+
+
+.steps { display: flex; flex-direction: column; gap: 16px; margin-top: 16px; }
+.step { display: flex; gap: 16px; align-items: flex-start; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; }
+.step-num { width: 28px; height: 28px; background: var(--accent-dim); color: var(--accent); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-family: var(--heading-font); font-weight: 700; font-size: 13px; flex-shrink: 0; margin-top: 2px; }
+.step-body strong { font-family: var(--heading-font); font-size: 13px; font-weight: 600; color: var(--text); display: block; margin-bottom: 3px; }
+.step-body p { color: var(--muted); font-size: 13.5px; margin: 0; }
+.step-body a { color: var(--accent); text-decoration: none; }
+.step-body a:hover { text-decoration: underline; }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-top: 12px; }
+.card strong { font-family: var(--heading-font); font-size: 13px; font-weight: 600; color: var(--text); display: block; margin-bottom: 4px; }
+.card a { color: var(--accent); text-decoration: none; font-size: 14px; }
+.card a:hover { text-decoration: underline; }
+
+footer { position: relative; z-index: 1; border-top: 1px solid var(--border); padding: 28px 48px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+footer p { color: var(--muted); font-size: 13px; }
+footer a { color: var(--accent); text-decoration: none; font-size: 13px; }
+footer a:hover { text-decoration: underline; }
+@media (max-width: 600px) { header, footer { padding: 20px 24px; } main { padding: 40px 24px 72px; } }
+
+
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo-mark">M</div>
+  <h1>MeuCRM <span>/ Exclusão de Dados</span></h1>
+</header>
+
+<main>
+  <div class="hero">
+    <span class="badge">Seus Direitos</span>
+    <h2>Exclusão de <em>Dados</em></h2>
+    <p>Última atualização: 13 de maio de 2026 &nbsp;·&nbsp; Versão 1.0</p>
+  </div>
+
+  <section>
+    <h3>Como solicitar a exclusão dos seus dados</h3>
+    <p>De acordo com a Lei Geral de Proteção de Dados (LGPD) e as políticas da plataforma Meta, você tem o direito de solicitar a exclusão de todos os seus dados pessoais armazenados pelo MeuCRM a qualquer momento.</p>
+
+
+<div class="steps">
+  <div class="step">
+    <div class="step-num">1</div>
+    <div class="step-body">
+      <strong>Envie um e-mail de solicitação</strong>
+      <p>Escreva para <a href="mailto:elianecezaroliveira@gmail.com">elianecezaroliveira@gmail.com</a> com o assunto: <em>"Solicitação de Exclusão de Dados — MeuCRM"</em></p>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">2</div>
+    <div class="step-body">
+      <strong>Informe os dados de identificação</strong>
+      <p>Inclua o e-mail cadastrado na plataforma e, se aplicável, o ID do Facebook ou outra informação que nos ajude a localizar sua conta.</p>
+    </div>
+  </div>
+  <div class="step">
+    <div class="step-num">3</div>
+    <div class="step-body">
+      <strong>Confirmação e prazo</strong>
+      <p>Confirmaremos o recebimento em até 2 dias úteis. A exclusão completa dos dados será realizada em até <strong>30 dias corridos</strong> após a confirmação.</p>
+    </div>
+  </div>
+</div>
+
+
+  </section>
+
+  <section>
+    <h3>O que será excluído</h3>
+    <ul>
+      <li>Sua conta de acesso ao MeuCRM</li>
+      <li>Todos os dados pessoais vinculados ao seu perfil</li>
+      <li>Tokens de acesso e permissões concedidas via Facebook/Meta</li>
+      <li>Histórico de atividades associado à sua conta</li>
+    </ul>
+  </section>
+
+  <section>
+    <h3>O que pode ser retido</h3>
+    <p>Algumas informações poderão ser retidas por obrigação legal (ex.: registros fiscais, logs de segurança exigidos por lei), pelo período mínimo necessário conforme legislação brasileira aplicável.</p>
+  </section>
+
+  <section>
+    <h3>Contato</h3>
+    <div class="card">
+      <strong>MeuCRM — Responsável pelo tratamento de dados</strong>
+      Eliane Cezar de Oliveira<br>
+      <a href="mailto:elianecezaroliveira@gmail.com">elianecezaroliveira@gmail.com</a>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <p>© 2026 MeuCRM · Eliane Cezar de Oliveira</p>
+  <div style="display:flex;gap:20px;">
+    <a href="/privacy.html">Política de Privacidade</a>
+    <a href="/terms.html">Termos de Serviço</a>
+  </div>
+</footer>
+
+</body>
+</html>
