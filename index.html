@@ -279,8 +279,8 @@ function launchFBSignup() {
     return;
   }
 
-  // Abre o popup do Facebook Login for Business
-  FB.login(async function(response) {
+  // Callback separado (sem async) para o FB.login
+  function fbLoginCallback(response) {
     if (response.authResponse) {
       const code = response.authResponse.code;
 
@@ -288,39 +288,42 @@ function launchFBSignup() {
       status.className = 'loading';
       status.textContent = '⏳ Conectando sua conta WhatsApp Business...';
 
-      try {
-        const res = await fetch(SERVER_URL + '/auth/whatsapp', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code })
-        });
-        const data = await res.json();
-
+      // Chama o backend para trocar o código pelo token
+      fetch(SERVER_URL + '/auth/whatsapp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code })
+      })
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
         if (data.error) {
           status.className = 'error';
           status.textContent = '❌ ' + data.error;
         } else {
-          const count = data.accounts?.length || 0;
+          const count = data.accounts ? data.accounts.length : 0;
           status.className = 'success';
-          status.textContent = `✅ ${count} número(s) vinculado(s) com sucesso!`;
-          await loadAccounts();
-          // Limpa status após 4 segundos
-          setTimeout(() => { status.style.display = 'none'; }, 4000);
+          status.textContent = '✅ ' + count + ' número(s) vinculado(s) com sucesso!';
+          loadAccounts();
+          setTimeout(function() { status.style.display = 'none'; }, 4000);
         }
-      } catch(e) {
+        btn.disabled = false;
+      })
+      .catch(function() {
         status.className = 'error';
         status.textContent = '❌ Erro ao comunicar com o servidor.';
-      }
+        btn.disabled = false;
+      });
 
-      btn.disabled = false;
     } else {
-      // Usuário cancelou ou não autorizou
       status.className = 'error';
       status.textContent = '⚠️ Login cancelado ou não autorizado.';
-      setTimeout(() => { status.style.display = 'none'; }, 3000);
+      setTimeout(function() { status.style.display = 'none'; }, 3000);
     }
-  }, {
-    config_id: '2368591766886781', // Identificação da configuração do Embedded Signup
+  }
+
+  // Abre o popup do Facebook Login for Business
+  FB.login(fbLoginCallback, {
+    config_id: '2368591766886781',
     response_type: 'code',
     override_default_response_type: true,
     extras: {
