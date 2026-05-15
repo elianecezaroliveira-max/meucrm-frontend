@@ -7,7 +7,6 @@
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Segoe UI', sans-serif; background: #111b21; color: #e9edef; height: 100vh; display: flex; flex-direction: column; }
-
   /* TOPBAR */
   #topbar { background: #202c33; padding: 10px 16px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #2a3942; }
   #topbar h1 { font-size: 18px; font-weight: 700; color: #00a884; flex: 1; }
@@ -16,10 +15,8 @@
   #server-dot.online { background: #00a884; }
   #btn-accounts { background: #2a3942; border: none; color: #e9edef; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; }
   #btn-accounts:hover { background: #3b4a54; }
-
   /* LAYOUT */
   #layout { display: flex; flex: 1; overflow: hidden; }
-
   /* SIDEBAR */
   #sidebar { width: 340px; background: #111b21; border-right: 1px solid #2a3942; display: flex; flex-direction: column; }
   #account-selector { padding: 10px 12px; background: #202c33; border-bottom: 1px solid #2a3942; }
@@ -36,7 +33,6 @@
   .contact-name { font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .contact-preview { font-size: 13px; color: #8696a0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
   #empty-contacts { padding: 24px 16px; text-align: center; color: #8696a0; font-size: 13px; line-height: 1.6; }
-
   /* CHAT */
   #chat-area { flex: 1; display: flex; flex-direction: column; background: #0b141a; }
   #chat-header { background: #202c33; padding: 12px 16px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #2a3942; min-height: 60px; }
@@ -56,7 +52,6 @@
   #send-btn svg { width: 20px; height: 20px; fill: white; }
   #no-chat { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #8696a0; gap: 12px; }
   #no-chat svg { width: 64px; height: 64px; opacity: 0.3; }
-
   /* MODAL CONTAS */
   #modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center; }
   #modal-overlay.open { display: flex; }
@@ -78,7 +73,6 @@
   .account-row .acc-id { font-size: 11px; color: #8696a0; margin-top: 2px; }
   .btn-delete { background: none; border: none; color: #ef4444; cursor: pointer; font-size: 16px; padding: 2px 6px; border-radius: 4px; }
   .btn-delete:hover { background: #3b2020; }
-
   /* EMBEDDED SIGNUP SECTION */
   #embedded-signup-section { border-top: 1px solid #3b4a54; padding-top: 20px; margin-top: 4px; }
   #embedded-signup-section h3 { font-size: 14px; color: #e9edef; font-weight: 600; margin-bottom: 6px; }
@@ -96,11 +90,10 @@
   #signup-status.loading { background: #1a2830; color: #8696a0; display: block; }
   #signup-status.success { background: #0d2e1f; color: #00a884; border: 1px solid #00a884; display: block; }
   #signup-status.error { background: #2e0d0d; color: #ef4444; border: 1px solid #ef4444; display: block; }
-
+  #signup-status.warning { background: #2e2000; color: #f59e0b; border: 1px solid #f59e0b; display: block; }
   /* ADD MANUAL SECTION */
   #add-account-section { border-top: 1px solid #3b4a54; padding-top: 16px; margin-top: 16px; }
   #add-account-section h3 { font-size: 13px; color: #8696a0; margin-bottom: 12px; }
-
   /* SETUP */
   #setup-overlay { display: none; position: fixed; inset: 0; background: #111b21; z-index: 200; align-items: center; justify-content: center; }
   #setup-overlay.open { display: flex; }
@@ -111,7 +104,6 @@
   #setup-box input { width: 100%; background: #2a3942; border: none; color: #e9edef; padding: 12px 16px; border-radius: 10px; font-size: 15px; margin-bottom: 16px; }
   #setup-btn { width: 100%; background: #00a884; border: none; color: white; padding: 13px; border-radius: 10px; font-size: 16px; font-weight: 700; cursor: pointer; }
   #setup-btn:hover { background: #017a62; }
-
   ::-webkit-scrollbar { width: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: #3b4a54; border-radius: 3px; }
@@ -119,24 +111,22 @@
 </head>
 <body>
 
-<!-- SDK do Facebook (Embedded Signup) -->
+<!-- SDK do Facebook (Embedded Signup) - versão v23.0 -->
 <script>
   window.fbAsyncInit = function() {
     FB.init({
       appId: '974432981953702',
       autoLogAppEvents: true,
       xfbml: true,
-      version: 'v19.0'
+      version: 'v23.0'   // ✅ Atualizado de v19.0 para v23.0
     });
-    console.log('✅ Facebook SDK carregado!');
+    console.log('✅ Facebook SDK v23.0 carregado!');
   };
-
-  // Carrega o SDK dinamicamente
   (function(d, s, id) {
     var js, fjs = d.getElementsByTagName(s)[0];
     if (d.getElementById(id)) return;
     js = d.createElement(s); js.id = id;
-    js.src = "https://connect.facebook.net/en_US/sdk.js";
+    js.src = "https://connect.facebook.net/pt_BR/sdk.js";  // ✅ Idioma pt_BR
     fjs.parentNode.insertBefore(js, fjs);
   }(document, 'script', 'facebook-jssdk'));
 </script>
@@ -279,16 +269,18 @@ function launchFBSignup() {
     return;
   }
 
+  // Limpa status anterior
+  status.className = '';
+  status.style.display = 'none';
+
   // Callback separado (sem async) para o FB.login
   function fbLoginCallback(response) {
     if (response.authResponse) {
       const code = response.authResponse.code;
-
       btn.disabled = true;
       status.className = 'loading';
       status.textContent = '⏳ Conectando sua conta WhatsApp Business...';
 
-      // Chama o backend para trocar o código pelo token
       fetch(SERVER_URL + '/auth/whatsapp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -314,6 +306,10 @@ function launchFBSignup() {
         btn.disabled = false;
       });
 
+    } else if (response.status === 'unknown') {
+      // Popup foi bloqueado ou fechado sem completar
+      status.className = 'warning';
+      status.textContent = '⚠️ Popup bloqueado pelo navegador. Clique em "Continuar com o Facebook" novamente, ou permita popups para este site.';
     } else {
       status.className = 'error';
       status.textContent = '⚠️ Login cancelado ou não autorizado.';
@@ -321,17 +317,22 @@ function launchFBSignup() {
     }
   }
 
-  // Abre o popup do Facebook Login for Business
-  FB.login(fbLoginCallback, {
-    config_id: '2368591766886781',
-    response_type: 'code',
-    override_default_response_type: true,
-    extras: {
-      setup: {},
-      featureType: '',
-      sessionInfoVersion: '3',
-    }
-  });
+  // Abre o popup do Facebook Login for Business (Embedded Signup)
+  try {
+    FB.login(fbLoginCallback, {
+      config_id: '2368591766886781',
+      response_type: 'code',
+      override_default_response_type: true,
+      extras: {
+        setup: {},
+        featureType: '',
+        sessionInfoVersion: '3',
+      }
+    });
+  } catch(e) {
+    status.className = 'error';
+    status.textContent = '❌ Erro ao abrir o popup do Facebook: ' + e.message;
+  }
 }
 
 // ── CONTAS ──
@@ -438,7 +439,6 @@ async function selectContact(phone, name, accountId) {
   currentPhone = phone;
   currentAccountId = accountId || document.getElementById('account-select').value || '';
   renderContacts(allContacts);
-
   const chatArea = document.getElementById('chat-area');
   chatArea.innerHTML = `
     <div id="chat-header">
