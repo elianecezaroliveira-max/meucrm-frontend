@@ -167,6 +167,30 @@
   .var-label-row .var-label-name { flex: 1; background: #1e2b33; border: 1px solid #3b4a54; color: #8696a0; padding: 7px 10px; border-radius: 6px; font-size: 12px; }
   .var-label-row input.var-example { flex: 2; background: #2a3942; border: 1px solid #3b4a54; color: #e9edef; padding: 7px 10px; border-radius: 6px; font-size: 13px; }
   .var-label-row input.var-example:focus { outline: none; border-color: #00a884; }
+  /* LEADS */
+  #sidebar-actions { display: flex; gap: 8px; padding: 8px 12px; background: #111b21; }
+  .btn-sidebar-action { flex: 1; background: #2a3942; border: none; color: #e9edef; padding: 7px 6px; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 500; transition: background 0.15s; }
+  .btn-sidebar-action:hover { background: #3b4a54; }
+  #lead-overlay, #import-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center; }
+  #lead-overlay.open, #import-overlay.open { display: flex; }
+  #lead-modal, #import-modal { background: #202c33; border-radius: 12px; width: 460px; max-width: 95vw; padding: 24px; max-height: 90vh; overflow-y: auto; }
+  #lead-modal h2, #import-modal h2 { font-size: 17px; font-weight: 600; margin-bottom: 20px; }
+  .lead-form-group { margin-bottom: 16px; }
+  .lead-form-group label { display: block; font-size: 12px; color: #8696a0; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .lead-form-group input, .lead-form-group select { width: 100%; background: #2a3942; border: 1px solid #3b4a54; color: #e9edef; padding: 10px 12px; border-radius: 8px; font-size: 14px; }
+  .lead-form-group input:focus, .lead-form-group select:focus { outline: none; border-color: #00a884; }
+  #import-dropzone { border: 2px dashed #3b4a54; border-radius: 10px; padding: 32px; text-align: center; cursor: pointer; color: #8696a0; font-size: 14px; transition: border-color 0.2s; margin-bottom: 16px; }
+  #import-dropzone:hover, #import-dropzone.drag { border-color: #00a884; color: #00a884; }
+  #import-preview { background: #2a3942; border-radius: 8px; max-height: 220px; overflow-y: auto; margin-bottom: 16px; display: none; }
+  #import-preview table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  #import-preview th { background: #1e2b33; padding: 8px 12px; text-align: left; color: #8696a0; font-weight: 600; }
+  #import-preview td { padding: 7px 12px; border-bottom: 1px solid #1e2b33; color: #e9edef; }
+  .import-count { font-size: 13px; color: #00a884; margin-bottom: 12px; font-weight: 500; }
+  /* SELETOR DE CONTA NO CHAT */
+  #chat-account-bar { background: #1e2b33; padding: 7px 16px; border-bottom: 1px solid #2a3942; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  #chat-account-bar label { font-size: 12px; color: #8696a0; white-space: nowrap; }
+  #chat-account-bar select { background: #2a3942; border: 1px solid #3b4a54; color: #e9edef; padding: 5px 10px; border-radius: 6px; font-size: 13px; flex: 1; cursor: pointer; }
+  #chat-account-bar select:focus { outline: none; border-color: #00a884; }
 </style>
 </head>
 <body>
@@ -364,6 +388,52 @@
   </div>
 </div>
 
+<!-- MODAL NOVO LEAD -->
+<div id="lead-overlay">
+  <div id="lead-modal">
+    <h2>➕ Novo Lead</h2>
+    <div class="lead-form-group">
+      <label>Nome *</label>
+      <input type="text" id="lead-name" placeholder="João Silva" />
+    </div>
+    <div class="lead-form-group">
+      <label>Celular * <span style="color:#8696a0;font-size:11px">(com DDD e código do país, ex: 5511999999999)</span></label>
+      <input type="tel" id="lead-phone" placeholder="5511999999999" />
+    </div>
+    <div class="lead-form-group">
+      <label>Vincular à conta WhatsApp (opcional)</label>
+      <select id="lead-account"></select>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+      <button class="btn-cancel" onclick="closeNewLead()">Cancelar</button>
+      <button class="btn-save" onclick="saveLead()">Salvar Lead</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL IMPORTAR LEADS -->
+<div id="import-overlay">
+  <div id="import-modal">
+    <h2>📥 Importar Leads</h2>
+    <p style="font-size:13px;color:#8696a0;margin-bottom:16px">Importe um arquivo CSV ou Excel. O arquivo deve ter colunas <strong>nome</strong> e <strong>celular</strong> (ou <strong>name</strong> e <strong>phone</strong>).</p>
+    <div id="import-dropzone" onclick="document.getElementById('import-file').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handleDrop(event)">
+      📂 Clique ou arraste o arquivo aqui<br>
+      <span style="font-size:12px">Suporta .csv e .xlsx</span>
+    </div>
+    <input type="file" id="import-file" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleFileSelect(event)" />
+    <div class="import-count" id="import-count" style="display:none"></div>
+    <div class="lead-form-group">
+      <label>Vincular à conta WhatsApp (opcional)</label>
+      <select id="import-account"></select>
+    </div>
+    <div id="import-preview"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn-cancel" onclick="closeImport()">Cancelar</button>
+      <button class="btn-save" id="btn-confirm-import" onclick="confirmImport()" disabled>Importar</button>
+    </div>
+  </div>
+</div>
+
 <!-- TOPBAR -->
 <div id="topbar">
   <h1>MeuCRM</h1>
@@ -380,6 +450,10 @@
       <select id="account-select" onchange="loadContacts()">
         <option value="">Todas as contas</option>
       </select>
+    </div>
+    <div id="sidebar-actions">
+      <button class="btn-sidebar-action" onclick="openNewLead()">➕ Novo Lead</button>
+      <button class="btn-sidebar-action" onclick="openImport()">📥 Importar</button>
     </div>
     <div id="search-box">
       <input type="text" id="search-input" placeholder="🔍 Buscar contato..." oninput="filterContacts()" />
@@ -621,6 +695,14 @@ async function selectContact(phone, name, accountId) {
   currentAccountId = accountId || document.getElementById('account-select').value || '';
   renderContacts(allContacts);
   const chatArea = document.getElementById('chat-area');
+
+  // Monta opções de contas para o seletor
+  const accountSel = document.getElementById('account-select');
+  let accountOptions = '<option value="">Selecione uma conta...</option>';
+  Array.from(accountSel.options).forEach(opt => {
+    if (opt.value) accountOptions += `<option value="${opt.value}" ${opt.value === currentAccountId ? 'selected' : ''}>${opt.text}</option>`;
+  });
+
   chatArea.innerHTML = `
     <div id="chat-header">
       <div class="avatar">${(name || phone)[0].toUpperCase()}</div>
@@ -630,6 +712,12 @@ async function selectContact(phone, name, accountId) {
       </div>
     </div>
     <div id="messages-area"></div>
+    <div id="chat-account-bar">
+      <label>Enviar de:</label>
+      <select id="chat-account-select" onchange="currentAccountId=this.value">
+        ${accountOptions}
+      </select>
+    </div>
     <div id="input-area">
       <button class="btn-template-icon" onclick="openSendTemplate()" title="Enviar modelo">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 8h10M7 12h6M7 16h8"/></svg>
@@ -686,6 +774,157 @@ async function sendMessage() {
 
 function handleKey(e) {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+
+// ── LEADS ──
+function populateLeadAccounts() {
+  const sel = document.getElementById('account-select');
+  const opts = '<option value="">Nenhuma (sem vínculo)</option>' +
+    Array.from(sel.options).filter(o => o.value).map(o => `<option value="${o.value}">${o.text}</option>`).join('');
+  document.getElementById('lead-account').innerHTML = opts;
+  document.getElementById('import-account').innerHTML = opts;
+}
+
+function openNewLead() {
+  populateLeadAccounts();
+  document.getElementById('lead-name').value = '';
+  document.getElementById('lead-phone').value = '';
+  document.getElementById('lead-overlay').classList.add('open');
+}
+function closeNewLead() { document.getElementById('lead-overlay').classList.remove('open'); }
+
+async function saveLead() {
+  const name = document.getElementById('lead-name').value.trim();
+  const phone = document.getElementById('lead-phone').value.trim();
+  const account_id = document.getElementById('lead-account').value || null;
+  if (!name) return alert('Informe o nome do lead.');
+  if (!phone) return alert('Informe o celular do lead.');
+  try {
+    const res = await fetch(SERVER_URL + '/contacts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, phone, account_id })
+    });
+    const data = await res.json();
+    if (!res.ok) return alert('Erro: ' + (data.error || 'Tente novamente'));
+    closeNewLead();
+    await loadContacts();
+    alert('✅ Lead salvo com sucesso!');
+  } catch(e) { alert('Erro ao salvar lead.'); }
+}
+
+// ── IMPORTAR LEADS ──
+let importedContacts = [];
+
+function openImport() {
+  populateLeadAccounts();
+  importedContacts = [];
+  document.getElementById('import-file').value = '';
+  document.getElementById('import-preview').style.display = 'none';
+  document.getElementById('import-preview').innerHTML = '';
+  document.getElementById('import-count').style.display = 'none';
+  document.getElementById('btn-confirm-import').disabled = true;
+  document.getElementById('import-overlay').classList.add('open');
+}
+function closeImport() { document.getElementById('import-overlay').classList.remove('open'); }
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('import-dropzone').classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (file) processImportFile(file);
+}
+function handleFileSelect(e) { if (e.target.files[0]) processImportFile(e.target.files[0]); }
+
+function processImportFile(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  const reader = new FileReader();
+  if (ext === 'csv') {
+    reader.onload = e => parseCSV(e.target.result);
+    reader.readAsText(file, 'UTF-8');
+  } else if (ext === 'xlsx' || ext === 'xls') {
+    reader.onload = e => parseExcel(e.target.result);
+    reader.readAsArrayBuffer(file);
+  } else {
+    alert('Formato não suportado. Use .csv ou .xlsx');
+  }
+}
+
+function parseCSV(text) {
+  const lines = text.trim().split('\n').filter(l => l.trim());
+  if (lines.length < 2) return alert('Arquivo vazio ou sem dados.');
+  const sep = lines[0].includes(';') ? ';' : ',';
+  const headers = lines[0].split(sep).map(h => h.trim().toLowerCase().replace(/['"]/g,''));
+  const nameIdx = headers.findIndex(h => ['nome','name','lead','contato'].includes(h));
+  const phoneIdx = headers.findIndex(h => ['celular','telefone','phone','fone','whatsapp','numero','número'].includes(h));
+  if (nameIdx === -1 || phoneIdx === -1) return alert(`Colunas não encontradas. O arquivo deve ter colunas "nome" e "celular".\nColunas encontradas: ${headers.join(', ')}`);
+  importedContacts = lines.slice(1).map(line => {
+    const cols = line.split(sep).map(c => c.trim().replace(/['"]/g,''));
+    return { name: cols[nameIdx] || '', phone: cols[phoneIdx] || '' };
+  }).filter(c => c.name && c.phone);
+  showImportPreview();
+}
+
+function parseExcel(buffer) {
+  // Importa SheetJS dinamicamente se não carregado
+  if (typeof XLSX === 'undefined') {
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    script.onload = () => {
+      const wb = XLSX.read(buffer, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { raw: false });
+      processExcelRows(rows);
+    };
+    document.head.appendChild(script);
+  } else {
+    const wb = XLSX.read(buffer, { type: 'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { raw: false });
+    processExcelRows(rows);
+  }
+}
+
+function processExcelRows(rows) {
+  if (!rows.length) return alert('Planilha vazia.');
+  const keys = Object.keys(rows[0]).map(k => k.toLowerCase());
+  const nameKey = Object.keys(rows[0]).find(k => ['nome','name','lead','contato'].includes(k.toLowerCase()));
+  const phoneKey = Object.keys(rows[0]).find(k => ['celular','telefone','phone','fone','whatsapp','numero','número'].includes(k.toLowerCase()));
+  if (!nameKey || !phoneKey) return alert(`Colunas não encontradas. Colunas disponíveis: ${Object.keys(rows[0]).join(', ')}`);
+  importedContacts = rows.map(r => ({ name: String(r[nameKey] || '').trim(), phone: String(r[phoneKey] || '').trim() })).filter(c => c.name && c.phone);
+  showImportPreview();
+}
+
+function showImportPreview() {
+  const valid = importedContacts.filter(c => c.phone.replace(/\D/g,'').length >= 8);
+  const countEl = document.getElementById('import-count');
+  countEl.style.display = 'block';
+  countEl.textContent = `✅ ${valid.length} leads encontrados${importedContacts.length !== valid.length ? ` (${importedContacts.length - valid.length} ignorados por celular inválido)` : ''}`;
+  const preview = document.getElementById('import-preview');
+  const sample = importedContacts.slice(0, 8);
+  preview.style.display = 'block';
+  preview.innerHTML = `<table><thead><tr><th>#</th><th>Nome</th><th>Celular</th></tr></thead><tbody>
+    ${sample.map((c,i) => `<tr><td>${i+1}</td><td>${c.name}</td><td>${c.phone}</td></tr>`).join('')}
+    ${importedContacts.length > 8 ? `<tr><td colspan="3" style="color:#8696a0;text-align:center">... e mais ${importedContacts.length - 8} leads</td></tr>` : ''}
+  </tbody></table>`;
+  document.getElementById('btn-confirm-import').disabled = valid.length === 0;
+}
+
+async function confirmImport() {
+  const account_id = document.getElementById('import-account').value || null;
+  const valid = importedContacts.filter(c => c.phone.replace(/\D/g,'').length >= 8);
+  try {
+    const res = await fetch(SERVER_URL + '/contacts/import', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contacts: valid, account_id })
+    });
+    const data = await res.json();
+    if (!res.ok) return alert('Erro: ' + (data.error || 'Tente novamente'));
+    closeImport();
+    await loadContacts();
+    alert(`✅ ${data.count} leads importados com sucesso!`);
+  } catch(e) { alert('Erro ao importar leads.'); }
 }
 
 // ── TEMPLATES ──
