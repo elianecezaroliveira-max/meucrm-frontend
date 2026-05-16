@@ -495,10 +495,12 @@ function handleKey(e) {
 }
 
 // ── INICIALIZAÇÃO ──
+const DEFAULT_SERVER = 'https://meucrm-backend-production-d4f4.up.railway.app';
+
 window.onload = () => {
-  const saved = localStorage.getItem('meucrm_server');
-  if (saved) { init(saved); }
-  else { document.getElementById('setup-overlay').classList.add('open'); }
+  // Sempre usa o servidor correto, ignorando localStorage desatualizado
+  localStorage.setItem('meucrm_server', DEFAULT_SERVER);
+  init(DEFAULT_SERVER);
 };
 </script>
 </body>
