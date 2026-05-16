@@ -276,6 +276,46 @@
   .kanban-add-col:hover { background: #202c33; border-color: #00a884; color: #00a884; }
   #btn-pipeline { background: #2a3942; border: none; color: #e9edef; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px; }
   #btn-pipeline:hover { background: #3b4a54; }
+  /* TAGS */
+  .tag-chip { display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap; }
+  .tag-chip.removable { cursor:pointer; }
+  .tag-chip.removable:hover { opacity:0.75; }
+  .contact-tags { display:flex;flex-wrap:wrap;gap:4px;margin-top:4px; }
+  .tc0{background:#1a3028;color:#00a884;border:1px solid #00a884}
+  .tc1{background:#1a2040;color:#60a5fa;border:1px solid #3b82f6}
+  .tc2{background:#2e1a40;color:#c084fc;border:1px solid #8b5cf6}
+  .tc3{background:#401a1a;color:#f87171;border:1px solid #ef4444}
+  .tc4{background:#402a1a;color:#fb923c;border:1px solid #f97316}
+  .tc5{background:#1a3520;color:#4ade80;border:1px solid #22c55e}
+  #tag-manager{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-left:4px;flex:1;min-width:0}
+  #tag-add-input{background:#2a3942;border:1px dashed #3b4a54;color:#e9edef;padding:3px 10px;border-radius:20px;font-size:12px;outline:none;width:100px}
+  #tag-add-input::placeholder{color:#8696a0}
+  #tag-add-input:focus{border-color:#00a884}
+  /* FILTER SIDEBAR */
+  #filter-toggle{background:none;border:1px solid #2a3942;color:#8696a0;padding:5px 8px;border-radius:8px;cursor:pointer;font-size:13px;flex-shrink:0}
+  #filter-toggle:hover,#filter-toggle.active{border-color:#00a884;color:#00a884}
+  #filter-panel{background:#111b21;border-bottom:1px solid #2a3942;padding:10px 12px;display:none}
+  #filter-panel.open{display:block}
+  #filter-panel label{font-size:11px;color:#8696a0;display:block;margin-bottom:4px;margin-top:8px;text-transform:uppercase;letter-spacing:.4px}
+  #filter-panel label:first-child{margin-top:0}
+  #filter-stage-sel,#filter-date-from,#filter-date-to{width:100%;background:#202c33;border:1px solid #2a3942;color:#e9edef;padding:6px 10px;border-radius:6px;font-size:12px;outline:none}
+  #filter-stage-sel:focus,#filter-date-from:focus,#filter-date-to:focus{border-color:#00a884}
+  #filter-tags-area{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+  .filter-tag-opt{padding:3px 10px;border-radius:20px;font-size:12px;cursor:pointer;border:1px solid #3b4a54;color:#8696a0;background:#202c33;transition:all .2s}
+  .filter-tag-opt.selected{border-color:#00a884;color:#00a884;background:#1a3028}
+  #filter-clear{background:none;border:none;color:#8696a0;font-size:12px;cursor:pointer;padding:4px 0;margin-top:6px;display:block}
+  #filter-clear:hover{color:#ef4444}
+  /* PIPELINE FILTER */
+  #pipeline-filter-btn{background:#2a3942;border:none;color:#8696a0;padding:7px 12px;border-radius:8px;cursor:pointer;font-size:13px}
+  #pipeline-filter-btn:hover,#pipeline-filter-btn.active{color:#00a884}
+  #pipeline-filter-panel{background:#1a2830;border-bottom:1px solid #2a3942;padding:12px 20px;display:none;flex-shrink:0}
+  #pipeline-filter-panel.open{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end}
+  #pipeline-filter-panel label{font-size:11px;color:#8696a0;display:block;margin-bottom:4px}
+  .pf-input{background:#202c33;border:1px solid #2a3942;color:#e9edef;padding:6px 10px;border-radius:6px;font-size:12px;outline:none}
+  .pf-input:focus{border-color:#00a884}
+  #pf-tags-area{display:flex;flex-wrap:wrap;gap:4px}
+  #pf-clear{background:none;border:1px solid #3b4a54;color:#8696a0;padding:6px 10px;border-radius:6px;font-size:12px;cursor:pointer;align-self:flex-end}
+  #pf-clear:hover{border-color:#ef4444;color:#ef4444}
 </style>
 </head>
 <body>
@@ -535,11 +575,21 @@
 <div id="pipeline-view">
   <div id="pipeline-topbar">
     <h2>📊 Pipeline de Vendas</h2>
+    <button id="pipeline-filter-btn" onclick="togglePipelineFilter()">⚙ Filtrar</button>
     <button id="btn-add-stage" onclick="addStage()">+ Nova coluna</button>
     <button id="btn-close-pipeline" onclick="closePipeline()" title="Fechar">✕</button>
   </div>
+  <div id="pipeline-filter-panel">
+    <div><label>Nome do lead</label><input class="pf-input" id="pf-name" placeholder="Buscar..." oninput="applyPipelineFilter()"></div>
+    <div><label>Tags</label><div id="pf-tags-area"></div></div>
+    <div><label>Data (de)</label><input type="date" class="pf-input" id="pf-date-from" onchange="applyPipelineFilter()"></div>
+    <div><label>Data (até)</label><input type="date" class="pf-input" id="pf-date-to" onchange="applyPipelineFilter()"></div>
+    <button id="pf-clear" onclick="clearPipelineFilter()">✕ Limpar</button>
+  </div>
   <div id="kanban-board"></div>
 </div>
+
+<input type="file" id="file-input" style="display:none" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip">
 
 <!-- LAYOUT -->
 <div id="layout">
@@ -554,8 +604,20 @@
       <button class="btn-sidebar-action" onclick="openNewLead()">➕ Novo Lead</button>
       <button class="btn-sidebar-action" onclick="openImport()">📥 Importar</button>
     </div>
-    <div id="search-box">
-      <input type="text" id="search-input" placeholder="🔍 Buscar contato..." oninput="filterContacts()" />
+    <div id="search-box" style="display:flex;gap:6px;align-items:center">
+      <input type="text" id="search-input" placeholder="🔍 Buscar contato..." oninput="applyFilters()" style="flex:1" />
+      <button id="filter-toggle" onclick="toggleFilterPanel()" title="Filtros">⚙</button>
+    </div>
+    <div id="filter-panel">
+      <label>Status do funil</label>
+      <select id="filter-stage-sel" onchange="applyFilters()"><option value="">Todos os status</option></select>
+      <label>Tags</label>
+      <div id="filter-tags-area"></div>
+      <label>Data (de)</label>
+      <input type="date" id="filter-date-from" onchange="applyFilters()">
+      <label>Data (até)</label>
+      <input type="date" id="filter-date-to" onchange="applyFilters()">
+      <button id="filter-clear" onclick="clearFilters()">✕ Limpar filtros</button>
     </div>
     <div id="contacts-list">
       <div id="empty-contacts">Nenhuma conversa ainda.<br>Envie uma mensagem pelo WhatsApp para o número de teste.</div>
@@ -761,15 +823,72 @@ async function loadContacts(render = true) {
     if (accountId) url += '?account_id=' + accountId;
     const res = await fetch(url);
     allContacts = await res.json();
-    if (render) renderContacts(allContacts);
+    if (render) { renderContacts(allContacts); populateFilterOptions(); }
   } catch(e) {}
 }
 
-function filterContacts() {
-  const q = document.getElementById('search-input').value.toLowerCase();
-  const filtered = allContacts.filter(c => c.name?.toLowerCase().includes(q) || c.phone?.includes(q));
+let activeFilterTags = new Set();
+
+function toggleFilterPanel() {
+  const panel = document.getElementById('filter-panel');
+  const btn = document.getElementById('filter-toggle');
+  const open = panel.classList.toggle('open');
+  btn.classList.toggle('active', open);
+  if (open) populateFilterOptions();
+}
+
+function getAllTags() {
+  const set = new Set();
+  allContacts.forEach(c => (c.tags || []).forEach(t => set.add(t)));
+  pipelineContacts.forEach(c => (c.tags || []).forEach(t => set.add(t)));
+  return Array.from(set).sort();
+}
+
+function populateFilterOptions() {
+  const stageSel = document.getElementById('filter-stage-sel');
+  if (stageSel) {
+    stageSel.innerHTML = '<option value="">Todos os status</option>' +
+      pipelineStages.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+  }
+  const allTags = getAllTags();
+  const area = document.getElementById('filter-tags-area');
+  if (area) area.innerHTML = allTags.length
+    ? allTags.map(t => `<span class="filter-tag-opt ${activeFilterTags.has(t)?'selected':''}" onclick="toggleFilterTag('${t}')">${t}</span>`).join('')
+    : '<span style="font-size:12px;color:#8696a0">Nenhuma tag cadastrada</span>';
+}
+
+function toggleFilterTag(tag) {
+  if (activeFilterTags.has(tag)) activeFilterTags.delete(tag); else activeFilterTags.add(tag);
+  populateFilterOptions(); applyFilters();
+}
+
+function applyFilters() {
+  const q = (document.getElementById('search-input')?.value || '').toLowerCase();
+  const stageId = document.getElementById('filter-stage-sel')?.value || '';
+  const dateFrom = document.getElementById('filter-date-from')?.value || '';
+  const dateTo = document.getElementById('filter-date-to')?.value || '';
+  const filtered = allContacts.filter(c => {
+    if (q && !c.name?.toLowerCase().includes(q) && !c.phone?.includes(q)) return false;
+    if (stageId && c.stage_id !== stageId) return false;
+    if (activeFilterTags.size > 0 && ![...activeFilterTags].every(t => (c.tags||[]).includes(t))) return false;
+    if (dateFrom && c.last_message_at && c.last_message_at < dateFrom) return false;
+    if (dateTo && c.last_message_at && c.last_message_at.substring(0,10) > dateTo) return false;
+    return true;
+  });
   renderContacts(filtered);
 }
+
+function clearFilters() {
+  activeFilterTags.clear();
+  ['filter-stage-sel','filter-date-from','filter-date-to','search-input'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  document.getElementById('filter-panel')?.classList.remove('open');
+  document.getElementById('filter-toggle')?.classList.remove('active');
+  renderContacts(allContacts);
+}
+
+function filterContacts() { applyFilters(); }
 
 function renderContacts(contacts) {
   const list = document.getElementById('contacts-list');
@@ -777,15 +896,18 @@ function renderContacts(contacts) {
     list.innerHTML = '<div id="empty-contacts">Nenhuma conversa ainda.<br>Envie uma mensagem pelo WhatsApp para o número de teste.</div>';
     return;
   }
-  list.innerHTML = contacts.map(c => `
-    <div class="contact-item ${c.phone === currentPhone ? 'active' : ''}" onclick="selectContact('${c.phone}', '${(c.name || '').replace(/'/g, "\\'")}', '${c.account_id || ''}')">
-      <div class="contact-avatar">${(c.name || '?')[0].toUpperCase()}</div>
+  list.innerHTML = contacts.map(c => {
+    const tags = c.tags || [];
+    const tagsHtml = tags.length ? `<div class="contact-tags">${tags.map((t,i)=>`<span class="tag-chip tc${i%6}">${t}</span>`).join('')}</div>` : '';
+    return `<div class="contact-item ${c.phone===currentPhone?'active':''}" onclick="selectContact('${c.phone}','${(c.name||'').replace(/'/g,"\\'")}','${c.account_id||''}')">
+      <div class="contact-avatar">${(c.name||'?')[0].toUpperCase()}</div>
       <div class="contact-info">
-        <div class="contact-name">${c.name || c.phone}</div>
+        <div class="contact-name">${c.name||c.phone}</div>
         <div class="contact-preview">${c.phone}</div>
+        ${tagsHtml}
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 
 // ── CHAT ──
@@ -809,6 +931,7 @@ async function selectContact(phone, name, accountId) {
         <div class="name">${name || phone}</div>
         <div class="phone">${phone}</div>
       </div>
+      <div id="tag-manager"></div>
       <button id="btn-notes" title="Anotações do lead" onclick="toggleNotes()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -838,7 +961,6 @@ async function selectContact(phone, name, accountId) {
       <label id="attach-label" for="file-input" title="Enviar arquivo">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
       </label>
-      <input type="file" id="file-input" style="display:none" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip">
       <button id="emoji-btn" onclick="toggleEmojiPicker(event)" title="Emojis">😊</button>
       <div id="emoji-picker-wrap"></div>
       <div id="input-wrap">
@@ -858,15 +980,9 @@ async function selectContact(phone, name, accountId) {
     </div>
   `;
 
-  // Listener direto no file-input (mais confiável que onchange inline ou delegação)
-  const fileInput = document.getElementById('file-input');
-  if (fileInput) {
-    fileInput.addEventListener('change', function() {
-      if (this.files && this.files[0]) handleFileSelect(this.files[0]);
-      this.value = '';
-    });
-  }
-
+  // Tags
+  const _tagContact = allContacts.find(c => c.phone === phone);
+  if (_tagContact) renderTagManager(_tagContact);
   // Carrega anotações do lead
   loadNotes(phone);
 
@@ -1044,6 +1160,57 @@ async function sendFile() {
   } catch(err) {
     alert('Erro ao enviar arquivo: ' + err.message);
   }
+}
+
+// ── TAGS ──
+const TAG_COLORS = ['tc0','tc1','tc2','tc3','tc4','tc5'];
+
+function renderTagManager(contact) {
+  const area = document.getElementById('tag-manager');
+  if (!area) return;
+  const tags = contact.tags || [];
+  const phone = contact.phone;
+  area.innerHTML = tags.map((t,i) =>
+    `<span class="tag-chip ${TAG_COLORS[i%6]} removable" title="Clique para remover" onclick="removeTag('${phone}','${t}')">${t} ×</span>`
+  ).join('') +
+  `<input id="tag-add-input" placeholder="+ tag" maxlength="20"
+    onkeydown="if(event.key==='Enter'||event.key===','){event.preventDefault();addTag('${phone}',this.value)}"
+    onblur="if(this.value.trim())addTag('${phone}',this.value)">`;
+}
+
+async function addTag(phone, raw) {
+  const tag = raw.trim().replace(/,/g,'');
+  if (!tag) return;
+  const input = document.getElementById('tag-add-input');
+  if (input) input.value = '';
+  const contact = allContacts.find(c => c.phone === phone);
+  if (!contact) return;
+  if ((contact.tags||[]).includes(tag)) return;
+  contact.tags = [...(contact.tags||[]), tag];
+  renderTagManager(contact);
+  await saveTags(phone, contact.tags);
+  renderContacts(allContacts);
+  const pc = pipelineContacts.find(c => c.phone === phone);
+  if (pc) pc.tags = contact.tags;
+}
+
+async function removeTag(phone, tag) {
+  const contact = allContacts.find(c => c.phone === phone);
+  if (!contact) return;
+  contact.tags = (contact.tags||[]).filter(t => t !== tag);
+  renderTagManager(contact);
+  await saveTags(phone, contact.tags);
+  renderContacts(allContacts);
+  const pc = pipelineContacts.find(c => c.phone === phone);
+  if (pc) pc.tags = contact.tags;
+}
+
+async function saveTags(phone, tags) {
+  try {
+    await fetch(`${SERVER_URL}/contacts/${encodeURIComponent(phone)}/tags`,{
+      method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({tags})
+    });
+  } catch(e) {}
 }
 
 // ── ANOTAÇÕES ──
@@ -1602,6 +1769,10 @@ async function loadPipeline() {
     ]);
     pipelineStages = await stagesRes.json();
     pipelineContacts = await contactsRes.json();
+    pipelineContacts.forEach(pc => {
+      const ac = allContacts.find(c => c.phone === pc.phone);
+      if (ac) pc.tags = ac.tags;
+    });
     renderKanban();
   } catch(e) {
     console.error('Erro ao carregar pipeline:', e);
@@ -1609,6 +1780,10 @@ async function loadPipeline() {
 }
 
 function renderKanban() {
+  renderKanbanWith(pipelineContacts);
+}
+
+function renderKanbanWith(contacts) {
   const board = document.getElementById('kanban-board');
   if (!board) return;
 
@@ -1616,7 +1791,7 @@ function renderKanban() {
   const byStage = {};
   pipelineStages.forEach(s => byStage[s.id] = []);
   byStage['__none__'] = [];
-  pipelineContacts.forEach(c => {
+  contacts.forEach(c => {
     const sid = c.stage_id || '__none__';
     if (byStage[sid]) byStage[sid].push(c);
     else byStage['__none__'].push(c);
@@ -1674,8 +1849,10 @@ function renderKanban() {
       card.addEventListener('dragend', () => card.classList.remove('dragging'));
       card.addEventListener('click', () => {
         closePipeline();
-        const contact = pipelineContacts.find(c => c.phone === card.dataset.phone);
-        if (contact) selectContact(contact.phone, contact.name, contact.account_id);
+        const pc = pipelineContacts.find(c => c.phone === card.dataset.phone);
+        if (!pc) return;
+        const ac = allContacts.find(x => x.phone === pc.phone) || pc;
+        selectContact(ac.phone, ac.name, ac.account_id);
       });
     });
   });
@@ -1692,10 +1869,12 @@ function cardHTML(c) {
   const date = c.last_message_at
     ? new Date(c.last_message_at).toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit'})
     : '';
+  const tags = (c.tags||[]).map((t,i)=>`<span class="tag-chip tc${i%6}" style="font-size:10px;padding:1px 6px">${t}</span>`).join('');
   return `
     <div class="kanban-card" draggable="true" data-phone="${c.phone}">
       <div class="kanban-card-name">${c.name || c.phone}</div>
       <div class="kanban-card-phone">${formatPhone(c.phone)}</div>
+      ${tags ? `<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:5px">${tags}</div>` : ''}
       ${date ? `<div class="kanban-card-date">📅 ${date}</div>` : ''}
     </div>`;
 }
@@ -1773,6 +1952,52 @@ async function moveCard(phone, stageId) {
   } catch(e) {}
 }
 
+// ── FILTROS DO PIPELINE ──
+let activePipelineFilterTags = new Set();
+
+function togglePipelineFilter() {
+  const panel = document.getElementById('pipeline-filter-panel');
+  const btn = document.getElementById('pipeline-filter-btn');
+  const open = panel.classList.toggle('open');
+  btn.classList.toggle('active', open);
+  if (open) populatePipelineFilterTags();
+}
+
+function populatePipelineFilterTags() {
+  const allTags = getAllTags();
+  const area = document.getElementById('pf-tags-area');
+  if (area) area.innerHTML = allTags.length
+    ? allTags.map(t => `<span class="filter-tag-opt ${activePipelineFilterTags.has(t)?'selected':''}" onclick="togglePFTag('${t}')">${t}</span>`).join('')
+    : '<span style="font-size:12px;color:#8696a0">Nenhuma tag</span>';
+}
+
+function togglePFTag(tag) {
+  if (activePipelineFilterTags.has(tag)) activePipelineFilterTags.delete(tag); else activePipelineFilterTags.add(tag);
+  populatePipelineFilterTags(); applyPipelineFilter();
+}
+
+function applyPipelineFilter() {
+  const name = (document.getElementById('pf-name')?.value||'').toLowerCase();
+  const dateFrom = document.getElementById('pf-date-from')?.value||'';
+  const dateTo = document.getElementById('pf-date-to')?.value||'';
+  const filtered = pipelineContacts.filter(c => {
+    if (name && !c.name?.toLowerCase().includes(name) && !c.phone?.includes(name)) return false;
+    if (activePipelineFilterTags.size > 0 && ![...activePipelineFilterTags].every(t=>(c.tags||[]).includes(t))) return false;
+    if (dateFrom && c.last_message_at && c.last_message_at < dateFrom) return false;
+    if (dateTo && c.last_message_at && c.last_message_at.substring(0,10) > dateTo) return false;
+    return true;
+  });
+  renderKanbanWith(filtered);
+}
+
+function clearPipelineFilter() {
+  activePipelineFilterTags.clear();
+  ['pf-name','pf-date-from','pf-date-to'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('pipeline-filter-panel')?.classList.remove('open');
+  document.getElementById('pipeline-filter-btn')?.classList.remove('active');
+  renderKanban();
+}
+
 // ── INICIALIZAÇÃO ──
 const DEFAULT_SERVER = 'https://meucrm-backend-production-d4f4.up.railway.app';
 
@@ -1780,6 +2005,11 @@ window.onload = () => {
   // Sempre usa o servidor correto, ignorando localStorage desatualizado
   localStorage.setItem('meucrm_server', DEFAULT_SERVER);
   init(DEFAULT_SERVER);
+  const fi = document.getElementById('file-input');
+  if (fi) fi.addEventListener('change', function() {
+    if (this.files && this.files[0]) handleFileSelect(this.files[0]);
+    this.value = '';
+  });
 };
 </script>
 </body>
