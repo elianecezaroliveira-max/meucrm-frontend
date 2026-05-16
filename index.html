@@ -107,6 +107,61 @@
   ::-webkit-scrollbar { width: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: #3b4a54; border-radius: 3px; }
+  /* TEMPLATES */
+  #templates-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center; }
+  #templates-overlay.open { display: flex; }
+  #templates-modal { background: #202c33; border-radius: 12px; width: 720px; max-width: 96vw; max-height: 92vh; display: flex; flex-direction: column; overflow: hidden; }
+  .tmpl-header { padding: 20px 24px 0; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .tmpl-header h2 { font-size: 17px; font-weight: 600; color: #e9edef; }
+  .tmpl-tabs { display: flex; border-bottom: 1px solid #3b4a54; margin: 0 24px; flex-shrink: 0; }
+  .tmpl-tab { padding: 12px 20px; font-size: 14px; cursor: pointer; border-bottom: 2px solid transparent; color: #8696a0; }
+  .tmpl-tab.active { color: #00a884; border-bottom-color: #00a884; }
+  .tmpl-body { padding: 20px 24px 24px; overflow-y: auto; flex: 1; }
+  .tmpl-item { display: flex; align-items: flex-start; gap: 12px; padding: 14px; background: #2a3942; border-radius: 10px; margin-bottom: 10px; }
+  .tmpl-info { flex: 1; }
+  .tmpl-name { font-size: 14px; font-weight: 600; color: #e9edef; margin-bottom: 4px; }
+  .tmpl-meta { font-size: 12px; color: #8696a0; margin-bottom: 6px; }
+  .tmpl-preview { font-size: 12px; color: #c5cdd3; background: #1e2b33; padding: 8px 10px; border-radius: 6px; line-height: 1.5; max-height: 60px; overflow: hidden; }
+  .tmpl-status { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; display: inline-block; }
+  .tmpl-status.APPROVED { background: #0d2e1f; color: #00a884; }
+  .tmpl-status.PENDING { background: #2a2200; color: #f59e0b; }
+  .tmpl-status.REJECTED { background: #2e0d0d; color: #ef4444; }
+  .tmpl-status.PAUSED { background: #1a1a2e; color: #8696a0; }
+  .tmpl-form-group { margin-bottom: 16px; }
+  .tmpl-form-group label { display: block; font-size: 12px; color: #8696a0; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .tmpl-form-group input, .tmpl-form-group select, .tmpl-form-group textarea { width: 100%; background: #2a3942; border: 1px solid #3b4a54; color: #e9edef; padding: 10px 12px; border-radius: 8px; font-size: 14px; font-family: inherit; }
+  .tmpl-form-group textarea { resize: vertical; min-height: 90px; line-height: 1.5; }
+  .tmpl-form-group input:focus, .tmpl-form-group select:focus, .tmpl-form-group textarea:focus { outline: none; border-color: #00a884; }
+  .tmpl-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .tmpl-section-title { font-size: 13px; font-weight: 600; color: #e9edef; margin: 18px 0 12px; padding-top: 14px; border-top: 1px solid #3b4a54; }
+  .tmpl-hint { font-size: 12px; color: #8696a0; margin-top: 6px; line-height: 1.5; }
+  .btn-list { display: flex; flex-direction: column; gap: 8px; }
+  .btn-item { display: flex; gap: 8px; align-items: center; background: #2a3942; padding: 8px 10px; border-radius: 8px; flex-wrap: wrap; }
+  .btn-item select { flex: 0 0 130px; background: #1e2b33; border: 1px solid #3b4a54; color: #e9edef; padding: 7px 8px; border-radius: 6px; font-size: 13px; }
+  .btn-item input { flex: 1; min-width: 100px; background: #1e2b33; border: 1px solid #3b4a54; color: #e9edef; padding: 7px 8px; border-radius: 6px; font-size: 13px; }
+  .btn-remove { background: none; border: none; color: #ef4444; cursor: pointer; font-size: 18px; padding: 0 4px; flex-shrink: 0; }
+  #add-btn-row { background: none; border: 1px dashed #3b4a54; color: #8696a0; padding: 9px; border-radius: 8px; cursor: pointer; font-size: 13px; width: 100%; text-align: center; margin-top: 4px; }
+  #add-btn-row:hover { border-color: #00a884; color: #00a884; }
+  .tmpl-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 16px; border-top: 1px solid #3b4a54; }
+  #btn-templates { background: #2a3942; border: none; color: #e9edef; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+  #btn-templates:hover { background: #3b4a54; }
+  /* ENVIAR TEMPLATE */
+  #send-tmpl-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; align-items: center; justify-content: center; }
+  #send-tmpl-overlay.open { display: flex; }
+  #send-tmpl-modal { background: #202c33; border-radius: 12px; width: 500px; max-width: 95vw; padding: 24px; max-height: 88vh; overflow-y: auto; }
+  #send-tmpl-modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
+  .tmpl-select-item { padding: 12px 14px; background: #2a3942; border-radius: 8px; margin-bottom: 8px; cursor: pointer; border: 2px solid transparent; transition: border-color 0.15s; }
+  .tmpl-select-item:hover { border-color: #3b4a54; }
+  .tmpl-select-item.selected { border-color: #00a884; background: #0d2e1f; }
+  .tmpl-select-name { font-size: 14px; font-weight: 600; }
+  .tmpl-select-lang { font-size: 11px; color: #8696a0; margin-top: 2px; }
+  .tmpl-select-preview { font-size: 12px; color: #8696a0; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  #tmpl-vars-area { margin-top: 16px; }
+  #tmpl-vars-area label { font-size: 12px; color: #8696a0; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 8px; }
+  #tmpl-vars-area input { width: 100%; background: #2a3942; border: 1px solid #3b4a54; color: #e9edef; padding: 9px 12px; border-radius: 8px; font-size: 14px; margin-bottom: 8px; }
+  .btn-template-icon { background: #2a3942; border: none; color: #8696a0; width: 38px; height: 38px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background 0.2s; }
+  .btn-template-icon:hover { background: #3b4a54; color: #e9edef; }
+  .btn-template-icon svg { width: 18px; height: 18px; }
 </style>
 </head>
 <body>
@@ -184,10 +239,117 @@
   </div>
 </div>
 
+<!-- MODAL TEMPLATES -->
+<div id="templates-overlay">
+  <div id="templates-modal">
+    <div class="tmpl-header">
+      <h2>📋 Modelos de Mensagem</h2>
+      <button class="btn-cancel" onclick="closeTemplates()" style="padding:6px 14px">✕</button>
+    </div>
+    <div class="tmpl-tabs">
+      <div class="tmpl-tab active" id="tab-list" onclick="switchTmplTab('list')">Meus Modelos</div>
+      <div class="tmpl-tab" id="tab-create" onclick="switchTmplTab('create')">+ Criar Modelo</div>
+    </div>
+    <div class="tmpl-body">
+      <!-- LISTA -->
+      <div id="tmpl-list-view">
+        <div id="tmpl-list-content"><p style="color:#8696a0;font-size:13px">Selecione uma conta para ver os modelos.</p></div>
+      </div>
+      <!-- CRIAR -->
+      <div id="tmpl-create-view" style="display:none">
+        <div class="tmpl-form-group">
+          <label>Conta WhatsApp *</label>
+          <select id="tmpl-account-id" onchange="onTmplAccountChange()"></select>
+        </div>
+        <div class="tmpl-row">
+          <div class="tmpl-form-group">
+            <label>Nome do modelo * <span style="font-size:11px;color:#8696a0">(minúsculas e _)</span></label>
+            <input type="text" id="tmpl-name" placeholder="meu_modelo_boas_vindas" oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9_]/g,'')"/>
+          </div>
+          <div class="tmpl-form-group">
+            <label>Categoria *</label>
+            <select id="tmpl-category">
+              <option value="MARKETING">Marketing</option>
+              <option value="UTILITY">Utilidade</option>
+              <option value="AUTHENTICATION">Autenticação</option>
+            </select>
+          </div>
+        </div>
+        <div class="tmpl-form-group">
+          <label>Idioma *</label>
+          <select id="tmpl-language">
+            <option value="pt_BR">Português (Brasil)</option>
+            <option value="en_US">English (US)</option>
+            <option value="es">Español</option>
+            <option value="es_AR">Español (Argentina)</option>
+            <option value="fr">Français</option>
+          </select>
+        </div>
+
+        <div class="tmpl-section-title">Cabeçalho (Opcional)</div>
+        <div class="tmpl-form-group">
+          <label>Tipo de cabeçalho</label>
+          <select id="tmpl-header-type" onchange="onHeaderTypeChange()">
+            <option value="NONE">Sem cabeçalho</option>
+            <option value="TEXT">Texto</option>
+            <option value="IMAGE">Imagem (URL)</option>
+            <option value="VIDEO">Vídeo (URL)</option>
+            <option value="DOCUMENT">Documento (URL)</option>
+          </select>
+        </div>
+        <div id="tmpl-header-text-wrap" class="tmpl-form-group" style="display:none">
+          <label>Texto do cabeçalho</label>
+          <input type="text" id="tmpl-header-text" placeholder="Texto do cabeçalho (máx. 60 caracteres)" maxlength="60"/>
+        </div>
+        <div id="tmpl-header-media-wrap" class="tmpl-form-group" style="display:none">
+          <label>URL da mídia (exemplo para aprovação)</label>
+          <input type="url" id="tmpl-header-media" placeholder="https://exemplo.com/imagem.jpg"/>
+          <p class="tmpl-hint">⚠️ A URL é usada apenas como exemplo para aprovação. Ao enviar o template, você fornece a mídia real.</p>
+        </div>
+
+        <div class="tmpl-section-title">Corpo da mensagem *</div>
+        <div class="tmpl-form-group">
+          <textarea id="tmpl-body-text" placeholder="Olá, {{1}}! Sua consulta está confirmada para {{2}}. Qualquer dúvida, estamos aqui." maxlength="1024"></textarea>
+          <p class="tmpl-hint">Use <strong>{{1}}</strong>, <strong>{{2}}</strong>... para variáveis dinâmicas. Use *texto* para negrito e _texto_ para itálico.</p>
+        </div>
+
+        <div class="tmpl-section-title">Rodapé (Opcional)</div>
+        <div class="tmpl-form-group">
+          <input type="text" id="tmpl-footer-text" placeholder="Responda PARAR para cancelar" maxlength="60"/>
+        </div>
+
+        <div class="tmpl-section-title">Botões (Opcional — máx. 3)</div>
+        <div class="btn-list" id="btn-list"></div>
+        <button id="add-btn-row" onclick="addButton()">+ Adicionar botão</button>
+
+        <div class="tmpl-actions">
+          <button class="btn-cancel" onclick="switchTmplTab('list')">Cancelar</button>
+          <button class="btn-save" onclick="createTemplate()">Enviar para análise</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ENVIAR TEMPLATE -->
+<div id="send-tmpl-overlay">
+  <div id="send-tmpl-modal">
+    <h3>📋 Enviar Modelo</h3>
+    <p style="font-size:13px;color:#8696a0;margin-bottom:14px">Selecione um modelo aprovado para enviar:</p>
+    <div id="tmpl-select-list"></div>
+    <div id="tmpl-vars-area" style="display:none"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+      <button class="btn-cancel" onclick="closeSendTemplate()">Cancelar</button>
+      <button class="btn-save" id="btn-send-tmpl" onclick="confirmSendTemplate()" disabled>Enviar</button>
+    </div>
+  </div>
+</div>
+
 <!-- TOPBAR -->
 <div id="topbar">
   <h1>MeuCRM</h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
+  <button id="btn-templates" onclick="openTemplates()">📋 Modelos</button>
   <button id="btn-accounts" onclick="openModal()">📱 Contas</button>
 </div>
 
@@ -450,6 +612,9 @@ async function selectContact(phone, name, accountId) {
     </div>
     <div id="messages-area"></div>
     <div id="input-area">
+      <button class="btn-template-icon" onclick="openSendTemplate()" title="Enviar modelo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 8h10M7 12h6M7 16h8"/></svg>
+      </button>
       <textarea id="msg-input" placeholder="Digite uma mensagem..." rows="1" onkeydown="handleKey(event)"></textarea>
       <button id="send-btn" onclick="sendMessage()">
         <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
@@ -502,6 +667,279 @@ async function sendMessage() {
 
 function handleKey(e) {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+
+// ── TEMPLATES ──
+let allTemplates = [];
+let selectedTemplate = null;
+let buttonCount = 0;
+
+function openTemplates() {
+  document.getElementById('templates-overlay').classList.add('open');
+  populateTmplAccounts();
+  switchTmplTab('list');
+}
+function closeTemplates() { document.getElementById('templates-overlay').classList.remove('open'); }
+
+function switchTmplTab(tab) {
+  document.getElementById('tab-list').classList.toggle('active', tab === 'list');
+  document.getElementById('tab-create').classList.toggle('active', tab === 'create');
+  document.getElementById('tmpl-list-view').style.display = tab === 'list' ? 'block' : 'none';
+  document.getElementById('tmpl-create-view').style.display = tab === 'create' ? 'block' : 'none';
+  if (tab === 'list') loadTemplates();
+}
+
+function populateTmplAccounts() {
+  const sel = document.getElementById('account-select');
+  const tmplSel = document.getElementById('tmpl-account-id');
+  tmplSel.innerHTML = sel.innerHTML.replace('<option value="">Todas as contas</option>', '');
+  if (!tmplSel.value && tmplSel.options.length > 0) tmplSel.value = tmplSel.options[0].value;
+}
+
+function onTmplAccountChange() { loadTemplates(); }
+
+async function loadTemplates() {
+  const accountId = document.getElementById('tmpl-account-id')?.value || document.getElementById('account-select').value;
+  if (!accountId) {
+    document.getElementById('tmpl-list-content').innerHTML = '<p style="color:#8696a0;font-size:13px">Selecione uma conta para ver os modelos.</p>';
+    return;
+  }
+  document.getElementById('tmpl-list-content').innerHTML = '<p style="color:#8696a0;font-size:13px">⏳ Carregando modelos...</p>';
+  try {
+    const res = await fetch(SERVER_URL + '/templates?account_id=' + accountId);
+    allTemplates = await res.json();
+    if (!Array.isArray(allTemplates)) throw new Error(allTemplates.error || 'Erro');
+    renderTemplateList(allTemplates);
+  } catch(e) {
+    document.getElementById('tmpl-list-content').innerHTML = `<p style="color:#ef4444;font-size:13px">❌ ${e.message}</p>`;
+  }
+}
+
+function renderTemplateList(templates) {
+  const el = document.getElementById('tmpl-list-content');
+  if (!templates.length) {
+    el.innerHTML = '<p style="color:#8696a0;font-size:13px">Nenhum modelo encontrado. Crie o primeiro modelo!</p>';
+    return;
+  }
+  const accountId = document.getElementById('tmpl-account-id')?.value || document.getElementById('account-select').value;
+  el.innerHTML = templates.map(t => {
+    const body = t.components?.find(c => c.type === 'BODY');
+    const preview = body?.text || '';
+    const catLabel = { MARKETING: 'Marketing', UTILITY: 'Utilidade', AUTHENTICATION: 'Autenticação' }[t.category] || t.category;
+    return `
+      <div class="tmpl-item">
+        <div class="tmpl-info">
+          <div class="tmpl-name">${t.name}</div>
+          <div class="tmpl-meta">${catLabel} · ${t.language} · <span class="tmpl-status ${t.status}">${t.status}</span></div>
+          ${preview ? `<div class="tmpl-preview">${preview}</div>` : ''}
+        </div>
+        <button class="btn-delete" onclick="deleteTemplate('${t.id}','${accountId}')" title="Excluir modelo">🗑️</button>
+      </div>`;
+  }).join('');
+}
+
+async function deleteTemplate(templateId, accountId) {
+  if (!confirm('Excluir este modelo? Esta ação não pode ser desfeita.')) return;
+  try {
+    await fetch(`${SERVER_URL}/templates/${templateId}?account_id=${accountId}`, { method: 'DELETE' });
+    await loadTemplates();
+  } catch(e) { alert('Erro ao excluir.'); }
+}
+
+function onHeaderTypeChange() {
+  const type = document.getElementById('tmpl-header-type').value;
+  document.getElementById('tmpl-header-text-wrap').style.display = type === 'TEXT' ? 'block' : 'none';
+  document.getElementById('tmpl-header-media-wrap').style.display = ['IMAGE','VIDEO','DOCUMENT'].includes(type) ? 'block' : 'none';
+}
+
+function addButton() {
+  if (buttonCount >= 3) { alert('Máximo de 3 botões.'); return; }
+  buttonCount++;
+  const id = 'btn-' + Date.now();
+  const div = document.createElement('div');
+  div.className = 'btn-item'; div.id = id;
+  div.innerHTML = `
+    <select onchange="onBtnTypeChange('${id}')">
+      <option value="QUICK_REPLY">Resposta rápida</option>
+      <option value="URL">URL</option>
+      <option value="PHONE_NUMBER">Telefone</option>
+    </select>
+    <input type="text" placeholder="Texto do botão" class="btn-text" maxlength="25"/>
+    <input type="text" placeholder="URL ou Telefone" class="btn-value" style="display:none"/>
+    <button class="btn-remove" onclick="removeButton('${id}')">×</button>`;
+  document.getElementById('btn-list').appendChild(div);
+}
+
+function onBtnTypeChange(id) {
+  const el = document.getElementById(id);
+  const type = el.querySelector('select').value;
+  const valueInput = el.querySelector('.btn-value');
+  valueInput.style.display = type === 'QUICK_REPLY' ? 'none' : 'block';
+  valueInput.placeholder = type === 'URL' ? 'https://seusite.com' : '+5511999999999';
+}
+
+function removeButton(id) {
+  document.getElementById(id)?.remove();
+  buttonCount--;
+}
+
+async function createTemplate() {
+  const accountId = document.getElementById('tmpl-account-id').value;
+  const name = document.getElementById('tmpl-name').value.trim();
+  const category = document.getElementById('tmpl-category').value;
+  const language = document.getElementById('tmpl-language').value;
+  const bodyText = document.getElementById('tmpl-body-text').value.trim();
+
+  if (!accountId) return alert('Selecione uma conta.');
+  if (!name) return alert('Informe o nome do modelo.');
+  if (!bodyText) return alert('O corpo da mensagem é obrigatório.');
+
+  const components = [];
+
+  // Header
+  const headerType = document.getElementById('tmpl-header-type').value;
+  if (headerType === 'TEXT') {
+    const text = document.getElementById('tmpl-header-text').value.trim();
+    if (text) components.push({ type: 'HEADER', format: 'TEXT', text });
+  } else if (['IMAGE','VIDEO','DOCUMENT'].includes(headerType)) {
+    const url = document.getElementById('tmpl-header-media').value.trim();
+    const mediaKey = headerType === 'IMAGE' ? 'header_image' : headerType === 'VIDEO' ? 'header_video' : 'header_document';
+    const comp = { type: 'HEADER', format: headerType };
+    if (url) comp.example = { header_handle: [url] };
+    components.push(comp);
+  }
+
+  // Body
+  const bodyComp = { type: 'BODY', text: bodyText };
+  const vars = bodyText.match(/\{\{\d+\}\}/g);
+  if (vars) {
+    const uniqueVars = [...new Set(vars)];
+    bodyComp.example = { body_text: [uniqueVars.map(() => 'exemplo')] };
+  }
+  components.push(bodyComp);
+
+  // Footer
+  const footerText = document.getElementById('tmpl-footer-text').value.trim();
+  if (footerText) components.push({ type: 'FOOTER', text: footerText });
+
+  // Buttons
+  const btnItems = document.querySelectorAll('#btn-list .btn-item');
+  if (btnItems.length) {
+    const buttons = [];
+    btnItems.forEach(item => {
+      const type = item.querySelector('select').value;
+      const text = item.querySelector('.btn-text').value.trim();
+      const value = item.querySelector('.btn-value').value.trim();
+      if (!text) return;
+      const btn = { type, text };
+      if (type === 'URL' && value) btn.url = value;
+      if (type === 'PHONE_NUMBER' && value) btn.phone_number = value;
+      buttons.push(btn);
+    });
+    if (buttons.length) components.push({ type: 'BUTTONS', buttons });
+  }
+
+  try {
+    const res = await fetch(SERVER_URL + '/templates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ account_id: accountId, name, category, language, components })
+    });
+    const data = await res.json();
+    if (!res.ok) return alert('Erro: ' + (data.error || 'Tente novamente'));
+    alert('✅ Modelo enviado para análise! O Meta leva alguns minutos para aprovar.');
+    document.getElementById('tmpl-name').value = '';
+    document.getElementById('tmpl-body-text').value = '';
+    document.getElementById('tmpl-footer-text').value = '';
+    document.getElementById('tmpl-header-text').value = '';
+    document.getElementById('btn-list').innerHTML = '';
+    buttonCount = 0;
+    switchTmplTab('list');
+  } catch(e) { alert('Erro ao criar modelo.'); }
+}
+
+// ── ENVIAR TEMPLATE NO CHAT ──
+function openSendTemplate() {
+  if (!currentPhone || !currentAccountId) return alert('Selecione uma conversa primeiro.');
+  document.getElementById('send-tmpl-overlay').classList.add('open');
+  loadApprovedTemplates();
+}
+function closeSendTemplate() {
+  document.getElementById('send-tmpl-overlay').classList.remove('open');
+  selectedTemplate = null;
+}
+
+async function loadApprovedTemplates() {
+  const el = document.getElementById('tmpl-select-list');
+  el.innerHTML = '<p style="color:#8696a0;font-size:13px">⏳ Carregando...</p>';
+  try {
+    const res = await fetch(SERVER_URL + '/templates?account_id=' + currentAccountId);
+    const templates = await res.json();
+    const approved = templates.filter(t => t.status === 'APPROVED');
+    if (!approved.length) {
+      el.innerHTML = '<p style="color:#8696a0;font-size:13px">Nenhum modelo aprovado. Crie e aguarde a aprovação do Meta.</p>';
+      return;
+    }
+    el.innerHTML = approved.map(t => {
+      const body = t.components?.find(c => c.type === 'BODY');
+      return `<div class="tmpl-select-item" onclick="selectTemplate(this,'${t.id}','${t.name}','${t.language}',${JSON.stringify(t.components).replace(/"/g,'&quot;')})">
+        <div class="tmpl-select-name">${t.name}</div>
+        <div class="tmpl-select-lang">${t.language} · ${t.category}</div>
+        ${body ? `<div class="tmpl-select-preview">${body.text}</div>` : ''}
+      </div>`;
+    }).join('');
+  } catch(e) { el.innerHTML = '<p style="color:#ef4444;font-size:13px">Erro ao carregar modelos.</p>'; }
+}
+
+function selectTemplate(el, id, name, language, components) {
+  document.querySelectorAll('.tmpl-select-item').forEach(i => i.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedTemplate = { id, name, language, components };
+  document.getElementById('btn-send-tmpl').disabled = false;
+
+  // Detecta variáveis no body
+  const body = components.find ? components.find(c => c.type === 'BODY') : null;
+  const varsArea = document.getElementById('tmpl-vars-area');
+  if (body && body.text.match(/\{\{\d+\}\}/g)) {
+    const vars = [...new Set(body.text.match(/\{\{\d+\}\}/g))];
+    varsArea.style.display = 'block';
+    varsArea.innerHTML = `<label>Preencha as variáveis:</label>` +
+      vars.map(v => `<input type="text" id="var-${v.replace(/[{}]/g,'')}" placeholder="${v}" />`).join('');
+  } else {
+    varsArea.style.display = 'none';
+    varsArea.innerHTML = '';
+  }
+}
+
+async function confirmSendTemplate() {
+  if (!selectedTemplate) return;
+  const components = [];
+  const body = selectedTemplate.components?.find ? selectedTemplate.components.find(c => c.type === 'BODY') : null;
+  if (body && body.text.match(/\{\{\d+\}\}/g)) {
+    const vars = [...new Set(body.text.match(/\{\{\d+\}\}/g))];
+    const params = vars.map(v => {
+      const val = document.getElementById('var-' + v.replace(/[{}]/g,'')).value.trim();
+      return { type: 'text', text: val || v };
+    });
+    components.push({ type: 'body', parameters: params });
+  }
+  try {
+    const res = await fetch(SERVER_URL + '/send-template', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        to: currentPhone,
+        account_id: currentAccountId,
+        template_name: selectedTemplate.name,
+        language_code: selectedTemplate.language,
+        components
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) return alert('Erro: ' + (data.error || 'Tente novamente'));
+    closeSendTemplate();
+    await loadMessages(currentPhone);
+  } catch(e) { alert('Erro ao enviar template.'); }
 }
 
 // ── INICIALIZAÇÃO ──
