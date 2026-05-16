@@ -162,6 +162,11 @@
   .btn-template-icon { background: #2a3942; border: none; color: #8696a0; width: 38px; height: 38px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background 0.2s; }
   .btn-template-icon:hover { background: #3b4a54; color: #e9edef; }
   .btn-template-icon svg { width: 18px; height: 18px; }
+  .var-label-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .var-label-row .var-tag { background: #00a884; color: #fff; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 12px; white-space: nowrap; }
+  .var-label-row .var-label-name { flex: 1; background: #1e2b33; border: 1px solid #3b4a54; color: #8696a0; padding: 7px 10px; border-radius: 6px; font-size: 12px; }
+  .var-label-row input.var-example { flex: 2; background: #2a3942; border: 1px solid #3b4a54; color: #e9edef; padding: 7px 10px; border-radius: 6px; font-size: 13px; }
+  .var-label-row input.var-example:focus { outline: none; border-color: #00a884; }
 </style>
 </head>
 <body>
@@ -309,8 +314,22 @@
 
         <div class="tmpl-section-title">Corpo da mensagem *</div>
         <div class="tmpl-form-group">
-          <textarea id="tmpl-body-text" placeholder="Olá, {{1}}! Sua consulta está confirmada para {{2}}. Qualquer dúvida, estamos aqui." maxlength="1024"></textarea>
-          <p class="tmpl-hint">Use <strong>{{1}}</strong>, <strong>{{2}}</strong>... para variáveis dinâmicas. Use *texto* para negrito e _texto_ para itálico.</p>
+          <textarea id="tmpl-body-text" placeholder="Olá, {{1}}! Sua consulta está confirmada para {{2}}. Qualquer dúvida, estamos aqui." maxlength="1024" oninput="updateVarLabels()"></textarea>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center;">
+            <span style="font-size:12px;color:#8696a0">Inserir variável:</span>
+            <button type="button" onclick="insertVar('nome_lead')" style="background:#2a3942;border:none;color:#00a884;padding:4px 10px;border-radius:16px;cursor:pointer;font-size:12px">+ Nome do Lead</button>
+            <button type="button" onclick="insertVar('empresa')" style="background:#2a3942;border:none;color:#00a884;padding:4px 10px;border-radius:16px;cursor:pointer;font-size:12px">+ Empresa</button>
+            <button type="button" onclick="insertVar('valor')" style="background:#2a3942;border:none;color:#00a884;padding:4px 10px;border-radius:16px;cursor:pointer;font-size:12px">+ Valor</button>
+            <button type="button" onclick="insertVar('data')" style="background:#2a3942;border:none;color:#00a884;padding:4px 10px;border-radius:16px;cursor:pointer;font-size:12px">+ Data</button>
+            <button type="button" onclick="insertVar('link')" style="background:#2a3942;border:none;color:#00a884;padding:4px 10px;border-radius:16px;cursor:pointer;font-size:12px">+ Link</button>
+            <button type="button" onclick="insertVar()" style="background:#2a3942;border:1px dashed #3b4a54;color:#8696a0;padding:4px 10px;border-radius:16px;cursor:pointer;font-size:12px">+ Personalizada</button>
+          </div>
+          <p class="tmpl-hint" style="margin-top:8px">Use *texto* para <strong>negrito</strong> e _texto_ para <em>itálico</em>.</p>
+        </div>
+        <!-- Labels das variáveis -->
+        <div id="var-labels-area" style="display:none;margin-bottom:16px">
+          <p style="font-size:12px;color:#8696a0;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">Exemplo de valor para cada variável (obrigatório para aprovação):</p>
+          <div id="var-labels-list"></div>
         </div>
 
         <div class="tmpl-section-title">Rodapé (Opcional)</div>
@@ -673,6 +692,57 @@ function handleKey(e) {
 let allTemplates = [];
 let selectedTemplate = null;
 let buttonCount = 0;
+let varCounter = 0;
+
+// Mapa de nomes predefinidos para variáveis
+const VAR_NAMES = {
+  nome_lead: 'Nome do Lead',
+  empresa: 'Empresa',
+  valor: 'Valor',
+  data: 'Data',
+  link: 'Link',
+};
+
+function insertVar(preset) {
+  const textarea = document.getElementById('tmpl-body-text');
+  varCounter++;
+  const tag = `{{${varCounter}}}`;
+  const pos = textarea.selectionStart;
+  textarea.value = textarea.value.slice(0, pos) + tag + textarea.value.slice(textarea.selectionEnd);
+  textarea.selectionStart = textarea.selectionEnd = pos + tag.length;
+  textarea.focus();
+  updateVarLabels(preset);
+}
+
+function updateVarLabels(newPreset) {
+  const text = document.getElementById('tmpl-body-text').value;
+  const vars = text.match(/\{\{\d+\}\}/g);
+  const area = document.getElementById('var-labels-area');
+  const list = document.getElementById('var-labels-list');
+  if (!vars || !vars.length) { area.style.display = 'none'; varCounter = 0; return; }
+  const unique = [...new Set(vars)].sort((a,b) => parseInt(a.match(/\d+/)) - parseInt(b.match(/\d+/)));
+  varCounter = Math.max(...unique.map(v => parseInt(v.match(/\d+/))));
+  area.style.display = 'block';
+
+  // Mantém valores já preenchidos
+  const existingExamples = {};
+  list.querySelectorAll('.var-label-row').forEach(row => {
+    const tag = row.dataset.tag;
+    const ex = row.querySelector('.var-example')?.value;
+    if (tag && ex) existingExamples[tag] = ex;
+  });
+
+  list.innerHTML = unique.map((v, i) => {
+    const num = v.replace(/[{}]/g, '');
+    const presetName = i === varCounter - 1 && newPreset ? VAR_NAMES[newPreset] || '' : '';
+    const exVal = existingExamples[v] || (newPreset && i === varCounter - 1 ? (VAR_NAMES[newPreset] || '') : '');
+    return `<div class="var-label-row" data-tag="${v}">
+      <span class="var-tag">${v}</span>
+      <span class="var-label-name">${presetName || existingExamples[v + '_label'] || 'Variável ' + num}</span>
+      <input class="var-example" type="text" placeholder="Ex: João Silva" value="${exVal}" title="Exemplo de valor para aprovação"/>
+    </div>`;
+  }).join('');
+}
 
 function openTemplates() {
   document.getElementById('templates-overlay').classList.add('open');
@@ -813,8 +883,12 @@ async function createTemplate() {
   const bodyComp = { type: 'BODY', text: bodyText };
   const vars = bodyText.match(/\{\{\d+\}\}/g);
   if (vars) {
-    const uniqueVars = [...new Set(vars)];
-    bodyComp.example = { body_text: [uniqueVars.map(() => 'exemplo')] };
+    const uniqueVars = [...new Set(vars)].sort((a,b) => parseInt(a.match(/\d+/)) - parseInt(b.match(/\d+/)));
+    const examples = uniqueVars.map(v => {
+      const row = document.querySelector(`.var-label-row[data-tag="${v}"]`);
+      return row?.querySelector('.var-example')?.value?.trim() || 'exemplo';
+    });
+    bodyComp.example = { body_text: [examples] };
   }
   components.push(bodyComp);
 
@@ -853,7 +927,9 @@ async function createTemplate() {
     document.getElementById('tmpl-footer-text').value = '';
     document.getElementById('tmpl-header-text').value = '';
     document.getElementById('btn-list').innerHTML = '';
-    buttonCount = 0;
+    document.getElementById('var-labels-list').innerHTML = '';
+    document.getElementById('var-labels-area').style.display = 'none';
+    buttonCount = 0; varCounter = 0;
     switchTmplTab('list');
   } catch(e) { alert('Erro ao criar modelo.'); }
 }
