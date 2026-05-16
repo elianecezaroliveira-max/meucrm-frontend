@@ -46,8 +46,18 @@
   .msg.outbound { background: #005c4b; align-self: flex-end; border-top-right-radius: 0; }
   .msg .time { font-size: 11px; color: #8696a0; text-align: right; margin-top: 4px; }
   #input-area { background: #202c33; padding: 10px 16px; display: flex; align-items: center; gap: 10px; border-top: 1px solid #2a3942; position: relative; }
-  #msg-input { flex: 1; background: #2a3942; border: none; color: #e9edef; padding: 10px 16px; border-radius: 24px; font-size: 15px; resize: none; outline: none; }
+  #input-wrap { flex: 1; display: flex; align-items: center; background: #2a3942; border-radius: 24px; overflow: hidden; min-width: 0; }
+  #msg-input { flex: 1; background: transparent; border: none; color: #e9edef; padding: 10px 16px; font-size: 15px; resize: none; outline: none; min-width: 0; }
   #msg-input::placeholder { color: #8696a0; }
+  /* chip de arquivo dentro do input */
+  #file-chip { display: none; align-items: center; gap: 8px; padding: 8px 14px; min-width: 0; flex: 1; }
+  #file-chip.visible { display: flex; }
+  #file-chip-icon { font-size: 22px; flex-shrink: 0; }
+  #file-chip-body { flex: 1; min-width: 0; }
+  #file-chip-name { font-size: 13px; font-weight: 500; color: #e9edef; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #file-chip-size { font-size: 11px; color: #8696a0; margin-top: 1px; }
+  #file-chip-remove { background: none; border: none; color: #8696a0; cursor: pointer; font-size: 18px; padding: 2px 8px 2px 4px; line-height: 1; flex-shrink: 0; }
+  #file-chip-remove:hover { color: #ef4444; }
   #send-btn { background: #00a884; border: none; width: 44px; height: 44px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background 0.2s; }
   #send-btn:hover { background: #017a62; }
   #send-btn svg { width: 20px; height: 20px; fill: white; }
@@ -59,14 +69,17 @@
   #attach-btn { background: none; border: none; color: #8696a0; cursor: pointer; padding: 6px; border-radius: 50%; transition: background 0.2s, color 0.2s; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
   #attach-btn:hover { background: #2a3942; color: #e9edef; }
   #attach-btn svg { width: 22px; height: 22px; }
-  #file-preview-bar { background: #1a2830; border-top: 1px solid #2a3942; padding: 8px 16px; display: none; align-items: center; gap: 10px; flex-shrink: 0; }
-  #file-preview-bar.visible { display: flex; }
-  #file-preview-icon { font-size: 24px; flex-shrink: 0; }
-  #file-preview-info { flex: 1; min-width: 0; }
-  #file-preview-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #e9edef; }
-  #file-preview-size { font-size: 11px; color: #8696a0; margin-top: 2px; }
-  #file-preview-remove { background: none; border: none; color: #ef4444; cursor: pointer; font-size: 18px; padding: 4px; border-radius: 50%; flex-shrink: 0; line-height: 1; }
-  #file-preview-remove:hover { background: #3b2020; }
+  /* ANOTAÇÕES */
+  #btn-notes { background: none; border: none; color: #8696a0; cursor: pointer; padding: 6px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: background 0.2s, color 0.2s; margin-left: auto; }
+  #btn-notes:hover { background: #2a3942; color: #e9edef; }
+  #btn-notes.active { color: #00a884; background: #1a3028; }
+  #btn-notes svg { width: 18px; height: 18px; }
+  #notes-panel { background: #111b21; border-bottom: 2px solid #00a884; padding: 12px 16px 14px; display: none; flex-shrink: 0; }
+  #notes-panel.open { display: block; }
+  #notes-panel-label { font-size: 11px; color: #00a884; text-transform: uppercase; letter-spacing: 0.7px; font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  #notes-textarea { width: 100%; background: #202c33; border: 1px solid #2a3942; color: #e9edef; padding: 10px 14px; border-radius: 8px; font-size: 13px; resize: none; outline: none; line-height: 1.6; min-height: 72px; max-height: 180px; font-family: inherit; }
+  #notes-textarea:focus { border-color: #00a884; }
+  #notes-status { font-size: 11px; color: #8696a0; margin-top: 5px; text-align: right; min-height: 14px; }
   #emoji-picker-wrap { position: absolute; bottom: 64px; left: 12px; z-index: 200; display: none; filter: drop-shadow(0 8px 24px rgba(0,0,0,0.5)); }
   #emoji-picker-wrap.open { display: block; }
   emoji-picker {
@@ -751,6 +764,20 @@ async function selectContact(phone, name, accountId) {
         <div class="name">${name || phone}</div>
         <div class="phone">${phone}</div>
       </div>
+      <button id="btn-notes" title="Anotações do lead" onclick="toggleNotes()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
+          <polyline points="10 9 9 9 8 9"/>
+        </svg>
+      </button>
+    </div>
+    <div id="notes-panel">
+      <div id="notes-panel-label">📝 Anotações do lead</div>
+      <textarea id="notes-textarea" placeholder="Escreva informações sobre esse lead: simulação, dados, observações..."></textarea>
+      <div id="notes-status"></div>
     </div>
     <div id="messages-area"></div>
     <div id="chat-account-bar">
@@ -759,30 +786,45 @@ async function selectContact(phone, name, accountId) {
         ${accountOptions}
       </select>
     </div>
-    <div id="file-preview-bar">
-      <span id="file-preview-icon">📄</span>
-      <div id="file-preview-info">
-        <div id="file-preview-name"></div>
-        <div id="file-preview-size"></div>
-      </div>
-      <button id="file-preview-remove" onclick="removeFile()" title="Remover arquivo">✕</button>
-    </div>
     <div id="input-area">
       <button class="btn-template-icon" onclick="openSendTemplate()" title="Enviar modelo">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 8h10M7 12h6M7 16h8"/></svg>
       </button>
-      <button id="attach-btn" onclick="document.getElementById('file-input').click()" title="Enviar arquivo">
+      <button id="attach-btn" title="Enviar arquivo" onclick="document.getElementById('file-input').click()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
       </button>
-      <input type="file" id="file-input" style="display:none" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip">
+      <input type="file" id="file-input" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip">
       <button id="emoji-btn" onclick="toggleEmojiPicker(event)" title="Emojis">😊</button>
       <div id="emoji-picker-wrap"></div>
-      <textarea id="msg-input" placeholder="Digite uma mensagem..." rows="1" onkeydown="handleKey(event)"></textarea>
+      <div id="input-wrap">
+        <div id="file-chip">
+          <span id="file-chip-icon">📄</span>
+          <div id="file-chip-body">
+            <div id="file-chip-name"></div>
+            <div id="file-chip-size"></div>
+          </div>
+          <button id="file-chip-remove" onclick="removeFile()" title="Remover">✕</button>
+        </div>
+        <textarea id="msg-input" placeholder="Digite uma mensagem..." rows="1" onkeydown="handleKey(event)"></textarea>
+      </div>
       <button id="send-btn" onclick="sendMessage()">
         <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
       </button>
     </div>
   `;
+
+  // Listener direto no file-input (mais confiável que onchange inline ou delegação)
+  const fileInput = document.getElementById('file-input');
+  if (fileInput) {
+    fileInput.addEventListener('change', function() {
+      if (this.files && this.files[0]) handleFileSelect(this.files[0]);
+      this.value = '';
+    });
+  }
+
+  // Carrega anotações do lead
+  loadNotes(phone);
+
   await loadMessages(phone);
 }
 
@@ -878,23 +920,14 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// Event delegation para o input de arquivo (funciona mesmo criado via innerHTML)
-document.addEventListener('change', (e) => {
-  if (e.target && e.target.id === 'file-input') {
-    handleFileSelect(e.target);
-  }
-});
 
 // ── ARQUIVO / ANEXO ──
 let selectedFile = null;
 
-function handleFileSelect(input) {
-  const file = input.files[0];
+function handleFileSelect(file) {
   if (!file) return;
-  // Limite 16 MB (limite da Meta)
   if (file.size > 16 * 1024 * 1024) {
     alert('Arquivo muito grande. O limite é 16 MB.');
-    input.value = '';
     return;
   }
   selectedFile = file;
@@ -904,19 +937,23 @@ function handleFileSelect(input) {
   else if (file.type.startsWith('video/')) icon = '🎬';
   else if (file.type.startsWith('audio/')) icon = '🎵';
   else if (file.type === 'application/pdf') icon = '📕';
-  // Exibe preview
-  const bar = document.getElementById('file-preview-bar');
-  document.getElementById('file-preview-icon').textContent = icon;
-  document.getElementById('file-preview-name').textContent = file.name;
-  document.getElementById('file-preview-size').textContent = formatFileSize(file.size);
-  bar.classList.add('visible');
-  input.value = '';
+  // Mostra o chip dentro do input-wrap
+  const chip = document.getElementById('file-chip');
+  const msgInput = document.getElementById('msg-input');
+  if (!chip || !msgInput) return;
+  document.getElementById('file-chip-icon').textContent = icon;
+  document.getElementById('file-chip-name').textContent = file.name;
+  document.getElementById('file-chip-size').textContent = formatFileSize(file.size);
+  chip.classList.add('visible');
+  msgInput.style.display = 'none';
 }
 
 function removeFile() {
   selectedFile = null;
-  const bar = document.getElementById('file-preview-bar');
-  bar.classList.remove('visible');
+  const chip = document.getElementById('file-chip');
+  const msgInput = document.getElementById('msg-input');
+  if (chip) chip.classList.remove('visible');
+  if (msgInput) { msgInput.style.display = ''; msgInput.focus(); }
 }
 
 function formatFileSize(bytes) {
@@ -961,6 +998,56 @@ async function sendFile() {
     if (!data.success) throw new Error(data.error || 'Erro ao enviar');
   } catch(err) {
     alert('Erro ao enviar arquivo: ' + err.message);
+  }
+}
+
+// ── ANOTAÇÕES ──
+let notesTimer = null;
+let notesPhone = null;
+
+function toggleNotes() {
+  const panel = document.getElementById('notes-panel');
+  const btn   = document.getElementById('btn-notes');
+  if (!panel) return;
+  const open = panel.classList.toggle('open');
+  if (btn) btn.classList.toggle('active', open);
+  if (open) document.getElementById('notes-textarea')?.focus();
+}
+
+async function loadNotes(phone) {
+  notesPhone = phone;
+  const ta = document.getElementById('notes-textarea');
+  const status = document.getElementById('notes-status');
+  if (!ta) return;
+  try {
+    const res = await fetch(`${SERVER_URL}/contacts/${encodeURIComponent(phone)}/notes`);
+    if (res.ok) {
+      const data = await res.json();
+      ta.value = data.notes || '';
+    }
+  } catch(e) {}
+  // Auto-save ao digitar (debounce 1s)
+  ta.addEventListener('input', () => {
+    if (status) status.textContent = 'Salvando...';
+    clearTimeout(notesTimer);
+    notesTimer = setTimeout(() => saveNotes(), 1000);
+  });
+}
+
+async function saveNotes() {
+  const ta = document.getElementById('notes-textarea');
+  const status = document.getElementById('notes-status');
+  if (!ta || !notesPhone) return;
+  try {
+    const res = await fetch(`${SERVER_URL}/contacts/${encodeURIComponent(notesPhone)}/notes`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notes: ta.value })
+    });
+    if (res.ok && status) status.textContent = 'Salvo ✓';
+    setTimeout(() => { if (status) status.textContent = ''; }, 2000);
+  } catch(e) {
+    if (status) status.textContent = 'Erro ao salvar';
   }
 }
 
