@@ -479,15 +479,25 @@ async function sendMessage() {
   const input = document.getElementById('msg-input');
   const message = input.value.trim();
   if (!message || !currentPhone) return;
+  const savedMessage = message; // guarda antes de limpar
   input.value = '';
   try {
-    await fetch(SERVER_URL + '/send', {
+    const res = await fetch(SERVER_URL + '/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ to: currentPhone, message, account_id: currentAccountId })
     });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      input.value = savedMessage; // restaura mensagem se falhou
+      alert('Erro ao enviar: ' + (data.error || 'Tente novamente'));
+      return;
+    }
     await loadMessages(currentPhone);
-  } catch(e) { alert('Erro ao enviar mensagem.'); }
+  } catch(e) {
+    input.value = savedMessage; // restaura mensagem se erro de rede
+    alert('Erro ao enviar mensagem.');
+  }
 }
 
 function handleKey(e) {
