@@ -958,13 +958,22 @@ function openModal() { document.getElementById('modal-overlay').classList.add('o
 function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
 
 // ── CONTATOS ──
+// Ordena: não lidos no topo (quem espera há mais tempo primeiro), depois lidos (mais recente primeiro)
+function sortContacts(list) {
+  const unread = list.filter(c => (c.unread_count || 0) > 0)
+    .sort((a, b) => new Date(a.last_message_at) - new Date(b.last_message_at)); // espera mais longa = topo
+  const read = list.filter(c => !(c.unread_count || 0))
+    .sort((a, b) => new Date(b.last_message_at) - new Date(a.last_message_at)); // mais recente = topo
+  return [...unread, ...read];
+}
+
 async function loadContacts(render = true) {
   try {
     const accountId = document.getElementById('account-select').value;
     let url = SERVER_URL + '/contacts';
     if (accountId) url += '?account_id=' + accountId;
     const res = await fetch(url);
-    allContacts = await res.json();
+    allContacts = sortContacts(await res.json());
     if (render) { renderContacts(allContacts); populateFilterOptions(); }
   } catch(e) {}
 }
@@ -1032,18 +1041,29 @@ function clearFilters() {
 
 function filterContacts() { applyFilters(); }
 
+const _TZ = 'America/Sao_Paulo';
+// Retorna "YYYY-MM-DD" no fuso de Brasília — usa Intl com campos explícitos (100% confiável)
+function _tzDate(date) {
+  const p = new Intl.DateTimeFormat('en', {
+    timeZone: _TZ, year: 'numeric', month: '2-digit', day: '2-digit'
+  }).formatToParts(date);
+  const y = p.find(x => x.type === 'year').value;
+  const m = p.find(x => x.type === 'month').value;
+  const d = p.find(x => x.type === 'day').value;
+  return `${y}-${m}-${d}`;
+}
 function formatContactTime(isoStr) {
   if (!isoStr) return '';
-  const tz = 'America/Sao_Paulo';
-  const d = new Date(isoStr);
-  const now = new Date();
-  // en-CA sempre retorna YYYY-MM-DD — comparação segura independente do locale do sistema
-  const dDay    = d.toLocaleDateString('en-CA', { timeZone: tz });
-  const today   = now.toLocaleDateString('en-CA', { timeZone: tz });
-  const yest    = new Date(now - 86400000).toLocaleDateString('en-CA', { timeZone: tz });
-  if (dDay === today) return d.toLocaleTimeString('pt-BR', { timeZone: tz, hour: '2-digit', minute: '2-digit' });
-  if (dDay === yest)  return 'Ontem';
-  return d.toLocaleDateString('pt-BR', { timeZone: tz, day: '2-digit', month: '2-digit' });
+  const d    = new Date(isoStr);
+  const now  = new Date();
+  const dDay  = _tzDate(d);
+  const today = _tzDate(now);
+  const yest  = _tzDate(new Date(now - 86400000));
+  if (dDay === today) {
+    return new Intl.DateTimeFormat('pt-BR', { timeZone: _TZ, hour: '2-digit', minute: '2-digit' }).format(d);
+  }
+  if (dDay === yest) return 'Ontem';
+  return new Intl.DateTimeFormat('pt-BR', { timeZone: _TZ, day: '2-digit', month: '2-digit' }).format(d);
 }
 
 function renderContacts(contacts) {
@@ -1532,6 +1552,8 @@ function markAsRead(phone) {
   const contact = allContacts.find(c => c.phone === phone);
   if (!contact || !contact.unread_count) return;
   contact.unread_count = 0;
+  // Re-ordena após zerar (contato sai do topo de não lidos)
+  allContacts = sortContacts(allContacts);
   renderContacts(allContacts);
   // Atualiza visual do botão brevemente
   const btn = document.getElementById('btn-mark-read');
