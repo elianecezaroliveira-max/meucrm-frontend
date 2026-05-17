@@ -958,12 +958,17 @@ function openModal() { document.getElementById('modal-overlay').classList.add('o
 function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
 
 // ── CONTATOS ──
-// Ordena: não lidos no topo (quem espera há mais tempo primeiro), depois lidos (mais recente primeiro)
+// Ordena: não lidos no topo pela 1ª mensagem não lida (quem espera há mais tempo), lidos por mais recente
 function sortContacts(list) {
   const unread = list.filter(c => (c.unread_count || 0) > 0)
-    .sort((a, b) => new Date(a.last_message_at) - new Date(b.last_message_at)); // espera mais longa = topo
+    .sort((a, b) => {
+      // Usa first_unread_at para não perder prioridade quando o lead manda nova mensagem
+      const aT = new Date(a.first_unread_at || a.last_message_at).getTime();
+      const bT = new Date(b.first_unread_at || b.last_message_at).getTime();
+      return aT - bT; // mais antigo primeiro = espera mais longa
+    });
   const read = list.filter(c => !(c.unread_count || 0))
-    .sort((a, b) => new Date(b.last_message_at) - new Date(a.last_message_at)); // mais recente = topo
+    .sort((a, b) => new Date(b.last_message_at) - new Date(a.last_message_at));
   return [...unread, ...read];
 }
 
@@ -1041,29 +1046,27 @@ function clearFilters() {
 
 function filterContacts() { applyFilters(); }
 
-const _TZ = 'America/Sao_Paulo';
-// Retorna "YYYY-MM-DD" no fuso de Brasília — usa Intl com campos explícitos (100% confiável)
-function _tzDate(date) {
-  const p = new Intl.DateTimeFormat('en', {
-    timeZone: _TZ, year: 'numeric', month: '2-digit', day: '2-digit'
-  }).formatToParts(date);
-  const y = p.find(x => x.type === 'year').value;
-  const m = p.find(x => x.type === 'month').value;
-  const d = p.find(x => x.type === 'day').value;
-  return `${y}-${m}-${d}`;
+// Brasil é sempre UTC-3 (DST abolido em 2019) — aritmética pura, sem depender de locale/Intl
+const _BRT_OFFSET = 3 * 60 * 60 * 1000; // 3 horas em ms
+function _brtDate(utcMs) {
+  // Retorna "YYYY-MM-DD" no horário de Brasília via toISOString após ajuste
+  return new Date(utcMs - _BRT_OFFSET).toISOString().substring(0, 10);
+}
+function _brtTime(utcMs) {
+  // Retorna "HH:MM" no horário de Brasília
+  return new Date(utcMs - _BRT_OFFSET).toISOString().substring(11, 16);
 }
 function formatContactTime(isoStr) {
   if (!isoStr) return '';
-  const d    = new Date(isoStr);
-  const now  = new Date();
-  const dDay  = _tzDate(d);
-  const today = _tzDate(now);
-  const yest  = _tzDate(new Date(now - 86400000));
-  if (dDay === today) {
-    return new Intl.DateTimeFormat('pt-BR', { timeZone: _TZ, hour: '2-digit', minute: '2-digit' }).format(d);
-  }
-  if (dDay === yest) return 'Ontem';
-  return new Intl.DateTimeFormat('pt-BR', { timeZone: _TZ, day: '2-digit', month: '2-digit' }).format(d);
+  const dMs   = new Date(isoStr).getTime();
+  const nowMs = Date.now();
+  const dDay   = _brtDate(dMs);
+  const today  = _brtDate(nowMs);
+  const yest   = _brtDate(nowMs - 86400000);
+  if (dDay === today) return _brtTime(dMs);
+  if (dDay === yest)  return 'Ontem';
+  // DD/MM
+  return `${dDay.substring(8, 10)}/${dDay.substring(5, 7)}`;
 }
 
 function renderContacts(contacts) {
