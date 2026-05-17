@@ -358,6 +358,18 @@
   .msg-ticks.delivered{ color:#8696a0; }
   .msg-ticks.read     { color:#53bdeb; }
   .msg-ticks.failed   { color:#ef4444; font-size:11px; }
+  /* Divisor de dia no chat */
+  .day-divider {
+    display: flex; align-items: center; justify-content: center;
+    margin: 12px 0; gap: 8px;
+  }
+  .day-divider span {
+    background: #182229; color: #8696a0;
+    font-size: 12px; font-weight: 500;
+    padding: 5px 12px; border-radius: 8px;
+    border: 1px solid #2a3942;
+    white-space: nowrap;
+  }
   /* Mídias recebidas */
   .media-wrap { display:flex; flex-direction:column; gap:6px; }
   .msg-image { max-width:240px; max-height:320px; border-radius:8px; cursor:pointer; display:block; object-fit:cover; }
@@ -1268,13 +1280,50 @@ function renderMessageContent(m) {
   return m.content || '';
 }
 
+function formatDayLabel(dateStr) {
+  // Calcula dia em UTC-3 (Brasil) usando aritmética pura
+  const ms = new Date(dateStr).getTime() - 3 * 60 * 60 * 1000;
+  const d = new Date(ms);
+  const msgDay   = Math.floor(ms / 86400000);
+
+  const nowMs    = Date.now() - 3 * 60 * 60 * 1000;
+  const todayDay = Math.floor(nowMs / 86400000);
+
+  if (msgDay === todayDay)     return 'Hoje';
+  if (msgDay === todayDay - 1) return 'Ontem';
+
+  const months = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  const day   = d.getUTCDate();
+  const month = months[d.getUTCMonth()];
+  const year  = d.getUTCFullYear();
+  const nowYear = new Date(nowMs).getUTCFullYear();
+  return year === nowYear ? `${day} de ${month}` : `${day} de ${month} de ${year}`;
+}
+
+function msgDayKey(dateStr) {
+  // Retorna "YYYY-MM-DD" no fuso UTC-3
+  const ms = new Date(dateStr).getTime() - 3 * 60 * 60 * 1000;
+  return new Date(ms).toISOString().substring(0, 10);
+}
+
 async function loadMessages(phone, scroll = true) {
   try {
     const res = await fetch(SERVER_URL + '/messages/' + phone);
     const msgs = await res.json();
     const area = document.getElementById('messages-area');
     if (!area) return;
-    area.innerHTML = msgs.map(m => {
+
+    let lastDay = null;
+    const parts = [];
+
+    for (const m of msgs) {
+      // Divisor de dia
+      const dayKey = msgDayKey(m.timestamp);
+      if (dayKey !== lastDay) {
+        lastDay = dayKey;
+        parts.push(`<div class="day-divider"><span>${formatDayLabel(m.timestamp)}</span></div>`);
+      }
+
       let ticks = '';
       if (m.direction === 'outbound') {
         if (m.status === 'read')           ticks = '<span class="msg-ticks read">✓✓</span>';
@@ -1282,11 +1331,20 @@ async function loadMessages(phone, scroll = true) {
         else if (m.status === 'failed')    ticks = '<span class="msg-ticks failed">!</span>';
         else                               ticks = '<span class="msg-ticks sent">✓</span>';
       }
-      return `<div class="msg ${m.direction}">
+
+      // Horário UTC-3 (aritmética pura, sem depender de locale)
+      const tsMs   = new Date(m.timestamp).getTime() - 3 * 60 * 60 * 1000;
+      const tsDate = new Date(tsMs);
+      const hh = String(tsDate.getUTCHours()).padStart(2, '0');
+      const mm = String(tsDate.getUTCMinutes()).padStart(2, '0');
+
+      parts.push(`<div class="msg ${m.direction}">
         ${renderMessageContent(m)}
-        <div class="time">${new Date(m.timestamp).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}${ticks}</div>
-      </div>`;
-    }).join('');
+        <div class="time">${hh}:${mm}${ticks}</div>
+      </div>`);
+    }
+
+    area.innerHTML = parts.join('');
     if (scroll) area.scrollTop = area.scrollHeight;
   } catch(e) {}
 }
