@@ -459,6 +459,86 @@
   .btn-secondary:hover { background:#3b4a54; }
   #qr-var-hint { font-size:11px; color:#8696a0; }
   #qr-var-hint span { color:#00a884; cursor:pointer; text-decoration:underline; }
+
+/* ── BOTS ── */
+#btn-bots { background:none; border:1px solid #2a3942; color:#8696a0; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:13px; transition:all 0.2s; }
+#btn-bots:hover { background:#2a3942; color:#e9edef; }
+
+#bots-page, #bot-editor-page { position:fixed; top:0;left:0;right:0;bottom:0; background:#111b21; z-index:500; display:none; flex-direction:column; }
+
+#bots-page-topbar, #bot-editor-topbar { background:#202c33; padding:10px 16px; display:flex; align-items:center; gap:12px; border-bottom:1px solid #2a3942; flex-shrink:0; }
+#bots-page-topbar h2 { font-size:16px;font-weight:700;color:#e9edef;flex:1; }
+#bot-editor-topbar { gap:8px; }
+#bot-name-input { background:#2a3942;border:1px solid #3b4a54;color:#e9edef;padding:6px 10px;border-radius:6px;font-size:14px;font-weight:600;width:220px; }
+#bot-trigger-select, #bot-trigger-stage-select { background:#2a3942;border:1px solid #3b4a54;color:#e9edef;padding:5px 8px;border-radius:6px;font-size:13px; }
+
+#bots-list-area { flex:1;overflow-y:auto;padding:20px;display:flex;flex-wrap:wrap;gap:16px;align-content:flex-start; }
+.bot-card { background:#1f2c34;border-radius:10px;padding:16px;width:280px;cursor:pointer;transition:background 0.15s;border:1px solid #2a3942;position:relative; }
+.bot-card:hover { background:#2a3942; }
+.bot-card-name { font-size:15px;font-weight:600;color:#e9edef;margin-bottom:6px; }
+.bot-card-meta { font-size:12px;color:#8696a0;display:flex;gap:12px;align-items:center; }
+.bot-status-dot { width:8px;height:8px;border-radius:50%;display:inline-block; }
+.bot-status-dot.active { background:#25D366; }
+.bot-status-dot.inactive { background:#8696a0; }
+.bot-card-actions { position:absolute;top:10px;right:10px;display:flex;gap:6px; }
+.bot-card-actions button { background:none;border:none;color:#8696a0;cursor:pointer;font-size:14px;padding:2px 6px;border-radius:4px;transition:color 0.15s; }
+.bot-card-actions button:hover { color:#ef4444; }
+
+#bot-editor-body { flex:1;display:flex;overflow:hidden; }
+
+#bot-palette { width:180px;background:#1f2c34;border-right:1px solid #2a3942;display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0; }
+.palette-node { padding:10px 14px;cursor:pointer;font-size:13px;color:#e9edef;transition:background 0.15s;border-left:3px solid transparent;margin:2px 4px;border-radius:4px; }
+.palette-node:hover { background:#2a3942; }
+.palette-node[data-type="message"] { border-left-color:#1d9bf0; }
+.palette-node[data-type="wait_reply"] { border-left-color:#FF9800; }
+.palette-node[data-type="pause"] { border-left-color:#6B7280; }
+.palette-node[data-type="move_stage"] { border-left-color:#8B5CF6; }
+.palette-node[data-type="end"] { border-left-color:#EF4444; }
+
+#bot-canvas-wrap { flex:1;position:relative;overflow:hidden;background:#0b1418;background-image:radial-gradient(circle,#2a3942 1px,transparent 1px);background-size:28px 28px;cursor:grab; }
+#bot-canvas-wrap.panning { cursor:grabbing; }
+#bot-canvas-inner { position:absolute;top:0;left:0;width:5000px;height:5000px;transform-origin:0 0; }
+#bot-canvas-svg { position:absolute;top:0;left:0;width:5000px;height:5000px;pointer-events:none;overflow:visible; }
+#bot-canvas-nodes { position:absolute;top:0;left:0;width:5000px;height:5000px; }
+
+.bot-node { position:absolute;width:220px;background:#1f2c34;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.4);cursor:default;user-select:none;border:2px solid transparent;transition:border-color 0.15s; }
+.bot-node.selected { border-color:#00a884; }
+.bot-node.connecting-target:hover { border-color:#FF9800; }
+.bot-node-header { padding:8px 10px;border-radius:6px 6px 0 0;display:flex;align-items:center;gap:6px;cursor:move; }
+.bot-node-title { flex:1;font-size:12px;font-weight:700;color:#fff; }
+.bot-node-del { background:none;border:none;color:rgba(255,255,255,0.5);cursor:pointer;font-size:14px;padding:0 2px;line-height:1; }
+.bot-node-del:hover { color:#fff; }
+.bot-node-body { padding:8px 10px;font-size:12px;color:#8696a0;min-height:28px;word-break:break-word; }
+
+.bot-node-start, .bot-node-end { width:100px;border-radius:50px; }
+.bot-node-start .bot-node-header { border-radius:50px;justify-content:center; }
+.bot-node-end .bot-node-header { border-radius:50px;justify-content:center; }
+.bot-node-start .bot-node-body, .bot-node-end .bot-node-body { display:none; }
+
+.bot-port { position:absolute;width:14px;height:14px;border-radius:50%;background:#2a3942;border:2px solid #8696a0;cursor:pointer;transition:all 0.15s;z-index:10; }
+.bot-port:hover, .bot-port.connecting { background:#FF9800;border-color:#FF9800; }
+.bot-port-in { top:-7px;left:50%;transform:translateX(-50%); }
+.bot-port-out-wrap { display:flex;justify-content:space-around;padding:4px 8px 8px; }
+.bot-port-out-item { display:flex;flex-direction:column;align-items:center;gap:3px; }
+.bot-port-out-label { font-size:10px;color:#8696a0;white-space:nowrap;max-width:60px;overflow:hidden;text-overflow:ellipsis; }
+.bot-port-out { position:relative;top:auto;left:auto;transform:none;flex-shrink:0; }
+
+#bot-config-panel { width:260px;background:#1f2c34;border-left:1px solid #2a3942;display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0; }
+#bot-config-placeholder { padding:20px;color:#8696a0;font-size:13px;text-align:center;margin-top:20px; }
+#bot-config-form { padding:14px;flex:1; }
+.bot-cfg-label { font-size:11px;color:#8696a0;text-transform:uppercase;margin-bottom:4px;margin-top:12px;display:block; }
+.bot-cfg-label:first-child { margin-top:0; }
+.bot-cfg-input, .bot-cfg-textarea, .bot-cfg-select { width:100%;background:#2a3942;border:1px solid #3b4a54;color:#e9edef;padding:7px 9px;border-radius:6px;font-size:13px;font-family:inherit;box-sizing:border-box; }
+.bot-cfg-textarea { resize:vertical;min-height:80px; }
+.bot-cfg-input:focus, .bot-cfg-textarea:focus, .bot-cfg-select:focus { outline:none;border-color:#00a884; }
+.bot-option-row { display:flex;gap:4px;margin-bottom:6px;align-items:center; }
+.bot-option-row input { flex:1;background:#2a3942;border:1px solid #3b4a54;color:#e9edef;padding:5px 8px;border-radius:5px;font-size:12px; }
+.bot-option-row button { background:none;border:none;color:#8696a0;cursor:pointer;font-size:16px;padding:0 4px; }
+.bot-add-option { background:none;border:1px dashed #3b4a54;color:#8696a0;width:100%;padding:6px;border-radius:5px;cursor:pointer;font-size:12px;transition:all 0.15s; }
+.bot-add-option:hover { border-color:#00a884;color:#00a884; }
+
+#bot-run-banner { display:none;background:#1f2c34;padding:6px 14px;font-size:12px;color:#8696a0;border-top:1px solid #2a3942;flex-shrink:0; }
+#bot-run-banner.visible { display:flex;align-items:center;gap:8px; }
 </style>
 </head>
 <body>
@@ -713,6 +793,7 @@
   <button id="btn-templates" onclick="openTemplates()">📋 Modelos</button>
   <button id="btn-quick-replies" onclick="openQRManager()">⚡ Respostas</button>
   <button id="btn-accounts" onclick="openModal()">📱 Contas</button>
+  <button id="btn-bots" onclick="openBotsList()">🤖 Bots</button>
 </div>
 
 <!-- MODAL RESPOSTAS RÁPIDAS -->
@@ -810,6 +891,61 @@
     </div>
   </div>
 </div>
+
+<!-- BOTS LIST PAGE -->
+<div id="bots-page">
+  <div id="bots-page-topbar">
+    <button class="btn-secondary" onclick="closeBotsList()">← Voltar</button>
+    <h2>🤖 Bots de Automação</h2>
+    <button class="btn-primary" onclick="createNewBot()">+ Novo Bot</button>
+  </div>
+  <div id="bots-list-area">
+    <div style="color:#8696a0;font-size:13px;padding:20px">Carregando bots...</div>
+  </div>
+</div>
+
+<!-- BOT EDITOR PAGE -->
+<div id="bot-editor-page">
+  <div id="bot-editor-topbar">
+    <button class="btn-secondary" onclick="closeBotEditor()">← Bots</button>
+    <input id="bot-name-input" type="text" placeholder="Nome do bot..." />
+    <label style="color:#8696a0;font-size:12px">Gatilho:</label>
+    <select id="bot-trigger-select" onchange="onBotTriggerChange()">
+      <option value="manual">Manual</option>
+      <option value="stage_enter">Ao entrar em etapa</option>
+    </select>
+    <select id="bot-trigger-stage-select" style="display:none"></select>
+    <label style="display:flex;align-items:center;gap:6px;color:#e9edef;font-size:13px;cursor:pointer">
+      <input type="checkbox" id="bot-active-check" checked /> Ativo
+    </label>
+    <button class="btn-primary" onclick="saveBotFlow()" style="margin-left:auto">💾 Salvar</button>
+  </div>
+  <div id="bot-editor-body">
+    <div id="bot-palette">
+      <div style="font-size:10px;color:#8696a0;padding:10px 12px 4px;text-transform:uppercase;letter-spacing:.5px">Adicionar nó</div>
+      <div class="palette-node" data-type="message" onclick="addNodeFromPalette('message')">📨 Enviar mensagem</div>
+      <div class="palette-node" data-type="wait_reply" onclick="addNodeFromPalette('wait_reply')">💬 Aguardar resposta</div>
+      <div class="palette-node" data-type="pause" onclick="addNodeFromPalette('pause')">⏸ Pausar</div>
+      <div class="palette-node" data-type="move_stage" onclick="addNodeFromPalette('move_stage')">📋 Mover etapa</div>
+      <div class="palette-node" data-type="end" onclick="addNodeFromPalette('end')">🔴 Fim</div>
+      <div style="margin-top:12px;font-size:11px;color:#8696a0;padding:0 10px;line-height:1.5">
+        <b style="color:#e9edef">Conectar nós:</b><br>
+        Clique em ⊕ num nó de origem, depois clique em outro nó (alvo).<br><br>
+        <b style="color:#e9edef">Remover conexão:</b><br>
+        Duplo-clique na linha.
+      </div>
+    </div>
+    <div id="bot-canvas-wrap">
+      <!-- Canvas rendered by JS -->
+    </div>
+    <div id="bot-config-panel">
+      <div id="bot-config-placeholder">👈 Clique num nó para editar</div>
+      <div id="bot-config-form" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
+<!-- BOT RUN BANNER (inside chat) injected by JS into #chat-col -->
 
 <script>
 let SERVER_URL = '';
@@ -1241,6 +1377,11 @@ async function selectContact(phone, name, accountId) {
         ${accountOptions}
       </select>
     </div>
+    <div id="bot-run-banner">
+      <span>🤖 Bot ativo:</span>
+      <span id="bot-run-name" style="color:#00a884;font-weight:600"></span>
+      <button onclick="stopActiveBotRun()" style="margin-left:auto;background:none;border:1px solid #6b7280;color:#8696a0;padding:2px 8px;border-radius:4px;cursor:pointer;font-size:11px">■ Parar</button>
+    </div>
     <div id="input-area">
       <button class="btn-template-icon" onclick="openSendTemplate()" title="Enviar modelo">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 8h10M7 12h6M7 16h8"/></svg>
@@ -1251,6 +1392,11 @@ async function selectContact(phone, name, accountId) {
       <label for="file-input" id="attach-btn" title="Enviar arquivo" style="cursor:pointer">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
       </label>
+      <button id="btn-start-bot" title="Iniciar bot" onclick="openBotLauncher()" style="background:none;border:none;color:#8696a0;cursor:pointer;padding:6px;border-radius:50%;transition:background 0.2s;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px">🤖</button>
+      <div id="bot-launcher-menu" style="display:none;position:absolute;bottom:50px;left:0;background:#1f2c34;border:1px solid #2a3942;border-radius:8px;padding:8px;min-width:200px;z-index:100;box-shadow:0 4px 12px rgba(0,0,0,0.4)">
+        <div style="font-size:11px;color:#8696a0;padding:4px 8px;text-transform:uppercase">Iniciar bot</div>
+        <div id="bot-launcher-list"></div>
+      </div>
       <button id="emoji-btn" onclick="toggleEmojiPicker(event)" title="Emojis">😊</button>
       <div id="emoji-picker-wrap"></div>
       <div id="input-wrap">
@@ -1281,6 +1427,8 @@ async function selectContact(phone, name, accountId) {
   loadNotes(phone);
 
   await loadMessages(phone);
+  // Verifica bot ativo para este contato
+  checkActiveBotRun(phone);
 }
 
 // Cache de conteúdo de mensagens para o reply
@@ -2915,6 +3063,677 @@ window.onload = () => {
   localStorage.setItem('meucrm_server', DEFAULT_SERVER);
   init(DEFAULT_SERVER);
 };
+
+// ══════════════════════════════════════════════
+// SISTEMA DE BOTS
+// ══════════════════════════════════════════════
+
+// ── Estado do editor ──
+let botEditorId = null;
+let botNodes = [];
+let botEdges = [];
+let selectedNodeId = null;
+let connectingFrom = null; // {nodeId, portLabel}
+let canvasPan = {x:60, y:60};
+let _canvasDragState = null;
+let _nodeDragState = null;
+let _botStages = [];
+let _activeBotRun = null;
+const NODE_W = 220;
+const NODE_COLORS = { start:'#25D366', message:'#1d9bf0', wait_reply:'#FF9800', pause:'#6B7280', move_stage:'#8B5CF6', end:'#EF4444' };
+const NODE_ICONS  = { start:'▶', message:'📨', wait_reply:'💬', pause:'⏸', move_stage:'📋', end:'⏹' };
+const NODE_LABELS = { start:'Início', message:'Enviar mensagem', wait_reply:'Aguardar resposta', pause:'Pausar', move_stage:'Mover etapa', end:'Fim' };
+
+function _botGenId() { return 'n' + Date.now().toString(36) + Math.random().toString(36).substring(2,6); }
+
+function getNodeHeight(node) {
+  if (node.type==='start'||node.type==='end') return 44;
+  if (node.type==='wait_reply') {
+    const opts = (node.config?.options||[]).length;
+    return 80 + opts*28 + 56; // base + options + __other__ + __timeout__
+  }
+  return 80;
+}
+
+// ── Bot list ──
+async function openBotsList() {
+  document.getElementById('bots-page').style.display = 'flex';
+  const area = document.getElementById('bots-list-area');
+  area.innerHTML = '<div style="color:#8696a0;font-size:13px;padding:20px">Carregando...</div>';
+  try {
+    const res = await fetch(SERVER_URL+'/bots');
+    const bots = await res.json();
+    renderBotsList(bots);
+  } catch(e) {
+    area.innerHTML = '<div style="color:#ef4444;padding:20px">Erro ao carregar bots</div>';
+  }
+}
+
+function closeBotsList() {
+  document.getElementById('bots-page').style.display = 'none';
+}
+
+function renderBotsList(bots) {
+  const area = document.getElementById('bots-list-area');
+  if (!bots.length) {
+    area.innerHTML = `<div style="color:#8696a0;font-size:13px;padding:40px;text-align:center">
+      <div style="font-size:40px;margin-bottom:12px">🤖</div>
+      Nenhum bot criado ainda.<br>Clique em <b>+ Novo Bot</b> para começar.
+    </div>`;
+    return;
+  }
+  const trigLabels = { manual:'Manual', stage_enter:'Ao entrar em etapa' };
+  area.innerHTML = bots.map(b => `
+    <div class="bot-card" onclick="openBotEditor('${b.id}')">
+      <div class="bot-card-name">${escHtml(b.name)}</div>
+      <div class="bot-card-meta">
+        <span class="bot-status-dot ${b.active?'active':'inactive'}"></span>
+        <span>${b.active?'Ativo':'Inativo'}</span>
+        <span>•</span>
+        <span>${trigLabels[b.trigger_type]||b.trigger_type}</span>
+      </div>
+      <div class="bot-card-actions">
+        <button onclick="event.stopPropagation();openBotEditor('${b.id}')" title="Editar">✏️</button>
+        <button onclick="event.stopPropagation();deleteBotItem('${b.id}')" title="Excluir">🗑</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function createNewBot() {
+  const res = await fetch(SERVER_URL+'/bots', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:'Novo Bot'})});
+  const bot = await res.json();
+  if (bot.id) {
+    // Add a start node automatically
+    await openBotEditor(bot.id, true);
+  }
+}
+
+async function deleteBotItem(id) {
+  if (!confirm('Excluir este bot?')) return;
+  await fetch(SERVER_URL+'/bots/'+id, {method:'DELETE'});
+  openBotsList();
+}
+
+// ── Bot editor ──
+async function openBotEditor(id, isNew=false) {
+  botEditorId = id;
+  botNodes = []; botEdges = []; selectedNodeId = null; connectingFrom = null;
+  canvasPan = {x:60, y:60};
+  document.getElementById('bots-page').style.display = 'none';
+  document.getElementById('bot-editor-page').style.display = 'flex';
+
+  // Load pipeline stages
+  try {
+    const sr = await fetch(SERVER_URL+'/pipeline/stages');
+    _botStages = await sr.json();
+  } catch(e) { _botStages = []; }
+
+  // Load bot info
+  const br = await fetch(SERVER_URL+'/bots/'+id);
+  const bot = await br.json();
+  document.getElementById('bot-name-input').value = bot.name || '';
+  document.getElementById('bot-trigger-select').value = bot.trigger_type || 'manual';
+  document.getElementById('bot-active-check').checked = bot.active !== false;
+
+  const stageSelect = document.getElementById('bot-trigger-stage-select');
+  stageSelect.innerHTML = _botStages.map(s=>`<option value="${s.id}">${escHtml(s.name)}</option>`).join('');
+  if (bot.trigger_stage_id) stageSelect.value = bot.trigger_stage_id;
+  stageSelect.style.display = bot.trigger_type==='stage_enter' ? '' : 'none';
+
+  // Load flow
+  const fr = await fetch(SERVER_URL+'/bots/'+id+'/flow');
+  const flow = await fr.json();
+  botNodes = flow.nodes || [];
+  botEdges = flow.edges || [];
+
+  if (isNew && !botNodes.length) {
+    botNodes = [{ id:_botGenId(), type:'start', label:'', config:{}, pos_x:300, pos_y:200 }];
+  }
+
+  // Build canvas
+  buildBotCanvas();
+  renderBotCanvas();
+}
+
+function closeBotEditor() {
+  document.getElementById('bot-editor-page').style.display = 'none';
+  openBotsList();
+}
+
+function onBotTriggerChange() {
+  const v = document.getElementById('bot-trigger-select').value;
+  document.getElementById('bot-trigger-stage-select').style.display = v==='stage_enter' ? '' : 'none';
+}
+
+async function saveBotFlow() {
+  const name = document.getElementById('bot-name-input').value.trim() || 'Novo Bot';
+  const trigger_type = document.getElementById('bot-trigger-select').value;
+  const trigger_stage_id = trigger_type==='stage_enter' ? document.getElementById('bot-trigger-stage-select').value : null;
+  const active = document.getElementById('bot-active-check').checked;
+
+  await fetch(SERVER_URL+'/bots/'+botEditorId, {
+    method:'PUT', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({name, trigger_type, trigger_stage_id, active})
+  });
+  const res = await fetch(SERVER_URL+'/bots/'+botEditorId+'/flow', {
+    method:'PUT', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({nodes: botNodes, edges: botEdges})
+  });
+  const data = await res.json();
+  if (data.success) {
+    const btn = document.getElementById('bot-editor-topbar')?.querySelector('.btn-primary');
+    if (btn) { const orig=btn.textContent; btn.textContent='✅ Salvo!'; setTimeout(()=>btn.textContent=orig,2000); }
+  } else {
+    alert('Erro ao salvar: '+(data.error||''));
+  }
+}
+
+// ── Canvas building ──
+function buildBotCanvas() {
+  const wrap = document.getElementById('bot-canvas-wrap');
+  wrap.innerHTML = `
+    <div id="bot-canvas-inner">
+      <svg id="bot-canvas-svg" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="bot-arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#8696a0"/>
+          </marker>
+          <marker id="bot-arrow-green" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+            <polygon points="0 0, 8 3, 0 6" fill="#25D366"/>
+          </marker>
+        </defs>
+        <g id="bot-edges-group"></g>
+      </svg>
+      <div id="bot-canvas-nodes"></div>
+    </div>`;
+  applyCanvasPan();
+
+  // Canvas mouse events for panning
+  wrap.addEventListener('mousedown', onCanvasMouseDown);
+  wrap.addEventListener('mousemove', onCanvasMouseMove);
+  wrap.addEventListener('mouseup', onCanvasMouseUp);
+  wrap.addEventListener('mouseleave', onCanvasMouseUp);
+  wrap.addEventListener('wheel', onCanvasWheel, {passive:true});
+}
+
+function applyCanvasPan() {
+  const inner = document.getElementById('bot-canvas-inner');
+  if (inner) inner.style.transform = `translate(${canvasPan.x}px, ${canvasPan.y}px)`;
+}
+
+function onCanvasMouseDown(e) {
+  if (e.target.closest('.bot-node')) return; // let node handle it
+  if (e.target.closest('.bot-port')) return;
+  _canvasDragState = { startX:e.clientX, startY:e.clientY, origX:canvasPan.x, origY:canvasPan.y };
+  document.getElementById('bot-canvas-wrap').classList.add('panning');
+}
+function onCanvasMouseMove(e) {
+  if (_canvasDragState) {
+    canvasPan.x = _canvasDragState.origX + (e.clientX - _canvasDragState.startX);
+    canvasPan.y = _canvasDragState.origY + (e.clientY - _canvasDragState.startY);
+    applyCanvasPan();
+  }
+  if (_nodeDragState) {
+    const dx = e.clientX - _nodeDragState.startX;
+    const dy = e.clientY - _nodeDragState.startY;
+    const node = botNodes.find(n=>n.id===_nodeDragState.nodeId);
+    if (node) {
+      node.pos_x = _nodeDragState.origX + dx;
+      node.pos_y = _nodeDragState.origY + dy;
+      const el = document.getElementById('bnode-'+node.id);
+      if (el) { el.style.left=node.pos_x+'px'; el.style.top=node.pos_y+'px'; }
+      renderEdges();
+    }
+  }
+}
+function onCanvasMouseUp() {
+  _canvasDragState = null;
+  _nodeDragState = null;
+  document.getElementById('bot-canvas-wrap')?.classList.remove('panning');
+}
+function onCanvasWheel(e) {
+  canvasPan.x -= e.deltaX * 0.5;
+  canvasPan.y -= e.deltaY * 0.5;
+  applyCanvasPan();
+}
+
+// ── Render all nodes ──
+function renderBotCanvas() {
+  const container = document.getElementById('bot-canvas-nodes');
+  if (!container) return;
+  container.innerHTML = '';
+  for (const node of botNodes) {
+    container.appendChild(createNodeEl(node));
+  }
+  renderEdges();
+}
+
+function createNodeEl(node) {
+  const isCircle = node.type==='start'||node.type==='end';
+  const color = NODE_COLORS[node.type]||'#8696a0';
+  const icon = NODE_ICONS[node.type]||'●';
+  const title = NODE_LABELS[node.type]||node.type;
+
+  const div = document.createElement('div');
+  div.id = 'bnode-'+node.id;
+  div.className = 'bot-node bot-node-'+node.type + (node.id===selectedNodeId?' selected':'');
+  div.style.left = node.pos_x+'px';
+  div.style.top  = node.pos_y+'px';
+  if (isCircle) div.style.width = '100px';
+
+  // Header (drag handle)
+  const header = document.createElement('div');
+  header.className = 'bot-node-header';
+  header.style.background = color;
+  header.innerHTML = `<span style="font-size:14px">${icon}</span><span class="bot-node-title">${title}</span>`;
+  if (!isCircle) {
+    const delBtn = document.createElement('button');
+    delBtn.className = 'bot-node-del';
+    delBtn.innerHTML = '✕';
+    delBtn.title = 'Remover nó';
+    delBtn.onclick = (e) => { e.stopPropagation(); deleteNode(node.id); };
+    header.appendChild(delBtn);
+  }
+  header.addEventListener('mousedown', (e) => {
+    e.stopPropagation();
+    _nodeDragState = { nodeId:node.id, startX:e.clientX, startY:e.clientY, origX:node.pos_x, origY:node.pos_y };
+  });
+  div.appendChild(header);
+
+  // Body preview
+  if (!isCircle) {
+    const body = document.createElement('div');
+    body.className = 'bot-node-body';
+    body.id = 'bnode-body-'+node.id;
+    body.textContent = getNodePreview(node);
+    div.appendChild(body);
+  }
+
+  // Input port
+  const inPort = document.createElement('div');
+  inPort.className = 'bot-port bot-port-in';
+  inPort.title = 'Entrada';
+  inPort.addEventListener('click', (e) => { e.stopPropagation(); portClicked(node.id, ''); });
+  div.appendChild(inPort);
+
+  // Output ports
+  if (node.type !== 'end') {
+    const outWrap = document.createElement('div');
+    outWrap.className = 'bot-port-out-wrap';
+
+    const ports = getOutputPorts(node);
+    ports.forEach(p => {
+      const item = document.createElement('div');
+      item.className = 'bot-port-out-item';
+      const lbl = document.createElement('div');
+      lbl.className = 'bot-port-out-label';
+      lbl.textContent = p.display;
+      const port = document.createElement('div');
+      port.className = 'bot-port bot-port-out';
+      port.id = 'bport-out-'+node.id+'-'+p.label;
+      port.title = 'Conectar: '+p.display;
+      port.innerHTML = '⊕';
+      port.style.cssText = 'width:18px;height:18px;font-size:11px;display:flex;align-items:center;justify-content:center;border-radius:50%;';
+      if (connectingFrom?.nodeId===node.id && connectingFrom?.portLabel===p.label) {
+        port.style.background = '#FF9800';
+        port.style.borderColor = '#FF9800';
+      }
+      port.addEventListener('click', (e) => { e.stopPropagation(); portClicked(node.id, p.label, 'out'); });
+      item.appendChild(lbl);
+      item.appendChild(port);
+      outWrap.appendChild(item);
+    });
+    div.appendChild(outWrap);
+  }
+
+  // Click to select
+  div.addEventListener('click', (e) => {
+    if (connectingFrom && connectingFrom.nodeId !== node.id) {
+      // Create edge
+      createEdge(connectingFrom.nodeId, connectingFrom.portLabel, node.id);
+    } else {
+      selectNode(node.id);
+    }
+  });
+
+  return div;
+}
+
+function getNodePreview(node) {
+  const cfg = node.config || {};
+  if (node.type==='message') return cfg.text ? (cfg.text.length>60?cfg.text.substring(0,60)+'…':cfg.text) : '(sem mensagem)';
+  if (node.type==='wait_reply') {
+    const opts = cfg.options||[];
+    return opts.map(o=>o.label).join(' / ') || '(sem opções)';
+  }
+  if (node.type==='pause') return `${cfg.days||0}d ${cfg.hours||0}h ${cfg.minutes||0}m`;
+  if (node.type==='move_stage') {
+    const s = _botStages.find(s=>s.id===cfg.stage_id);
+    return s ? s.name : '(selecione etapa)';
+  }
+  return '';
+}
+
+function getOutputPorts(node) {
+  if (node.type==='wait_reply') {
+    const opts = node.config?.options||[];
+    const ports = opts.map(o=>({label:o.label, display:o.label||'(vazio)'}));
+    ports.push({label:'__other__', display:'Outra resp.'});
+    ports.push({label:'__timeout__', display:'Sem resp.'});
+    return ports;
+  }
+  return [{label:'', display:''}];
+}
+
+// ── Edge rendering ──
+function renderEdges() {
+  const g = document.getElementById('bot-edges-group');
+  if (!g) return;
+  g.innerHTML = '';
+
+  for (const edge of botEdges) {
+    const fromNode = botNodes.find(n=>n.id===edge.from_node_id);
+    const toNode   = botNodes.find(n=>n.id===edge.to_node_id);
+    if (!fromNode||!toNode) continue;
+
+    const fromPorts = getOutputPorts(fromNode);
+    const portIdx   = fromPorts.findIndex(p=>p.label===edge.label);
+    const total     = fromPorts.length;
+    const idx       = portIdx>=0 ? portIdx : 0;
+
+    const fromW = (fromNode.type==='start'||fromNode.type==='end') ? 100 : NODE_W;
+    const spacing = fromW / (total+1);
+    const x1 = fromNode.pos_x + spacing*(idx+1);
+    const y1 = fromNode.pos_y + getNodeHeight(fromNode) + 8;
+
+    const toW = (toNode.type==='start'||toNode.type==='end') ? 100 : NODE_W;
+    const x2 = toNode.pos_x + toW/2;
+    const y2 = toNode.pos_y - 6;
+
+    const cy = Math.max(Math.abs(y2-y1)*0.5, 50);
+    const isSpecial = edge.label && edge.label !== '' && !edge.label.startsWith('__');
+    const color = isSpecial ? '#25D366' : '#8696a0';
+    const marker = isSpecial ? 'url(#bot-arrow-green)' : 'url(#bot-arrow)';
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+    path.setAttribute('d', `M${x1},${y1} C${x1},${y1+cy} ${x2},${y2-cy} ${x2},${y2}`);
+    path.setAttribute('stroke', color);
+    path.setAttribute('stroke-width', '2');
+    path.setAttribute('fill', 'none');
+    path.setAttribute('marker-end', marker);
+    path.style.pointerEvents = 'stroke';
+    path.style.cursor = 'pointer';
+    path.title = edge.label||'';
+
+    // Edge label
+    if (edge.label && !edge.label.startsWith('__')) {
+      const mx = (x1+x2)/2;
+      const my = (y1+y2)/2;
+      const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
+      txt.setAttribute('x', mx);
+      txt.setAttribute('y', my);
+      txt.setAttribute('text-anchor', 'middle');
+      txt.setAttribute('fill', '#25D366');
+      txt.setAttribute('font-size', '11');
+      txt.setAttribute('font-family', 'sans-serif');
+      txt.textContent = edge.label.length>20?edge.label.substring(0,20)+'…':edge.label;
+      g.appendChild(txt);
+    }
+
+    const edgeId = edge.id;
+    path.addEventListener('dblclick', (e) => { e.preventDefault(); e.stopPropagation(); deleteEdge(edgeId); });
+    g.appendChild(path);
+  }
+}
+
+// ── Port interaction ──
+function portClicked(nodeId, portLabel, portType) {
+  if (portType === 'out') {
+    // Start connecting
+    connectingFrom = {nodeId, portLabel};
+    renderBotCanvas(); // re-render to highlight port
+  } else {
+    // This is an input port click - if we're connecting, finish it
+    if (connectingFrom && connectingFrom.nodeId !== nodeId) {
+      createEdge(connectingFrom.nodeId, connectingFrom.portLabel, nodeId);
+    }
+  }
+}
+
+function createEdge(fromNodeId, portLabel, toNodeId) {
+  // Remove existing edge from same port
+  botEdges = botEdges.filter(e => !(e.from_node_id===fromNodeId && e.label===portLabel));
+  botEdges.push({ id:_botGenId(), bot_id:botEditorId, from_node_id:fromNodeId, to_node_id:toNodeId, label:portLabel||'' });
+  connectingFrom = null;
+  renderBotCanvas();
+}
+
+function deleteEdge(id) {
+  botEdges = botEdges.filter(e=>e.id!==id);
+  renderEdges();
+}
+
+// ── Node operations ──
+function addNodeFromPalette(type) {
+  const wrap = document.getElementById('bot-canvas-wrap');
+  const rect = wrap.getBoundingClientRect();
+  const cx = (rect.width/2 - canvasPan.x) + (Math.random()-0.5)*60;
+  const cy = (rect.height/2 - canvasPan.y) + (Math.random()-0.5)*60;
+
+  const defaultConfig = {};
+  if (type==='wait_reply') defaultConfig.options = [{label:'Sim'},{label:'Não'}];
+  if (type==='pause') defaultConfig.hours=1;
+
+  const node = { id:_botGenId(), type, label:'', config:defaultConfig, pos_x:Math.round(cx), pos_y:Math.round(cy) };
+  botNodes.push(node);
+  renderBotCanvas();
+  selectNode(node.id);
+}
+
+function deleteNode(id) {
+  botNodes = botNodes.filter(n=>n.id!==id);
+  botEdges = botEdges.filter(e=>e.from_node_id!==id && e.to_node_id!==id);
+  if (selectedNodeId===id) { selectedNodeId=null; showConfigPlaceholder(); }
+  renderBotCanvas();
+}
+
+function selectNode(id) {
+  selectedNodeId = id;
+  // Update visual selection
+  document.querySelectorAll('.bot-node').forEach(el => el.classList.remove('selected'));
+  const el = document.getElementById('bnode-'+id);
+  if (el) el.classList.add('selected');
+  // Show config
+  const node = botNodes.find(n=>n.id===id);
+  if (node) renderConfigPanel(node);
+}
+
+// ── Config panel ──
+function showConfigPlaceholder() {
+  document.getElementById('bot-config-placeholder').style.display='';
+  document.getElementById('bot-config-form').style.display='none';
+}
+
+function renderConfigPanel(node) {
+  document.getElementById('bot-config-placeholder').style.display='none';
+  const form = document.getElementById('bot-config-form');
+  form.style.display='block';
+
+  if (node.type==='start'||node.type==='end') {
+    form.innerHTML = `<div style="color:#8696a0;font-size:13px">${node.type==='start'?'Nó de início do bot. O fluxo começa aqui.':'Nó de fim do bot. O fluxo encerra aqui.'}</div>`;
+    return;
+  }
+
+  if (node.type==='message') {
+    form.innerHTML = `
+      <label class="bot-cfg-label">Mensagem <span style="color:#8696a0">(use {nome}, {telefone})</span></label>
+      <textarea class="bot-cfg-textarea" id="cfg-msg-text" placeholder="Olá, {nome}! Como posso ajudar?">${escHtml(node.config.text||'')}</textarea>`;
+    document.getElementById('cfg-msg-text').addEventListener('input', function() {
+      updateNodeConfig(node.id, {text: this.value});
+    });
+    return;
+  }
+
+  if (node.type==='wait_reply') {
+    const opts = node.config.options||[];
+    form.innerHTML = `
+      <label class="bot-cfg-label">Opções de resposta</label>
+      <div id="cfg-options-list">
+        ${opts.map((o,i)=>`<div class="bot-option-row">
+          <input type="text" value="${escHtml(o.label)}" placeholder="Ex: Sim" onchange="updateOptionLabel(${i},this.value)" />
+          <button onclick="removeOption(${i})" title="Remover">✕</button>
+        </div>`).join('')}
+      </div>
+      <button class="bot-add-option" onclick="addOption()">+ Adicionar opção</button>
+      <label class="bot-cfg-label" style="margin-top:16px">Timeout sem resposta (horas)</label>
+      <input class="bot-cfg-input" type="number" min="0" id="cfg-timeout"
+        value="${node.config.timeout_hours||0}" placeholder="0 = sem timeout"
+        onchange="updateNodeConfig('${node.id}',{timeout_hours:parseFloat(this.value)||0})" />
+      <div style="font-size:11px;color:#8696a0;margin-top:6px">0 = aguarda indefinidamente</div>`;
+    return;
+  }
+
+  if (node.type==='pause') {
+    const cfg = node.config;
+    form.innerHTML = `
+      <label class="bot-cfg-label">Aguardar por</label>
+      <div style="display:flex;gap:8px">
+        <div style="flex:1"><label style="font-size:11px;color:#8696a0">Dias</label><input class="bot-cfg-input" type="number" min="0" value="${cfg.days||0}" onchange="updateNodeConfig('${node.id}',{days:parseInt(this.value)||0})" /></div>
+        <div style="flex:1"><label style="font-size:11px;color:#8696a0">Horas</label><input class="bot-cfg-input" type="number" min="0" max="23" value="${cfg.hours||0}" onchange="updateNodeConfig('${node.id}',{hours:parseInt(this.value)||0})" /></div>
+        <div style="flex:1"><label style="font-size:11px;color:#8696a0">Minutos</label><input class="bot-cfg-input" type="number" min="0" max="59" value="${cfg.minutes||0}" onchange="updateNodeConfig('${node.id}',{minutes:parseInt(this.value)||0})" /></div>
+      </div>`;
+    return;
+  }
+
+  if (node.type==='move_stage') {
+    const opts = _botStages.map(s=>`<option value="${s.id}" ${node.config.stage_id===s.id?'selected':''}>${escHtml(s.name)}</option>`).join('');
+    form.innerHTML = `
+      <label class="bot-cfg-label">Mover lead para etapa</label>
+      <select class="bot-cfg-select" onchange="updateNodeConfig('${node.id}',{stage_id:this.value})">
+        <option value="">-- Selecione --</option>
+        ${opts}
+      </select>`;
+    return;
+  }
+}
+
+function updateNodeConfig(nodeId, patch) {
+  const node = botNodes.find(n=>n.id===nodeId);
+  if (!node) return;
+  node.config = {...(node.config||{}), ...patch};
+  // Update preview
+  const body = document.getElementById('bnode-body-'+nodeId);
+  if (body) body.textContent = getNodePreview(node);
+}
+
+function updateOptionLabel(idx, val) {
+  const node = botNodes.find(n=>n.id===selectedNodeId);
+  if (!node) return;
+  const opts = [...(node.config.options||[])];
+  opts[idx] = {label:val};
+  updateNodeConfig(node.id, {options:opts});
+  // Re-render node ports (since option labels changed)
+  const container = document.getElementById('bot-canvas-nodes');
+  const old = document.getElementById('bnode-'+node.id);
+  if (old && container) { container.replaceChild(createNodeEl(node), old); }
+  renderEdges();
+}
+
+function addOption() {
+  const node = botNodes.find(n=>n.id===selectedNodeId);
+  if (!node) return;
+  const opts = [...(node.config.options||[]), {label:''}];
+  updateNodeConfig(node.id, {options:opts});
+  renderConfigPanel(node);
+  // Re-render node
+  const container = document.getElementById('bot-canvas-nodes');
+  const old = document.getElementById('bnode-'+node.id);
+  if (old && container) { container.replaceChild(createNodeEl(node), old); }
+  renderEdges();
+}
+
+function removeOption(idx) {
+  const node = botNodes.find(n=>n.id===selectedNodeId);
+  if (!node) return;
+  const opts = (node.config.options||[]).filter((_,i)=>i!==idx);
+  updateNodeConfig(node.id, {options:opts});
+  renderConfigPanel(node);
+  const container = document.getElementById('bot-canvas-nodes');
+  const old = document.getElementById('bnode-'+node.id);
+  if (old && container) { container.replaceChild(createNodeEl(node), old); }
+  renderEdges();
+}
+
+// ── Bot launch from chat ──
+async function checkActiveBotRun(phone) {
+  _activeBotRun = null;
+  const banner = document.getElementById('bot-run-banner');
+  if (!banner || !phone) { if(banner) banner.classList.remove('visible'); return; }
+  try {
+    const r = await fetch(SERVER_URL+'/bot-runs/contact/'+phone);
+    const runs = await r.json();
+    if (runs.length) {
+      _activeBotRun = runs[0];
+      document.getElementById('bot-run-name').textContent = runs[0].bots?.name || 'Bot';
+      banner.classList.add('visible');
+    } else {
+      banner.classList.remove('visible');
+    }
+  } catch(e) { if(banner) banner.classList.remove('visible'); }
+}
+
+async function stopActiveBotRun() {
+  if (!_activeBotRun) return;
+  await fetch(SERVER_URL+'/bot-runs/'+_activeBotRun.id+'/stop', {method:'POST'});
+  checkActiveBotRun(currentPhone);
+}
+
+async function openBotLauncher() {
+  const menu = document.getElementById('bot-launcher-menu');
+  if (!menu) return;
+  if (menu.style.display!=='none') { menu.style.display='none'; return; }
+  const listEl = document.getElementById('bot-launcher-list');
+  listEl.innerHTML = '<div style="padding:6px 8px;font-size:12px;color:#8696a0">Carregando...</div>';
+  menu.style.display = 'block';
+  try {
+    const r = await fetch(SERVER_URL+'/bots');
+    const bots = (await r.json()).filter(b=>b.active);
+    if (!bots.length) { listEl.innerHTML='<div style="padding:6px 8px;font-size:12px;color:#8696a0">Nenhum bot ativo</div>'; return; }
+    listEl.innerHTML = bots.map(b=>`
+      <div style="padding:7px 10px;cursor:pointer;font-size:13px;color:#e9edef;border-radius:5px;transition:background 0.15s"
+           onmouseover="this.style.background='#2a3942'" onmouseout="this.style.background=''"
+           onclick="launchBot('${b.id}','${escHtml(b.name).replace(/'/g,"\\'")}')">
+        🤖 ${escHtml(b.name)}
+      </div>`).join('');
+  } catch(e) { listEl.innerHTML='<div style="padding:6px 8px;color:#ef4444;font-size:12px">Erro</div>'; }
+}
+
+async function launchBot(botId, botName) {
+  document.getElementById('bot-launcher-menu').style.display='none';
+  if (!currentPhone) return;
+  try {
+    const r = await fetch(SERVER_URL+'/bots/'+botId+'/start', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({phone:currentPhone, account_id:currentAccountId||null})
+    });
+    const d = await r.json();
+    if (d.success) {
+      checkActiveBotRun(currentPhone);
+    } else {
+      alert('Erro ao iniciar bot: '+(d.error||''));
+    }
+  } catch(e) { alert('Erro ao iniciar bot'); }
+}
+
+// Close bot launcher when clicking outside
+document.addEventListener('click', (e) => {
+  const menu = document.getElementById('bot-launcher-menu');
+  const btn = document.getElementById('btn-start-bot');
+  if (menu && !menu.contains(e.target) && e.target!==btn && !btn?.contains(e.target)) {
+    menu.style.display='none';
+  }
+});
 </script>
 </body>
 </html>
