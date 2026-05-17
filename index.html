@@ -971,13 +971,16 @@ function filterContacts() { applyFilters(); }
 
 function formatContactTime(isoStr) {
   if (!isoStr) return '';
+  const tz = 'America/Sao_Paulo';
   const d = new Date(isoStr);
   const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const yesterdayStart = new Date(todayStart - 86400000);
-  if (d >= todayStart) return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  if (d >= yesterdayStart) return 'Ontem';
-  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  // Compara datas no fuso de Brasília, não no fuso do sistema
+  const dDay   = d.toLocaleDateString('pt-BR', { timeZone: tz });
+  const today  = now.toLocaleDateString('pt-BR', { timeZone: tz });
+  const yest   = new Date(now - 86400000).toLocaleDateString('pt-BR', { timeZone: tz });
+  if (dDay === today) return d.toLocaleTimeString('pt-BR', { timeZone: tz, hour: '2-digit', minute: '2-digit' });
+  if (dDay === yest)  return 'Ontem';
+  return d.toLocaleDateString('pt-BR', { timeZone: tz, day: '2-digit', month: '2-digit' });
 }
 
 function renderContacts(contacts) {
