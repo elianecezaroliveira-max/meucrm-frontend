@@ -66,9 +66,9 @@
   #emoji-btn:hover { background: #2a3942; color: #e9edef; }
   #emoji-btn.active { color: #00a884; }
   /* ANEXO */
-  #attach-label { color: #8696a0; cursor: pointer; padding: 6px; border-radius: 50%; transition: background 0.2s, color 0.2s; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
-  #attach-label:hover { background: #2a3942; color: #e9edef; }
-  #attach-label svg { width: 22px; height: 22px; }
+  #attach-btn { background: none; border: none; color: #8696a0; cursor: pointer; padding: 6px; border-radius: 50%; transition: background 0.2s, color 0.2s; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  #attach-btn:hover { background: #2a3942; color: #e9edef; }
+  #attach-btn svg { width: 22px; height: 22px; }
   /* ANOTAÇÕES */
   #btn-notes { background: none; border: none; color: #8696a0; cursor: pointer; padding: 6px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: background 0.2s, color 0.2s; margin-left: auto; }
   #btn-notes:hover { background: #2a3942; color: #e9edef; }
@@ -274,6 +274,27 @@
   .kanban-card-date { font-size: 11px; color: #8696a0; margin-top: 6px; }
   .kanban-add-col { background: #1e2b33; border: 2px dashed #2a3942; border-radius: 12px; width: 220px; min-width: 220px; height: 80px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #8696a0; font-size: 14px; gap: 8px; transition: background 0.2s, border-color 0.2s; flex-shrink: 0; }
   .kanban-add-col:hover { background: #202c33; border-color: #00a884; color: #00a884; }
+  /* BULK SELECTION */
+  .kanban-card.selected { border-color:#00a884; background:#1a3028; }
+  .card-checkbox { width:18px;height:18px;border-radius:4px;border:2px solid #3b4a54;background:#111b21;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s;margin-right:8px; }
+  .card-checkbox.checked { background:#00a884;border-color:#00a884; }
+  .card-checkbox.checked::after { content:'✓';color:white;font-size:12px;font-weight:700; }
+  .col-select-all { background:none;border:none;color:#8696a0;font-size:11px;cursor:pointer;padding:2px 4px;border-radius:4px;white-space:nowrap; }
+  .col-select-all:hover { color:#00a884; }
+  #bulk-action-bar { position:fixed;bottom:0;left:0;right:0;background:#202c33;border-top:2px solid #00a884;padding:12px 20px;display:none;align-items:center;gap:12px;z-index:300;box-shadow:0 -4px 20px rgba(0,0,0,.4); }
+  #bulk-action-bar.visible { display:flex; }
+  #bulk-count { font-size:14px;font-weight:600;color:#e9edef;flex:1; }
+  .bulk-btn { padding:8px 16px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:background .2s; }
+  .bulk-btn-move { background:#2a3942;color:#e9edef; }
+  .bulk-btn-move:hover { background:#3b4a54; }
+  .bulk-btn-tags { background:#1a3028;color:#00a884;border:1px solid #00a884; }
+  .bulk-btn-tags:hover { background:#1e3830; }
+  .bulk-btn-delete { background:#2e0d0d;color:#ef4444;border:1px solid #ef4444; }
+  .bulk-btn-delete:hover { background:#3b1010; }
+  #bulk-stage-sel { background:#2a3942;border:1px solid #3b4a54;color:#e9edef;padding:7px 10px;border-radius:8px;font-size:13px;outline:none;cursor:pointer; }
+  #bulk-stage-sel:focus { border-color:#00a884; }
+  #bulk-clear { background:none;border:none;color:#8696a0;cursor:pointer;font-size:20px;padding:0 4px; }
+  #bulk-clear:hover { color:#e9edef; }
   #btn-pipeline { background: #2a3942; border: none; color: #e9edef; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px; }
   #btn-pipeline:hover { background: #3b4a54; }
   /* TAGS */
@@ -316,6 +337,12 @@
   #pf-tags-area{display:flex;flex-wrap:wrap;gap:4px}
   #pf-clear{background:none;border:1px solid #3b4a54;color:#8696a0;padding:6px 10px;border-radius:6px;font-size:12px;cursor:pointer;align-self:flex-end}
   #pf-clear:hover{border-color:#ef4444;color:#ef4444}
+  /* READ RECEIPTS */
+  .msg-ticks { display:inline-block; margin-left:4px; font-size:13px; vertical-align:middle; }
+  .msg-ticks.sent     { color:#8696a0; }
+  .msg-ticks.delivered{ color:#8696a0; }
+  .msg-ticks.read     { color:#53bdeb; }
+  .msg-ticks.failed   { color:#ef4444; font-size:11px; }
 </style>
 </head>
 <body>
@@ -587,9 +614,16 @@
     <button id="pf-clear" onclick="clearPipelineFilter()">✕ Limpar</button>
   </div>
   <div id="kanban-board"></div>
+  <div id="bulk-action-bar">
+    <span id="bulk-count">0 leads selecionados</span>
+    <select id="bulk-stage-sel" onchange="bulkMoveStage(this.value)">
+      <option value="">↪ Mover para...</option>
+    </select>
+    <button class="bulk-btn bulk-btn-tags" onclick="bulkEditTags()">🏷 Editar tags</button>
+    <button class="bulk-btn bulk-btn-delete" onclick="bulkDeleteLeads()">🗑 Excluir</button>
+    <button id="bulk-clear" onclick="clearBulkSelection()" title="Cancelar seleção">✕</button>
+  </div>
 </div>
-
-<input type="file" id="file-input" style="display:none" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip">
 
 <!-- LAYOUT -->
 <div id="layout">
@@ -958,9 +992,9 @@ async function selectContact(phone, name, accountId) {
       <button class="btn-template-icon" onclick="openSendTemplate()" title="Enviar modelo">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 8h10M7 12h6M7 16h8"/></svg>
       </button>
-      <label id="attach-label" for="file-input" title="Enviar arquivo">
+      <button id="attach-btn" title="Enviar arquivo" onclick="openFilePicker()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-      </label>
+      </button>
       <button id="emoji-btn" onclick="toggleEmojiPicker(event)" title="Emojis">😊</button>
       <div id="emoji-picker-wrap"></div>
       <div id="input-wrap">
@@ -995,12 +1029,19 @@ async function loadMessages(phone, scroll = true) {
     const msgs = await res.json();
     const area = document.getElementById('messages-area');
     if (!area) return;
-    area.innerHTML = msgs.map(m => `
-      <div class="msg ${m.direction}">
+    area.innerHTML = msgs.map(m => {
+      let ticks = '';
+      if (m.direction === 'outbound') {
+        if (m.status === 'read')           ticks = '<span class="msg-ticks read">✓✓</span>';
+        else if (m.status === 'delivered') ticks = '<span class="msg-ticks delivered">✓✓</span>';
+        else if (m.status === 'failed')    ticks = '<span class="msg-ticks failed">!</span>';
+        else                               ticks = '<span class="msg-ticks sent">✓</span>';
+      }
+      return `<div class="msg ${m.direction}">
         ${m.content}
-        <div class="time">${new Date(m.timestamp).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}</div>
-      </div>
-    `).join('');
+        <div class="time">${new Date(m.timestamp).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}${ticks}</div>
+      </div>`;
+    }).join('');
     if (scroll) area.scrollTop = area.scrollHeight;
   } catch(e) {}
 }
@@ -1081,6 +1122,22 @@ document.addEventListener('click', (e) => {
   }
 });
 
+
+// ── SELETOR DE ARQUIVO ──
+function openFilePicker() {
+  const inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = 'image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip';
+  inp.style.cssText = 'position:fixed;top:-100px;left:-100px;opacity:0';
+  document.body.appendChild(inp);
+  inp.addEventListener('change', function() {
+    if (this.files && this.files[0]) handleFileSelect(this.files[0]);
+    document.body.removeChild(this);
+  });
+  inp.click();
+  // cleanup if user cancels (no change event)
+  setTimeout(() => { if (inp.parentNode) inp.parentNode.removeChild(inp); }, 60000);
+}
 
 // ── ARQUIVO / ANEXO ──
 let selectedFile = null;
@@ -1818,6 +1875,7 @@ function renderKanbanWith(contacts) {
           onblur="renameStage('${stage.id}', this.value)"
           onkeydown="if(event.key==='Enter')this.blur()">
         <span class="kanban-col-count">${cards.length}</span>
+        <button class="col-select-all" onclick="selectAllInColumn('${stage.id}')" title="Selecionar todos">☑</button>
         ${!stage.fixed ? `<button class="kanban-col-del" onclick="deleteStage('${stage.id}')" title="Excluir coluna">✕</button>` : ''}
       </div>
       <div class="kanban-cards" id="cards-${stage.id}">
@@ -1870,12 +1928,18 @@ function cardHTML(c) {
     ? new Date(c.last_message_at).toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit'})
     : '';
   const tags = (c.tags||[]).map((t,i)=>`<span class="tag-chip tc${i%6}" style="font-size:10px;padding:1px 6px">${t}</span>`).join('');
+  const isSelected = selectedLeads.has(c.phone);
   return `
-    <div class="kanban-card" draggable="true" data-phone="${c.phone}">
-      <div class="kanban-card-name">${c.name || c.phone}</div>
-      <div class="kanban-card-phone">${formatPhone(c.phone)}</div>
-      ${tags ? `<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:5px">${tags}</div>` : ''}
-      ${date ? `<div class="kanban-card-date">📅 ${date}</div>` : ''}
+    <div class="kanban-card${isSelected?' selected':''}" draggable="true" data-phone="${c.phone}">
+      <div style="display:flex;align-items:flex-start;gap:0">
+        <div class="card-checkbox${isSelected?' checked':''}" onclick="toggleCardSelection('${c.phone}',event)" title="Selecionar"></div>
+        <div style="flex:1;min-width:0">
+          <div class="kanban-card-name">${c.name || c.phone}</div>
+          <div class="kanban-card-phone">${formatPhone(c.phone)}</div>
+          ${tags ? `<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:5px">${tags}</div>` : ''}
+          ${date ? `<div class="kanban-card-date">📅 ${date}</div>` : ''}
+        </div>
+      </div>
     </div>`;
 }
 
@@ -1952,6 +2016,126 @@ async function moveCard(phone, stageId) {
   } catch(e) {}
 }
 
+// ── SELEÇÃO EM MASSA (KANBAN) ──
+let selectedLeads = new Set();
+
+function toggleCardSelection(phone, e) {
+  e.stopPropagation();
+  if (selectedLeads.has(phone)) selectedLeads.delete(phone);
+  else selectedLeads.add(phone);
+  updateBulkBar();
+  // Update card visual without full re-render
+  const cards = document.querySelectorAll(`.kanban-card[data-phone="${phone}"]`);
+  cards.forEach(card => {
+    card.classList.toggle('selected', selectedLeads.has(phone));
+    const cb = card.querySelector('.card-checkbox');
+    if (cb) cb.classList.toggle('checked', selectedLeads.has(phone));
+  });
+}
+
+function selectAllInColumn(stageId) {
+  const col = document.getElementById(`cards-${stageId}`);
+  if (!col) return;
+  const phones = Array.from(col.querySelectorAll('.kanban-card')).map(c => c.dataset.phone);
+  const allSelected = phones.every(p => selectedLeads.has(p));
+  phones.forEach(p => allSelected ? selectedLeads.delete(p) : selectedLeads.add(p));
+  updateBulkBar();
+  // Re-render to update checkboxes
+  renderKanban();
+}
+
+function updateBulkBar() {
+  const bar = document.getElementById('bulk-action-bar');
+  const count = document.getElementById('bulk-count');
+  if (!bar) return;
+  if (selectedLeads.size > 0) {
+    bar.classList.add('visible');
+    if (count) count.textContent = `${selectedLeads.size} lead${selectedLeads.size > 1 ? 's' : ''} selecionado${selectedLeads.size > 1 ? 's' : ''}`;
+    // Populate stage dropdown
+    const sel = document.getElementById('bulk-stage-sel');
+    if (sel) {
+      sel.innerHTML = '<option value="">↪ Mover para...</option>' +
+        pipelineStages.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+    }
+  } else {
+    bar.classList.remove('visible');
+  }
+}
+
+function clearBulkSelection() {
+  selectedLeads.clear();
+  updateBulkBar();
+  renderKanban();
+}
+
+async function bulkMoveStage(stageId) {
+  if (!stageId || selectedLeads.size === 0) return;
+  const phones = Array.from(selectedLeads);
+  const stageName = pipelineStages.find(s => s.id === stageId)?.name || stageId;
+  if (!confirm(`Mover ${phones.length} lead(s) para "${stageName}"?`)) {
+    document.getElementById('bulk-stage-sel').value = '';
+    return;
+  }
+  phones.forEach(p => {
+    const c = pipelineContacts.find(x => x.phone === p);
+    if (c) c.stage_id = stageId;
+  });
+  selectedLeads.clear();
+  updateBulkBar();
+  renderKanban();
+  try {
+    await fetch(`${SERVER_URL}/contacts/bulk-stage`, {
+      method: 'PUT',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ phones, stage_id: stageId })
+    });
+  } catch(e) { alert('Erro ao mover leads'); }
+}
+
+async function bulkDeleteLeads() {
+  if (selectedLeads.size === 0) return;
+  const phones = Array.from(selectedLeads);
+  if (!confirm(`Excluir ${phones.length} lead(s)? Esta ação não pode ser desfeita.`)) return;
+  pipelineContacts = pipelineContacts.filter(c => !selectedLeads.has(c.phone));
+  allContacts = allContacts.filter(c => !selectedLeads.has(c.phone));
+  selectedLeads.clear();
+  updateBulkBar();
+  renderKanban();
+  renderContacts(allContacts);
+  try {
+    await fetch(`${SERVER_URL}/contacts/bulk-delete`, {
+      method: 'DELETE',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ phones })
+    });
+  } catch(e) { alert('Erro ao excluir leads'); }
+}
+
+async function bulkEditTags() {
+  if (selectedLeads.size === 0) return;
+  const raw = prompt(`Adicionar tags aos ${selectedLeads.size} lead(s) selecionados (separadas por vírgula):`);
+  if (raw === null) return;
+  const newTags = raw.split(',').map(t => t.trim()).filter(Boolean);
+  if (!newTags.length) return;
+  const phones = Array.from(selectedLeads);
+  phones.forEach(phone => {
+    const ac = allContacts.find(c => c.phone === phone);
+    const pc = pipelineContacts.find(c => c.phone === phone);
+    const merged = Array.from(new Set([...(ac?.tags || []), ...newTags]));
+    if (ac) ac.tags = merged;
+    if (pc) pc.tags = merged;
+  });
+  renderKanban();
+  renderContacts(allContacts);
+  try {
+    await fetch(`${SERVER_URL}/contacts/bulk-tags`, {
+      method: 'PUT',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ phones, tags: newTags })
+    });
+  } catch(e) {}
+}
+
 // ── FILTROS DO PIPELINE ──
 let activePipelineFilterTags = new Set();
 
@@ -2005,11 +2189,6 @@ window.onload = () => {
   // Sempre usa o servidor correto, ignorando localStorage desatualizado
   localStorage.setItem('meucrm_server', DEFAULT_SERVER);
   init(DEFAULT_SERVER);
-  const fi = document.getElementById('file-input');
-  if (fi) fi.addEventListener('change', function() {
-    if (this.files && this.files[0]) handleFileSelect(this.files[0]);
-    this.value = '';
-  });
 };
 </script>
 </body>
