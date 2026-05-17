@@ -1114,6 +1114,16 @@ function filterContacts() { applyFilters(); }
 // Brasil é sempre UTC-3 (DST abolido em 2019) — aritmética pura, sem depender de locale/Intl
 const _BRT_OFFSET = 3 * 60 * 60 * 1000; // 3 horas em ms
 
+// Escapa caracteres HTML para inserir conteúdo de usuário com segurança em templates
+function escHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // Converte qualquer string de timestamp para milissegundos UTC de forma segura.
 // Problema: Supabase às vezes retorna "2026-05-17 16:24:00" sem fuso, e o JS
 // interpreta como horário LOCAL — o que bagunça o cálculo BRT.
@@ -1235,12 +1245,12 @@ async function selectContact(phone, name, accountId) {
       <button class="btn-template-icon" onclick="openSendTemplate()" title="Enviar modelo">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 8h10M7 12h6M7 16h8"/></svg>
       </button>
-      <button id="attach-btn" title="Enviar arquivo" onclick="openFilePicker()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-      </button>
       <input type="file" id="file-input" style="display:none"
         accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip"
         onchange="if(this.files&&this.files[0])handleFileSelect(this.files[0]);this.value='';" />
+      <label for="file-input" id="attach-btn" title="Enviar arquivo" style="cursor:pointer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+      </label>
       <button id="emoji-btn" onclick="toggleEmojiPicker(event)" title="Emojis">😊</button>
       <div id="emoji-picker-wrap"></div>
       <div id="input-wrap">
@@ -1278,14 +1288,16 @@ const _msgData = {};
 
 function renderMessageContent(m) {
   // Guarda conteúdo para uso no reply
-  _msgData[m.id] = { content: m.content || '', direction: m.direction };
+  const safeContent = m.content == null ? '' : String(m.content);
+  _msgData[m.id] = { content: safeContent, direction: m.direction };
 
   // Quoted bubble (resposta a mensagem anterior)
   let quotedHtml = '';
-  if (m.quoted_content) {
+  const qc = m.quoted_content == null ? '' : String(m.quoted_content);
+  if (qc) {
     const qLabel = m.quoted_direction === 'outbound' ? 'Você' : (currentName || 'Contato');
-    const qPreview = m.quoted_content.length > 90 ? m.quoted_content.substring(0,90) + '…' : m.quoted_content;
-    quotedHtml = `<div class="quoted-bubble"><div class="quoted-name">${qLabel}</div><div class="quoted-text">${qPreview}</div></div>`;
+    const qPreview = qc.length > 90 ? qc.substring(0, 90) + '…' : qc;
+    quotedHtml = `<div class="quoted-bubble"><div class="quoted-name">${escHtml(qLabel)}</div><div class="quoted-text">${escHtml(qPreview)}</div></div>`;
   }
 
   const mediaTypes = ['image', 'audio', 'video', 'document'];
@@ -1346,7 +1358,7 @@ function renderMessageContent(m) {
       </div>`;
     }
   }
-  return quotedHtml + (m.content || '');
+  return quotedHtml + escHtml(safeContent);
 }
 
 function formatDayLabel(dateStr) {
@@ -1404,12 +1416,19 @@ async function loadMessages(phone, scroll = true) {
         // Horário UTC-3 — usa parseUTC() para garantir que o timestamp seja tratado como UTC
         const timeStr = _brtTime(parseUTC(m.timestamp));
 
-        parts.push(`<div class="msg ${m.direction}" style="position:relative">
+        const msgContent = renderMessageContent(m);
+        // Guarda conteúdo no data-attribute como fallback para startReply
+        const safeId  = escHtml(String(m.id || ''));
+        const safeDir = m.direction === 'outbound' ? 'outbound' : 'inbound';
+        const dataCont = escHtml(m.content == null ? '' : String(m.content));
+
+        parts.push(`<div class="msg ${safeDir}" style="position:relative"
+          data-msg-id="${safeId}" data-msg-content="${dataCont}" data-msg-dir="${safeDir}">
           <div class="msg-actions">
-            <button class="msg-action-btn reply" title="Responder" onclick="startReply('${m.id}')">↩</button>
-            <button class="msg-action-btn del"   title="Apagar"    onclick="deleteMessage('${m.id}',this)">🗑</button>
+            <button class="msg-action-btn reply" title="Responder" onclick="startReply('${safeId}')">↩</button>
+            <button class="msg-action-btn del"   title="Apagar"    onclick="deleteMessage('${safeId}',this)">🗑</button>
           </div>
-          ${renderMessageContent(m)}
+          ${msgContent}
           <div class="time">${timeStr}${ticks}</div>
         </div>`);
       } catch(msgErr) {
@@ -1497,13 +1516,24 @@ function _fmtVoice(s) { return Math.floor(s/60)+':'+String(Math.floor(s%60)).pad
 let replyingTo = null;
 
 function startReply(msgId) {
-  const d = _msgData[msgId];
-  if (!d) return;
+  // Tenta _msgData primeiro; se não encontrar, lê do data-attribute do DOM
+  let d = _msgData[msgId];
+  if (!d) {
+    const el = document.querySelector(`[data-msg-id="${msgId}"]`);
+    if (!el) return;
+    d = {
+      content:   el.dataset.msgContent || '',
+      direction: el.dataset.msgDir     || 'inbound'
+    };
+    // Atualiza cache para evitar busca futura
+    _msgData[msgId] = d;
+  }
   replyingTo = { id: msgId, content: d.content, direction: d.direction };
   const bar  = document.getElementById('reply-bar');
   const prev = document.getElementById('reply-preview-text');
   if (bar)  bar.style.display  = 'flex';
-  if (prev) prev.textContent   = d.content.length > 80 ? d.content.substring(0,80)+'…' : d.content;
+  const preview = d.content || '(mídia)';
+  if (prev) prev.textContent = preview.length > 80 ? preview.substring(0, 80) + '…' : preview;
   document.getElementById('msg-input')?.focus();
 }
 function cancelReply() {
@@ -1542,9 +1572,9 @@ async function sendMessage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         to: currentPhone, message, account_id: currentAccountId,
-        quoted_id:        replyingTo?.id        || null,
-        quoted_content:   replyingTo?.content   || null,
-        quoted_direction: replyingTo?.direction  || null,
+        quoted_id:        replyingTo ? replyingTo.id        : null,
+        quoted_content:   replyingTo ? (replyingTo.content || '(mídia)') : null,
+        quoted_direction: replyingTo ? replyingTo.direction : null,
       })
     });
     if (!res.ok) {
