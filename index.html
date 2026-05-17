@@ -358,6 +358,12 @@
   .msg-ticks.delivered{ color:#8696a0; }
   .msg-ticks.read     { color:#53bdeb; }
   .msg-ticks.failed   { color:#ef4444; font-size:11px; }
+  /* Mídias recebidas */
+  .media-wrap { display:flex; flex-direction:column; gap:4px; }
+  .msg-image { max-width:240px; max-height:320px; border-radius:8px; cursor:pointer; display:block; object-fit:cover; }
+  .msg-image:hover { opacity:.9; }
+  .media-caption { font-size:13px; margin-top:2px; }
+  .doc-wrap { background:rgba(255,255,255,.07); border-radius:6px; padding:8px 10px; font-size:13px; }
   /* ── RESPOSTAS RÁPIDAS ── */
   #btn-quick-replies { background: #2a3942; border: none; color: #e9edef; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; }
   #btn-quick-replies:hover { background: #3b4a54; }
@@ -1188,6 +1194,26 @@ async function selectContact(phone, name, accountId) {
   await loadMessages(phone);
 }
 
+function renderMessageContent(m) {
+  const mediaTypes = ['image', 'audio', 'video', 'document'];
+  if (mediaTypes.includes(m.type) && m.media_id) {
+    const proxyUrl = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${currentAccountId || ''}`;
+    if (m.type === 'image') {
+      const caption = m.content && !m.content.startsWith('[Imagem') ? `<div class="media-caption">${m.content}</div>` : '';
+      return `<div class="media-wrap"><img src="${proxyUrl}" class="msg-image" alt="Imagem" loading="lazy" onclick="window.open('${proxyUrl}','_blank')" onerror="this.parentElement.innerHTML='<span style=opacity:.6>[Imagem não disponível]</span>'" />${caption}</div>`;
+    } else if (m.type === 'audio') {
+      return `<div class="media-wrap"><audio controls preload="none" style="max-width:240px;width:100%"><source src="${proxyUrl}" type="${m.media_mime_type || 'audio/ogg'}">Seu navegador não suporta áudio.</audio></div>`;
+    } else if (m.type === 'video') {
+      const caption = m.content && !m.content.startsWith('[Vídeo') ? `<div class="media-caption">${m.content}</div>` : '';
+      return `<div class="media-wrap"><video controls preload="none" style="max-width:280px;border-radius:8px;width:100%" onerror="this.parentElement.innerHTML='<span style=opacity:.6>[Vídeo não disponível]</span>'"><source src="${proxyUrl}" type="${m.media_mime_type || 'video/mp4'}">Seu navegador não suporta vídeo.</video>${caption}</div>`;
+    } else if (m.type === 'document') {
+      const fileName = (m.content || '').replace(/^\[Documento: ?/, '').replace(/\]$/, '') || 'Documento';
+      return `<div class="media-wrap doc-wrap">📄 <a href="${proxyUrl}" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;word-break:break-all">${fileName}</a></div>`;
+    }
+  }
+  return m.content || '';
+}
+
 async function loadMessages(phone, scroll = true) {
   try {
     const res = await fetch(SERVER_URL + '/messages/' + phone);
@@ -1203,7 +1229,7 @@ async function loadMessages(phone, scroll = true) {
         else                               ticks = '<span class="msg-ticks sent">✓</span>';
       }
       return `<div class="msg ${m.direction}">
-        ${m.content}
+        ${renderMessageContent(m)}
         <div class="time">${new Date(m.timestamp).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}${ticks}</div>
       </div>`;
     }).join('');
