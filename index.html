@@ -358,6 +358,42 @@
   .msg-ticks.delivered{ color:#8696a0; }
   .msg-ticks.read     { color:#53bdeb; }
   .msg-ticks.failed   { color:#ef4444; font-size:11px; }
+  /* ── RESPOSTAS RÁPIDAS ── */
+  #btn-quick-replies { background: #2a3942; border: none; color: #e9edef; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+  #btn-quick-replies:hover { background: #3b4a54; }
+  #qr-popup { display:none; position:fixed; background:#1e2b33; border:1px solid #2a3942; border-radius:10px 10px 0 0; z-index:999; max-height:300px; overflow-y:auto; box-shadow:0 -6px 24px rgba(0,0,0,.5); }
+  #qr-popup-header { padding:8px 14px; font-size:11px; color:#8696a0; border-bottom:1px solid #2a3942; display:flex; align-items:center; justify-content:space-between; }
+  .qr-item { display:flex; flex-direction:column; padding:10px 16px; cursor:pointer; border-bottom:1px solid #1e2b33; transition:background .15s; }
+  .qr-item:hover { background:#2a3942; }
+  .qr-item-title { font-size:13px; font-weight:600; color:#00a884; margin-bottom:2px; }
+  .qr-item-preview { font-size:12px; color:#8696a0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  /* Modal de gerenciamento */
+  #qr-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:2000; align-items:center; justify-content:center; }
+  #qr-modal.open { display:flex; }
+  #qr-modal-box { background:#1e2b33; border-radius:12px; width:560px; max-width:95vw; max-height:80vh; display:flex; flex-direction:column; box-shadow:0 8px 40px rgba(0,0,0,.6); }
+  #qr-modal-header { padding:16px 20px; border-bottom:1px solid #2a3942; display:flex; align-items:center; justify-content:space-between; }
+  #qr-modal-header h3 { font-size:15px; font-weight:700; color:#e9edef; }
+  #qr-modal-body { flex:1; overflow-y:auto; padding:16px 20px; display:flex; flex-direction:column; gap:10px; }
+  #qr-modal-footer { padding:12px 20px; border-top:1px solid #2a3942; display:flex; gap:10px; }
+  .qr-manage-item { background:#202c33; border-radius:8px; padding:12px 14px; display:flex; align-items:flex-start; gap:10px; }
+  .qr-manage-info { flex:1; min-width:0; }
+  .qr-manage-name { font-size:13px; font-weight:600; color:#00a884; margin-bottom:3px; }
+  .qr-manage-text { font-size:12px; color:#8696a0; white-space:pre-wrap; word-break:break-word; }
+  .qr-manage-btns { display:flex; gap:6px; flex-shrink:0; }
+  .qr-manage-btn { background:#2a3942; border:none; color:#8696a0; padding:5px 10px; border-radius:6px; cursor:pointer; font-size:12px; }
+  .qr-manage-btn:hover { background:#3b4a54; color:#e9edef; }
+  .qr-manage-btn.del:hover { background:#4a1e1e; color:#ef4444; }
+  #qr-form { background:#202c33; border-radius:8px; padding:14px; display:flex; flex-direction:column; gap:10px; }
+  #qr-form label { font-size:12px; color:#8696a0; margin-bottom:2px; display:block; }
+  #qr-form input, #qr-form textarea { width:100%; background:#2a3942; border:1px solid #3b4a54; border-radius:6px; color:#e9edef; padding:8px 12px; font-size:13px; outline:none; font-family:inherit; }
+  #qr-form textarea { resize:vertical; min-height:80px; }
+  #qr-form input:focus, #qr-form textarea:focus { border-color:#00a884; }
+  .btn-primary { background:#00a884; border:none; color:#fff; padding:8px 18px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:600; }
+  .btn-primary:hover { background:#00c49a; }
+  .btn-secondary { background:#2a3942; border:none; color:#e9edef; padding:8px 18px; border-radius:8px; cursor:pointer; font-size:13px; }
+  .btn-secondary:hover { background:#3b4a54; }
+  #qr-var-hint { font-size:11px; color:#8696a0; }
+  #qr-var-hint span { color:#00a884; cursor:pointer; text-decoration:underline; }
 </style>
 </head>
 <body>
@@ -610,7 +646,34 @@
     Pipeline
   </button>
   <button id="btn-templates" onclick="openTemplates()">📋 Modelos</button>
+  <button id="btn-quick-replies" onclick="openQRManager()">⚡ Respostas</button>
   <button id="btn-accounts" onclick="openModal()">📱 Contas</button>
+</div>
+
+<!-- MODAL RESPOSTAS RÁPIDAS -->
+<div id="qr-modal">
+  <div id="qr-modal-box">
+    <div id="qr-modal-header">
+      <h3>⚡ Respostas Rápidas</h3>
+      <button onclick="closeQRManager()" style="background:none;border:none;color:#8696a0;font-size:20px;cursor:pointer;line-height:1">✕</button>
+    </div>
+    <div id="qr-modal-body">
+      <!-- preenchido por JS -->
+    </div>
+    <div id="qr-modal-footer">
+      <button class="btn-primary" onclick="showQRForm()">+ Nova resposta</button>
+      <button class="btn-secondary" onclick="closeQRManager()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- POPUP RESPOSTAS RÁPIDAS (aparece ao digitar /) -->
+<div id="qr-popup">
+  <div id="qr-popup-header">
+    <span>⚡ Respostas rápidas</span>
+    <span style="font-size:10px">ESC para fechar</span>
+  </div>
+  <div id="qr-popup-list"></div>
 </div>
 
 <!-- PIPELINE KANBAN -->
@@ -974,10 +1037,10 @@ function formatContactTime(isoStr) {
   const tz = 'America/Sao_Paulo';
   const d = new Date(isoStr);
   const now = new Date();
-  // Compara datas no fuso de Brasília, não no fuso do sistema
-  const dDay   = d.toLocaleDateString('pt-BR', { timeZone: tz });
-  const today  = now.toLocaleDateString('pt-BR', { timeZone: tz });
-  const yest   = new Date(now - 86400000).toLocaleDateString('pt-BR', { timeZone: tz });
+  // en-CA sempre retorna YYYY-MM-DD — comparação segura independente do locale do sistema
+  const dDay    = d.toLocaleDateString('en-CA', { timeZone: tz });
+  const today   = now.toLocaleDateString('en-CA', { timeZone: tz });
+  const yest    = new Date(now - 86400000).toLocaleDateString('en-CA', { timeZone: tz });
   if (dDay === today) return d.toLocaleTimeString('pt-BR', { timeZone: tz, hour: '2-digit', minute: '2-digit' });
   if (dDay === yest)  return 'Ontem';
   return d.toLocaleDateString('pt-BR', { timeZone: tz, day: '2-digit', month: '2-digit' });
@@ -1298,6 +1361,171 @@ async function sendFile() {
     alert('Erro ao enviar arquivo: ' + err.message);
   }
 }
+
+// ── RESPOSTAS RÁPIDAS ──
+let quickReplies = JSON.parse(localStorage.getItem('meucrm_quick_replies') || '[]');
+let qrEditIndex = null;
+
+function saveQR() {
+  localStorage.setItem('meucrm_quick_replies', JSON.stringify(quickReplies));
+}
+
+function openQRManager() {
+  document.getElementById('qr-modal').classList.add('open');
+  renderQRManager();
+}
+
+function closeQRManager() {
+  document.getElementById('qr-modal').classList.remove('open');
+}
+
+function renderQRManager() {
+  qrEditIndex = null;
+  const body = document.getElementById('qr-modal-body');
+  if (!quickReplies.length) {
+    body.innerHTML = `
+      <div style="text-align:center;color:#8696a0;padding:24px 0">
+        <div style="font-size:32px;margin-bottom:8px">⚡</div>
+        <div>Nenhuma resposta rápida ainda.<br>Clique em "Nova resposta" para criar.</div>
+      </div>`;
+    return;
+  }
+  body.innerHTML = quickReplies.map((r, i) => `
+    <div class="qr-manage-item">
+      <div class="qr-manage-info">
+        <div class="qr-manage-name">/${r.title}</div>
+        <div class="qr-manage-text">${r.message}</div>
+      </div>
+      <div class="qr-manage-btns">
+        <button class="qr-manage-btn" onclick="editQR(${i})">✏️</button>
+        <button class="qr-manage-btn del" onclick="deleteQR(${i})">🗑️</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function showQRForm(index) {
+  qrEditIndex = index !== undefined ? index : null;
+  const r = qrEditIndex !== null ? quickReplies[qrEditIndex] : { title: '', message: '' };
+  const body = document.getElementById('qr-modal-body');
+  body.innerHTML = `
+    <div id="qr-form">
+      <div>
+        <label>Atalho (o que você vai digitar após /)</label>
+        <input id="qr-title" placeholder="ex: ola, preco, horario..." value="${r.title}" maxlength="30">
+      </div>
+      <div>
+        <label>Mensagem</label>
+        <textarea id="qr-message" placeholder="Olá, {nome}! Como posso ajudar?">${r.message}</textarea>
+        <div id="qr-var-hint">Use <span onclick="insertQRVar()"><b>{nome}</b></span> para inserir o nome do contato automaticamente</div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn-primary" onclick="saveQRForm()">Salvar</button>
+        <button class="btn-secondary" onclick="renderQRManager()">Cancelar</button>
+      </div>
+    </div>`;
+  document.getElementById('qr-title').focus();
+}
+
+function editQR(index) { showQRForm(index); }
+
+function insertQRVar() {
+  const ta = document.getElementById('qr-message');
+  if (!ta) return;
+  const pos = ta.selectionStart;
+  const val = ta.value;
+  ta.value = val.substring(0, pos) + '{nome}' + val.substring(pos);
+  ta.focus();
+  ta.setSelectionRange(pos + 6, pos + 6);
+}
+
+function saveQRForm() {
+  const title = (document.getElementById('qr-title')?.value || '').trim().replace(/\s+/g, '_').toLowerCase();
+  const message = (document.getElementById('qr-message')?.value || '').trim();
+  if (!title) { alert('Digite um atalho para a resposta.'); return; }
+  if (!message) { alert('Digite o texto da mensagem.'); return; }
+  if (qrEditIndex !== null) {
+    quickReplies[qrEditIndex] = { title, message };
+  } else {
+    quickReplies.push({ title, message });
+  }
+  saveQR();
+  renderQRManager();
+}
+
+function deleteQR(index) {
+  if (!confirm('Excluir esta resposta rápida?')) return;
+  quickReplies.splice(index, 1);
+  saveQR();
+  renderQRManager();
+}
+
+// ── POPUP DE RESPOSTAS RÁPIDAS (digitar /) ──
+function positionQRPopup() {
+  const popup = document.getElementById('qr-popup');
+  const inputArea = document.getElementById('input-area');
+  if (!inputArea) { popup.style.display = 'none'; return; }
+  const rect = inputArea.getBoundingClientRect();
+  popup.style.left   = rect.left + 'px';
+  popup.style.width  = rect.width + 'px';
+  popup.style.bottom = (window.innerHeight - rect.top) + 'px';
+}
+
+function showQRPopup(filter) {
+  const popup = document.getElementById('qr-popup');
+  const list  = document.getElementById('qr-popup-list');
+  const filtered = quickReplies.filter(r =>
+    !filter ||
+    r.title.toLowerCase().includes(filter.toLowerCase()) ||
+    r.message.toLowerCase().includes(filter.toLowerCase())
+  );
+  if (!filtered.length) { hideQRPopup(); return; }
+  const contactName = allContacts.find(c => c.phone === currentPhone)?.name || '';
+  list.innerHTML = filtered.map((r, i) => {
+    const preview = r.message.replace(/\{nome\}/gi, contactName || '{nome}');
+    const short   = preview.length > 90 ? preview.substring(0, 90) + '…' : preview;
+    return `<div class="qr-item" onclick="insertQRReply(${quickReplies.indexOf(r)})">
+      <div class="qr-item-title">/${r.title}</div>
+      <div class="qr-item-preview">${short}</div>
+    </div>`;
+  }).join('');
+  positionQRPopup();
+  popup.style.display = 'block';
+}
+
+function hideQRPopup() {
+  document.getElementById('qr-popup').style.display = 'none';
+}
+
+function insertQRReply(index) {
+  const r = quickReplies[index];
+  if (!r) return;
+  const input = document.getElementById('msg-input');
+  if (!input) return;
+  const contactName = allContacts.find(c => c.phone === currentPhone)?.name || '';
+  input.value = r.message.replace(/\{nome\}/gi, contactName);
+  input.focus();
+  hideQRPopup();
+}
+
+// Detecta "/" no input e mostra popup
+document.addEventListener('input', function(e) {
+  if (e.target.id !== 'msg-input') return;
+  const val = e.target.value;
+  if (val.startsWith('/')) {
+    showQRPopup(val.substring(1));
+  } else {
+    hideQRPopup();
+  }
+});
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') hideQRPopup();
+});
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('#qr-popup') && e.target.id !== 'msg-input') hideQRPopup();
+});
 
 // ── NÃO LIDAS ──
 function markAsRead(phone) {
