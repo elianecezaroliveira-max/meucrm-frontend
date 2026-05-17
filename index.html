@@ -358,19 +358,37 @@
   .msg-ticks.delivered{ color:#8696a0; }
   .msg-ticks.read     { color:#53bdeb; }
   .msg-ticks.failed   { color:#ef4444; font-size:11px; }
-  /* Menu de contexto para deletar mensagem */
-  .msg { cursor: default; }
-  .msg:hover .msg-del-btn { opacity: 1; }
-  .msg-del-btn {
-    position: absolute; top: 4px;
-    background: #2a3942; border: none; cursor: pointer;
-    color: #8696a0; font-size: 16px; line-height: 1;
-    padding: 2px 5px; border-radius: 4px;
-    opacity: 0; transition: opacity .15s;
-  }
-  .msg.inbound  .msg-del-btn { right: -28px; }
-  .msg.outbound .msg-del-btn { left: -28px; }
-  .msg-del-btn:hover { color: #ef4444; background: #3a2a2a; }
+  /* Ações de mensagem (reply + delete) */
+  .msg-actions { position:absolute; top:4px; display:flex; gap:2px; opacity:0; transition:opacity .15s; }
+  .msg.inbound  .msg-actions { right:-62px; }
+  .msg.outbound .msg-actions { left:-62px; }
+  .msg:hover .msg-actions { opacity:1; }
+  .msg-action-btn { background:#2a3942; border:none; cursor:pointer; color:#8696a0; font-size:14px; padding:3px 6px; border-radius:4px; line-height:1; }
+  .msg-action-btn:hover { background:#3a4a52; }
+  .msg-action-btn.reply:hover { color:#25d366; }
+  .msg-action-btn.del:hover   { color:#ef4444; }
+  /* Reply preview bar acima do input */
+  #reply-bar { display:none; align-items:center; gap:8px; padding:6px 12px; background:#1d2b36; border-left:3px solid #25d366; width:100%; box-sizing:border-box; }
+  #reply-bar span { flex:1; color:#e9edef; font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #reply-bar button { background:none; border:none; color:#8696a0; cursor:pointer; font-size:18px; line-height:1; padding:0 4px; }
+  /* Quoted bubble dentro da mensagem */
+  .quoted-bubble { border-left:3px solid #53bdeb; background:rgba(0,0,0,.15); border-radius:4px; padding:4px 8px; margin-bottom:4px; font-size:12px; cursor:pointer; }
+  .msg.outbound .quoted-bubble { border-left-color:rgba(255,255,255,.5); }
+  .quoted-name  { color:#53bdeb; font-size:11px; font-weight:600; margin-bottom:2px; }
+  .msg.outbound .quoted-name { color:rgba(255,255,255,.7); }
+  .quoted-text  { color:#8696a0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:220px; }
+  /* Voice player (Web Audio API) */
+  .voice-player { display:flex; align-items:center; gap:8px; padding:2px 0; min-width:200px; }
+  .vp-btn { width:36px; height:36px; border-radius:50%; background:#25d366; border:none; cursor:pointer; color:#fff; font-size:15px; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:background .15s; }
+  .vp-btn:disabled { opacity:.55; cursor:default; }
+  .msg.outbound .vp-btn { background:rgba(255,255,255,.3); }
+  .vp-bars { display:flex; gap:2px; align-items:center; flex:1; height:22px; overflow:hidden; }
+  .vp-bars i { display:block; width:3px; border-radius:2px; background:#8696a0; flex-shrink:0; transition:background .2s; }
+  .msg.outbound .vp-bars i { background:rgba(255,255,255,.4); }
+  .vp-bars.playing i { background:#25d366; animation:vpPulse .6s ease-in-out infinite alternate; }
+  .msg.outbound .vp-bars.playing i { background:#fff; }
+  @keyframes vpPulse { from{opacity:.5} to{opacity:1} }
+  .vp-time { font-size:11px; color:#8696a0; min-width:32px; text-align:right; }
   /* Divisor de dia no chat */
   .day-divider {
     display: flex; align-items: center; justify-content: center;
@@ -1147,13 +1165,7 @@ function renderContacts(contacts) {
       ? `<span style="color:#8696a0">Você: </span>${preview}`
       : preview;
     return `<div class="contact-item${c.phone===currentPhone?' active':''}${hasUnread}" onclick="selectContact('${c.phone}','${(c.name||'').replace(/'/g,"\\'")}','${c.account_id||''}')">
-      <div class="contact-avatar" style="overflow:hidden;padding:0;position:relative">
-        <img src="${SERVER_URL}/contacts/${c.phone}/avatar?account_id=${c.account_id||''}"
-          style="width:100%;height:100%;object-fit:cover;border-radius:50%"
-          onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"
-          alt="" />
-        <span style="display:none;width:100%;height:100%;align-items:center;justify-content:center;font-size:inherit">${(c.name||'?')[0].toUpperCase()}</span>
-      </div>
+      <div class="contact-avatar">${(c.name||'?')[0].toUpperCase()}</div>
       <div class="contact-info">
         <div class="contact-row-top">
           <div class="contact-name">${c.name||c.phone}</div>
@@ -1228,6 +1240,10 @@ async function selectContact(phone, name, accountId) {
       <button id="emoji-btn" onclick="toggleEmojiPicker(event)" title="Emojis">😊</button>
       <div id="emoji-picker-wrap"></div>
       <div id="input-wrap">
+        <div id="reply-bar">
+          <span id="reply-preview-text"></span>
+          <button onclick="cancelReply()" title="Cancelar resposta">✕</button>
+        </div>
         <div id="file-chip">
           <span id="file-chip-icon">📄</span>
           <div id="file-chip-body">
@@ -1253,7 +1269,21 @@ async function selectContact(phone, name, accountId) {
   await loadMessages(phone);
 }
 
+// Cache de conteúdo de mensagens para o reply
+const _msgData = {};
+
 function renderMessageContent(m) {
+  // Guarda conteúdo para uso no reply
+  _msgData[m.id] = { content: m.content || '', direction: m.direction };
+
+  // Quoted bubble (resposta a mensagem anterior)
+  let quotedHtml = '';
+  if (m.quoted_content) {
+    const qLabel = m.quoted_direction === 'outbound' ? 'Você' : (currentName || 'Contato');
+    const qPreview = m.quoted_content.length > 90 ? m.quoted_content.substring(0,90) + '…' : m.quoted_content;
+    quotedHtml = `<div class="quoted-bubble"><div class="quoted-name">${qLabel}</div><div class="quoted-text">${qPreview}</div></div>`;
+  }
+
   const mediaTypes = ['image', 'audio', 'video', 'document'];
   if (mediaTypes.includes(m.type) && m.media_id) {
     const acct = encodeURIComponent(currentAccountId || '');
@@ -1262,7 +1292,7 @@ function renderMessageContent(m) {
     if (m.type === 'image') {
       const caption = m.content && !m.content.startsWith('[Imagem') ? `<div class="media-caption">${m.content}</div>` : '';
       const dlUrl = `${proxyUrl}&download=1&filename=${encodeURIComponent('imagem.jpg')}`;
-      return `<div class="media-wrap">
+      return quotedHtml + `<div class="media-wrap">
         <div style="position:relative;display:inline-block">
           <img src="${proxyUrl}" class="msg-image" alt="Imagem" loading="lazy"
             onclick="window.open('${proxyUrl}','_blank')"
@@ -1273,42 +1303,26 @@ function renderMessageContent(m) {
       </div>`;
 
     } else if (m.type === 'audio') {
-      const dlUrl   = `${proxyUrl}&download=1&filename=${encodeURIComponent('audio.ogg')}`;
-      const wrapId  = `aw-${m.id || m.media_id}`;
-      const audioId = `aud-${m.id || m.media_id}`;
-      // Carrega arquivo completo como Blob — evita cortes por Range requests
-      setTimeout(() => {
-        const wrap = document.getElementById(wrapId);
-        if (!wrap || wrap.dataset.loaded) return;
-        wrap.dataset.loaded = '1';
-        fetch(proxyUrl)
-          .then(r => { if (!r.ok) throw r.status; return r.blob(); })
-          .then(blob => {
-            const blobUrl = URL.createObjectURL(blob);
-            const el = document.getElementById(audioId);
-            if (el) {
-              el.src = blobUrl;
-              el.style.display = 'block';
-            }
-            const status = wrap.querySelector('.audio-status');
-            if (status) status.style.display = 'none';
-          })
-          .catch(err => {
-            const status = wrap.querySelector('.audio-status');
-            if (status) status.textContent = '⚠ Erro ao carregar';
-          });
-      }, 80);
-      return `<div id="${wrapId}" class="media-wrap audio-wrap">
-        <span class="audio-status" style="font-size:12px;color:#8696a0;padding:4px 0">⏳ Carregando áudio...</span>
-        <audio id="${audioId}" controls style="max-width:260px;width:100%;display:none"></audio>
-        <a href="${dlUrl}" class="media-dl-link" download>⬇ Baixar áudio</a>
+      const dlUrl = `${proxyUrl}&download=1&filename=${encodeURIComponent('audio.ogg')}`;
+      const vpId  = `vp-${m.id || m.media_id}`;
+      // Gera barras de "forma de onda" com alturas variadas baseadas no media_id
+      const seed = m.media_id || m.id || '';
+      const barH = [6,14,10,18,8,22,12,20,6,16,10,14,18,8,20,12,6,16,10,14];
+      const bars = barH.map((h,i) => `<i style="height:${h}px"></i>`).join('');
+      return quotedHtml + `<div class="media-wrap">
+        <div class="voice-player" id="${vpId}">
+          <button class="vp-btn" onclick="voiceToggle('${m.id||m.media_id}','${proxyUrl}')" title="Tocar áudio">▶</button>
+          <div class="vp-bars">${bars}</div>
+          <span class="vp-time">0:00</span>
+          <a href="${dlUrl}" class="media-dl-link" download title="Baixar">⬇</a>
+        </div>
       </div>`;
 
     } else if (m.type === 'video') {
       const caption = m.content && !m.content.startsWith('[Vídeo') ? `<div class="media-caption">${m.content}</div>` : '';
       const mime = m.media_mime_type || 'video/mp4';
       const dlUrl = `${proxyUrl}&download=1&filename=${encodeURIComponent('video.mp4')}`;
-      return `<div class="media-wrap">
+      return quotedHtml + `<div class="media-wrap">
         <video controls preload="metadata" style="max-width:280px;border-radius:8px;display:block"
           onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
           <source src="${proxyUrl}" type="${mime}">
@@ -1322,13 +1336,13 @@ function renderMessageContent(m) {
     } else if (m.type === 'document') {
       const fileName = (m.content || '').replace(/^\[Documento: ?/, '').replace(/\]$/, '') || 'Documento';
       const dlUrl = `${proxyUrl}&download=1&filename=${encodeURIComponent(fileName)}`;
-      return `<div class="media-wrap doc-wrap">
+      return quotedHtml + `<div class="media-wrap doc-wrap">
         📄 <span style="word-break:break-all">${fileName}</span>
         <a href="${dlUrl}" class="media-dl-link" download>⬇ Baixar arquivo</a>
       </div>`;
     }
   }
-  return m.content || '';
+  return quotedHtml + (m.content || '');
 }
 
 function formatDayLabel(dateStr) {
@@ -1381,7 +1395,10 @@ async function loadMessages(phone, scroll = true) {
       const timeStr = _brtTime(parseUTC(m.timestamp));
 
       parts.push(`<div class="msg ${m.direction}" style="position:relative">
-        <button class="msg-del-btn" title="Apagar mensagem" onclick="deleteMessage('${m.id}', this)">🗑</button>
+        <div class="msg-actions">
+          <button class="msg-action-btn reply" title="Responder" onclick="startReply('${m.id}')">↩</button>
+          <button class="msg-action-btn del"   title="Apagar"    onclick="deleteMessage('${m.id}',this)">🗑</button>
+        </div>
         ${renderMessageContent(m)}
         <div class="time">${timeStr}${ticks}</div>
       </div>`);
@@ -1390,6 +1407,93 @@ async function loadMessages(phone, scroll = true) {
     area.innerHTML = parts.join('');
     if (scroll) area.scrollTop = area.scrollHeight;
   } catch(e) {}
+}
+
+// ── Web Audio API — Voice Player ──
+const _voiceCache = {};
+let _curVoice = null;
+
+async function voiceToggle(id, url) {
+  const vp  = document.getElementById('vp-' + id);
+  if (!vp) return;
+  const btn    = vp.querySelector('.vp-btn');
+  const bars   = vp.querySelector('.vp-bars');
+  const timeEl = vp.querySelector('.vp-time');
+
+  // Pausar se já tocando este
+  if (_curVoice?.id === id && _curVoice.playing) {
+    _curVoice.source.stop();
+    _curVoice.offset += _curVoice.ctx.currentTime - _curVoice.startTime;
+    _curVoice.playing = false;
+    btn.innerHTML = '▶'; bars.classList.remove('playing');
+    cancelAnimationFrame(_curVoice.raf);
+    return;
+  }
+  // Parar outro que esteja tocando
+  if (_curVoice?.playing) {
+    _curVoice.source.stop();
+    cancelAnimationFrame(_curVoice.raf);
+    const prev = document.getElementById('vp-' + _curVoice.id);
+    if (prev) { prev.querySelector('.vp-btn').innerHTML = '▶'; prev.querySelector('.vp-bars').classList.remove('playing'); }
+  }
+
+  // Carregar se ainda não em cache
+  if (!_voiceCache[id]) {
+    btn.innerHTML = '⏳'; btn.disabled = true;
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(res.status);
+      const ab  = await res.arrayBuffer();
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const buf = await ctx.decodeAudioData(ab);
+      _voiceCache[id] = { buf, ctx };
+      timeEl.textContent = _fmtVoice(buf.duration);
+    } catch(e) { btn.innerHTML = '⚠'; btn.disabled = false; return; }
+    btn.disabled = false;
+  }
+
+  const { buf, ctx } = _voiceCache[id];
+  if (ctx.state === 'suspended') await ctx.resume();
+  const offset = (_curVoice?.id === id) ? (_curVoice.offset || 0) : 0;
+  const src    = ctx.createBufferSource();
+  src.buffer   = buf; src.connect(ctx.destination); src.start(0, offset);
+  const t0     = ctx.currentTime;
+  _curVoice    = { id, source: src, ctx, buf, startTime: t0, offset, playing: true, raf: null };
+  btn.innerHTML = '⏸'; bars.classList.add('playing');
+
+  function tick() {
+    const elapsed = Math.min((ctx.currentTime - t0) + offset, buf.duration);
+    timeEl.textContent = _fmtVoice(elapsed);
+    if (_curVoice?.playing) _curVoice.raf = requestAnimationFrame(tick);
+  }
+  tick();
+  src.onended = () => {
+    if (_curVoice?.source !== src) return;
+    _curVoice.playing = false; _curVoice.offset = 0;
+    btn.innerHTML = '▶'; bars.classList.remove('playing');
+    timeEl.textContent = _fmtVoice(buf.duration);
+    cancelAnimationFrame(_curVoice.raf);
+  };
+}
+function _fmtVoice(s) { return Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0'); }
+
+// ── Reply (responder mensagem específica) ──
+let replyingTo = null;
+
+function startReply(msgId) {
+  const d = _msgData[msgId];
+  if (!d) return;
+  replyingTo = { id: msgId, content: d.content, direction: d.direction };
+  const bar  = document.getElementById('reply-bar');
+  const prev = document.getElementById('reply-preview-text');
+  if (bar)  bar.style.display  = 'flex';
+  if (prev) prev.textContent   = d.content.length > 80 ? d.content.substring(0,80)+'…' : d.content;
+  document.getElementById('msg-input')?.focus();
+}
+function cancelReply() {
+  replyingTo = null;
+  const bar = document.getElementById('reply-bar');
+  if (bar) bar.style.display = 'none';
 }
 
 async function deleteMessage(id, btn) {
@@ -1420,15 +1524,21 @@ async function sendMessage() {
     const res = await fetch(SERVER_URL + '/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ to: currentPhone, message, account_id: currentAccountId })
+      body: JSON.stringify({
+        to: currentPhone, message, account_id: currentAccountId,
+        quoted_id:        replyingTo?.id        || null,
+        quoted_content:   replyingTo?.content   || null,
+        quoted_direction: replyingTo?.direction  || null,
+      })
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      input.value = savedMessage; // restaura mensagem se falhou
+      input.value = savedMessage;
       alert('Erro ao enviar: ' + (data.error || 'Tente novamente'));
       return;
     }
-    markAsRead(currentPhone); // zera contador ao responder
+    cancelReply();
+    markAsRead(currentPhone);
     await loadMessages(currentPhone);
   } catch(e) {
     input.value = savedMessage; // restaura mensagem se erro de rede
