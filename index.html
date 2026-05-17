@@ -358,6 +358,19 @@
   .msg-ticks.delivered{ color:#8696a0; }
   .msg-ticks.read     { color:#53bdeb; }
   .msg-ticks.failed   { color:#ef4444; font-size:11px; }
+  /* Menu de contexto para deletar mensagem */
+  .msg { cursor: default; }
+  .msg:hover .msg-del-btn { opacity: 1; }
+  .msg-del-btn {
+    position: absolute; top: 4px;
+    background: #2a3942; border: none; cursor: pointer;
+    color: #8696a0; font-size: 16px; line-height: 1;
+    padding: 2px 5px; border-radius: 4px;
+    opacity: 0; transition: opacity .15s;
+  }
+  .msg.inbound  .msg-del-btn { right: -28px; }
+  .msg.outbound .msg-del-btn { left: -28px; }
+  .msg-del-btn:hover { color: #ef4444; background: #3a2a2a; }
   /* Divisor de dia no chat */
   .day-divider {
     display: flex; align-items: center; justify-content: center;
@@ -1338,7 +1351,8 @@ async function loadMessages(phone, scroll = true) {
       const hh = String(tsDate.getUTCHours()).padStart(2, '0');
       const mm = String(tsDate.getUTCMinutes()).padStart(2, '0');
 
-      parts.push(`<div class="msg ${m.direction}">
+      parts.push(`<div class="msg ${m.direction}" style="position:relative">
+        <button class="msg-del-btn" title="Apagar mensagem" onclick="deleteMessage('${m.id}', this)">🗑</button>
         ${renderMessageContent(m)}
         <div class="time">${hh}:${mm}${ticks}</div>
       </div>`);
@@ -1347,6 +1361,22 @@ async function loadMessages(phone, scroll = true) {
     area.innerHTML = parts.join('');
     if (scroll) area.scrollTop = area.scrollHeight;
   } catch(e) {}
+}
+
+async function deleteMessage(id, btn) {
+  if (!confirm('Apagar esta mensagem?')) return;
+  try {
+    const res = await fetch(`${SERVER_URL}/messages/id/${id}`, { method: 'DELETE' });
+    if (res.ok) {
+      // Remove o elemento da tela sem recarregar tudo
+      const msgEl = btn.closest('.msg');
+      if (msgEl) msgEl.remove();
+    } else {
+      alert('Erro ao apagar mensagem.');
+    }
+  } catch(e) {
+    alert('Erro ao apagar mensagem.');
+  }
 }
 
 async function sendMessage() {
