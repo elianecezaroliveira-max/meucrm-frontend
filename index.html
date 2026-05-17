@@ -35,7 +35,11 @@
   .contact-preview { font-size: 13px; color: #8696a0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
   /* BADGE NÃO LIDAS */
   .unread-badge { background: #00a884; color: #fff; border-radius: 50%; min-width: 20px; height: 20px; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; padding: 0 5px; flex-shrink: 0; box-shadow: 0 1px 4px rgba(0,168,132,.4); }
-  .contact-item.has-unread .contact-name { font-weight: 700; color: #fff; }
+  .contact-item.has-unread { background: #0d2318; border-left: 3px solid #00a884; }
+  .contact-item.has-unread:hover { background: #112a1e; }
+  .contact-item.has-unread.active { background: #143325; }
+  .contact-item.has-unread .contact-name { font-weight: 700; color: #e9edef; }
+  .contact-item.has-unread .contact-preview { color: #a8d5c2; }
   /* botão marcar como lida no chat */
   #btn-mark-read { background: none; border: none; color: #8696a0; cursor: pointer; padding: 6px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: background .2s, color .2s; title: "Marcar como lida"; }
   #btn-mark-read:hover { background: #2a3942; color: #00a884; }
@@ -709,9 +713,39 @@ async function init(url) {
 function startPolling() {
   if (pollInterval) clearInterval(pollInterval);
   pollInterval = setInterval(async () => {
-    await loadContacts(false);
+    // Snapshot unread counts antes de atualizar
+    const prevUnreads = {};
+    allContacts.forEach(c => { prevUnreads[c.phone] = c.unread_count || 0; });
+    const prevCount = allContacts.length;
+
+    await loadContacts(false); // atualiza allContacts sem renderizar
+
+    // Detecta se houve mudança (novo contato ou nova mensagem não lida)
+    const hasNewContact = allContacts.length !== prevCount;
+    const hasUnreadChange = allContacts.some(c => (c.unread_count || 0) !== (prevUnreads[c.phone] || 0));
+
+    if (hasNewContact || hasUnreadChange) {
+      const list = document.getElementById('contacts-list');
+      const scrollTop = list ? list.scrollTop : 0;
+      renderContactsSmartUpdate(); // re-renderiza respeitando filtros ativos
+      if (list) setTimeout(() => { list.scrollTop = scrollTop; }, 0);
+    }
+
     if (currentPhone) await loadMessages(currentPhone, false);
   }, 3000);
+}
+
+// Re-renderiza respeitando filtros ativos (usado pelo polling)
+function renderContactsSmartUpdate() {
+  const q = (document.getElementById('search-input')?.value || '').trim();
+  const stageId = document.getElementById('filter-stage-sel')?.value || '';
+  const dateFrom = document.getElementById('filter-date-from')?.value || '';
+  const dateTo = document.getElementById('filter-date-to')?.value || '';
+  if (q || stageId || activeFilterTags.size > 0 || dateFrom || dateTo) {
+    applyFilters();
+  } else {
+    renderContacts(allContacts);
+  }
 }
 
 // ── EMBEDDED SIGNUP FACEBOOK ──
@@ -1084,6 +1118,7 @@ async function sendMessage() {
       alert('Erro ao enviar: ' + (data.error || 'Tente novamente'));
       return;
     }
+    markAsRead(currentPhone); // zera contador ao responder
     await loadMessages(currentPhone);
   } catch(e) {
     input.value = savedMessage; // restaura mensagem se erro de rede
