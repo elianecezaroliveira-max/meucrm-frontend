@@ -1094,6 +1094,19 @@ function filterContacts() { applyFilters(); }
 
 // Brasil é sempre UTC-3 (DST abolido em 2019) — aritmética pura, sem depender de locale/Intl
 const _BRT_OFFSET = 3 * 60 * 60 * 1000; // 3 horas em ms
+
+// Converte qualquer string de timestamp para milissegundos UTC de forma segura.
+// Problema: Supabase às vezes retorna "2026-05-17 16:24:00" sem fuso, e o JS
+// interpreta como horário LOCAL — o que bagunça o cálculo BRT.
+// Solução: forçar 'Z' (UTC) se não houver indicação de fuso.
+function parseUTC(ts) {
+  if (!ts) return 0;
+  let s = String(ts).trim().replace(' ', 'T'); // "2026-05-17 16:24:00" → "2026-05-17T16:24:00"
+  // Se não tiver Z, +HH ou -HH após o horário, assume UTC
+  if (!/Z|[+-]\d{2}:\d{2}$/.test(s)) s += 'Z';
+  return new Date(s).getTime();
+}
+
 function _brtDate(utcMs) {
   // Retorna "YYYY-MM-DD" no horário de Brasília via toISOString após ajuste
   return new Date(utcMs - _BRT_OFFSET).toISOString().substring(0, 10);
@@ -1254,15 +1267,26 @@ function renderMessageContent(m) {
       </div>`;
 
     } else if (m.type === 'audio') {
-      // Áudio WhatsApp vem como ogg/opus — funciona no Chrome/Firefox
-      const mime = m.media_mime_type || 'audio/ogg';
-      const dlUrl = `${proxyUrl}&download=1&filename=${encodeURIComponent('audio.ogg')}`;
+      const dlUrl  = `${proxyUrl}&download=1&filename=${encodeURIComponent('audio.ogg')}`;
+      const audioId = `aud-${m.id || m.media_id}`;
+      // Carrega como Blob para evitar cortes causados por streaming/Range requests
+      setTimeout(() => {
+        const el = document.getElementById(audioId);
+        if (!el || el.dataset.loaded) return;
+        el.dataset.loaded = '1';
+        el.textContent = 'Carregando...';
+        fetch(proxyUrl)
+          .then(r => r.ok ? r.blob() : Promise.reject(r.status))
+          .then(blob => {
+            el.textContent = '';
+            const src = URL.createObjectURL(blob);
+            el.src = src;
+            el.load();
+          })
+          .catch(() => { el.textContent = '[Erro ao carregar áudio]'; });
+      }, 50);
       return `<div class="media-wrap audio-wrap">
-        <audio controls preload="metadata" style="max-width:260px;width:100%">
-          <source src="${proxyUrl}" type="${mime}">
-          <source src="${proxyUrl}" type="audio/ogg">
-          <source src="${proxyUrl}" type="audio/mpeg">
-        </audio>
+        <audio id="${audioId}" controls style="max-width:260px;width:100%;display:block">Carregando...</audio>
         <a href="${dlUrl}" class="media-dl-link" title="Baixar áudio" download>⬇ Baixar áudio</a>
       </div>`;
 
@@ -1294,29 +1318,23 @@ function renderMessageContent(m) {
 }
 
 function formatDayLabel(dateStr) {
-  // Calcula dia em UTC-3 (Brasil) usando aritmética pura
-  const ms = new Date(dateStr).getTime() - 3 * 60 * 60 * 1000;
-  const d = new Date(ms);
-  const msgDay   = Math.floor(ms / 86400000);
-
-  const nowMs    = Date.now() - 3 * 60 * 60 * 1000;
-  const todayDay = Math.floor(nowMs / 86400000);
-
-  if (msgDay === todayDay)     return 'Hoje';
-  if (msgDay === todayDay - 1) return 'Ontem';
-
+  const ms     = parseUTC(dateStr) - _BRT_OFFSET;
+  const d      = new Date(ms);
+  const msgDay = Math.floor(ms / 86400000);
+  const nowMs  = Date.now() - _BRT_OFFSET;
+  const today  = Math.floor(nowMs / 86400000);
+  if (msgDay === today)     return 'Hoje';
+  if (msgDay === today - 1) return 'Ontem';
   const months = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
-  const day   = d.getUTCDate();
-  const month = months[d.getUTCMonth()];
-  const year  = d.getUTCFullYear();
+  const year = d.getUTCFullYear();
   const nowYear = new Date(nowMs).getUTCFullYear();
-  return year === nowYear ? `${day} de ${month}` : `${day} de ${month} de ${year}`;
+  return year === nowYear
+    ? `${d.getUTCDate()} de ${months[d.getUTCMonth()]}`
+    : `${d.getUTCDate()} de ${months[d.getUTCMonth()]} de ${year}`;
 }
 
 function msgDayKey(dateStr) {
-  // Retorna "YYYY-MM-DD" no fuso UTC-3
-  const ms = new Date(dateStr).getTime() - 3 * 60 * 60 * 1000;
-  return new Date(ms).toISOString().substring(0, 10);
+  return new Date(parseUTC(dateStr) - _BRT_OFFSET).toISOString().substring(0, 10);
 }
 
 async function loadMessages(phone, scroll = true) {
@@ -1345,16 +1363,13 @@ async function loadMessages(phone, scroll = true) {
         else                               ticks = '<span class="msg-ticks sent">✓</span>';
       }
 
-      // Horário UTC-3 (aritmética pura, sem depender de locale)
-      const tsMs   = new Date(m.timestamp).getTime() - 3 * 60 * 60 * 1000;
-      const tsDate = new Date(tsMs);
-      const hh = String(tsDate.getUTCHours()).padStart(2, '0');
-      const mm = String(tsDate.getUTCMinutes()).padStart(2, '0');
+      // Horário UTC-3 — usa parseUTC() para garantir que o timestamp seja tratado como UTC
+      const timeStr = _brtTime(parseUTC(m.timestamp));
 
       parts.push(`<div class="msg ${m.direction}" style="position:relative">
         <button class="msg-del-btn" title="Apagar mensagem" onclick="deleteMessage('${m.id}', this)">🗑</button>
         ${renderMessageContent(m)}
-        <div class="time">${hh}:${mm}${ticks}</div>
+        <div class="time">${timeStr}${ticks}</div>
       </div>`);
     }
 
