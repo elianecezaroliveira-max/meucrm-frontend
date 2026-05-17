@@ -35,11 +35,15 @@
   .contact-preview { font-size: 13px; color: #8696a0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
   /* BADGE NÃO LIDAS */
   .unread-badge { background: #00a884; color: #fff; border-radius: 50%; min-width: 20px; height: 20px; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; padding: 0 5px; flex-shrink: 0; box-shadow: 0 1px 4px rgba(0,168,132,.4); }
-  .contact-item.has-unread { background: #0d2318; border-left: 3px solid #00a884; }
-  .contact-item.has-unread:hover { background: #112a1e; }
-  .contact-item.has-unread.active { background: #143325; }
-  .contact-item.has-unread .contact-name { font-weight: 700; color: #e9edef; }
-  .contact-item.has-unread .contact-preview { color: #a8d5c2; }
+  .contact-item.has-unread { background: #0a2016 !important; border-left: 4px solid #00a884 !important; }
+  .contact-item.has-unread:hover { background: #0f2a1c !important; }
+  .contact-item.has-unread .contact-name { font-weight: 700; color: #fff; }
+  .contact-item.has-unread .contact-preview { color: #9de0c7; }
+  /* Prévia da mensagem */
+  .contact-preview-row { display: flex; align-items: center; gap: 4px; font-size: 13px; color: #8696a0; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .contact-preview-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+  .contact-time { font-size: 11px; color: #8696a0; white-space: nowrap; margin-left: auto; flex-shrink: 0; }
+  .contact-row-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
   /* botão marcar como lida no chat */
   #btn-mark-read { background: none; border: none; color: #8696a0; cursor: pointer; padding: 6px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: background .2s, color .2s; title: "Marcar como lida"; }
   #btn-mark-read:hover { background: #2a3942; color: #00a884; }
@@ -965,6 +969,17 @@ function clearFilters() {
 
 function filterContacts() { applyFilters(); }
 
+function formatContactTime(isoStr) {
+  if (!isoStr) return '';
+  const d = new Date(isoStr);
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterdayStart = new Date(todayStart - 86400000);
+  if (d >= todayStart) return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  if (d >= yesterdayStart) return 'Ontem';
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+}
+
 function renderContacts(contacts) {
   const list = document.getElementById('contacts-list');
   if (!contacts.length) {
@@ -977,14 +992,25 @@ function renderContacts(contacts) {
     const unread = c.unread_count || 0;
     const badge = unread > 0 ? `<div class="unread-badge">${unread > 99 ? '99+' : unread}</div>` : '';
     const hasUnread = unread > 0 ? ' has-unread' : '';
+    const timeStr = formatContactTime(c.last_message_at);
+    const preview = c.last_message_preview || c.phone;
+    const isOut = c.last_message_direction === 'outbound';
+    const previewHtml = isOut
+      ? `<span style="color:#8696a0">Você: </span>${preview}`
+      : preview;
     return `<div class="contact-item${c.phone===currentPhone?' active':''}${hasUnread}" onclick="selectContact('${c.phone}','${(c.name||'').replace(/'/g,"\\'")}','${c.account_id||''}')">
       <div class="contact-avatar">${(c.name||'?')[0].toUpperCase()}</div>
       <div class="contact-info">
-        <div class="contact-name">${c.name||c.phone}</div>
-        <div class="contact-preview">${c.phone}</div>
+        <div class="contact-row-top">
+          <div class="contact-name">${c.name||c.phone}</div>
+          <div class="contact-time">${timeStr}</div>
+        </div>
+        <div class="contact-preview-row">
+          <div class="contact-preview-text">${previewHtml}</div>
+          ${badge}
+        </div>
         ${tagsHtml}
       </div>
-      ${badge}
     </div>`;
   }).join('');
 }
