@@ -463,6 +463,8 @@
 /* ── BOTS ── */
 #btn-bots { background:none; border:1px solid #2a3942; color:#8696a0; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:13px; transition:all 0.2s; }
 #btn-bots:hover { background:#2a3942; color:#e9edef; }
+#btn-n8n { background:none; border:1px solid #EA4B71; color:#EA4B71; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:13px; transition:all 0.2s; }
+#btn-n8n:hover, #btn-n8n.connected { background:#EA4B71; color:#fff; }
 
 #bots-page, #bot-editor-page { position:fixed; top:0;left:0;right:0;bottom:0; background:#111b21; z-index:500; display:none; flex-direction:column; }
 
@@ -794,6 +796,7 @@
   <button id="btn-quick-replies" onclick="openQRManager()">⚡ Respostas</button>
   <button id="btn-accounts" onclick="openModal()">📱 Contas</button>
   <button id="btn-bots" onclick="openBotsList()">🤖 Bots</button>
+  <button id="btn-n8n" onclick="openN8NModal()">⚡ N8N</button>
 </div>
 
 <!-- MODAL RESPOSTAS RÁPIDAS -->
@@ -888,6 +891,113 @@
       <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" fill="currentColor"/></svg>
       <p>Selecione uma conversa</p>
       <span style="font-size:13px">Suas mensagens do WhatsApp aparecerão aqui</span>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL N8N -->
+<div id="n8n-overlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:900;align-items:center;justify-content:center">
+  <div id="n8n-modal" style="background:#1f2c34;border-radius:12px;width:640px;max-width:95vw;max-height:90vh;overflow-y:auto;padding:0;box-shadow:0 8px 32px rgba(0,0,0,0.5)">
+
+    <!-- Header -->
+    <div style="background:#202c33;padding:16px 20px;border-radius:12px 12px 0 0;display:flex;align-items:center;gap:12px;border-bottom:1px solid #2a3942">
+      <span style="font-size:22px">⚡</span>
+      <h2 style="margin:0;font-size:16px;font-weight:700;color:#e9edef;flex:1">Integração com N8N</h2>
+      <span id="n8n-status-badge" style="font-size:11px;padding:3px 10px;border-radius:20px;background:#2a3942;color:#8696a0">Não configurado</span>
+      <button onclick="closeN8NModal()" style="background:none;border:none;color:#8696a0;font-size:20px;cursor:pointer;line-height:1;padding:0 4px">✕</button>
+    </div>
+
+    <div style="padding:20px;display:flex;flex-direction:column;gap:20px">
+
+      <!-- Como funciona -->
+      <div style="background:#111b21;border-radius:8px;padding:14px;font-size:13px;color:#8696a0;line-height:1.6">
+        <div style="color:#e9edef;font-weight:600;margin-bottom:6px">Como funciona</div>
+        Toda mensagem recebida no WhatsApp é encaminhada para o seu N8N via webhook.
+        O N8N processa a mensagem com a lógica que você montar e chama o MeuCRM para responder.
+        <div style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="background:#25D366;color:#000;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:700">WhatsApp</span>
+          <span style="color:#8696a0">→</span>
+          <span style="background:#1f2c34;border:1px solid #2a3942;color:#e9edef;padding:3px 8px;border-radius:4px;font-size:11px">MeuCRM recebe</span>
+          <span style="color:#8696a0">→</span>
+          <span style="background:#EA4B71;color:#fff;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:700">N8N</span>
+          <span style="color:#8696a0">→</span>
+          <span style="background:#1f2c34;border:1px solid #2a3942;color:#e9edef;padding:3px 8px;border-radius:4px;font-size:11px">MeuCRM /send</span>
+          <span style="color:#8696a0">→</span>
+          <span style="background:#25D366;color:#000;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:700">WhatsApp</span>
+        </div>
+      </div>
+
+      <!-- Passo 1: Configurar URL -->
+      <div>
+        <div style="font-size:12px;font-weight:700;color:#e9edef;margin-bottom:8px">
+          <span style="background:#EA4B71;color:#fff;width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;margin-right:6px">1</span>
+          URL do Webhook no N8N
+        </div>
+        <div style="font-size:12px;color:#8696a0;margin-bottom:8px">Cole aqui a URL do nó <b style="color:#e9edef">Webhook</b> que você criar no N8N. No N8N: clique em <b style="color:#e9edef">+</b> → <b style="color:#e9edef">Trigger</b> → <b style="color:#e9edef">Webhook</b> → copie a URL de teste.</div>
+        <div style="display:flex;gap:8px">
+          <input id="n8n-url-input" type="text" placeholder="https://seudominio.app.n8n.cloud/webhook/..."
+            style="flex:1;background:#111b21;border:1px solid #2a3942;color:#e9edef;padding:9px 12px;border-radius:6px;font-size:13px" />
+          <button onclick="saveN8NUrl()" class="btn-primary" style="white-space:nowrap">Salvar</button>
+          <button onclick="testN8NConnection()" id="n8n-test-btn" style="white-space:nowrap;background:#2a3942;border:none;color:#e9edef;padding:8px 14px;border-radius:6px;cursor:pointer;font-size:13px">🔌 Testar</button>
+        </div>
+        <div id="n8n-test-result" style="font-size:12px;margin-top:6px;display:none"></div>
+      </div>
+
+      <!-- Passo 2: O que o N8N recebe -->
+      <div>
+        <div style="font-size:12px;font-weight:700;color:#e9edef;margin-bottom:8px">
+          <span style="background:#EA4B71;color:#fff;width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;margin-right:6px">2</span>
+          Payload que o N8N recebe
+        </div>
+        <div style="position:relative">
+          <pre id="n8n-payload-preview" style="background:#111b21;border:1px solid #2a3942;border-radius:6px;padding:12px;font-size:12px;color:#8696a0;margin:0;overflow-x:auto;line-height:1.5">{
+  "event": "message_received",
+  "phone": "5515999991234",
+  "name": "João Silva",
+  "content": "Quero simular meu consignado",
+  "type": "text",
+  "timestamp": "2026-05-17T15:30:00.000Z",
+  "account_id": "uuid-da-sua-conta",
+  "media_id": null,
+  "media_mime_type": null
+}</pre>
+          <button onclick="copyN8NPayload()" style="position:absolute;top:8px;right:8px;background:#2a3942;border:none;color:#8696a0;padding:3px 8px;border-radius:4px;cursor:pointer;font-size:11px">📋 Copiar</button>
+        </div>
+        <div style="font-size:11px;color:#8696a0;margin-top:6px">
+          No N8N: use <code style="background:#111b21;padding:1px 4px;border-radius:3px">{{ $json.phone }}</code>, <code style="background:#111b21;padding:1px 4px;border-radius:3px">{{ $json.name }}</code>, <code style="background:#111b21;padding:1px 4px;border-radius:3px">{{ $json.content }}</code> etc. nos nós seguintes.
+        </div>
+      </div>
+
+      <!-- Passo 3: Como o N8N envia resposta -->
+      <div>
+        <div style="font-size:12px;font-weight:700;color:#e9edef;margin-bottom:8px">
+          <span style="background:#EA4B71;color:#fff;width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;margin-right:6px">3</span>
+          Como enviar resposta pelo N8N
+        </div>
+        <div style="font-size:12px;color:#8696a0;margin-bottom:8px">Adicione um nó <b style="color:#e9edef">HTTP Request</b> no N8N com estas configurações:</div>
+        <div style="background:#111b21;border:1px solid #2a3942;border-radius:6px;padding:12px;font-size:12px;line-height:1.7">
+          <div><span style="color:#8696a0">Método:</span> <span style="color:#25D366;font-weight:700">POST</span></div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="color:#8696a0">URL:</span>
+            <code id="n8n-send-url" style="color:#e9edef;background:#2a3942;padding:2px 6px;border-radius:3px;font-size:11px"></code>
+            <button onclick="copyN8NSendUrl()" style="background:#2a3942;border:none;color:#8696a0;padding:2px 6px;border-radius:3px;cursor:pointer;font-size:10px">📋</button>
+          </div>
+          <div><span style="color:#8696a0">Body (JSON):</span></div>
+          <pre style="margin:4px 0 0;color:#8696a0;font-size:11px;line-height:1.5">{
+  "to": "{{ $json.phone }}",
+  "message": "Olá, {{ $json.name }}! Aqui está sua resposta...",
+  "account_id": "{{ $json.account_id }}"
+}</pre>
+        </div>
+      </div>
+
+      <!-- Dica: Webhook N8N no modo de produção -->
+      <div style="background:#2a3942;border-radius:8px;padding:12px;font-size:12px;color:#8696a0;line-height:1.6">
+        💡 <b style="color:#e9edef">Dica importante:</b> No N8N, durante desenvolvimento use a URL de <b>teste</b> do Webhook. Quando quiser que funcione 24h, clique em <b style="color:#e9edef">Activate</b> no N8N e use a URL de <b>produção</b> (troca <code>/webhook-test/</code> por <code>/webhook/</code>).
+        <br><br>
+        ☁️ <b style="color:#e9edef">Onde rodar o N8N:</b> Use <a href="https://n8n.io" target="_blank" style="color:#00a884">n8n.io Cloud</a> (plano gratuito disponível) ou instale no seu servidor.
+      </div>
+
     </div>
   </div>
 </div>
@@ -3733,6 +3843,100 @@ document.addEventListener('click', (e) => {
   if (menu && !menu.contains(e.target) && e.target!==btn && !btn?.contains(e.target)) {
     menu.style.display='none';
   }
+});
+
+// ══════════════════════════════════════════════
+// INTEGRAÇÃO N8N
+// ══════════════════════════════════════════════
+
+async function openN8NModal() {
+  const overlay = document.getElementById('n8n-overlay');
+  overlay.style.display = 'flex';
+
+  // Preenche a URL do endpoint /send
+  const sendUrl = document.getElementById('n8n-send-url');
+  if (sendUrl) sendUrl.textContent = SERVER_URL + '/send';
+
+  // Carrega URL salva
+  try {
+    const r = await fetch(SERVER_URL + '/settings/n8n_webhook_url');
+    const d = await r.json();
+    const inp = document.getElementById('n8n-url-input');
+    if (inp && d.value) inp.value = d.value;
+    updateN8NStatus(!!d.value);
+  } catch(e) { /* silently ignore */ }
+}
+
+function closeN8NModal() {
+  document.getElementById('n8n-overlay').style.display = 'none';
+}
+
+function updateN8NStatus(connected) {
+  const badge = document.getElementById('n8n-status-badge');
+  const btn   = document.getElementById('btn-n8n');
+  if (connected) {
+    if (badge) { badge.textContent = '✅ Conectado'; badge.style.background = '#25D36622'; badge.style.color = '#25D366'; }
+    if (btn) btn.classList.add('connected');
+  } else {
+    if (badge) { badge.textContent = 'Não configurado'; badge.style.background = '#2a3942'; badge.style.color = '#8696a0'; }
+    if (btn) btn.classList.remove('connected');
+  }
+}
+
+async function saveN8NUrl() {
+  const url = document.getElementById('n8n-url-input').value.trim();
+  if (!url) { alert('Informe a URL do webhook N8N'); return; }
+  try {
+    const r = await fetch(SERVER_URL + '/settings/n8n_webhook_url', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value: url })
+    });
+    const d = await r.json();
+    if (d.success) {
+      updateN8NStatus(true);
+      const result = document.getElementById('n8n-test-result');
+      if (result) { result.style.display='block'; result.style.color='#25D366'; result.textContent='✅ URL salva com sucesso!'; }
+    } else {
+      alert('Erro ao salvar: ' + (d.error||''));
+    }
+  } catch(e) { alert('Erro ao salvar URL'); }
+}
+
+async function testN8NConnection() {
+  const btn = document.getElementById('n8n-test-btn');
+  const result = document.getElementById('n8n-test-result');
+  if (btn) btn.textContent = '⏳ Testando...';
+  if (result) result.style.display = 'none';
+  try {
+    const r = await fetch(SERVER_URL + '/n8n/test', { method: 'POST' });
+    const d = await r.json();
+    if (result) result.style.display = 'block';
+    if (d.success) {
+      if (result) { result.style.color = '#25D366'; result.textContent = '✅ N8N recebeu o evento de teste! Verifique no N8N.'; }
+      updateN8NStatus(true);
+    } else {
+      if (result) { result.style.color = '#ef4444'; result.textContent = '❌ Erro: ' + (d.error||''); }
+    }
+  } catch(e) {
+    if (result) { result.style.display='block'; result.style.color='#ef4444'; result.textContent='❌ Erro de rede: ' + e.message; }
+  }
+  if (btn) btn.textContent = '🔌 Testar';
+}
+
+function copyN8NPayload() {
+  const el = document.getElementById('n8n-payload-preview');
+  if (el) { navigator.clipboard.writeText(el.textContent).then(()=>{ /* ok */ }); }
+}
+
+function copyN8NSendUrl() {
+  const el = document.getElementById('n8n-send-url');
+  if (el) navigator.clipboard.writeText(el.textContent);
+}
+
+// Fecha modal N8N clicando fora
+document.getElementById('n8n-overlay')?.addEventListener('click', (e) => {
+  if (e.target === document.getElementById('n8n-overlay')) closeN8NModal();
 });
 </script>
 </body>
