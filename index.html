@@ -1090,8 +1090,6 @@ async function selectContact(phone, name, accountId) {
     </div>
   `;
 
-  // Marca como lida ao abrir a conversa
-  markAsRead(phone);
   // Tags
   const _tagContact = allContacts.find(c => c.phone === phone);
   if (_tagContact) renderTagManager(_tagContact);
