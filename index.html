@@ -33,6 +33,13 @@
   .contact-info { flex: 1; min-width: 0; }
   .contact-name { font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .contact-preview { font-size: 13px; color: #8696a0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  /* BADGE NÃO LIDAS */
+  .unread-badge { background: #00a884; color: #fff; border-radius: 50%; min-width: 20px; height: 20px; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; padding: 0 5px; flex-shrink: 0; box-shadow: 0 1px 4px rgba(0,168,132,.4); }
+  .contact-item.has-unread .contact-name { font-weight: 700; color: #fff; }
+  /* botão marcar como lida no chat */
+  #btn-mark-read { background: none; border: none; color: #8696a0; cursor: pointer; padding: 6px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: background .2s, color .2s; title: "Marcar como lida"; }
+  #btn-mark-read:hover { background: #2a3942; color: #00a884; }
+  #btn-mark-read svg { width: 18px; height: 18px; }
   #empty-contacts { padding: 24px 16px; text-align: center; color: #8696a0; font-size: 13px; line-height: 1.6; }
   /* CHAT */
   #chat-area { flex: 1; display: flex; flex-direction: column; background: #0b141a; }
@@ -933,13 +940,17 @@ function renderContacts(contacts) {
   list.innerHTML = contacts.map(c => {
     const tags = c.tags || [];
     const tagsHtml = tags.length ? `<div class="contact-tags">${tags.map((t,i)=>`<span class="tag-chip tc${i%6}">${t}</span>`).join('')}</div>` : '';
-    return `<div class="contact-item ${c.phone===currentPhone?'active':''}" onclick="selectContact('${c.phone}','${(c.name||'').replace(/'/g,"\\'")}','${c.account_id||''}')">
+    const unread = c.unread_count || 0;
+    const badge = unread > 0 ? `<div class="unread-badge">${unread > 99 ? '99+' : unread}</div>` : '';
+    const hasUnread = unread > 0 ? ' has-unread' : '';
+    return `<div class="contact-item${c.phone===currentPhone?' active':''}${hasUnread}" onclick="selectContact('${c.phone}','${(c.name||'').replace(/'/g,"\\'")}','${c.account_id||''}')">
       <div class="contact-avatar">${(c.name||'?')[0].toUpperCase()}</div>
       <div class="contact-info">
         <div class="contact-name">${c.name||c.phone}</div>
         <div class="contact-preview">${c.phone}</div>
         ${tagsHtml}
       </div>
+      ${badge}
     </div>`;
   }).join('');
 }
@@ -966,6 +977,11 @@ async function selectContact(phone, name, accountId) {
         <div class="phone">${phone}</div>
       </div>
       <div id="tag-manager"></div>
+      <button id="btn-mark-read" title="Marcar como lida" onclick="markAsRead('${phone}')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </button>
       <button id="btn-notes" title="Anotações do lead" onclick="toggleNotes()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -1014,6 +1030,8 @@ async function selectContact(phone, name, accountId) {
     </div>
   `;
 
+  // Marca como lida ao abrir a conversa
+  markAsRead(phone);
   // Tags
   const _tagContact = allContacts.find(c => c.phone === phone);
   if (_tagContact) renderTagManager(_tagContact);
@@ -1217,6 +1235,18 @@ async function sendFile() {
   } catch(err) {
     alert('Erro ao enviar arquivo: ' + err.message);
   }
+}
+
+// ── NÃO LIDAS ──
+function markAsRead(phone) {
+  const contact = allContacts.find(c => c.phone === phone);
+  if (!contact || !contact.unread_count) return;
+  contact.unread_count = 0;
+  renderContacts(allContacts);
+  // Atualiza visual do botão brevemente
+  const btn = document.getElementById('btn-mark-read');
+  if (btn) { btn.style.color = '#00a884'; setTimeout(() => { if (btn) btn.style.color = ''; }, 1500); }
+  fetch(`${SERVER_URL}/contacts/${encodeURIComponent(phone)}/read`, { method: 'PUT' }).catch(() => {});
 }
 
 // ── TAGS ──
