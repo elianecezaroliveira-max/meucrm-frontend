@@ -55,7 +55,8 @@
   #chat-header .avatar { width: 40px; height: 40px; border-radius: 50%; background: #2a3942; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 600; color: #00a884; flex-shrink: 0; }
   #chat-header .info .name { font-size: 15px; font-weight: 600; }
   #chat-header .info .phone { font-size: 12px; color: #8696a0; }
-  #messages-area { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 4px; }
+  #messages-area { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 4px; transition: background 0.2s; }
+  #messages-area.drag-over { background: rgba(0,168,132,0.08); outline: 2px dashed #00a884; outline-offset: -6px; }
   .msg { max-width: 65%; padding: 8px 12px; border-radius: 8px; font-size: 14px; line-height: 1.4; position: relative; word-wrap: break-word; }
   .msg.inbound { background: #202c33; align-self: flex-start; border-top-left-radius: 0; }
   .msg.outbound { background: #005c4b; align-self: flex-end; border-top-right-radius: 0; }
@@ -1237,6 +1238,9 @@ async function selectContact(phone, name, accountId) {
       <button id="attach-btn" title="Enviar arquivo" onclick="openFilePicker()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
       </button>
+      <input type="file" id="file-input" style="display:none"
+        accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip"
+        onchange="if(this.files&&this.files[0])handleFileSelect(this.files[0]);this.value='';" />
       <button id="emoji-btn" onclick="toggleEmojiPicker(event)" title="Emojis">😊</button>
       <div id="emoji-picker-wrap"></div>
       <div id="input-wrap">
@@ -1368,45 +1372,57 @@ function msgDayKey(dateStr) {
 async function loadMessages(phone, scroll = true) {
   try {
     const res = await fetch(SERVER_URL + '/messages/' + phone);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     const msgs = await res.json();
     const area = document.getElementById('messages-area');
     if (!area) return;
+    if (!Array.isArray(msgs)) {
+      console.error('[loadMessages] resposta inesperada:', msgs);
+      return;
+    }
 
     let lastDay = null;
     const parts = [];
 
     for (const m of msgs) {
-      // Divisor de dia
-      const dayKey = msgDayKey(m.timestamp);
-      if (dayKey !== lastDay) {
-        lastDay = dayKey;
-        parts.push(`<div class="day-divider"><span>${formatDayLabel(m.timestamp)}</span></div>`);
+      try {
+        // Divisor de dia
+        const dayKey = msgDayKey(m.timestamp);
+        if (dayKey !== lastDay) {
+          lastDay = dayKey;
+          parts.push(`<div class="day-divider"><span>${formatDayLabel(m.timestamp)}</span></div>`);
+        }
+
+        let ticks = '';
+        if (m.direction === 'outbound') {
+          if (m.status === 'read')           ticks = '<span class="msg-ticks read">✓✓</span>';
+          else if (m.status === 'delivered') ticks = '<span class="msg-ticks delivered">✓✓</span>';
+          else if (m.status === 'failed')    ticks = '<span class="msg-ticks failed">!</span>';
+          else                               ticks = '<span class="msg-ticks sent">✓</span>';
+        }
+
+        // Horário UTC-3 — usa parseUTC() para garantir que o timestamp seja tratado como UTC
+        const timeStr = _brtTime(parseUTC(m.timestamp));
+
+        parts.push(`<div class="msg ${m.direction}" style="position:relative">
+          <div class="msg-actions">
+            <button class="msg-action-btn reply" title="Responder" onclick="startReply('${m.id}')">↩</button>
+            <button class="msg-action-btn del"   title="Apagar"    onclick="deleteMessage('${m.id}',this)">🗑</button>
+          </div>
+          ${renderMessageContent(m)}
+          <div class="time">${timeStr}${ticks}</div>
+        </div>`);
+      } catch(msgErr) {
+        console.error('[loadMessages] erro ao renderizar mensagem id=' + (m?.id || '?'), msgErr, m);
+        parts.push(`<div class="msg ${m?.direction||'inbound'}" style="opacity:.5;font-size:12px">[mensagem não pôde ser exibida]</div>`);
       }
-
-      let ticks = '';
-      if (m.direction === 'outbound') {
-        if (m.status === 'read')           ticks = '<span class="msg-ticks read">✓✓</span>';
-        else if (m.status === 'delivered') ticks = '<span class="msg-ticks delivered">✓✓</span>';
-        else if (m.status === 'failed')    ticks = '<span class="msg-ticks failed">!</span>';
-        else                               ticks = '<span class="msg-ticks sent">✓</span>';
-      }
-
-      // Horário UTC-3 — usa parseUTC() para garantir que o timestamp seja tratado como UTC
-      const timeStr = _brtTime(parseUTC(m.timestamp));
-
-      parts.push(`<div class="msg ${m.direction}" style="position:relative">
-        <div class="msg-actions">
-          <button class="msg-action-btn reply" title="Responder" onclick="startReply('${m.id}')">↩</button>
-          <button class="msg-action-btn del"   title="Apagar"    onclick="deleteMessage('${m.id}',this)">🗑</button>
-        </div>
-        ${renderMessageContent(m)}
-        <div class="time">${timeStr}${ticks}</div>
-      </div>`);
     }
 
     area.innerHTML = parts.join('');
     if (scroll) area.scrollTop = area.scrollHeight;
-  } catch(e) {}
+  } catch(e) {
+    console.error('[loadMessages] erro ao carregar mensagens:', e);
+  }
 }
 
 // ── Web Audio API — Voice Player ──
@@ -1598,19 +1614,46 @@ document.addEventListener('click', (e) => {
 
 // ── SELETOR DE ARQUIVO ──
 function openFilePicker() {
-  const inp = document.createElement('input');
-  inp.type = 'file';
-  inp.accept = 'image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip';
-  inp.style.cssText = 'position:fixed;top:-100px;left:-100px;opacity:0';
-  document.body.appendChild(inp);
-  inp.addEventListener('change', function() {
-    if (this.files && this.files[0]) handleFileSelect(this.files[0]);
-    document.body.removeChild(this);
-  });
-  inp.click();
-  // cleanup if user cancels (no change event)
-  setTimeout(() => { if (inp.parentNode) inp.parentNode.removeChild(inp); }, 60000);
+  const inp = document.getElementById('file-input');
+  if (inp) inp.click();
 }
+
+// Drag-and-drop na área de mensagens
+document.addEventListener('DOMContentLoaded', () => {
+  const area = document.getElementById('messages-area');
+  if (!area) return;
+
+  area.addEventListener('dragover', (e) => {
+    if (!currentPhone) return;
+    e.preventDefault();
+    area.classList.add('drag-over');
+  });
+  area.addEventListener('dragleave', (e) => {
+    if (!area.contains(e.relatedTarget)) area.classList.remove('drag-over');
+  });
+  area.addEventListener('drop', (e) => {
+    e.preventDefault();
+    area.classList.remove('drag-over');
+    if (!currentPhone) return;
+    const file = e.dataTransfer?.files?.[0];
+    if (file) handleFileSelect(file);
+  });
+});
+
+// Ctrl+V — colar imagem do clipboard
+document.addEventListener('paste', (e) => {
+  if (!currentPhone) return;
+  const items = e.clipboardData?.items;
+  if (!items) return;
+  for (const item of items) {
+    if (item.kind === 'file' && item.type.startsWith('image/')) {
+      e.preventDefault();
+      const file = item.getAsFile();
+      if (file) handleFileSelect(file);
+      break;
+    }
+  }
+});
 
 // ── ARQUIVO / ANEXO ──
 let selectedFile = null;
