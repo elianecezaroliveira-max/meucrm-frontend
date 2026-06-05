@@ -1276,8 +1276,11 @@ function generateQR() {
   document.getElementById('qr-display').style.display = 'none';
   document.getElementById('qr-success').style.display = 'none';
 
-  fetch(SERVER_URL + '/evolution/connect', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
-    .then(r => r.json())
+  // Backend pode demorar até 60s aguardando o QR da Evolution API
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 90000);
+  fetch(SERVER_URL + '/evolution/connect', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}', signal: ctrl.signal })
+    .then(r => { clearTimeout(timer); return r.json(); })
     .then(d => {
       if (!d.success) throw new Error(d.error || 'Erro ao gerar QR');
       _qrInstance = d.instance;
