@@ -1284,7 +1284,7 @@ function generateQR() {
       document.getElementById('qr-loading').style.display = 'none';
       document.getElementById('qr-display').style.display = 'block';
       if (d.qr) showQRImage(d.qr);
-      else refreshQR();
+      else retryGetQR(0);
       startQRPoll();
     })
     .catch(e => {
@@ -1317,10 +1317,26 @@ function updateQRTimer() {
 
 function refreshQR() {
   if (!_qrInstance) return;
-  fetch(SERVER_URL + '/evolution/qr/' + _qrInstance)
-    .then(r => r.json())
-    .then(d => { if (d.qr) showQRImage(d.qr); })
-    .catch(() => {});
+  retryGetQR(0);
+}
+
+function retryGetQR(attempts) {
+  if (!_qrInstance || attempts > 15) return;
+  const statusEl = document.getElementById('qr-status-txt');
+  if (statusEl && attempts > 0) statusEl.textContent = `Buscando QR Code... (${attempts}/15)`;
+  setTimeout(() => {
+    fetch(SERVER_URL + '/evolution/qr/' + _qrInstance)
+      .then(r => r.json())
+      .then(d => {
+        if (d.qr) {
+          showQRImage(d.qr);
+          if (statusEl) statusEl.textContent = 'Escaneie o QR Code com o WhatsApp...';
+        } else {
+          retryGetQR(attempts + 1);
+        }
+      })
+      .catch(() => retryGetQR(attempts + 1));
+  }, 2000);
 }
 
 function startQRPoll() {
