@@ -1321,9 +1321,9 @@ function refreshQR() {
 }
 
 function retryGetQR(attempts) {
-  if (!_qrInstance || attempts > 15) return;
+  if (!_qrInstance || attempts > 20) return;
   const statusEl = document.getElementById('qr-status-txt');
-  if (statusEl && attempts > 0) statusEl.textContent = `Buscando QR Code... (${attempts}/15)`;
+  if (statusEl) statusEl.textContent = attempts === 0 ? 'Gerando QR Code...' : `Aguardando QR Code... (${attempts}/20)`;
   setTimeout(() => {
     fetch(SERVER_URL + '/evolution/qr/' + _qrInstance)
       .then(r => r.json())
@@ -1331,12 +1331,19 @@ function retryGetQR(attempts) {
         if (d.qr) {
           showQRImage(d.qr);
           if (statusEl) statusEl.textContent = 'Escaneie o QR Code com o WhatsApp...';
+        } else if (d.code) {
+          // QR veio como texto — renderiza via API do Google
+          const encoded = encodeURIComponent(d.code);
+          showQRImage(`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encoded}`);
+          const img = document.getElementById('qr-img');
+          if (img) img.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encoded}`;
+          if (statusEl) statusEl.textContent = 'Escaneie o QR Code com o WhatsApp...';
         } else {
           retryGetQR(attempts + 1);
         }
       })
       .catch(() => retryGetQR(attempts + 1));
-  }, 2000);
+  }, 3000);
 }
 
 function startQRPoll() {
