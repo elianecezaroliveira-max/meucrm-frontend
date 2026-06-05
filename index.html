@@ -2,9 +2,38 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <title>MeuCRM</title>
+
+<!-- PWA: Manifest -->
+<link rel="manifest" href="/manifest.json" />
+
+<!-- PWA: Apple / iOS -->
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="MeuCRM" />
+<link rel="apple-touch-icon" href="/icons/icon-192.png" />
+<link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192.png" />
+
+<!-- PWA: Theme color (barra de status) -->
+<meta name="theme-color" content="#202c33" />
+<meta name="msapplication-TileColor" content="#202c33" />
+
+<!-- Favicon -->
+<link rel="icon" type="image/png" href="/icons/icon-192.png" />
+
 <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@1/index.js"></script>
+
+<!-- Registrar Service Worker -->
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then(reg => console.log('✅ Service Worker registrado:', reg.scope))
+        .catch(err => console.warn('SW erro:', err));
+    });
+  }
+</script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Segoe UI', sans-serif; background: #111b21; color: #e9edef; height: 100vh; display: flex; flex-direction: column; }
@@ -541,6 +570,85 @@
 
 #bot-run-banner { display:none;background:#1f2c34;padding:6px 14px;font-size:12px;color:#8696a0;border-top:1px solid #2a3942;flex-shrink:0; }
 #bot-run-banner.visible { display:flex;align-items:center;gap:8px; }
+
+/* ═══════════════════════════════════════
+   MOBILE / PWA  — breakpoint 768px
+   ═══════════════════════════════════════ */
+#btn-back-mobile {
+  display: none;
+  background: none; border: none; color: #e9edef; cursor: pointer;
+  padding: 4px 8px 4px 2px; flex-shrink: 0; align-items: center; justify-content: center;
+}
+#btn-back-mobile svg { width: 22px; height: 22px; }
+
+@media (max-width: 768px) {
+  /* Topbar compacto */
+  #topbar {
+    padding: 8px 10px; gap: 6px;
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+  }
+  #topbar::-webkit-scrollbar { display: none; }
+  #topbar h1 { font-size: 15px; flex-shrink: 0; }
+  #server-status { display: none; }
+  #topbar button { font-size: 12px; padding: 5px 9px; white-space: nowrap; flex-shrink: 0; }
+
+  /* Layout: sidebar e chat empilhados, transição suave */
+  #layout { position: relative; overflow: hidden; }
+  #sidebar { width: 100% !important; transition: transform 0.25s ease; }
+  #chat-area {
+    position: absolute; inset: 0; width: 100% !important;
+    transform: translateX(100%);
+    transition: transform 0.25s ease;
+    z-index: 5;
+  }
+
+  /* Chat aberto: desliza sidebar para esquerda, chat para centro */
+  #layout.mobile-chat-open #sidebar { transform: translateX(-100%); }
+  #layout.mobile-chat-open #chat-area { transform: translateX(0); }
+
+  /* Botão voltar aparece no mobile */
+  #btn-back-mobile { display: flex !important; }
+
+  /* Mensagens mais largas no mobile */
+  .msg { max-width: 88%; }
+
+  /* Emoji picker menor no mobile */
+  emoji-picker { width: 300px !important; height: 340px !important; }
+  #emoji-picker-wrap { left: 6px; }
+
+  /* Modais full screen no mobile */
+  #modal { width: 100% !important; max-width: 100% !important; border-radius: 0 !important; min-height: 100vh; margin: 0; }
+  #modal-overlay.open { align-items: flex-start; }
+  #templates-modal { width: 100% !important; max-width: 100% !important; border-radius: 0 !important; max-height: 100vh !important; }
+  #setup-box { width: 100% !important; max-width: 100% !important; border-radius: 0 !important; min-height: 100vh; padding: 32px 20px; }
+
+  /* Pipeline full screen */
+  #pipeline-page { border-radius: 0 !important; }
+
+  /* Bots full screen */
+  #bots-page, #bot-editor-page { border-radius: 0 !important; }
+
+  /* Input area: botões maiores (touch friendly) */
+  #send-btn { width: 48px; height: 48px; }
+  #emoji-btn, #attach-btn, .btn-template-icon { padding: 8px; }
+
+  /* Chat header: nome e telefone menores */
+  #chat-header .info .name { font-size: 14px; }
+  #chat-header .info .phone { font-size: 11px; }
+
+  /* Tag manager oculto no mobile para economizar espaço */
+  #tag-manager { display: none; }
+
+  /* Contato item: touch target maior */
+  .contact-item { padding: 14px 16px; }
+}
+
+/* Viewport height fix para iOS Safari (teclado virtual) */
+@supports (-webkit-touch-callout: none) {
+  body { height: -webkit-fill-available; }
+  #layout { height: -webkit-fill-available; }
+}
 </style>
 </head>
 <body>
@@ -1452,8 +1560,16 @@ async function selectContact(phone, name, accountId) {
     if (opt.value) accountOptions += `<option value="${opt.value}" ${opt.value === currentAccountId ? 'selected' : ''}>${opt.text}</option>`;
   });
 
+  // Mobile: mostra chat e esconde sidebar
+  document.getElementById('layout').classList.add('mobile-chat-open');
+
   chatArea.innerHTML = `
     <div id="chat-header">
+      <button id="btn-back-mobile" onclick="goBackToSidebar()" title="Voltar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+      </button>
       <div class="avatar">${(name || phone)[0].toUpperCase()}</div>
       <div class="info">
         <div class="name">${name || phone}</div>
@@ -1539,6 +1655,11 @@ async function selectContact(phone, name, accountId) {
   await loadMessages(phone);
   // Verifica bot ativo para este contato
   checkActiveBotRun(phone);
+}
+
+// Volta para sidebar no mobile
+function goBackToSidebar() {
+  document.getElementById('layout').classList.remove('mobile-chat-open');
 }
 
 // Cache de conteúdo de mensagens para o reply
@@ -3857,13 +3978,17 @@ async function openN8NModal() {
   const sendUrl = document.getElementById('n8n-send-url');
   if (sendUrl) sendUrl.textContent = SERVER_URL + '/send';
 
-  // Carrega URL salva
+  // Carrega URL salva (badge só fica verde após teste bem-sucedido)
   try {
     const r = await fetch(SERVER_URL + '/settings/n8n_webhook_url');
     const d = await r.json();
     const inp = document.getElementById('n8n-url-input');
     if (inp && d.value) inp.value = d.value;
-    updateN8NStatus(!!d.value);
+    // Badge: "URL salva" se tiver URL, mas só "Conectado" após teste
+    const badge = document.getElementById('n8n-status-badge');
+    if (d.value && badge) {
+      badge.textContent = '🔗 URL configurada'; badge.style.background = '#2a394288'; badge.style.color = '#e9edef';
+    }
   } catch(e) { /* silently ignore */ }
 }
 
@@ -3894,9 +4019,11 @@ async function saveN8NUrl() {
     });
     const d = await r.json();
     if (d.success) {
-      updateN8NStatus(true);
+      // Só mostra "URL salva" — badge fica verde apenas após teste
+      const badge = document.getElementById('n8n-status-badge');
+      if (badge) { badge.textContent = '🔗 URL configurada'; badge.style.background = '#2a394288'; badge.style.color = '#e9edef'; }
       const result = document.getElementById('n8n-test-result');
-      if (result) { result.style.display='block'; result.style.color='#25D366'; result.textContent='✅ URL salva com sucesso!'; }
+      if (result) { result.style.display='block'; result.style.color='#25D366'; result.textContent='✅ URL salva! Clique em "Testar" para verificar a conexão.'; }
     } else {
       alert('Erro ao salvar: ' + (d.error||''));
     }
