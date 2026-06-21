@@ -2051,15 +2051,24 @@ async function loadMessages(phone, scroll = true) {
         const safeId  = escHtml(String(m.id || ''));
         const safeDir = m.direction === 'outbound' ? 'outbound' : 'inbound';
         const dataCont = escHtml(m.content == null ? '' : String(m.content));
+        const safeWamid = escHtml(String(m.wamid || ''));
 
-        parts.push(`<div class="msg ${safeDir}" style="position:relative"
-          data-msg-id="${safeId}" data-msg-content="${dataCont}" data-msg-dir="${safeDir}">
+        // Badge de reação (igual ao WhatsApp, sobre a borda inferior da bolha)
+        const reactSide = safeDir === 'outbound' ? 'left:8px' : 'right:8px';
+        const reactBadge = m.reaction
+          ? `<span class="msg-reaction" style="position:absolute;bottom:-11px;${reactSide};background:#2a3942;border:1px solid #111b21;border-radius:11px;padding:0 5px;font-size:13px;line-height:20px;box-shadow:0 1px 3px rgba(0,0,0,.5);z-index:2">${escHtml(m.reaction)}</span>`
+          : '';
+
+        parts.push(`<div class="msg ${safeDir}" style="position:relative${m.reaction?';margin-bottom:14px':''}"
+          data-msg-id="${safeId}" data-msg-content="${dataCont}" data-msg-dir="${safeDir}" data-msg-wamid="${safeWamid}">
           <div class="msg-actions">
+            <button class="msg-action-btn react" title="Reagir" onclick="openReactPicker('${safeId}',this)">😊</button>
             <button class="msg-action-btn reply" title="Responder" onclick="startReply('${safeId}')">↩</button>
             <button class="msg-action-btn del"   title="Apagar"    onclick="deleteMessage('${safeId}',this)">🗑</button>
           </div>
           ${msgContent}
           <div class="time">${timeStr}${ticks}</div>
+          ${reactBadge}
         </div>`);
       } catch(msgErr) {
         console.error('[loadMessages] erro ao renderizar mensagem id=' + (m?.id || '?'), msgErr, m);
@@ -2141,6 +2150,39 @@ async function voiceToggle(id, url) {
   };
 }
 function _fmtVoice(s) { return Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0'); }
+
+// ── Reações (emoji) ──
+function openReactPicker(msgId, anchor){
+  closeReactPicker();
+  const pop=document.createElement('div');
+  pop.id='react-picker';
+  pop.style.cssText='position:fixed;z-index:9999;background:#233138;border:1px solid #2a3942;border-radius:22px;padding:5px 9px;display:flex;gap:6px;align-items:center;box-shadow:0 3px 12px rgba(0,0,0,.6)';
+  const emojis=['👍','❤️','😂','😮','😢','🙏','🔥','👏'];
+  pop.innerHTML = emojis.map(e=>`<span style="cursor:pointer;font-size:22px" onclick="reactMessage('${msgId}','${e}')">${e}</span>`).join('')
+    + `<span style="cursor:pointer;font-size:18px;color:#8696a0;padding-left:2px" title="Remover reação" onclick="reactMessage('${msgId}','')">✖</span>`;
+  document.body.appendChild(pop);
+  const r=anchor.getBoundingClientRect();
+  let left=r.left-70; if(left<8) left=8;
+  const maxLeft=window.innerWidth-pop.offsetWidth-8; if(left>maxLeft) left=maxLeft;
+  let top=r.top-50; if(top<8) top=r.bottom+8;
+  pop.style.left=left+'px'; pop.style.top=top+'px';
+  setTimeout(()=>document.addEventListener('click',_reactOutside),0);
+}
+function _reactOutside(e){ if(!e.target.closest('#react-picker') && !e.target.closest('.msg-action-btn.react')) closeReactPicker(); }
+function closeReactPicker(){ const p=document.getElementById('react-picker'); if(p) p.remove(); document.removeEventListener('click',_reactOutside); }
+async function reactMessage(msgId, emoji){
+  closeReactPicker();
+  const el=document.querySelector(`[data-msg-id="${msgId}"]`);
+  if(!el) return;
+  const wamid=el.dataset.msgWamid;
+  if(!wamid){ alert('Esta mensagem não tem ID do WhatsApp, então não dá para reagir a ela.'); return; }
+  try{
+    const res=await fetch(SERVER_URL+'/react',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({to:currentPhone, wamid, emoji, account_id:currentAccountId})});
+    if(!res.ok){ const d=await res.json().catch(()=>({})); alert('Erro ao reagir: '+(d.error||'Tente novamente')); return; }
+    await loadMessages(currentPhone, false);
+  }catch(e){ alert('Erro de rede ao reagir'); }
+}
 
 // ── Reply (responder mensagem específica) ──
 let replyingTo = null;
@@ -3941,6 +3983,7 @@ async function openBotEditor(id, isNew=false) {
 
   showConfigPlaceholder();
   renderBotList();
+  setTimeout(botZoomFit, 30);
 }
 
 function closeBotEditor() {
@@ -4046,7 +4089,7 @@ function onCanvasWheel(e) {
 }
 
 // ── Render do fluxo como CANVAS horizontal estilo n8n (auto-layout) ──
-let botZoom = 1, botPanX = 40, botPanY = 40, _botPanInit = false;
+let botZoom = 1, botPanX = 40, botPanY = 40, _botPanInit = false, _botBounds = null;
 const BOT_NW = 190, BOT_NH = 66, BOT_HG = 90, BOT_VG = 26;
 
 function botOutSlots(node){
@@ -4112,6 +4155,7 @@ function renderBotList(){
   adds.forEach(a=>{maxX=Math.max(maxX,a.x+40);maxY=Math.max(maxY,a.y+BOT_NH);});
   loops.forEach(l=>{maxX=Math.max(maxX,l.x+90);maxY=Math.max(maxY,l.y+BOT_NH);});
   svg.setAttribute('width', maxX+60); svg.setAttribute('height', maxY+60);
+  _botBounds = { w:maxX, h:maxY };
 
   function curve(sx,sy,tx,ty,color,dash){
     const dx=Math.max(40,(tx-sx)/2);
@@ -4195,8 +4239,18 @@ function applyBotTransform(){
   const st=document.getElementById('bot-canvas-stage');
   if(st) st.style.transform=`translate(${botPanX}px,${botPanY}px) scale(${botZoom})`;
 }
-function botZoomBy(d){ botZoom=Math.min(1.6,Math.max(0.3,botZoom+d)); applyBotTransform(); }
-function botZoomFit(){ botZoom=1; botPanX=40; botPanY=40; applyBotTransform(); }
+function botZoomBy(d){ botZoom=Math.min(1.6,Math.max(0.2,botZoom+d)); applyBotTransform(); }
+function botZoomFit(){
+  const wrap=document.getElementById('bot-canvas-wrap');
+  if(!wrap){ botZoom=1; botPanX=40; botPanY=40; applyBotTransform(); return; }
+  const W=wrap.clientWidth, H=wrap.clientHeight, pad=50;
+  const w=(_botBounds?_botBounds.w:300), h=(_botBounds?_botBounds.h:200);
+  const z=Math.min((W-pad*2)/w, (H-pad*2)/h, 1.4);
+  botZoom=Math.max(0.2, isFinite(z)?z:1);
+  botPanX=Math.max(pad,(W-w*botZoom)/2);
+  botPanY=Math.max(pad,(H-h*botZoom)/2);
+  applyBotTransform();
+}
 function setupBotCanvasPanZoom(){
   const wrap=document.getElementById('bot-canvas-wrap');
   if(!wrap || _botPanInit) return; _botPanInit=true;
