@@ -1218,9 +1218,13 @@
     <div id="bot-palette">
       <div style="font-size:10px;color:#8696a0;padding:10px 12px 4px;text-transform:uppercase;letter-spacing:.5px">Adicionar nó</div>
       <div class="palette-node" data-type="message" onclick="addNodeFromPalette('message')">📨 Enviar mensagem</div>
-      <div class="palette-node" data-type="wait_reply" onclick="addNodeFromPalette('wait_reply')">💬 Aguardar resposta</div>
-      <div class="palette-node" data-type="pause" onclick="addNodeFromPalette('pause')">⏸ Pausar</div>
-      <div class="palette-node" data-type="move_stage" onclick="addNodeFromPalette('move_stage')">📋 Mover etapa</div>
+      <div class="palette-node" data-type="wait_reply" onclick="addNodeFromPalette('wait_reply')">💬 Aguardar resposta / botões</div>
+      <div class="palette-node" data-type="round_robin" onclick="addNodeFromPalette('round_robin')">🔀 Round Robin</div>
+      <div class="palette-node" data-type="tags" onclick="addNodeFromPalette('tags')">🏷 Gerenciar tags</div>
+      <div class="palette-node" data-type="task" onclick="addNodeFromPalette('task')">✅ Criar tarefa</div>
+      <div class="palette-node" data-type="mark_read" onclick="addNodeFromPalette('mark_read')">👁 Marcar como lida</div>
+      <div class="palette-node" data-type="move_stage" onclick="addNodeFromPalette('move_stage')">📋 Mudar status</div>
+      <div class="palette-node" data-type="pause" onclick="addNodeFromPalette('pause')">⏱ Cronômetro</div>
       <div class="palette-node" data-type="end" onclick="addNodeFromPalette('end')">🔴 Fim</div>
       <div style="margin-top:12px;font-size:11px;color:#8696a0;padding:0 10px;line-height:1.5">
         <b style="color:#e9edef">Conectar nós:</b><br>
@@ -3822,9 +3826,9 @@ let _nodeDragState = null;
 let _botStages = [];
 let _activeBotRun = null;
 const NODE_W = 220;
-const NODE_COLORS = { start:'#25D366', message:'#1d9bf0', wait_reply:'#FF9800', pause:'#6B7280', move_stage:'#8B5CF6', end:'#EF4444' };
-const NODE_ICONS  = { start:'▶', message:'📨', wait_reply:'💬', pause:'⏸', move_stage:'📋', end:'⏹' };
-const NODE_LABELS = { start:'Início', message:'Enviar mensagem', wait_reply:'Aguardar resposta', pause:'Pausar', move_stage:'Mover etapa', end:'Fim' };
+const NODE_COLORS = { start:'#25D366', message:'#1d9bf0', wait_reply:'#FF9800', pause:'#6B7280', move_stage:'#8B5CF6', end:'#EF4444', round_robin:'#0ea5e9', tags:'#14b8a6', task:'#f59e0b', mark_read:'#22c55e' };
+const NODE_ICONS  = { start:'▶', message:'📨', wait_reply:'💬', pause:'⏱', move_stage:'📋', end:'⏹', round_robin:'🔀', tags:'🏷', task:'✅', mark_read:'👁' };
+const NODE_LABELS = { start:'Início', message:'Enviar mensagem', wait_reply:'Aguardar resposta', pause:'Cronômetro', move_stage:'Mudar status', end:'Fim', round_robin:'Round Robin', tags:'Gerenciar tags', task:'Criar tarefa', mark_read:'Marcar como lida' };
 
 function _botGenId() { return 'n' + Date.now().toString(36) + Math.random().toString(36).substring(2,6); }
 
@@ -4144,7 +4148,10 @@ function createNodeEl(node) {
 
 function getNodePreview(node) {
   const cfg = node.config || {};
-  if (node.type==='message') return cfg.text ? (cfg.text.length>60?cfg.text.substring(0,60)+'…':cfg.text) : '(sem mensagem)';
+  if (node.type==='message') {
+    if (cfg.mode==='template') return cfg.template_name ? ('📋 Modelo: '+cfg.template_name) : '(escolha o modelo)';
+    return cfg.text ? (cfg.text.length>60?cfg.text.substring(0,60)+'…':cfg.text) : '(sem mensagem)';
+  }
   if (node.type==='wait_reply') {
     const opts = cfg.options||[];
     return opts.map(o=>o.label).join(' / ') || '(sem opções)';
@@ -4152,8 +4159,16 @@ function getNodePreview(node) {
   if (node.type==='pause') return `${cfg.days||0}d ${cfg.hours||0}h ${cfg.minutes||0}m`;
   if (node.type==='move_stage') {
     const s = _botStages.find(s=>s.id===cfg.stage_id);
-    return s ? s.name : '(selecione etapa)';
+    return s ? s.name : '(selecione o status)';
   }
+  if (node.type==='round_robin') { const n=(cfg.account_ids||[]).length; return n? `Rodízio entre ${n} conta(s)` : '(selecione as contas)'; }
+  if (node.type==='tags') {
+    const a=(cfg.add||[]), r=(cfg.remove||[]);
+    const parts=[]; if(a.length) parts.push('+'+a.join(', ')); if(r.length) parts.push('−'+r.join(', '));
+    return parts.join('  ') || '(configure as tags)';
+  }
+  if (node.type==='task') return cfg.title ? (cfg.title.length>50?cfg.title.substring(0,50)+'…':cfg.title) : '(descreva a tarefa)';
+  if (node.type==='mark_read') return 'Zera as não lidas';
   return '';
 }
 
@@ -4266,6 +4281,10 @@ function addNodeFromPalette(type) {
   const defaultConfig = {};
   if (type==='wait_reply') defaultConfig.options = [{label:'Sim'},{label:'Não'}];
   if (type==='pause') defaultConfig.hours=1;
+  if (type==='message') defaultConfig.mode='custom';
+  if (type==='tags') { defaultConfig.add=[]; defaultConfig.remove=[]; }
+  if (type==='round_robin') defaultConfig.account_ids=[];
+  if (type==='task') defaultConfig.due_hours=24;
 
   const node = { id:_botGenId(), type, label:'', config:defaultConfig, pos_x:Math.round(cx), pos_y:Math.round(cy) };
   botNodes.push(node);
@@ -4308,12 +4327,35 @@ function renderConfigPanel(node) {
   }
 
   if (node.type==='message') {
+    const mode = node.config.mode || 'custom';
     form.innerHTML = `
-      <label class="bot-cfg-label">Mensagem <span style="color:#8696a0">(use {nome}, {telefone})</span></label>
-      <textarea class="bot-cfg-textarea" id="cfg-msg-text" placeholder="Olá, {nome}! Como posso ajudar?">${escHtml(node.config.text||'')}</textarea>`;
-    document.getElementById('cfg-msg-text').addEventListener('input', function() {
-      updateNodeConfig(node.id, {text: this.value});
+      <label class="bot-cfg-label">Tipo de mensagem</label>
+      <select class="bot-cfg-select" id="cfg-msg-mode">
+        <option value="custom" ${mode==='custom'?'selected':''}>Personalizada / rápida (texto)</option>
+        <option value="template" ${mode==='template'?'selected':''}>Modelo aprovado</option>
+      </select>
+      <div id="cfg-msg-custom" style="display:${mode==='template'?'none':'block'}">
+        <label class="bot-cfg-label" style="margin-top:12px">Mensagem <span style="color:#8696a0">(use {nome}, {telefone})</span></label>
+        <textarea class="bot-cfg-textarea" id="cfg-msg-text" placeholder="Olá, {nome}! Como posso ajudar?">${escHtml(node.config.text||'')}</textarea>
+      </div>
+      <div id="cfg-msg-template" style="display:${mode==='template'?'block':'none'}">
+        <label class="bot-cfg-label" style="margin-top:12px">Nome do modelo aprovado</label>
+        <input class="bot-cfg-input" id="cfg-tmpl-name" placeholder="ex: anac3" value="${escHtml(node.config.template_name||'')}" />
+        <label class="bot-cfg-label" style="margin-top:10px">Idioma</label>
+        <input class="bot-cfg-input" id="cfg-tmpl-lang" placeholder="pt_BR" value="${escHtml(node.config.language||'pt_BR')}" />
+        <label class="bot-cfg-label" style="margin-top:10px">Valores das variáveis <span style="color:#8696a0">(um por linha: {{1}}, {{2}}… — pode usar {nome})</span></label>
+        <textarea class="bot-cfg-textarea" id="cfg-tmpl-vars" placeholder="{nome}">${escHtml((node.config.vars||[]).join('\n'))}</textarea>
+        <div style="font-size:11px;color:#8696a0;margin-top:6px">Use modelo aprovado para iniciar conversa com quem ainda não te respondeu.</div>
+      </div>`;
+    document.getElementById('cfg-msg-mode').addEventListener('change', function(){
+      updateNodeConfig(node.id, {mode:this.value});
+      document.getElementById('cfg-msg-custom').style.display = this.value==='template'?'none':'block';
+      document.getElementById('cfg-msg-template').style.display = this.value==='template'?'block':'none';
     });
+    document.getElementById('cfg-msg-text').addEventListener('input', function(){ updateNodeConfig(node.id,{text:this.value}); });
+    document.getElementById('cfg-tmpl-name').addEventListener('input', function(){ updateNodeConfig(node.id,{template_name:this.value.trim()}); });
+    document.getElementById('cfg-tmpl-lang').addEventListener('input', function(){ updateNodeConfig(node.id,{language:this.value.trim()}); });
+    document.getElementById('cfg-tmpl-vars').addEventListener('input', function(){ updateNodeConfig(node.id,{vars:this.value.split('\n').map(s=>s.trim()).filter(Boolean)}); });
     return;
   }
 
@@ -4351,13 +4393,62 @@ function renderConfigPanel(node) {
   if (node.type==='move_stage') {
     const opts = _botStages.map(s=>`<option value="${s.id}" ${node.config.stage_id===s.id?'selected':''}>${escHtml(s.name)}</option>`).join('');
     form.innerHTML = `
-      <label class="bot-cfg-label">Mover lead para etapa</label>
+      <label class="bot-cfg-label">Mudar o lead para o status</label>
       <select class="bot-cfg-select" onchange="updateNodeConfig('${node.id}',{stage_id:this.value})">
         <option value="">-- Selecione --</option>
         ${opts}
       </select>`;
     return;
   }
+
+  if (node.type==='round_robin') {
+    const sel = document.getElementById('account-select');
+    const accs = sel ? Array.from(sel.options).filter(o=>o.value) : [];
+    const chosen = node.config.account_ids||[];
+    form.innerHTML = `
+      <label class="bot-cfg-label">Distribuir os leads entre estas contas (rodízio)</label>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px">
+        ${accs.length ? accs.map(o=>`<label style="display:flex;gap:8px;align-items:center;font-size:13px;color:#e9edef;cursor:pointer">
+          <input type="checkbox" value="${o.value}" ${chosen.includes(o.value)?'checked':''} onchange="toggleRR('${node.id}','${o.value}',this.checked)" /> ${escHtml(o.text)}
+        </label>`).join('') : '<div style="font-size:12px;color:#8696a0">Nenhuma conta cadastrada.</div>'}
+      </div>
+      <div style="font-size:11px;color:#8696a0;margin-top:8px">A cada lead, o bot escolhe a próxima conta da lista, em ciclo, e passa a enviar por ela.</div>`;
+    return;
+  }
+
+  if (node.type==='tags') {
+    const parse = v => v.split(',').map(s=>s.trim()).filter(Boolean);
+    form.innerHTML = `
+      <label class="bot-cfg-label">Adicionar tags <span style="color:#8696a0">(separadas por vírgula)</span></label>
+      <input class="bot-cfg-input" id="cfg-tags-add" placeholder="quente, retornar" value="${escHtml((node.config.add||[]).join(', '))}" />
+      <label class="bot-cfg-label" style="margin-top:12px">Remover tags <span style="color:#8696a0">(separadas por vírgula)</span></label>
+      <input class="bot-cfg-input" id="cfg-tags-rem" placeholder="frio" value="${escHtml((node.config.remove||[]).join(', '))}" />`;
+    document.getElementById('cfg-tags-add').addEventListener('input', function(){ updateNodeConfig(node.id,{add:parse(this.value)}); });
+    document.getElementById('cfg-tags-rem').addEventListener('input', function(){ updateNodeConfig(node.id,{remove:parse(this.value)}); });
+    return;
+  }
+
+  if (node.type==='task') {
+    form.innerHTML = `
+      <label class="bot-cfg-label">Tarefa <span style="color:#8696a0">(pode usar {nome})</span></label>
+      <input class="bot-cfg-input" id="cfg-task-title" placeholder="Ligar para {nome}" value="${escHtml(node.config.title||'')}" />
+      <label class="bot-cfg-label" style="margin-top:12px">Vencimento em (horas a partir de agora)</label>
+      <input class="bot-cfg-input" type="number" min="0" id="cfg-task-due" value="${node.config.due_hours||0}" placeholder="0 = sem prazo" onchange="updateNodeConfig('${node.id}',{due_hours:parseFloat(this.value)||0})" />`;
+    document.getElementById('cfg-task-title').addEventListener('input', function(){ updateNodeConfig(node.id,{title:this.value}); });
+    return;
+  }
+
+  if (node.type==='mark_read') {
+    form.innerHTML = `<div style="color:#8696a0;font-size:13px">Marca a conversa do lead como lida (zera o contador de não lidas). Não tem configuração.</div>`;
+    return;
+  }
+}
+
+function toggleRR(nodeId, accId, checked) {
+  const node = botNodes.find(n=>n.id===nodeId); if(!node) return;
+  let arr = (node.config.account_ids||[]).slice();
+  if (checked) { if(!arr.includes(accId)) arr.push(accId); } else { arr = arr.filter(a=>a!==accId); }
+  updateNodeConfig(nodeId, {account_ids:arr});
 }
 
 function updateNodeConfig(nodeId, patch) {
