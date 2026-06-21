@@ -3901,9 +3901,12 @@ async function openBotEditor(id, isNew=false) {
     _botStages = await sr.json();
   } catch(e) { _botStages = []; }
 
-  // Load bot info
-  const br = await fetch(SERVER_URL+'/bots/'+id);
-  const bot = await br.json();
+  // Load bot info (tolerante a falha — não pode impedir a lista de renderizar)
+  let bot = {};
+  try {
+    const br = await fetch(SERVER_URL+'/bots/'+id);
+    if (br.ok) bot = await br.json();
+  } catch(e) { bot = {}; }
   document.getElementById('bot-name-input').value = bot.name || '';
   document.getElementById('bot-trigger-select').value = bot.trigger_type || 'manual';
   document.getElementById('bot-active-check').checked = bot.active !== false;
@@ -3913,9 +3916,12 @@ async function openBotEditor(id, isNew=false) {
   if (bot.trigger_stage_id) stageSelect.value = bot.trigger_stage_id;
   stageSelect.style.display = bot.trigger_type==='stage_enter' ? '' : 'none';
 
-  // Load flow
-  const fr = await fetch(SERVER_URL+'/bots/'+id+'/flow');
-  const flow = await fr.json();
+  // Load flow (tolerante a falha)
+  let flow = {};
+  try {
+    const fr = await fetch(SERVER_URL+'/bots/'+id+'/flow');
+    if (fr.ok) flow = await fr.json();
+  } catch(e) { flow = {}; }
   botNodes = flow.nodes || [];
   botEdges = flow.edges || [];
 
