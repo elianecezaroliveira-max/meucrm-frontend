@@ -1215,8 +1215,16 @@
     <button class="btn-primary" onclick="saveBotFlow()" style="margin-left:auto">💾 Salvar</button>
   </div>
   <div id="bot-editor-body">
-    <div id="bot-list-wrap" style="flex:1;overflow:auto;padding:24px 16px;background:#0b1418">
-      <div id="bot-list-area" style="max-width:560px;margin:0 auto"></div>
+    <div id="bot-canvas-wrap" style="flex:1;position:relative;overflow:hidden;background:#0b1418;cursor:grab">
+      <div id="bot-canvas-stage" style="position:absolute;top:0;left:0;transform-origin:0 0;transform:translate(40px,40px) scale(1)">
+        <svg id="bot-edges-svg" style="position:absolute;top:0;left:0;overflow:visible;pointer-events:none"></svg>
+        <div id="bot-nodes-layer" style="position:absolute;top:0;left:0"></div>
+      </div>
+      <div style="position:absolute;bottom:16px;right:16px;display:flex;gap:6px;z-index:5">
+        <button onclick="botZoomBy(0.1)" style="width:34px;height:34px;border-radius:8px;background:#1f2c34;border:1px solid #2a3942;color:#e9edef;cursor:pointer;font-size:18px">+</button>
+        <button onclick="botZoomBy(-0.1)" style="width:34px;height:34px;border-radius:8px;background:#1f2c34;border:1px solid #2a3942;color:#e9edef;cursor:pointer;font-size:18px">−</button>
+        <button onclick="botZoomFit()" title="Ajustar" style="width:34px;height:34px;border-radius:8px;background:#1f2c34;border:1px solid #2a3942;color:#e9edef;cursor:pointer;font-size:15px">⤢</button>
+      </div>
     </div>
     <div id="bot-config-panel">
       <div id="bot-config-placeholder">👈 Clique num passo para editar</div>
@@ -3892,6 +3900,7 @@ async function openBotEditor(id, isNew=false) {
   botEditorId = id;
   botNodes = []; botEdges = []; selectedNodeId = null; connectingFrom = null;
   canvasPan = {x:60, y:60};
+  botZoom = 1; botPanX = 40; botPanY = 40;
   document.getElementById('bots-page').style.display = 'none';
   document.getElementById('bot-editor-page').style.display = 'flex';
 
@@ -4036,89 +4045,177 @@ function onCanvasWheel(e) {
   applyCanvasPan();
 }
 
-// ── Render do fluxo como LISTA vertical de passos ──
-function renderBotList() {
-  const area = document.getElementById('bot-list-area');
-  if (!area) return;
-  area.innerHTML = '';
-  const start = botNodes.find(n=>n.type==='start');
-  if (!start) return;
-  area.appendChild(renderStepChain(start.id, new Set()));
+// ── Render do fluxo como CANVAS horizontal estilo n8n (auto-layout) ──
+let botZoom = 1, botPanX = 40, botPanY = 40, _botPanInit = false;
+const BOT_NW = 190, BOT_NH = 66, BOT_HG = 90, BOT_VG = 26;
+
+function botOutSlots(node){
+  if (node.type==='end') return [];
+  if (node.type==='wait_reply' || node.type==='round_robin')
+    return getOutputPorts(node).map(p=>({label:p.label, display:p.display||p.label||''}));
+  return [{label:'', display:''}];
+}
+function botChildEdge(nodeId, label){
+  return botEdges.find(e=> e.from_node_id===nodeId && (
+    label==='' ? (e.label===''||e.label==null||e.label==='default') : e.label===label
+  ));
 }
 
-function arrowDown() {
-  const a = document.createElement('div');
-  a.style.cssText = 'text-align:center;color:#3b4a54;font-size:14px;line-height:1;margin:2px 0';
-  a.textContent = '↓';
-  return a;
-}
-
-function renderStepChain(nodeId, visited) {
-  const frag = document.createDocumentFragment();
-  const node = botNodes.find(n=>n.id===nodeId);
-  if (!node) return frag;
-  if (visited.has(nodeId)) {
-    const loop = document.createElement('div');
-    loop.style.cssText = 'font-size:12px;color:#f59e0b;margin:6px 0;text-align:center';
-    loop.textContent = '↩ volta para o passo: ' + (NODE_LABELS[node.type]||node.type);
-    frag.appendChild(loop);
-    return frag;
-  }
-  visited.add(nodeId);
-  frag.appendChild(renderStepCard(node));
-
-  if (node.type === 'end') return frag;
-
-  if (node.type==='wait_reply' || node.type==='round_robin') {
-    frag.appendChild(arrowDown());
-    const ports = getOutputPorts(node);
-    ports.forEach(p => {
-      const bl = document.createElement('div');
-      bl.style.cssText = 'margin:6px 0 0 16px;border-left:2px solid #2a3942;padding-left:14px';
-      const lbl = document.createElement('div');
-      lbl.style.cssText = 'font-size:12px;color:#00a884;font-weight:600;margin:4px 0';
-      lbl.textContent = '↳ ' + (p.display || p.label || '(vazio)');
-      bl.appendChild(lbl);
-      const edge = botEdges.find(e=>e.from_node_id===node.id && e.label===p.label);
-      if (edge) bl.appendChild(renderStepChain(edge.to_node_id, new Set(visited)));
-      else bl.appendChild(renderAddButton(node.id, p.label));
-      frag.appendChild(bl);
+function computeBotLayout(){
+  const pos={}, adds=[], loops=[]; let cursorY=0;
+  function place(id, depth, visited){
+    const node=botNodes.find(n=>n.id===id);
+    if(!node) return null;
+    const x=depth*(BOT_NW+BOT_HG);
+    const slots=botOutSlots(node);
+    const v2=new Set(visited); v2.add(id);
+    const centers=[];
+    slots.forEach(slot=>{
+      const edge=botChildEdge(id, slot.label);
+      if(edge && v2.has(edge.to_node_id)){
+        const y=cursorY; cursorY+=BOT_NH+BOT_VG;
+        loops.push({x:x+BOT_NW+BOT_HG, y, fromId:id, label:slot.label, display:slot.display});
+        centers.push(y+BOT_NH/2);
+      } else if(edge){
+        const c=place(edge.to_node_id, depth+1, v2);
+        if(c!=null) centers.push(c);
+      } else {
+        const y=cursorY; cursorY+=BOT_NH+BOT_VG;
+        adds.push({x:x+BOT_NW+BOT_HG, y, fromId:id, label:slot.label, display:slot.display});
+        centers.push(y+BOT_NH/2);
+      }
     });
-  } else {
-    frag.appendChild(arrowDown());
-    const edge = botEdges.find(e=>e.from_node_id===node.id && (e.label===''||e.label==null||e.label==='default'));
-    if (edge) frag.appendChild(renderStepChain(edge.to_node_id, visited));
-    else frag.appendChild(renderAddButton(node.id, ''));
+    let y;
+    if(centers.length) y=(centers[0]+centers[centers.length-1])/2 - BOT_NH/2;
+    else { y=cursorY; cursorY+=BOT_NH+BOT_VG; }
+    if(y<0) y=0;
+    pos[id]={x,y,node};
+    return y+BOT_NH/2;
   }
-  return frag;
+  const start=botNodes.find(n=>n.type==='start');
+  if(start) place(start.id,0,new Set());
+  return {pos,adds,loops};
 }
 
-function renderStepCard(node) {
-  const color = NODE_COLORS[node.type]||'#8696a0';
-  const icon  = NODE_ICONS[node.type]||'●';
-  const title = NODE_LABELS[node.type]||node.type;
-  const summary = node.type==='start' ? 'Início do fluxo' : (getNodePreview(node)||'');
-  const card = document.createElement('div');
-  card.style.cssText = `display:flex;align-items:flex-start;gap:10px;background:#1f2c34;border:1px solid ${node.id===selectedNodeId?'#00a884':'#2a3942'};border-radius:10px;padding:10px 12px;cursor:pointer`;
-  card.innerHTML = `
+// mantém o nome renderBotList (usado por selectNode/deleteNode/updateNodeConfig/addStep)
+function renderBotList(){
+  const layer=document.getElementById('bot-nodes-layer');
+  const svg=document.getElementById('bot-edges-svg');
+  if(!layer||!svg) return;
+  layer.innerHTML=''; svg.innerHTML='';
+  const start=botNodes.find(n=>n.type==='start');
+  if(!start){ setupBotCanvasPanZoom(); return; }
+  const {pos,adds,loops}=computeBotLayout();
+
+  let maxX=0,maxY=0;
+  Object.values(pos).forEach(p=>{maxX=Math.max(maxX,p.x+BOT_NW);maxY=Math.max(maxY,p.y+BOT_NH);});
+  adds.forEach(a=>{maxX=Math.max(maxX,a.x+40);maxY=Math.max(maxY,a.y+BOT_NH);});
+  loops.forEach(l=>{maxX=Math.max(maxX,l.x+90);maxY=Math.max(maxY,l.y+BOT_NH);});
+  svg.setAttribute('width', maxX+60); svg.setAttribute('height', maxY+60);
+
+  function curve(sx,sy,tx,ty,color,dash){
+    const dx=Math.max(40,(tx-sx)/2);
+    const p=document.createElementNS('http://www.w3.org/2000/svg','path');
+    p.setAttribute('d',`M ${sx} ${sy} C ${sx+dx} ${sy}, ${tx-dx} ${ty}, ${tx} ${ty}`);
+    p.setAttribute('fill','none'); p.setAttribute('stroke',color||'#3b4a54'); p.setAttribute('stroke-width','2');
+    if(dash) p.setAttribute('stroke-dasharray','5 4');
+    svg.appendChild(p);
+  }
+  function slotPill(text,x,y){
+    if(!text) return;
+    const d=document.createElement('div');
+    d.textContent=text;
+    d.style.cssText=`position:absolute;left:${x}px;top:${y-9}px;transform:translateX(-50%);background:#0b1418;color:#00a884;font-size:10px;font-weight:600;padding:1px 6px;border:1px solid #2a3942;border-radius:8px;white-space:nowrap;pointer-events:none;max-width:120px;overflow:hidden;text-overflow:ellipsis`;
+    layer.appendChild(d);
+  }
+
+  // arestas
+  Object.keys(pos).forEach(id=>{
+    const P=pos[id]; const node=P.node;
+    botOutSlots(node).forEach(slot=>{
+      const sx=P.x+BOT_NW, sy=P.y+BOT_NH/2;
+      const edge=botChildEdge(id, slot.label);
+      let target=null, color='#3b4a54', dash=false;
+      if(edge && pos[edge.to_node_id]){ const T=pos[edge.to_node_id]; target={x:T.x,y:T.y+BOT_NH/2}; }
+      else {
+        const lp=loops.find(l=>l.fromId===id && l.label===slot.label);
+        const ap=adds.find(a=>a.fromId===id && a.label===slot.label);
+        if(lp){ target={x:lp.x,y:lp.y+BOT_NH/2}; color='#f59e0b'; dash=true; }
+        else if(ap){ target={x:ap.x,y:ap.y+BOT_NH/2}; color='#274d3d'; dash=true; }
+      }
+      if(target){ curve(sx,sy,target.x,target.y,color,dash); slotPill(slot.display,(sx+target.x)/2,(sy+target.y)/2); }
+    });
+  });
+
+  // nós
+  Object.keys(pos).forEach(id=>{ const P=pos[id]; layer.appendChild(botNodeEl(P.node,P.x,P.y)); });
+
+  // botões "+"
+  adds.forEach(a=>{
+    const b=document.createElement('button');
+    b.textContent='+'; b.title='Adicionar passo';
+    b.style.cssText=`position:absolute;left:${a.x}px;top:${a.y+BOT_NH/2-16}px;width:32px;height:32px;border-radius:50%;background:#0d2e1f;border:1px dashed #00a884;color:#00a884;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center`;
+    b.addEventListener('click',(e)=>{e.stopPropagation();openStepMenu(a.fromId,a.label,e);});
+    layer.appendChild(b);
+  });
+  // marcadores de loop
+  loops.forEach(l=>{
+    const d=document.createElement('div');
+    d.textContent='↩ volta';
+    d.style.cssText=`position:absolute;left:${l.x}px;top:${l.y+BOT_NH/2-12}px;background:#3a2e12;color:#f59e0b;font-size:11px;padding:4px 8px;border-radius:8px;border:1px solid #5a4718`;
+    layer.appendChild(d);
+  });
+
+  applyBotTransform();
+  setupBotCanvasPanZoom();
+}
+
+function botNodeEl(node,x,y){
+  const color=NODE_COLORS[node.type]||'#8696a0';
+  const icon=NODE_ICONS[node.type]||'●';
+  const title=NODE_LABELS[node.type]||node.type;
+  const summary=node.type==='start'?'Início do fluxo':(getNodePreview(node)||'');
+  const el=document.createElement('div');
+  el.style.cssText=`position:absolute;left:${x}px;top:${y}px;width:${BOT_NW}px;min-height:${BOT_NH}px;box-sizing:border-box;background:#1f2c34;border:2px solid ${node.id===selectedNodeId?'#00a884':'#2a3942'};border-radius:12px;padding:10px 12px;cursor:pointer;display:flex;gap:10px;align-items:flex-start`;
+  el.innerHTML=`
     <div style="width:30px;height:30px;border-radius:8px;background:${color};display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">${icon}</div>
     <div style="flex:1;min-width:0">
       <div style="font-size:13px;font-weight:600;color:#e9edef">${title}</div>
-      ${summary?`<div style="font-size:12px;color:#8696a0;margin-top:2px;word-break:break-word">${escHtml(summary)}</div>`:''}
+      ${summary?`<div style="font-size:11px;color:#8696a0;margin-top:2px;word-break:break-word;max-height:32px;overflow:hidden">${escHtml(summary)}</div>`:''}
     </div>
-    ${node.type!=='start'?`<button title="Remover" style="background:none;border:none;color:#8696a0;cursor:pointer;font-size:14px">🗑</button>`:''}`;
-  card.addEventListener('click', ()=>selectNode(node.id));
-  const del = card.querySelector('button');
-  if (del) del.addEventListener('click', (e)=>{ e.stopPropagation(); if(confirm('Remover este passo?')) deleteNode(node.id); });
-  return card;
+    ${node.type!=='start'?`<button title="Remover" style="background:none;border:none;color:#8696a0;cursor:pointer;font-size:13px;flex-shrink:0">🗑</button>`:''}`;
+  el.addEventListener('click',(e)=>{ if(e.target.tagName==='BUTTON') return; selectNode(node.id); });
+  const del=el.querySelector('button');
+  if(del) del.addEventListener('click',(e)=>{e.stopPropagation(); if(confirm('Remover este passo?')) deleteNode(node.id);});
+  return el;
 }
 
-function renderAddButton(fromNodeId, label) {
-  const b = document.createElement('button');
-  b.textContent = '+ Adicionar passo';
-  b.style.cssText = 'display:block;margin:8px 0;background:#0d2e1f;border:1px dashed #00a884;color:#00a884;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13px';
-  b.addEventListener('click', (e)=>{ e.stopPropagation(); openStepMenu(fromNodeId, label, e); });
-  return b;
+function applyBotTransform(){
+  const st=document.getElementById('bot-canvas-stage');
+  if(st) st.style.transform=`translate(${botPanX}px,${botPanY}px) scale(${botZoom})`;
+}
+function botZoomBy(d){ botZoom=Math.min(1.6,Math.max(0.3,botZoom+d)); applyBotTransform(); }
+function botZoomFit(){ botZoom=1; botPanX=40; botPanY=40; applyBotTransform(); }
+function setupBotCanvasPanZoom(){
+  const wrap=document.getElementById('bot-canvas-wrap');
+  if(!wrap || _botPanInit) return; _botPanInit=true;
+  let dragging=false, sx=0, sy=0, ox=0, oy=0;
+  wrap.addEventListener('mousedown',(e)=>{
+    if(e.target.closest('#bot-nodes-layer') && e.target.id!=='bot-nodes-layer') return;
+    dragging=true; sx=e.clientX; sy=e.clientY; ox=botPanX; oy=botPanY; wrap.style.cursor='grabbing';
+  });
+  window.addEventListener('mousemove',(e)=>{ if(!dragging) return; botPanX=ox+(e.clientX-sx); botPanY=oy+(e.clientY-sy); applyBotTransform(); });
+  window.addEventListener('mouseup',()=>{ dragging=false; wrap.style.cursor='grab'; });
+  wrap.addEventListener('wheel',(e)=>{
+    e.preventDefault();
+    const rect=wrap.getBoundingClientRect();
+    const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+    const old=botZoom;
+    botZoom=Math.min(1.6,Math.max(0.3, botZoom*(e.deltaY<0?1.1:0.9)));
+    botPanX=mx-(mx-botPanX)*(botZoom/old);
+    botPanY=my-(my-botPanY)*(botZoom/old);
+    applyBotTransform();
+  },{passive:false});
 }
 
 // ── Render all nodes (canvas antigo — não usado no modo lista) ──
