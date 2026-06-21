@@ -917,6 +917,10 @@
       <label>Vincular à conta WhatsApp (opcional)</label>
       <select id="import-account"></select>
     </div>
+    <div class="lead-form-group">
+      <label>Etapa do pipeline (opcional)</label>
+      <select id="import-stage"></select>
+    </div>
     <div id="import-preview"></div>
     <div style="display:flex;gap:10px;justify-content:flex-end">
       <button class="btn-cancel" onclick="closeImport()">Cancelar</button>
@@ -2641,6 +2645,10 @@ let importedContacts = [];
 
 function openImport() {
   populateLeadAccounts();
+  // popula as etapas do pipeline no seletor de importação
+  const stageSel = document.getElementById('import-stage');
+  if (stageSel) stageSel.innerHTML = '<option value="">Nenhuma (sem etapa)</option>' +
+    pipelineStages.map(s => `<option value="${s.id}">${escHtml(s.name)}</option>`).join('');
   importedContacts = [];
   document.getElementById('import-file').value = '';
   document.getElementById('import-preview').style.display = 'none';
@@ -2735,12 +2743,13 @@ function showImportPreview() {
 
 async function confirmImport() {
   const account_id = document.getElementById('import-account').value || null;
+  const stage_id = document.getElementById('import-stage')?.value || null;
   const valid = importedContacts.filter(c => c.phone.replace(/\D/g,'').length >= 8);
   try {
     const res = await fetch(SERVER_URL + '/contacts/import', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contacts: valid, account_id })
+      body: JSON.stringify({ contacts: valid, account_id, stage_id })
     });
     const data = await res.json();
     if (!res.ok) return alert('Erro: ' + (data.error || 'Tente novamente'));
