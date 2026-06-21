@@ -1215,29 +1215,11 @@
     <button class="btn-primary" onclick="saveBotFlow()" style="margin-left:auto">💾 Salvar</button>
   </div>
   <div id="bot-editor-body">
-    <div id="bot-palette">
-      <div style="font-size:10px;color:#8696a0;padding:10px 12px 4px;text-transform:uppercase;letter-spacing:.5px">Adicionar nó</div>
-      <div class="palette-node" data-type="message" onclick="addNodeFromPalette('message')">📨 Enviar mensagem</div>
-      <div class="palette-node" data-type="wait_reply" onclick="addNodeFromPalette('wait_reply')">💬 Aguardar resposta / botões</div>
-      <div class="palette-node" data-type="round_robin" onclick="addNodeFromPalette('round_robin')">🔀 Round Robin</div>
-      <div class="palette-node" data-type="tags" onclick="addNodeFromPalette('tags')">🏷 Gerenciar tags</div>
-      <div class="palette-node" data-type="task" onclick="addNodeFromPalette('task')">✅ Criar tarefa</div>
-      <div class="palette-node" data-type="mark_read" onclick="addNodeFromPalette('mark_read')">👁 Marcar como lida</div>
-      <div class="palette-node" data-type="move_stage" onclick="addNodeFromPalette('move_stage')">📋 Mudar status</div>
-      <div class="palette-node" data-type="pause" onclick="addNodeFromPalette('pause')">⏱ Cronômetro</div>
-      <div class="palette-node" data-type="end" onclick="addNodeFromPalette('end')">🔴 Fim</div>
-      <div style="margin-top:12px;font-size:11px;color:#8696a0;padding:0 10px;line-height:1.5">
-        <b style="color:#e9edef">Conectar nós:</b><br>
-        Clique em ⊕ num nó de origem, depois clique em outro nó (alvo).<br><br>
-        <b style="color:#e9edef">Remover conexão:</b><br>
-        Duplo-clique na linha.
-      </div>
-    </div>
-    <div id="bot-canvas-wrap">
-      <!-- Canvas rendered by JS -->
+    <div id="bot-list-wrap" style="flex:1;overflow:auto;padding:24px 16px;background:#0b1418">
+      <div id="bot-list-area" style="max-width:560px;margin:0 auto"></div>
     </div>
     <div id="bot-config-panel">
-      <div id="bot-config-placeholder">👈 Clique num nó para editar</div>
+      <div id="bot-config-placeholder">👈 Clique num passo para editar</div>
       <div id="bot-config-form" style="display:none"></div>
     </div>
   </div>
@@ -3937,22 +3919,13 @@ async function openBotEditor(id, isNew=false) {
   botNodes = flow.nodes || [];
   botEdges = flow.edges || [];
 
-  // Garante sempre um nó inicial (mesmo em bots já existentes ou vazios)
+  // Garante sempre um nó inicial
   if (!botNodes.some(n => n.type === 'start')) {
-    botNodes.unshift({ id:_botGenId(), type:'start', label:'', config:{}, pos_x:400, pos_y:120 });
+    botNodes.unshift({ id:_botGenId(), type:'start', label:'', config:{}, pos_x:0, pos_y:0 });
   }
 
-  // Centraliza o canvas no nó inicial para ele aparecer no meio
-  const startN = botNodes.find(n => n.type === 'start') || botNodes[0];
-  if (startN) {
-    const wrap = document.getElementById('bot-canvas-wrap');
-    const w = (wrap && wrap.clientWidth) || 900;
-    canvasPan = { x: Math.round(w/2 - startN.pos_x - 50), y: 70 };
-  }
-
-  // Build canvas
-  buildBotCanvas();
-  renderBotCanvas();
+  showConfigPlaceholder();
+  renderBotList();
 }
 
 function closeBotEditor() {
@@ -4057,7 +4030,92 @@ function onCanvasWheel(e) {
   applyCanvasPan();
 }
 
-// ── Render all nodes ──
+// ── Render do fluxo como LISTA vertical de passos ──
+function renderBotList() {
+  const area = document.getElementById('bot-list-area');
+  if (!area) return;
+  area.innerHTML = '';
+  const start = botNodes.find(n=>n.type==='start');
+  if (!start) return;
+  area.appendChild(renderStepChain(start.id, new Set()));
+}
+
+function arrowDown() {
+  const a = document.createElement('div');
+  a.style.cssText = 'text-align:center;color:#3b4a54;font-size:14px;line-height:1;margin:2px 0';
+  a.textContent = '↓';
+  return a;
+}
+
+function renderStepChain(nodeId, visited) {
+  const frag = document.createDocumentFragment();
+  const node = botNodes.find(n=>n.id===nodeId);
+  if (!node) return frag;
+  if (visited.has(nodeId)) {
+    const loop = document.createElement('div');
+    loop.style.cssText = 'font-size:12px;color:#f59e0b;margin:6px 0;text-align:center';
+    loop.textContent = '↩ volta para o passo: ' + (NODE_LABELS[node.type]||node.type);
+    frag.appendChild(loop);
+    return frag;
+  }
+  visited.add(nodeId);
+  frag.appendChild(renderStepCard(node));
+
+  if (node.type === 'end') return frag;
+
+  if (node.type==='wait_reply' || node.type==='round_robin') {
+    frag.appendChild(arrowDown());
+    const ports = getOutputPorts(node);
+    ports.forEach(p => {
+      const bl = document.createElement('div');
+      bl.style.cssText = 'margin:6px 0 0 16px;border-left:2px solid #2a3942;padding-left:14px';
+      const lbl = document.createElement('div');
+      lbl.style.cssText = 'font-size:12px;color:#00a884;font-weight:600;margin:4px 0';
+      lbl.textContent = '↳ ' + (p.display || p.label || '(vazio)');
+      bl.appendChild(lbl);
+      const edge = botEdges.find(e=>e.from_node_id===node.id && e.label===p.label);
+      if (edge) bl.appendChild(renderStepChain(edge.to_node_id, new Set(visited)));
+      else bl.appendChild(renderAddButton(node.id, p.label));
+      frag.appendChild(bl);
+    });
+  } else {
+    frag.appendChild(arrowDown());
+    const edge = botEdges.find(e=>e.from_node_id===node.id && (e.label===''||e.label==null||e.label==='default'));
+    if (edge) frag.appendChild(renderStepChain(edge.to_node_id, visited));
+    else frag.appendChild(renderAddButton(node.id, ''));
+  }
+  return frag;
+}
+
+function renderStepCard(node) {
+  const color = NODE_COLORS[node.type]||'#8696a0';
+  const icon  = NODE_ICONS[node.type]||'●';
+  const title = NODE_LABELS[node.type]||node.type;
+  const summary = node.type==='start' ? 'Início do fluxo' : (getNodePreview(node)||'');
+  const card = document.createElement('div');
+  card.style.cssText = `display:flex;align-items:flex-start;gap:10px;background:#1f2c34;border:1px solid ${node.id===selectedNodeId?'#00a884':'#2a3942'};border-radius:10px;padding:10px 12px;cursor:pointer`;
+  card.innerHTML = `
+    <div style="width:30px;height:30px;border-radius:8px;background:${color};display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">${icon}</div>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:13px;font-weight:600;color:#e9edef">${title}</div>
+      ${summary?`<div style="font-size:12px;color:#8696a0;margin-top:2px;word-break:break-word">${escHtml(summary)}</div>`:''}
+    </div>
+    ${node.type!=='start'?`<button title="Remover" style="background:none;border:none;color:#8696a0;cursor:pointer;font-size:14px">🗑</button>`:''}`;
+  card.addEventListener('click', ()=>selectNode(node.id));
+  const del = card.querySelector('button');
+  if (del) del.addEventListener('click', (e)=>{ e.stopPropagation(); if(confirm('Remover este passo?')) deleteNode(node.id); });
+  return card;
+}
+
+function renderAddButton(fromNodeId, label) {
+  const b = document.createElement('button');
+  b.textContent = '+ Adicionar passo';
+  b.style.cssText = 'display:block;margin:8px 0;background:#0d2e1f;border:1px dashed #00a884;color:#00a884;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:13px';
+  b.addEventListener('click', (e)=>{ e.stopPropagation(); openStepMenu(fromNodeId, label, e); });
+  return b;
+}
+
+// ── Render all nodes (canvas antigo — não usado no modo lista) ──
 function renderBotCanvas() {
   const container = document.getElementById('bot-canvas-nodes');
   if (!container) return;
@@ -4355,7 +4413,7 @@ function addStep(fromNodeId, portLabel, type){
   botNodes.push(node);
   botEdges = botEdges.filter(e=>!(e.from_node_id===fromNodeId && e.label===(portLabel||'')));
   botEdges.push({ id:_botGenId(), bot_id:botEditorId, from_node_id:fromNodeId, to_node_id:node.id, label:portLabel||'' });
-  renderBotCanvas();
+  renderBotList();
   selectNode(node.id);
 }
 
@@ -4363,16 +4421,12 @@ function deleteNode(id) {
   botNodes = botNodes.filter(n=>n.id!==id);
   botEdges = botEdges.filter(e=>e.from_node_id!==id && e.to_node_id!==id);
   if (selectedNodeId===id) { selectedNodeId=null; showConfigPlaceholder(); }
-  renderBotCanvas();
+  renderBotList();
 }
 
 function selectNode(id) {
   selectedNodeId = id;
-  // Update visual selection
-  document.querySelectorAll('.bot-node').forEach(el => el.classList.remove('selected'));
-  const el = document.getElementById('bnode-'+id);
-  if (el) el.classList.add('selected');
-  // Show config
+  renderBotList(); // re-renderiza para destacar o passo selecionado
   const node = botNodes.find(n=>n.id===id);
   if (node) renderConfigPanel(node);
 }
@@ -4515,11 +4569,8 @@ function renderConfigPanel(node) {
   }
 }
 
-function _rerenderBotNode(node) {
-  const container = document.getElementById('bot-canvas-nodes');
-  const old = document.getElementById('bnode-'+node.id);
-  if (old && container) container.replaceChild(createNodeEl(node), old);
-  renderEdges();
+function _rerenderBotNode() {
+  renderBotList();
 }
 function addRRBranch() {
   const node = botNodes.find(n=>n.id===selectedNodeId); if(!node) return;
@@ -4545,9 +4596,7 @@ function updateNodeConfig(nodeId, patch) {
   const node = botNodes.find(n=>n.id===nodeId);
   if (!node) return;
   node.config = {...(node.config||{}), ...patch};
-  // Update preview
-  const body = document.getElementById('bnode-body-'+nodeId);
-  if (body) body.textContent = getNodePreview(node);
+  renderBotList(); // atualiza o resumo do passo na lista (foco fica no painel de config)
 }
 
 function updateOptionLabel(idx, val) {
@@ -4556,11 +4605,6 @@ function updateOptionLabel(idx, val) {
   const opts = [...(node.config.options||[])];
   opts[idx] = {label:val};
   updateNodeConfig(node.id, {options:opts});
-  // Re-render node ports (since option labels changed)
-  const container = document.getElementById('bot-canvas-nodes');
-  const old = document.getElementById('bnode-'+node.id);
-  if (old && container) { container.replaceChild(createNodeEl(node), old); }
-  renderEdges();
 }
 
 function addOption() {
@@ -4569,11 +4613,6 @@ function addOption() {
   const opts = [...(node.config.options||[]), {label:''}];
   updateNodeConfig(node.id, {options:opts});
   renderConfigPanel(node);
-  // Re-render node
-  const container = document.getElementById('bot-canvas-nodes');
-  const old = document.getElementById('bnode-'+node.id);
-  if (old && container) { container.replaceChild(createNodeEl(node), old); }
-  renderEdges();
 }
 
 function removeOption(idx) {
@@ -4582,10 +4621,6 @@ function removeOption(idx) {
   const opts = (node.config.options||[]).filter((_,i)=>i!==idx);
   updateNodeConfig(node.id, {options:opts});
   renderConfigPanel(node);
-  const container = document.getElementById('bot-canvas-nodes');
-  const old = document.getElementById('bnode-'+node.id);
-  if (old && container) { container.replaceChild(createNodeEl(node), old); }
-  renderEdges();
 }
 
 // ── Bot launch from chat ──
