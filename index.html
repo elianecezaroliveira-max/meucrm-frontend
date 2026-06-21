@@ -1573,8 +1573,8 @@ function sortContacts(list) {
 async function loadContacts(render = true) {
   try {
     const accountId = document.getElementById('account-select').value;
-    let url = SERVER_URL + '/contacts';
-    if (accountId) url += '?account_id=' + accountId;
+    let url = SERVER_URL + '/contacts?with_messages=1';
+    if (accountId) url += '&account_id=' + accountId;
     const res = await fetch(url);
     allContacts = sortContacts(await res.json());
     if (render) { renderContacts(allContacts); populateFilterOptions(); }
@@ -3235,6 +3235,12 @@ function renderKanbanWith(contacts) {
   board.appendChild(addBtn);
 }
 
+// Abre a conversa de um lead a partir do card do Pipeline
+async function openLeadChat(phone, name, accountId) {
+  closePipeline();
+  await selectContact(phone, name, accountId);
+}
+
 function cardHTML(c) {
   const date = c.last_message_at
     ? new Date(c.last_message_at).toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit'})
@@ -3245,7 +3251,7 @@ function cardHTML(c) {
     <div class="kanban-card${isSelected?' selected':''}" draggable="true" data-phone="${c.phone}">
       <div style="display:flex;align-items:flex-start;gap:0">
         <div class="card-checkbox${isSelected?' checked':''}" onclick="toggleCardSelection('${c.phone}',event)" title="Selecionar"></div>
-        <div style="flex:1;min-width:0">
+        <div style="flex:1;min-width:0;cursor:pointer" title="Abrir conversa" onclick="openLeadChat('${c.phone}','${(c.name||'').replace(/'/g,"\\'")}','${c.account_id||''}')">
           <div class="kanban-card-name">${c.name || c.phone}</div>
           <div class="kanban-card-phone">${formatPhone(c.phone)}</div>
           ${tags ? `<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:5px">${tags}</div>` : ''}
