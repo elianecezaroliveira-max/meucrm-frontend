@@ -4739,8 +4739,13 @@ function renderConfigPanel(node) {
         <option value="template" ${mode==='template'?'selected':''}>Modelo aprovado</option>
       </select>
       <div id="cfg-msg-custom" style="display:${mode==='template'?'none':'block'}">
-        <label class="bot-cfg-label" style="margin-top:12px">Mensagem <span style="color:#8696a0">(use {nome}, {telefone})</span></label>
+        <label class="bot-cfg-label" style="margin-top:12px">Mensagem</label>
+        <div style="display:flex;gap:6px;margin-bottom:6px">
+          <button type="button" onclick="insertMsgVar('{nome}')" style="background:#0d2e1f;border:1px solid #00a884;color:#00a884;border-radius:6px;padding:3px 10px;font-size:12px;cursor:pointer">+ {nome}</button>
+          <button type="button" onclick="insertMsgVar('{telefone}')" style="background:#0d2e1f;border:1px solid #00a884;color:#00a884;border-radius:6px;padding:3px 10px;font-size:12px;cursor:pointer">+ {telefone}</button>
+        </div>
         <textarea class="bot-cfg-textarea" id="cfg-msg-text" placeholder="Olá, {nome}! Como posso ajudar?">${escHtml(node.config.text||'')}</textarea>
+        <div style="font-size:11px;color:#8696a0;margin-top:6px">{nome} é trocado pelo nome do lead no envio. Também aceita (nome) e [nome].</div>
       </div>
       <div id="cfg-msg-template" style="display:${mode==='template'?'block':'none'}">
         <label class="bot-cfg-label" style="margin-top:12px">Nome do modelo aprovado</label>
@@ -4757,6 +4762,13 @@ function renderConfigPanel(node) {
       document.getElementById('cfg-msg-template').style.display = this.value==='template'?'block':'none';
     });
     document.getElementById('cfg-msg-text').addEventListener('input', function(){ updateNodeConfig(node.id,{text:this.value}); });
+    window.insertMsgVar = function(v){
+      const ta=document.getElementById('cfg-msg-text'); if(!ta) return;
+      const s=ta.selectionStart||ta.value.length, e=ta.selectionEnd||ta.value.length;
+      ta.value = ta.value.slice(0,s) + v + ta.value.slice(e);
+      ta.focus(); ta.selectionStart=ta.selectionEnd=s+v.length;
+      updateNodeConfig(node.id,{text:ta.value});
+    };
     document.getElementById('cfg-tmpl-name').addEventListener('input', function(){ updateNodeConfig(node.id,{template_name:this.value.trim()}); });
     document.getElementById('cfg-tmpl-lang').addEventListener('input', function(){ updateNodeConfig(node.id,{language:this.value.trim()}); });
     document.getElementById('cfg-tmpl-vars').addEventListener('input', function(){ updateNodeConfig(node.id,{vars:this.value.split('\n').map(s=>s.trim()).filter(Boolean)}); });
