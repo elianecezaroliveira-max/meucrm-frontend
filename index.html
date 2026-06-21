@@ -4114,22 +4114,26 @@ function createNodeEl(node) {
 
     const ports = getOutputPorts(node);
     ports.forEach(p => {
+      const connected = botEdges.some(e=>e.from_node_id===node.id && e.label===p.label);
       const item = document.createElement('div');
       item.className = 'bot-port-out-item';
       const lbl = document.createElement('div');
       lbl.className = 'bot-port-out-label';
-      lbl.textContent = p.display;
+      lbl.textContent = p.display || (connected ? '' : '+ próximo passo');
+      if (!p.display && !connected) lbl.style.cssText = 'font-size:10px;color:#00a884;cursor:pointer';
       const port = document.createElement('div');
       port.className = 'bot-port bot-port-out';
       port.id = 'bport-out-'+node.id+'-'+p.label;
-      port.title = 'Conectar: '+p.display;
-      port.innerHTML = '⊕';
-      port.style.cssText = 'width:18px;height:18px;font-size:11px;display:flex;align-items:center;justify-content:center;border-radius:50%;';
+      port.title = connected ? 'Trocar próximo passo' : 'Adicionar próximo passo';
+      port.innerHTML = '+';
+      port.style.cssText = 'width:18px;height:18px;font-size:13px;display:flex;align-items:center;justify-content:center;border-radius:50%;';
       if (connectingFrom?.nodeId===node.id && connectingFrom?.portLabel===p.label) {
         port.style.background = '#FF9800';
         port.style.borderColor = '#FF9800';
       }
-      port.addEventListener('click', (e) => { e.stopPropagation(); portClicked(node.id, p.label, 'out'); });
+      const openMenu = (e) => { e.stopPropagation(); openStepMenu(node.id, p.label, e); };
+      port.addEventListener('click', openMenu);
+      lbl.addEventListener('click', openMenu);
       item.appendChild(lbl);
       item.appendChild(port);
       outWrap.appendChild(item);
@@ -4286,16 +4290,62 @@ function addNodeFromPalette(type) {
   const cx = (rect.width/2 - canvasPan.x) + (Math.random()-0.5)*60;
   const cy = (rect.height/2 - canvasPan.y) + (Math.random()-0.5)*60;
 
-  const defaultConfig = {};
-  if (type==='wait_reply') defaultConfig.options = [{label:'Sim'},{label:'Não'}];
-  if (type==='pause') defaultConfig.hours=1;
-  if (type==='message') defaultConfig.mode='custom';
-  if (type==='tags') { defaultConfig.add=[]; defaultConfig.remove=[]; }
-  if (type==='round_robin') defaultConfig.branches=[{},{}];
-  if (type==='task') defaultConfig.due_hours=24;
-
-  const node = { id:_botGenId(), type, label:'', config:defaultConfig, pos_x:Math.round(cx), pos_y:Math.round(cy) };
+  const node = { id:_botGenId(), type, label:'', config:botDefaultConfig(type), pos_x:Math.round(cx), pos_y:Math.round(cy) };
   botNodes.push(node);
+  renderBotCanvas();
+  selectNode(node.id);
+}
+
+function botDefaultConfig(type) {
+  const c = {};
+  if (type==='wait_reply') c.options = [{label:'Sim'},{label:'Não'}];
+  if (type==='pause') c.hours=1;
+  if (type==='message') c.mode='custom';
+  if (type==='tags') { c.add=[]; c.remove=[]; }
+  if (type==='round_robin') c.branches=[{},{}];
+  if (type==='task') c.due_hours=24;
+  return c;
+}
+
+// ── Menu "Adicionar próximo passo" (estilo Kommo): cria já conectado e posicionado ──
+const STEP_TYPES = [
+  ['message','📨 Enviar mensagem'],
+  ['wait_reply','💬 Aguardar resposta / botões'],
+  ['round_robin','🔀 Round Robin'],
+  ['tags','🏷 Gerenciar tags'],
+  ['task','✅ Criar tarefa'],
+  ['mark_read','👁 Marcar como lida'],
+  ['move_stage','📋 Mudar status'],
+  ['pause','⏱ Cronômetro'],
+  ['end','🔴 Fim'],
+];
+function closeStepMenu(){ const m=document.getElementById('bot-step-menu'); if(m) m.remove(); }
+function openStepMenu(fromNodeId, portLabel, ev){
+  closeStepMenu();
+  const safe = String(portLabel||'').replace(/'/g,"\\'");
+  const menu = document.createElement('div');
+  menu.id='bot-step-menu';
+  menu.style.cssText='position:fixed;z-index:9999;background:#1f2c34;border:1px solid #2a3942;border-radius:8px;padding:6px;box-shadow:0 8px 24px rgba(0,0,0,.5);min-width:230px;max-height:65vh;overflow:auto';
+  menu.innerHTML = '<div style="font-size:11px;color:#8696a0;padding:4px 8px;text-transform:uppercase;letter-spacing:.5px">Adicionar próximo passo</div>' +
+    STEP_TYPES.map(([t,l])=>`<div onmouseover="this.style.background='#2a3942'" onmouseout="this.style.background='transparent'" style="padding:8px 10px;border-radius:6px;cursor:pointer;color:#e9edef;font-size:13px" onclick="addStep('${fromNodeId}','${safe}','${t}')">${l}</div>`).join('') +
+    `<div onmouseover="this.style.background='#2a3942'" onmouseout="this.style.background='transparent'" style="padding:8px 10px;border-radius:6px;cursor:pointer;color:#8696a0;font-size:12px;border-top:1px solid #2a3942;margin-top:4px" onclick="startManualConnect('${fromNodeId}','${safe}')">↪ Conectar a um nó existente</div>`;
+  document.body.appendChild(menu);
+  const x = (ev&&ev.clientX)||window.innerWidth/2, y=(ev&&ev.clientY)||window.innerHeight/2;
+  menu.style.left = Math.min(x, window.innerWidth-250)+'px';
+  menu.style.top  = Math.min(y, window.innerHeight-340)+'px';
+  setTimeout(()=>document.addEventListener('click', closeStepMenu, {once:true}), 0);
+}
+function startManualConnect(fromNodeId, portLabel){ closeStepMenu(); connectingFrom={nodeId:fromNodeId, portLabel}; renderBotCanvas(); }
+function addStep(fromNodeId, portLabel, type){
+  closeStepMenu();
+  const src = botNodes.find(n=>n.id===fromNodeId);
+  const childCount = botEdges.filter(e=>e.from_node_id===fromNodeId).length;
+  const baseX = (src? src.pos_x : 300) + childCount*60;
+  const baseY = (src? src.pos_y + getNodeHeight(src) + 60 : 300);
+  const node = { id:_botGenId(), type, label:'', config:botDefaultConfig(type), pos_x:Math.round(baseX), pos_y:Math.round(baseY) };
+  botNodes.push(node);
+  botEdges = botEdges.filter(e=>!(e.from_node_id===fromNodeId && e.label===(portLabel||'')));
+  botEdges.push({ id:_botGenId(), bot_id:botEditorId, from_node_id:fromNodeId, to_node_id:node.id, label:portLabel||'' });
   renderBotCanvas();
   selectNode(node.id);
 }
