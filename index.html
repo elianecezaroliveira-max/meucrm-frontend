@@ -903,6 +903,20 @@
 </div>
 
 <!-- MODAL IMPORTAR LEADS -->
+<div id="media-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;align-items:center;justify-content:center">
+  <div style="background:#202c33;border-radius:12px;width:560px;max-width:95vw;max-height:85vh;overflow-y:auto;padding:20px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h2 style="font-size:16px;font-weight:600;margin:0">🖼️ Mídias da conversa</h2>
+      <button onclick="closeMediaGallery()" style="background:#2a3942;border:none;color:#e9edef;width:30px;height:30px;border-radius:50%;cursor:pointer">✕</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <button id="media-tab-fotos" onclick="switchMediaTab('fotos')" style="flex:1;padding:8px;border:none;border-radius:8px;cursor:pointer;background:#00a884;color:#fff;font-weight:600">Fotos</button>
+      <button id="media-tab-docs" onclick="switchMediaTab('docs')" style="flex:1;padding:8px;border:none;border-radius:8px;cursor:pointer;background:#2a3942;color:#e9edef;font-weight:600">Documentos</button>
+    </div>
+    <div id="media-content"></div>
+  </div>
+</div>
+
 <div id="import-overlay">
   <div id="import-modal">
     <h2>📥 Importar Leads</h2>
@@ -1207,6 +1221,7 @@ let SERVER_URL = '';
 let currentPhone = null;
 let currentAccountId = null;
 let allContacts = [];
+let currentMessages = [];
 let pollInterval = null;
 
 // ── SETUP ──
@@ -1229,6 +1244,7 @@ async function init(url) {
   }
   await loadAccounts();
   await loadContacts();
+  loadAllTags();
   startPolling();
 }
 
@@ -1592,10 +1608,10 @@ function toggleFilterPanel() {
 }
 
 function getAllTags() {
-  const set = new Set();
+  const set = new Set(allTagsList);
   allContacts.forEach(c => (c.tags || []).forEach(t => set.add(t)));
   pipelineContacts.forEach(c => (c.tags || []).forEach(t => set.add(t)));
-  return Array.from(set).sort();
+  return Array.from(set).sort((a,b)=>a.localeCompare(b));
 }
 
 function populateFilterOptions() {
@@ -1768,6 +1784,9 @@ async function selectContact(phone, name, accountId) {
           <line x1="16" y1="17" x2="8" y2="17"/>
           <polyline points="10 9 9 9 8 9"/>
         </svg>
+      </button>
+      <button id="btn-media" title="Mídias da conversa (fotos e documentos)" onclick="openMediaGallery()" style="background:none;border:none;color:#8696a0;cursor:pointer;padding:6px;border-radius:50%;display:flex;align-items:center;justify-content:center">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
       </button>
     </div>
     <div id="notes-panel">
@@ -1956,6 +1975,7 @@ async function loadMessages(phone, scroll = true) {
       console.error('[loadMessages] resposta inesperada:', msgs);
       return;
     }
+    currentMessages = msgs; // guarda para a galeria de mídias
 
     let lastDay = null;
     const parts = [];
@@ -2290,6 +2310,49 @@ function formatFileSize(bytes) {
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
 }
 
+// ── GALERIA DE MÍDIAS (somente fotos e documentos) ──
+let mediaTab = 'fotos';
+function openMediaGallery() {
+  if (!currentPhone) return;
+  mediaTab = 'fotos';
+  switchMediaTab('fotos');
+  document.getElementById('media-overlay').style.display = 'flex';
+}
+function closeMediaGallery() {
+  document.getElementById('media-overlay').style.display = 'none';
+}
+function switchMediaTab(tab) {
+  mediaTab = tab;
+  const f = document.getElementById('media-tab-fotos');
+  const d = document.getElementById('media-tab-docs');
+  if (f) { f.style.background = tab === 'fotos' ? '#00a884' : '#2a3942'; f.style.color = tab === 'fotos' ? '#fff' : '#e9edef'; }
+  if (d) { d.style.background = tab === 'docs'  ? '#00a884' : '#2a3942'; d.style.color = tab === 'docs'  ? '#fff' : '#e9edef'; }
+  renderMediaGallery();
+}
+function renderMediaGallery() {
+  const content = document.getElementById('media-content');
+  if (!content) return;
+  const acct = encodeURIComponent(currentAccountId || '');
+  if (mediaTab === 'fotos') {
+    const imgs = currentMessages.filter(m => m.type === 'image' && m.media_id);
+    content.innerHTML = imgs.length
+      ? '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">' + imgs.map(m => {
+          const url = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${acct}`;
+          return `<img src="${url}" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;cursor:pointer" onclick="window.open('${url}','_blank')" onerror="this.style.display='none'">`;
+        }).join('') + '</div>'
+      : '<p style="color:#8696a0;font-size:13px">Nenhuma foto nesta conversa.</p>';
+  } else {
+    const docs = currentMessages.filter(m => m.type === 'document' && m.media_id);
+    content.innerHTML = docs.length
+      ? docs.map(m => {
+          const fname = (m.content || '').replace(/^\[Documento: ?/, '').replace(/\]$/, '') || 'Documento';
+          const url = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${acct}&download=1&filename=${encodeURIComponent(fname)}`;
+          return `<a href="${url}" download style="display:flex;align-items:center;gap:10px;padding:10px;background:#111b21;border-radius:8px;margin-bottom:8px;color:#e9edef;text-decoration:none">📄 <span style="flex:1;word-break:break-all">${escHtml(fname)}</span> <span style="color:#00a884">⬇</span></a>`;
+        }).join('')
+      : '<p style="color:#8696a0;font-size:13px">Nenhum documento nesta conversa.</p>';
+  }
+}
+
 async function sendFile() {
   if (!selectedFile || !currentPhone) return;
   const file = selectedFile;
@@ -2512,18 +2575,29 @@ function markAsRead(phone) {
 
 // ── TAGS ──
 const TAG_COLORS = ['tc0','tc1','tc2','tc3','tc4','tc5'];
+let allTagsList = [];
+
+async function loadAllTags() {
+  try {
+    const r = await fetch(SERVER_URL + '/tags');
+    const list = await r.json();
+    if (Array.isArray(list)) allTagsList = list;
+  } catch(e) {}
+}
 
 function renderTagManager(contact) {
   const area = document.getElementById('tag-manager');
   if (!area) return;
   const tags = contact.tags || [];
   const phone = contact.phone;
+  const opts = allTagsList.map(t => '<option value="' + t.replace(/"/g,'&quot;') + '">').join('');
   area.innerHTML = tags.map((t,i) =>
     `<span class="tag-chip ${TAG_COLORS[i%6]} removable" title="Clique para remover" onclick="removeTag('${phone}','${t}')">${t} ×</span>`
   ).join('') +
-  `<input id="tag-add-input" placeholder="+ tag" maxlength="20"
+  `<input id="tag-add-input" list="tag-options" autocomplete="off" placeholder="+ tag" maxlength="20"
     onkeydown="if(event.key==='Enter'||event.key===','){event.preventDefault();addTag('${phone}',this.value)}"
-    onblur="if(this.value.trim())addTag('${phone}',this.value)">`;
+    onblur="if(this.value.trim())addTag('${phone}',this.value)">
+  <datalist id="tag-options">${opts}</datalist>`;
 }
 
 async function addTag(phone, raw) {
@@ -2535,6 +2609,7 @@ async function addTag(phone, raw) {
   if (!contact) return;
   if ((contact.tags||[]).includes(tag)) return;
   contact.tags = [...(contact.tags||[]), tag];
+  if (!allTagsList.includes(tag)) { allTagsList.push(tag); allTagsList.sort((a,b)=>a.localeCompare(b)); }
   renderTagManager(contact);
   await saveTags(phone, contact.tags);
   renderContacts(allContacts);
