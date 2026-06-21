@@ -4051,7 +4051,7 @@ const BOT_NW = 190, BOT_NH = 66, BOT_HG = 90, BOT_VG = 26;
 
 function botOutSlots(node){
   if (node.type==='end') return [];
-  if (node.type==='wait_reply' || node.type==='round_robin')
+  if (node.type==='wait_reply' || node.type==='round_robin' || node.type==='message')
     return getOutputPorts(node).map(p=>({label:p.label, display:p.display||p.label||''}));
   return [{label:'', display:''}];
 }
@@ -4121,11 +4121,11 @@ function renderBotList(){
     if(dash) p.setAttribute('stroke-dasharray','5 4');
     svg.appendChild(p);
   }
-  function slotPill(text,x,y){
+  function slotPill(text,x,y,col){
     if(!text) return;
     const d=document.createElement('div');
     d.textContent=text;
-    d.style.cssText=`position:absolute;left:${x}px;top:${y-9}px;transform:translateX(-50%);background:#0b1418;color:#00a884;font-size:10px;font-weight:600;padding:1px 6px;border:1px solid #2a3942;border-radius:8px;white-space:nowrap;pointer-events:none;max-width:120px;overflow:hidden;text-overflow:ellipsis`;
+    d.style.cssText=`position:absolute;left:${x}px;top:${y-9}px;transform:translateX(-50%);background:#0b1418;color:${col||'#00a884'};font-size:10px;font-weight:600;padding:1px 6px;border:1px solid #2a3942;border-radius:8px;white-space:nowrap;pointer-events:none;max-width:120px;overflow:hidden;text-overflow:ellipsis`;
     layer.appendChild(d);
   }
 
@@ -4133,17 +4133,18 @@ function renderBotList(){
   Object.keys(pos).forEach(id=>{
     const P=pos[id]; const node=P.node;
     botOutSlots(node).forEach(slot=>{
+      const isFail = slot.label==='__failed__';
       const sx=P.x+BOT_NW, sy=P.y+BOT_NH/2;
       const edge=botChildEdge(id, slot.label);
-      let target=null, color='#3b4a54', dash=false;
+      let target=null, color=isFail?'#ef4444':'#3b4a54', dash=isFail;
       if(edge && pos[edge.to_node_id]){ const T=pos[edge.to_node_id]; target={x:T.x,y:T.y+BOT_NH/2}; }
       else {
         const lp=loops.find(l=>l.fromId===id && l.label===slot.label);
         const ap=adds.find(a=>a.fromId===id && a.label===slot.label);
         if(lp){ target={x:lp.x,y:lp.y+BOT_NH/2}; color='#f59e0b'; dash=true; }
-        else if(ap){ target={x:ap.x,y:ap.y+BOT_NH/2}; color='#274d3d'; dash=true; }
+        else if(ap){ target={x:ap.x,y:ap.y+BOT_NH/2}; color=isFail?'#ef4444':'#274d3d'; dash=true; }
       }
-      if(target){ curve(sx,sy,target.x,target.y,color,dash); slotPill(slot.display,(sx+target.x)/2,(sy+target.y)/2); }
+      if(target){ curve(sx,sy,target.x,target.y,color,dash); slotPill(slot.display,(sx+target.x)/2,(sy+target.y)/2, isFail?'#ef4444':'#00a884'); }
     });
   });
 
@@ -4351,6 +4352,9 @@ function getNodePreview(node) {
 }
 
 function getOutputPorts(node) {
+  if (node.type==='message') {
+    return [{label:'', display:'Enviada ✓'}, {label:'__failed__', display:'Falha no envio'}];
+  }
   if (node.type==='wait_reply') {
     const opts = node.config?.options||[];
     const ports = opts.map(o=>({label:o.label, display:o.label||'(vazio)'}));
