@@ -911,7 +911,7 @@
       📂 Clique ou arraste o arquivo aqui<br>
       <span style="font-size:12px">Suporta .csv e .xlsx</span>
     </div>
-    <input type="file" id="import-file" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleFileSelect(event)" />
+    <input type="file" id="import-file" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleImportFileSelect(event)" />
     <div class="import-count" id="import-count" style="display:none"></div>
     <div class="lead-form-group">
       <label>Vincular à conta WhatsApp (opcional)</label>
@@ -2670,7 +2670,7 @@ function handleDrop(e) {
   const file = e.dataTransfer.files[0];
   if (file) processImportFile(file);
 }
-function handleFileSelect(e) { if (e.target.files[0]) processImportFile(e.target.files[0]); }
+function handleImportFileSelect(e) { if (e.target.files[0]) processImportFile(e.target.files[0]); }
 
 function processImportFile(file) {
   const ext = file.name.split('.').pop().toLowerCase();
