@@ -2871,15 +2871,15 @@ function renderTemplateList(templates) {
           <div class="tmpl-meta">${catLabel} · ${t.language} · <span class="tmpl-status ${t.status}">${t.status}</span></div>
           ${preview ? `<div class="tmpl-preview">${preview}</div>` : ''}
         </div>
-        <button class="btn-delete" onclick="deleteTemplate('${t.name}','${accountId}')" title="Excluir modelo">🗑️</button>
+        <button class="btn-delete" onclick="deleteTemplate('${t.name}','${t.id}','${accountId}')" title="Excluir modelo">🗑️</button>
       </div>`;
   }).join('');
 }
 
-async function deleteTemplate(templateName, accountId) {
+async function deleteTemplate(templateName, templateId, accountId) {
   if (!confirm('Excluir este modelo? Esta ação não pode ser desfeita.')) return;
   try {
-    const res = await fetch(`${SERVER_URL}/templates/${encodeURIComponent(templateName)}?account_id=${accountId}`, { method: 'DELETE' });
+    const res = await fetch(`${SERVER_URL}/templates/${encodeURIComponent(templateName)}?account_id=${accountId}&hsm_id=${encodeURIComponent(templateId || '')}`, { method: 'DELETE' });
     const d = await res.json().catch(() => ({}));
     if (!res.ok || d.error) throw new Error(d.error || 'Erro ao excluir');
     await loadTemplates();
