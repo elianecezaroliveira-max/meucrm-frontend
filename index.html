@@ -777,6 +777,8 @@
       </div>
       <!-- CRIAR -->
       <div id="tmpl-create-view" style="display:none">
+       <div style="display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap">
+        <div style="flex:1;min-width:300px">
         <div class="tmpl-form-group">
           <label>Conta WhatsApp *</label>
           <select id="tmpl-account-id" onchange="onTmplAccountChange()"></select>
@@ -860,6 +862,14 @@
           <button class="btn-cancel" onclick="switchTmplTab('list')">Cancelar</button>
           <button class="btn-save" onclick="createTemplate()">Enviar para análise</button>
         </div>
+        </div><!-- /coluna formulário -->
+        <div style="flex:0 0 250px;min-width:230px">
+          <div style="font-size:11px;color:#8696a0;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Pré-visualização</div>
+          <div style="background:#0b141a;border-radius:10px;padding:14px;position:sticky;top:0">
+            <div id="tmpl-preview"></div>
+          </div>
+        </div>
+       </div><!-- /flex criar -->
       </div>
     </div>
   </div>
@@ -1040,7 +1050,7 @@
       <button class="btn-sidebar-action" onclick="openImport()">📥 Importar</button>
     </div>
     <div id="search-box" style="display:flex;gap:6px;align-items:center">
-      <input type="text" id="search-input" placeholder="🔍 Buscar contato..." oninput="applyFilters()" style="flex:1" />
+      <input type="text" id="search-input" placeholder="🔍 Buscar por nome ou mensagem..." oninput="onSearchInput()" style="flex:1" />
       <button id="filter-toggle" onclick="toggleFilterPanel()" title="Filtros">⚙</button>
     </div>
     <div id="filter-panel">
@@ -1647,13 +1657,36 @@ function toggleFilterTag(tag) {
   populateFilterOptions(); applyFilters();
 }
 
+// Busca no servidor (nome, telefone E conteúdo das mensagens), com debounce
+let searchResults = null; // null = sem busca ativa
+let searchTimer = null;
+function onSearchInput() {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(runSearch, 350);
+}
+async function runSearch() {
+  const q = (document.getElementById('search-input')?.value || '').trim();
+  if (!q) { searchResults = null; applyFilters(); return; }
+  try {
+    const accountId = document.getElementById('account-select').value;
+    let url = `${SERVER_URL}/search?q=${encodeURIComponent(q)}`;
+    if (accountId) url += `&account_id=${accountId}`;
+    const r = await fetch(url);
+    const data = await r.json();
+    searchResults = Array.isArray(data) ? sortContacts(data) : [];
+  } catch(e) { searchResults = []; }
+  applyFilters();
+}
+
 function applyFilters() {
   const q = (document.getElementById('search-input')?.value || '').toLowerCase();
   const stageId = document.getElementById('filter-stage-sel')?.value || '';
   const dateFrom = document.getElementById('filter-date-from')?.value || '';
   const dateTo = document.getElementById('filter-date-to')?.value || '';
-  const filtered = allContacts.filter(c => {
-    if (q && !c.name?.toLowerCase().includes(q) && !c.phone?.includes(q)) return false;
+  const serverSearch = searchResults !== null; // backend já casou nome/telefone/mensagem
+  const base = serverSearch ? searchResults : allContacts;
+  const filtered = base.filter(c => {
+    if (!serverSearch && q && !c.name?.toLowerCase().includes(q) && !c.phone?.includes(q)) return false;
     if (stageId && c.stage_id !== stageId) return false;
     if (activeFilterTags.size > 0 && ![...activeFilterTags].every(t => (c.tags||[]).includes(t))) return false;
     if (dateFrom && c.last_message_at && c.last_message_at < dateFrom) return false;
@@ -1668,6 +1701,7 @@ function clearFilters() {
   ['filter-stage-sel','filter-date-from','filter-date-to','search-input'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
+  searchResults = null;
   document.getElementById('filter-panel')?.classList.remove('open');
   document.getElementById('filter-toggle')?.classList.remove('active');
   renderContacts(allContacts);
@@ -1760,7 +1794,7 @@ function renderContacts(contacts) {
 async function selectContact(phone, name, accountId) {
   currentPhone = phone;
   currentAccountId = accountId || document.getElementById('account-select').value || '';
-  renderContacts(allContacts);
+  applyFilters(); // preserva a busca/filtros ativos ao abrir a conversa
   const chatArea = document.getElementById('chat-area');
 
   // Monta opções de contas para o seletor
@@ -2992,6 +3026,53 @@ function switchTmplTab(tab) {
   document.getElementById('tmpl-list-view').style.display = tab === 'list' ? 'block' : 'none';
   document.getElementById('tmpl-create-view').style.display = tab === 'create' ? 'block' : 'none';
   if (tab === 'list') loadTemplates();
+  if (tab === 'create') {
+    const cv = document.getElementById('tmpl-create-view');
+    if (cv && !cv._previewBound) {
+      cv.addEventListener('input', updateTemplatePreview);
+      cv.addEventListener('change', updateTemplatePreview);
+      cv._previewBound = true;
+    }
+    updateTemplatePreview();
+  }
+}
+
+// Formata texto do corpo para o preview: *negrito*, _itálico_, {{variáveis}} e quebras de linha
+function fmtTemplatePreview(t) {
+  let s = escHtml(t || '');
+  s = s.replace(/\*([^*\n]+)\*/g, '<b>$1</b>').replace(/_([^_\n]+)_/g, '<i>$1</i>');
+  s = s.replace(/\{\{(\d+)\}\}/g, '<span style="background:#d9fdd3;color:#075e54;border-radius:3px;padding:0 3px">{{$1}}</span>');
+  return s.replace(/\n/g, '<br>');
+}
+
+function updateTemplatePreview() {
+  const prev = document.getElementById('tmpl-preview');
+  if (!prev) return;
+  const headerType = document.getElementById('tmpl-header-type')?.value || 'NONE';
+  const headerText = document.getElementById('tmpl-header-text')?.value || '';
+  const body       = document.getElementById('tmpl-body-text')?.value || '';
+  const footer     = document.getElementById('tmpl-footer-text')?.value || '';
+
+  let inner = '';
+  if (headerType === 'TEXT' && headerText) {
+    inner += `<div style="font-weight:700;margin-bottom:6px">${fmtTemplatePreview(headerText)}</div>`;
+  } else if (['IMAGE','VIDEO','DOCUMENT'].includes(headerType)) {
+    const lbl = headerType === 'IMAGE' ? '🖼️ Imagem' : headerType === 'VIDEO' ? '🎬 Vídeo' : '📄 Documento';
+    inner += `<div style="background:#e9edef;color:#54656f;border-radius:6px;padding:16px;text-align:center;margin-bottom:6px;font-size:12px">${lbl}</div>`;
+  }
+  inner += `<div>${fmtTemplatePreview(body) || '<span style="color:#aaa">Corpo da mensagem…</span>'}</div>`;
+  if (footer) inner += `<div style="color:#8696a0;font-size:11px;margin-top:6px">${escHtml(footer)}</div>`;
+
+  let html = `<div style="background:#fff;color:#111;border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.5;word-break:break-word;box-shadow:0 1px 1px rgba(0,0,0,.2)">${inner}</div>`;
+
+  const btnTexts = Array.from(document.querySelectorAll('#btn-list .btn-text'))
+    .map(i => i.value.trim()).filter(Boolean);
+  if (btnTexts.length) {
+    html += '<div style="margin-top:6px;display:flex;flex-direction:column;gap:4px">' +
+      btnTexts.map(b => `<div style="background:#fff;color:#0a7cff;text-align:center;padding:8px;border-radius:8px;font-size:13px;box-shadow:0 1px 1px rgba(0,0,0,.15)">${escHtml(b)}</div>`).join('') +
+      '</div>';
+  }
+  prev.innerHTML = html;
 }
 
 function populateTmplAccounts() {
@@ -3092,6 +3173,7 @@ function addButton() {
     <input type="text" placeholder="URL ou Telefone" class="btn-value" style="display:none"/>
     <button class="btn-remove" onclick="removeButton('${id}')">×</button>`;
   document.getElementById('btn-list').appendChild(div);
+  if (typeof updateTemplatePreview === 'function') updateTemplatePreview();
 }
 
 function onBtnTypeChange(id) {
@@ -3105,6 +3187,7 @@ function onBtnTypeChange(id) {
 function removeButton(id) {
   document.getElementById(id)?.remove();
   buttonCount--;
+  if (typeof updateTemplatePreview === 'function') updateTemplatePreview();
 }
 
 async function createTemplate() {
