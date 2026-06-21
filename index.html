@@ -3899,9 +3899,9 @@ let _nodeDragState = null;
 let _botStages = [];
 let _activeBotRun = null;
 const NODE_W = 220;
-const NODE_COLORS = { start:'#25D366', message:'#1d9bf0', wait_reply:'#FF9800', pause:'#6B7280', move_stage:'#8B5CF6', end:'#EF4444', round_robin:'#0ea5e9', tags:'#14b8a6', task:'#f59e0b', mark_read:'#22c55e' };
-const NODE_ICONS  = { start:'▶', message:'📨', wait_reply:'💬', pause:'⏱', move_stage:'📋', end:'⏹', round_robin:'🔀', tags:'🏷', task:'✅', mark_read:'👁' };
-const NODE_LABELS = { start:'Início', message:'Enviar mensagem', wait_reply:'Aguardar resposta', pause:'Cronômetro', move_stage:'Mudar status', end:'Fim', round_robin:'Round Robin', tags:'Gerenciar tags', task:'Criar tarefa', mark_read:'Marcar como lida' };
+const NODE_COLORS = { start:'#25D366', message:'#1d9bf0', wait_reply:'#FF9800', pause:'#6B7280', move_stage:'#8B5CF6', end:'#EF4444', round_robin:'#0ea5e9', tags:'#14b8a6', task:'#f59e0b', complete_task:'#16a34a', mark_read:'#22c55e' };
+const NODE_ICONS  = { start:'▶', message:'📨', wait_reply:'💬', pause:'⏱', move_stage:'📋', end:'⏹', round_robin:'🔀', tags:'🏷', task:'✅', complete_task:'☑️', mark_read:'👁' };
+const NODE_LABELS = { start:'Início', message:'Enviar mensagem', wait_reply:'Aguardar resposta', pause:'Cronômetro', move_stage:'Mudar status', end:'Fim', round_robin:'Round Robin', tags:'Gerenciar tags', task:'Criar tarefa', complete_task:'Concluir tarefas', mark_read:'Marcar como lida' };
 
 function _botGenId() { return 'n' + Date.now().toString(36) + Math.random().toString(36).substring(2,6); }
 
@@ -4520,6 +4520,7 @@ function getNodePreview(node) {
     return parts.join('  ') || '(configure as tags)';
   }
   if (node.type==='task') return cfg.title ? (cfg.title.length>50?cfg.title.substring(0,50)+'…':cfg.title) : '(descreva a tarefa)';
+  if (node.type==='complete_task') return cfg.title_filter ? ('Concluir: "'+cfg.title_filter+'"') : 'Concluir todas as tarefas do lead';
   if (node.type==='mark_read') return 'Zera as não lidas';
   return '';
 }
@@ -4651,6 +4652,7 @@ function botDefaultConfig(type) {
   if (type==='tags') { c.add=[]; c.remove=[]; }
   if (type==='round_robin') c.branches=[{},{}];
   if (type==='task') c.due_hours=24;
+  if (type==='complete_task') c.match='all';
   return c;
 }
 
@@ -4661,6 +4663,7 @@ const STEP_TYPES = [
   ['round_robin','🔀 Round Robin'],
   ['tags','🏷 Gerenciar tags'],
   ['task','✅ Criar tarefa'],
+  ['complete_task','☑️ Concluir tarefas'],
   ['mark_read','👁 Marcar como lida'],
   ['move_stage','📋 Mudar status'],
   ['pause','⏱ Cronômetro'],
@@ -4841,6 +4844,16 @@ function renderConfigPanel(node) {
       <label class="bot-cfg-label" style="margin-top:12px">Vencimento em (horas a partir de agora)</label>
       <input class="bot-cfg-input" type="number" min="0" id="cfg-task-due" value="${node.config.due_hours||0}" placeholder="0 = sem prazo" onchange="updateNodeConfig('${node.id}',{due_hours:parseFloat(this.value)||0})" />`;
     document.getElementById('cfg-task-title').addEventListener('input', function(){ updateNodeConfig(node.id,{title:this.value}); });
+    return;
+  }
+
+  if (node.type==='complete_task') {
+    form.innerHTML = `
+      <div style="color:#8696a0;font-size:13px;margin-bottom:10px">Marca como concluídas as tarefas ativas deste lead.</div>
+      <label class="bot-cfg-label">Filtrar por título <span style="color:#8696a0">(opcional)</span></label>
+      <input class="bot-cfg-input" id="cfg-ctask-filter" placeholder="Vazio = concluir TODAS as tarefas ativas" value="${escHtml(node.config.title_filter||'')}" />
+      <div style="color:#8696a0;font-size:12px;margin-top:6px">Se preencher, só conclui as tarefas cujo título contém esse texto.</div>`;
+    document.getElementById('cfg-ctask-filter').addEventListener('input', function(){ updateNodeConfig(node.id,{title_filter:this.value}); });
     return;
   }
 
