@@ -3838,6 +3838,10 @@ function getNodeHeight(node) {
     const opts = (node.config?.options||[]).length;
     return 80 + opts*28 + 56; // base + options + __other__ + __timeout__
   }
+  if (node.type==='round_robin') {
+    const n = (node.config?.branches||[]).length;
+    return 80 + n*28;
+  }
   return 80;
 }
 
@@ -4161,7 +4165,7 @@ function getNodePreview(node) {
     const s = _botStages.find(s=>s.id===cfg.stage_id);
     return s ? s.name : '(selecione o status)';
   }
-  if (node.type==='round_robin') { const n=(cfg.account_ids||[]).length; return n? `Rodízio entre ${n} conta(s)` : '(selecione as contas)'; }
+  if (node.type==='round_robin') { const n=(cfg.branches||[]).length; return n? `Rodízio entre ${n} opção(ões)` : '(adicione opções)'; }
   if (node.type==='tags') {
     const a=(cfg.add||[]), r=(cfg.remove||[]);
     const parts=[]; if(a.length) parts.push('+'+a.join(', ')); if(r.length) parts.push('−'+r.join(', '));
@@ -4179,6 +4183,10 @@ function getOutputPorts(node) {
     ports.push({label:'__other__', display:'Outra resp.'});
     ports.push({label:'__timeout__', display:'Sem resp.'});
     return ports;
+  }
+  if (node.type==='round_robin') {
+    const branches = node.config?.branches||[];
+    return branches.map((b,i)=>({label:String(i), display:'Opção '+(i+1)}));
   }
   return [{label:'', display:''}];
 }
@@ -4283,7 +4291,7 @@ function addNodeFromPalette(type) {
   if (type==='pause') defaultConfig.hours=1;
   if (type==='message') defaultConfig.mode='custom';
   if (type==='tags') { defaultConfig.add=[]; defaultConfig.remove=[]; }
-  if (type==='round_robin') defaultConfig.account_ids=[];
+  if (type==='round_robin') defaultConfig.branches=[{},{}];
   if (type==='task') defaultConfig.due_hours=24;
 
   const node = { id:_botGenId(), type, label:'', config:defaultConfig, pos_x:Math.round(cx), pos_y:Math.round(cy) };
@@ -4404,15 +4412,19 @@ function renderConfigPanel(node) {
   if (node.type==='round_robin') {
     const sel = document.getElementById('account-select');
     const accs = sel ? Array.from(sel.options).filter(o=>o.value) : [];
-    const chosen = node.config.account_ids||[];
+    const branches = node.config.branches||[];
+    const accOpts = cur => '<option value="">(manter a conta atual)</option>' + accs.map(o=>`<option value="${o.value}" ${cur===o.value?'selected':''}>${escHtml(o.text)}</option>`).join('');
     form.innerHTML = `
-      <label class="bot-cfg-label">Distribuir os leads entre estas contas (rodízio)</label>
+      <label class="bot-cfg-label">Opções do rodízio <span style="color:#8696a0">(cada lead vai para a próxima, em ciclo)</span></label>
       <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px">
-        ${accs.length ? accs.map(o=>`<label style="display:flex;gap:8px;align-items:center;font-size:13px;color:#e9edef;cursor:pointer">
-          <input type="checkbox" value="${o.value}" ${chosen.includes(o.value)?'checked':''} onchange="toggleRR('${node.id}','${o.value}',this.checked)" /> ${escHtml(o.text)}
-        </label>`).join('') : '<div style="font-size:12px;color:#8696a0">Nenhuma conta cadastrada.</div>'}
+        ${branches.map((b,i)=>`<div style="display:flex;gap:6px;align-items:center">
+          <span style="font-size:12px;color:#8696a0;width:62px">Opção ${i+1}</span>
+          <select class="bot-cfg-select" style="flex:1" onchange="setRRBranch(${i}, this.value)">${accOpts(b.account_id||'')}</select>
+          <button onclick="removeRRBranch(${i})" title="Remover" style="background:none;border:none;color:#8696a0;cursor:pointer">✕</button>
+        </div>`).join('')}
       </div>
-      <div style="font-size:11px;color:#8696a0;margin-top:8px">A cada lead, o bot escolhe a próxima conta da lista, em ciclo, e passa a enviar por ela.</div>`;
+      <button class="bot-add-option" onclick="addRRBranch()">+ Adicionar opção</button>
+      <div style="font-size:11px;color:#8696a0;margin-top:8px">Cada opção pode enviar por uma conta (número) diferente. Ligue a saída de cada opção ao caminho dela.</div>`;
     return;
   }
 
@@ -4444,11 +4456,30 @@ function renderConfigPanel(node) {
   }
 }
 
-function toggleRR(nodeId, accId, checked) {
-  const node = botNodes.find(n=>n.id===nodeId); if(!node) return;
-  let arr = (node.config.account_ids||[]).slice();
-  if (checked) { if(!arr.includes(accId)) arr.push(accId); } else { arr = arr.filter(a=>a!==accId); }
-  updateNodeConfig(nodeId, {account_ids:arr});
+function _rerenderBotNode(node) {
+  const container = document.getElementById('bot-canvas-nodes');
+  const old = document.getElementById('bnode-'+node.id);
+  if (old && container) container.replaceChild(createNodeEl(node), old);
+  renderEdges();
+}
+function addRRBranch() {
+  const node = botNodes.find(n=>n.id===selectedNodeId); if(!node) return;
+  const branches = [...(node.config.branches||[]), {}];
+  updateNodeConfig(node.id, {branches});
+  renderConfigPanel(node); _rerenderBotNode(node);
+}
+function removeRRBranch(idx) {
+  const node = botNodes.find(n=>n.id===selectedNodeId); if(!node) return;
+  const branches = (node.config.branches||[]).filter((_,i)=>i!==idx);
+  updateNodeConfig(node.id, {branches});
+  renderConfigPanel(node); _rerenderBotNode(node);
+}
+function setRRBranch(idx, accId) {
+  const node = botNodes.find(n=>n.id===selectedNodeId); if(!node) return;
+  const branches = [...(node.config.branches||[])];
+  branches[idx] = {...(branches[idx]||{}), account_id: accId || undefined};
+  updateNodeConfig(node.id, {branches});
+  _rerenderBotNode(node);
 }
 
 function updateNodeConfig(nodeId, patch) {
