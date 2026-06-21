@@ -3967,11 +3967,17 @@ function renderTasksPage(){
     const overdue=t.due_at && !t.done && parseUTC(t.due_at)<now;
     const due=t.due_at?`<span style="color:${overdue?'#ef4444':'#8696a0'};font-size:12px">⏰ ${fmtTaskDue(t.due_at)}</span>`:'';
     const lead=t.contact_name?`<span style="color:#00a884;font-size:12px;cursor:pointer" onclick="openTaskLead('${t.phone}','${escHtml(t.contact_name).replace(/'/g,"\\'")}',${t.account_id?`'${t.account_id}'`:'null'})">👤 ${escHtml(t.contact_name)}</span>`:'';
+    const noteBlock = t.notes
+      ? `<div style="margin-top:6px;background:#111b21;border-left:3px solid #2a3942;border-radius:4px;padding:6px 8px;font-size:12px;color:#cdd6db;white-space:pre-wrap;word-break:break-word">${escHtml(t.notes)}</div>`
+      : '';
     return `<div class="task-row${overdue?' overdue':''}">
       <button class="task-check" title="${t.done?'Reabrir':'Concluir'}" onclick="toggleTaskGlobal('${t.id}',${t.done?'false':'true'})">${t.done?'✓':''}</button>
       <div style="flex:1;min-width:0">
         <div style="color:#e9edef;font-size:14px;${t.done?'text-decoration:line-through;opacity:.6':''}">${escHtml(t.title)}</div>
-        <div style="display:flex;gap:14px;margin-top:4px;flex-wrap:wrap">${lead}${due}</div>
+        <div style="display:flex;gap:14px;margin-top:4px;flex-wrap:wrap;align-items:center">${lead}${due}
+          <span style="color:#8696a0;font-size:12px;cursor:pointer" onclick="editTaskNote('${t.id}')">💬 ${t.notes?'Editar comentário':'Comentar'}</span>
+        </div>
+        ${noteBlock}
       </div>
       <button title="Excluir" onclick="deleteTaskGlobal('${t.id}')" style="background:none;border:none;color:#8696a0;cursor:pointer;font-size:14px">🗑</button>
     </div>`;
@@ -3983,6 +3989,17 @@ async function toggleTaskGlobal(id, done){
     const t=_allTasksCache.find(x=>String(x.id)===String(id)); if(t) t.done=done;
     renderTasksPage();
   }catch(e){ alert('Erro ao atualizar tarefa'); }
+}
+async function editTaskNote(id){
+  const t=_allTasksCache.find(x=>String(x.id)===String(id));
+  const current=t?.notes||'';
+  const val=prompt('Comentário da tarefa:', current);
+  if(val===null) return; // cancelou
+  try{
+    await fetch(SERVER_URL+'/tasks/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({notes:val})});
+    if(t) t.notes=val.trim()||null;
+    renderTasksPage();
+  }catch(e){ alert('Erro ao salvar comentário'); }
 }
 async function deleteTaskGlobal(id){
   if(!confirm('Excluir esta tarefa?')) return;
