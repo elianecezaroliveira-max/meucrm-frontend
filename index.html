@@ -2853,7 +2853,19 @@ async function loadTemplates() {
   }
 }
 
+// Modelos "excluídos" só no CRM (escondidos localmente, sem mexer na Meta)
+function getHiddenTemplates() {
+  try { return JSON.parse(localStorage.getItem('hiddenTemplates') || '[]'); } catch(e) { return []; }
+}
+function hideTemplate(id) {
+  if (!id) return;
+  const h = getHiddenTemplates();
+  if (!h.includes(id)) { h.push(id); localStorage.setItem('hiddenTemplates', JSON.stringify(h)); }
+}
+
 function renderTemplateList(templates) {
+  const hidden = getHiddenTemplates();
+  templates = (templates || []).filter(t => !hidden.includes(t.id));
   const el = document.getElementById('tmpl-list-content');
   if (!templates.length) {
     el.innerHTML = '<p style="color:#8696a0;font-size:13px">Nenhum modelo encontrado. Crie o primeiro modelo!</p>';
@@ -2877,13 +2889,12 @@ function renderTemplateList(templates) {
 }
 
 async function deleteTemplate(templateName, templateId, accountId) {
-  if (!confirm('Excluir este modelo? Esta ação não pode ser desfeita.')) return;
-  try {
-    const res = await fetch(`${SERVER_URL}/templates/${encodeURIComponent(templateName)}?account_id=${accountId}&hsm_id=${encodeURIComponent(templateId || '')}`, { method: 'DELETE' });
-    const d = await res.json().catch(() => ({}));
-    if (!res.ok || d.error) throw new Error(d.error || 'Erro ao excluir');
-    await loadTemplates();
-  } catch(e) { alert('Erro ao excluir: ' + e.message); }
+  if (!confirm('Remover este modelo da sua lista no CRM?')) return;
+  // Esconde no CRM (não depende da Meta)
+  hideTemplate(templateId);
+  // Tenta excluir na Meta também, mas de forma silenciosa — se falhar, fica só escondido aqui
+  fetch(`${SERVER_URL}/templates/${encodeURIComponent(templateName)}?account_id=${accountId}&hsm_id=${encodeURIComponent(templateId || '')}`, { method: 'DELETE' }).catch(() => {});
+  loadTemplates();
 }
 
 function onHeaderTypeChange() {
