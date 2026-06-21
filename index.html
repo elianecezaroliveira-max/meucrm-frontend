@@ -2643,12 +2643,17 @@ async function saveLead() {
 // ── IMPORTAR LEADS ──
 let importedContacts = [];
 
-function openImport() {
+async function openImport() {
   populateLeadAccounts();
-  // popula as etapas do pipeline no seletor de importação
+  // Carrega as etapas do pipeline na hora (podem ainda não ter sido carregadas)
+  try {
+    const res = await fetch(SERVER_URL + '/pipeline/stages');
+    const stages = await res.json();
+    if (Array.isArray(stages)) pipelineStages = stages;
+  } catch(e) {}
   const stageSel = document.getElementById('import-stage');
   if (stageSel) stageSel.innerHTML = '<option value="">Nenhuma (sem etapa)</option>' +
-    pipelineStages.map(s => `<option value="${s.id}">${escHtml(s.name)}</option>`).join('');
+    (Array.isArray(pipelineStages) ? pipelineStages : []).map(s => `<option value="${s.id}">${escHtml(s.name)}</option>`).join('');
   importedContacts = [];
   document.getElementById('import-file').value = '';
   document.getElementById('import-preview').style.display = 'none';
