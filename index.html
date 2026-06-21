@@ -495,7 +495,13 @@
 #btn-n8n { background:none; border:1px solid #EA4B71; color:#EA4B71; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:13px; transition:all 0.2s; }
 #btn-n8n:hover, #btn-n8n.connected { background:#EA4B71; color:#fff; }
 
-#bots-page, #bot-editor-page { position:fixed; top:0;left:0;right:0;bottom:0; background:#111b21; z-index:500; display:none; flex-direction:column; }
+#bots-page, #bot-editor-page, #tasks-page { position:fixed; top:0;left:0;right:0;bottom:0; background:#111b21; z-index:500; display:none; flex-direction:column; }
+#tasks-page-topbar { background:#202c33; padding:10px 16px; display:flex; align-items:center; gap:12px; border-bottom:1px solid #2a3942; flex-shrink:0; }
+#tasks-page-topbar h2 { font-size:16px;font-weight:700;color:#e9edef;flex:1; }
+#tasks-list-area { flex:1;overflow-y:auto;padding:20px;max-width:760px;margin:0 auto;width:100%;box-sizing:border-box; }
+.task-row { display:flex;align-items:flex-start;gap:12px;background:#1f2c34;border:1px solid #2a3942;border-radius:10px;padding:12px 14px;margin-bottom:10px; }
+.task-row.overdue { border-color:#ef4444; }
+.task-check { width:22px;height:22px;border-radius:50%;border:2px solid #00a884;background:none;cursor:pointer;flex-shrink:0;color:#00a884;font-size:13px;display:flex;align-items:center;justify-content:center;margin-top:1px; }
 
 #bots-page-topbar, #bot-editor-topbar { background:#202c33; padding:10px 16px; display:flex; align-items:center; gap:12px; border-bottom:1px solid #2a3942; flex-shrink:0; }
 #bots-page-topbar h2 { font-size:16px;font-weight:700;color:#e9edef;flex:1; }
@@ -980,7 +986,7 @@
   <button id="btn-quick-replies" onclick="openQRManager()">⚡ Respostas</button>
   <button id="btn-accounts" onclick="openModal()">📱 Contas</button>
   <button id="btn-bots" onclick="openBotsList()">🤖 Bots</button>
-  <button id="btn-n8n" onclick="openN8NModal()">⚡ N8N</button>
+  <button id="btn-tasks-global" onclick="openTasksPage()">✅ Tarefas</button>
 </div>
 
 <!-- MODAL RESPOSTAS RÁPIDAS -->
@@ -1183,6 +1189,20 @@
       </div>
 
     </div>
+  </div>
+</div>
+
+<!-- TASKS PAGE (global) -->
+<div id="tasks-page">
+  <div id="tasks-page-topbar">
+    <button class="btn-secondary" onclick="closeTasksPage()">← Voltar</button>
+    <h2>✅ Tarefas</h2>
+    <label style="font-size:13px;color:#8696a0;display:flex;align-items:center;gap:6px;cursor:pointer">
+      <input type="checkbox" id="tasks-show-done" onchange="renderTasksPage()" /> Mostrar concluídas
+    </label>
+  </div>
+  <div id="tasks-list-area">
+    <div style="color:#8696a0;font-size:13px;padding:20px">Carregando tarefas...</div>
   </div>
 </div>
 
@@ -2152,19 +2172,40 @@ async function voiceToggle(id, url) {
 function _fmtVoice(s) { return Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0'); }
 
 // ── Reações (emoji) ──
+let _reactTone = localStorage.getItem('reactTone') || '';
+const REACT_TONES = ['', '🏻', '🏼', '🏽', '🏾', '🏿'];
+const REACT_TONEABLE = ['👍','🙏','👏']; // emojis que aceitam tom de pele
+function _reactEmojiList(){
+  const base=['👍','❤️','😂','😮','😢','🙏','🔥','👏'];
+  return base.map(e => REACT_TONEABLE.includes(e) ? e + _reactTone : e);
+}
+function _renderReactBody(msgId){
+  const emojis=_reactEmojiList();
+  const row = emojis.map(e=>`<span style="cursor:pointer;font-size:22px" onclick="reactMessage('${msgId}','${e}')">${e}</span>`).join('')
+    + `<span style="cursor:pointer;font-size:18px;color:#8696a0;padding:0 2px" title="Remover reação" onclick="reactMessage('${msgId}','')">✖</span>`;
+  const tones = REACT_TONES.map(tn=>{
+    const sel = tn===_reactTone ? 'border:2px solid #00a884' : 'border:2px solid transparent';
+    return `<span style="cursor:pointer;font-size:15px;${sel};border-radius:50%;line-height:1" title="Tom de pele" onclick="setReactTone('${tn}','${msgId}')">${tn||'✋'}</span>`;
+  }).join('');
+  return `<div style="display:flex;gap:6px;align-items:center">${row}</div>
+          <div style="display:flex;gap:4px;align-items:center;justify-content:center;margin-top:5px;padding-top:5px;border-top:1px solid #2a3942">${tones}</div>`;
+}
+function setReactTone(tn, msgId){
+  _reactTone=tn; localStorage.setItem('reactTone', tn);
+  const pop=document.getElementById('react-picker');
+  if(pop) pop.innerHTML=_renderReactBody(msgId);
+}
 function openReactPicker(msgId, anchor){
   closeReactPicker();
   const pop=document.createElement('div');
   pop.id='react-picker';
-  pop.style.cssText='position:fixed;z-index:9999;background:#233138;border:1px solid #2a3942;border-radius:22px;padding:5px 9px;display:flex;gap:6px;align-items:center;box-shadow:0 3px 12px rgba(0,0,0,.6)';
-  const emojis=['👍','❤️','😂','😮','😢','🙏','🔥','👏'];
-  pop.innerHTML = emojis.map(e=>`<span style="cursor:pointer;font-size:22px" onclick="reactMessage('${msgId}','${e}')">${e}</span>`).join('')
-    + `<span style="cursor:pointer;font-size:18px;color:#8696a0;padding-left:2px" title="Remover reação" onclick="reactMessage('${msgId}','')">✖</span>`;
+  pop.style.cssText='position:fixed;z-index:9999;background:#233138;border:1px solid #2a3942;border-radius:18px;padding:7px 10px;box-shadow:0 3px 12px rgba(0,0,0,.6)';
+  pop.innerHTML=_renderReactBody(msgId);
   document.body.appendChild(pop);
   const r=anchor.getBoundingClientRect();
   let left=r.left-70; if(left<8) left=8;
   const maxLeft=window.innerWidth-pop.offsetWidth-8; if(left>maxLeft) left=maxLeft;
-  let top=r.top-50; if(top<8) top=r.bottom+8;
+  let top=r.top-86; if(top<8) top=r.bottom+8;
   pop.style.left=left+'px'; pop.style.top=top+'px';
   setTimeout(()=>document.addEventListener('click',_reactOutside),0);
 }
@@ -3893,6 +3934,67 @@ async function openBotsList() {
 
 function closeBotsList() {
   document.getElementById('bots-page').style.display = 'none';
+}
+
+// ── Aba global de Tarefas ──
+let _allTasksCache = [];
+function fmtTaskDue(ts){
+  if(!ts) return '';
+  const iso=new Date(parseUTC(ts) - _BRT_OFFSET).toISOString();
+  return iso.substring(8,10)+'/'+iso.substring(5,7)+' '+iso.substring(11,16);
+}
+async function openTasksPage(){
+  document.getElementById('tasks-page').style.display='flex';
+  const area=document.getElementById('tasks-list-area');
+  area.innerHTML='<div style="color:#8696a0;font-size:13px;padding:20px">Carregando...</div>';
+  try{
+    const res=await fetch(SERVER_URL+'/tasks');
+    _allTasksCache=await res.json();
+    if(!Array.isArray(_allTasksCache)) _allTasksCache=[];
+    renderTasksPage();
+  }catch(e){ area.innerHTML='<div style="color:#ef4444;padding:20px">Erro ao carregar tarefas</div>'; }
+}
+function closeTasksPage(){ document.getElementById('tasks-page').style.display='none'; }
+function renderTasksPage(){
+  const area=document.getElementById('tasks-list-area');
+  if(!area) return;
+  const showDone=document.getElementById('tasks-show-done')?.checked;
+  let list=_allTasksCache.slice();
+  if(!showDone) list=list.filter(t=>!t.done);
+  if(!list.length){ area.innerHTML=`<div style="color:#8696a0;padding:40px;text-align:center">Nenhuma tarefa ${showDone?'':'ativa'}. 🎉</div>`; return; }
+  const now=Date.now();
+  area.innerHTML=list.map(t=>{
+    const overdue=t.due_at && !t.done && parseUTC(t.due_at)<now;
+    const due=t.due_at?`<span style="color:${overdue?'#ef4444':'#8696a0'};font-size:12px">⏰ ${fmtTaskDue(t.due_at)}</span>`:'';
+    const lead=t.contact_name?`<span style="color:#00a884;font-size:12px;cursor:pointer" onclick="openTaskLead('${t.phone}','${escHtml(t.contact_name).replace(/'/g,"\\'")}',${t.account_id?`'${t.account_id}'`:'null'})">👤 ${escHtml(t.contact_name)}</span>`:'';
+    return `<div class="task-row${overdue?' overdue':''}">
+      <button class="task-check" title="${t.done?'Reabrir':'Concluir'}" onclick="toggleTaskGlobal('${t.id}',${t.done?'false':'true'})">${t.done?'✓':''}</button>
+      <div style="flex:1;min-width:0">
+        <div style="color:#e9edef;font-size:14px;${t.done?'text-decoration:line-through;opacity:.6':''}">${escHtml(t.title)}</div>
+        <div style="display:flex;gap:14px;margin-top:4px;flex-wrap:wrap">${lead}${due}</div>
+      </div>
+      <button title="Excluir" onclick="deleteTaskGlobal('${t.id}')" style="background:none;border:none;color:#8696a0;cursor:pointer;font-size:14px">🗑</button>
+    </div>`;
+  }).join('');
+}
+async function toggleTaskGlobal(id, done){
+  try{
+    await fetch(SERVER_URL+'/tasks/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({done})});
+    const t=_allTasksCache.find(x=>String(x.id)===String(id)); if(t) t.done=done;
+    renderTasksPage();
+  }catch(e){ alert('Erro ao atualizar tarefa'); }
+}
+async function deleteTaskGlobal(id){
+  if(!confirm('Excluir esta tarefa?')) return;
+  try{
+    await fetch(SERVER_URL+'/tasks/'+id,{method:'DELETE'});
+    _allTasksCache=_allTasksCache.filter(x=>String(x.id)!==String(id));
+    renderTasksPage();
+  }catch(e){ alert('Erro ao excluir tarefa'); }
+}
+function openTaskLead(phone, name, accountId){
+  closeTasksPage();
+  selectContact(phone, name, accountId||null);
 }
 
 function renderBotsList(bots) {
