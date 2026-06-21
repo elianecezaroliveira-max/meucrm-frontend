@@ -4334,7 +4334,7 @@ function getNodePreview(node) {
     const opts = cfg.options||[];
     return opts.map(o=>o.label).join(' / ') || '(sem opções)';
   }
-  if (node.type==='pause') return `${cfg.days||0}d ${cfg.hours||0}h ${cfg.minutes||0}m`;
+  if (node.type==='pause') return `${cfg.days||0}d ${cfg.hours||0}h ${cfg.minutes||0}m ${cfg.seconds||0}s`;
   if (node.type==='move_stage') {
     const s = _botStages.find(s=>s.id===cfg.stage_id);
     return s ? s.name : '(selecione o status)';
@@ -4610,6 +4610,7 @@ function renderConfigPanel(node) {
         <div style="flex:1"><label style="font-size:11px;color:#8696a0">Dias</label><input class="bot-cfg-input" type="number" min="0" value="${cfg.days||0}" onchange="updateNodeConfig('${node.id}',{days:parseInt(this.value)||0})" /></div>
         <div style="flex:1"><label style="font-size:11px;color:#8696a0">Horas</label><input class="bot-cfg-input" type="number" min="0" max="23" value="${cfg.hours||0}" onchange="updateNodeConfig('${node.id}',{hours:parseInt(this.value)||0})" /></div>
         <div style="flex:1"><label style="font-size:11px;color:#8696a0">Minutos</label><input class="bot-cfg-input" type="number" min="0" max="59" value="${cfg.minutes||0}" onchange="updateNodeConfig('${node.id}',{minutes:parseInt(this.value)||0})" /></div>
+        <div style="flex:1"><label style="font-size:11px;color:#8696a0">Segundos</label><input class="bot-cfg-input" type="number" min="0" max="59" value="${cfg.seconds||0}" onchange="updateNodeConfig('${node.id}',{seconds:parseInt(this.value)||0})" /></div>
       </div>`;
     return;
   }
