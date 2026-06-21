@@ -1858,12 +1858,18 @@ function renderMessageContent(m) {
     quotedHtml = `<div class="quoted-bubble"><div class="quoted-name">${escHtml(qLabel)}</div><div class="quoted-text">${escHtml(qPreview)}</div></div>`;
   }
 
-  const mediaTypes = ['image', 'audio', 'video', 'document'];
+  const mediaTypes = ['image', 'audio', 'video', 'document', 'sticker'];
   if (mediaTypes.includes(m.type) && m.media_id) {
     const acct = encodeURIComponent(currentAccountId || '');
     const proxyUrl  = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${acct}`;
 
-    if (m.type === 'image') {
+    if (m.type === 'sticker') {
+      return quotedHtml + `<div class="media-wrap">
+        <img src="${proxyUrl}" alt="Figurinha" style="width:120px;height:120px;object-fit:contain" loading="lazy"
+          onerror="this.parentElement.innerHTML='<span style=opacity:.6>[Figurinha]</span>'" />
+      </div>`;
+
+    } else if (m.type === 'image') {
       const caption = m.content && !m.content.startsWith('[Imagem') ? `<div class="media-caption">${m.content}</div>` : '';
       const dlUrl = `${proxyUrl}&download=1&filename=${encodeURIComponent('imagem.jpg')}`;
       return quotedHtml + `<div class="media-wrap">
@@ -2318,6 +2324,8 @@ async function sendFile() {
     });
     const data = await res.json();
     if (!data.success) throw new Error(data.error || 'Erro ao enviar');
+    markAsRead(currentPhone);
+    await loadMessages(currentPhone);
   } catch(err) {
     alert('Erro ao enviar arquivo: ' + err.message);
   }
