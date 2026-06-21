@@ -769,6 +769,10 @@
     <div class="tmpl-body">
       <!-- LISTA -->
       <div id="tmpl-list-view">
+        <div class="tmpl-form-group" style="margin-bottom:12px;">
+          <label>Conta WhatsApp</label>
+          <select id="tmpl-list-account-id" onchange="loadTemplates()"></select>
+        </div>
         <div id="tmpl-list-content"><p style="color:#8696a0;font-size:13px">Selecione uma conta para ver os modelos.</p></div>
       </div>
       <!-- CRIAR -->
@@ -2819,15 +2823,21 @@ function switchTmplTab(tab) {
 
 function populateTmplAccounts() {
   const sel = document.getElementById('account-select');
-  const tmplSel = document.getElementById('tmpl-account-id');
-  tmplSel.innerHTML = sel.innerHTML.replace('<option value="">Todas as contas</option>', '');
-  if (!tmplSel.value && tmplSel.options.length > 0) tmplSel.value = tmplSel.options[0].value;
+  const optionsHtml = sel.innerHTML.replace('<option value="">Todas as contas</option>', '');
+  const current = sel.value; // conta selecionada na barra lateral (se houver)
+  ['tmpl-account-id', 'tmpl-list-account-id'].forEach(id => {
+    const s = document.getElementById(id);
+    if (!s) return;
+    s.innerHTML = optionsHtml;
+    if (current) s.value = current;
+    if (!s.value && s.options.length > 0) s.value = s.options[0].value;
+  });
 }
 
 function onTmplAccountChange() { loadTemplates(); }
 
 async function loadTemplates() {
-  const accountId = document.getElementById('tmpl-account-id')?.value || document.getElementById('account-select').value;
+  const accountId = document.getElementById('tmpl-list-account-id')?.value || document.getElementById('tmpl-account-id')?.value || document.getElementById('account-select').value;
   if (!accountId) {
     document.getElementById('tmpl-list-content').innerHTML = '<p style="color:#8696a0;font-size:13px">Selecione uma conta para ver os modelos.</p>';
     return;
@@ -2849,7 +2859,7 @@ function renderTemplateList(templates) {
     el.innerHTML = '<p style="color:#8696a0;font-size:13px">Nenhum modelo encontrado. Crie o primeiro modelo!</p>';
     return;
   }
-  const accountId = document.getElementById('tmpl-account-id')?.value || document.getElementById('account-select').value;
+  const accountId = document.getElementById('tmpl-list-account-id')?.value || document.getElementById('tmpl-account-id')?.value || document.getElementById('account-select').value;
   el.innerHTML = templates.map(t => {
     const body = t.components?.find(c => c.type === 'BODY');
     const preview = body?.text || '';
@@ -2861,17 +2871,19 @@ function renderTemplateList(templates) {
           <div class="tmpl-meta">${catLabel} · ${t.language} · <span class="tmpl-status ${t.status}">${t.status}</span></div>
           ${preview ? `<div class="tmpl-preview">${preview}</div>` : ''}
         </div>
-        <button class="btn-delete" onclick="deleteTemplate('${t.id}','${accountId}')" title="Excluir modelo">🗑️</button>
+        <button class="btn-delete" onclick="deleteTemplate('${t.name}','${accountId}')" title="Excluir modelo">🗑️</button>
       </div>`;
   }).join('');
 }
 
-async function deleteTemplate(templateId, accountId) {
+async function deleteTemplate(templateName, accountId) {
   if (!confirm('Excluir este modelo? Esta ação não pode ser desfeita.')) return;
   try {
-    await fetch(`${SERVER_URL}/templates/${templateId}?account_id=${accountId}`, { method: 'DELETE' });
+    const res = await fetch(`${SERVER_URL}/templates/${encodeURIComponent(templateName)}?account_id=${accountId}`, { method: 'DELETE' });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok || d.error) throw new Error(d.error || 'Erro ao excluir');
     await loadTemplates();
-  } catch(e) { alert('Erro ao excluir.'); }
+  } catch(e) { alert('Erro ao excluir: ' + e.message); }
 }
 
 function onHeaderTypeChange() {
