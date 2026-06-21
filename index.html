@@ -1244,6 +1244,7 @@
 <script>
 let SERVER_URL = '';
 let currentPhone = null;
+let currentName = '';
 let currentAccountId = null;
 let allContacts = [];
 let currentMessages = [];
@@ -1793,6 +1794,7 @@ function renderContacts(contacts) {
 // ── CHAT ──
 async function selectContact(phone, name, accountId) {
   currentPhone = phone;
+  currentName = name || phone;
   currentAccountId = accountId || document.getElementById('account-select').value || '';
   applyFilters(); // preserva a busca/filtros ativos ao abrir a conversa
   const chatArea = document.getElementById('chat-area');
@@ -1816,7 +1818,7 @@ async function selectContact(phone, name, accountId) {
       </button>
       <div class="avatar">${(name || phone)[0].toUpperCase()}</div>
       <div class="info">
-        <div class="name">${name || phone}</div>
+        <div class="name"><span id="chat-name-text">${name || phone}</span> <span onclick="editLeadName()" title="Editar nome do lead" style="cursor:pointer;opacity:.55;font-size:12px">✏️</span></div>
         <div class="phone">${phone}</div>
       </div>
       <div id="tag-manager"></div>
@@ -2681,6 +2683,27 @@ function markAsRead(phone) {
   const btn = document.getElementById('btn-mark-read');
   if (btn) { btn.style.color = '#00a884'; setTimeout(() => { if (btn) btn.style.color = ''; }, 1500); }
   fetch(`${SERVER_URL}/contacts/${encodeURIComponent(phone)}/read`, { method: 'PUT' }).catch(() => {});
+}
+
+// Editar o nome do lead a partir do chat
+async function editLeadName() {
+  if (!currentPhone) return;
+  const novo = prompt('Novo nome do lead:', currentName || '');
+  if (novo === null) return;
+  const name = novo.trim();
+  if (!name) return;
+  try {
+    const r = await fetch(`${SERVER_URL}/contacts/${encodeURIComponent(currentPhone)}/name`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name })
+    });
+    if (!r.ok) throw new Error();
+    currentName = name;
+    const el = document.getElementById('chat-name-text'); if (el) el.textContent = name;
+    const c = allContacts.find(x => x.phone === currentPhone); if (c) c.name = name;
+    if (searchResults) { const sc = searchResults.find(x => x.phone === currentPhone); if (sc) sc.name = name; }
+    const pc = (typeof pipelineContacts !== 'undefined') ? pipelineContacts.find(x => x.phone === currentPhone) : null; if (pc) pc.name = name;
+    applyFilters();
+  } catch(e) { alert('Erro ao salvar o nome.'); }
 }
 
 // ── TAGS ──
