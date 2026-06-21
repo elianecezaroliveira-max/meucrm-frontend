@@ -3937,8 +3937,17 @@ async function openBotEditor(id, isNew=false) {
   botNodes = flow.nodes || [];
   botEdges = flow.edges || [];
 
-  if (isNew && !botNodes.length) {
-    botNodes = [{ id:_botGenId(), type:'start', label:'', config:{}, pos_x:300, pos_y:200 }];
+  // Garante sempre um nó inicial (mesmo em bots já existentes ou vazios)
+  if (!botNodes.some(n => n.type === 'start')) {
+    botNodes.unshift({ id:_botGenId(), type:'start', label:'', config:{}, pos_x:400, pos_y:120 });
+  }
+
+  // Centraliza o canvas no nó inicial para ele aparecer no meio
+  const startN = botNodes.find(n => n.type === 'start') || botNodes[0];
+  if (startN) {
+    const wrap = document.getElementById('bot-canvas-wrap');
+    const w = (wrap && wrap.clientWidth) || 900;
+    canvasPan = { x: Math.round(w/2 - startN.pos_x - 50), y: 70 };
   }
 
   // Build canvas
