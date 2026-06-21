@@ -917,6 +917,21 @@
   </div>
 </div>
 
+<div id="tasks-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;align-items:center;justify-content:center">
+  <div style="background:#202c33;border-radius:12px;width:480px;max-width:95vw;max-height:85vh;overflow-y:auto;padding:20px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h2 style="font-size:16px;font-weight:600;margin:0">✅ Tarefas do lead</h2>
+      <button onclick="closeTasks()" style="background:#2a3942;border:none;color:#e9edef;width:30px;height:30px;border-radius:50%;cursor:pointer">✕</button>
+    </div>
+    <input id="task-title" placeholder="Nova tarefa (ex.: Ligar para confirmar)" style="width:100%;box-sizing:border-box;background:#111b21;border:1px solid #2a3942;color:#e9edef;padding:9px 12px;border-radius:8px;outline:none;margin-bottom:8px">
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <input id="task-due" type="datetime-local" style="flex:1;background:#111b21;border:1px solid #2a3942;color:#e9edef;padding:8px 12px;border-radius:8px;outline:none">
+      <button onclick="addTask()" style="background:#00a884;border:none;color:#fff;padding:9px 16px;border-radius:8px;cursor:pointer;font-weight:600">Adicionar</button>
+    </div>
+    <div id="tasks-list"></div>
+  </div>
+</div>
+
 <div id="import-overlay">
   <div id="import-modal">
     <h2>📥 Importar Leads</h2>
@@ -1788,6 +1803,9 @@ async function selectContact(phone, name, accountId) {
       <button id="btn-media" title="Mídias da conversa (fotos e documentos)" onclick="openMediaGallery()" style="background:none;border:none;color:#8696a0;cursor:pointer;padding:6px;border-radius:50%;display:flex;align-items:center;justify-content:center">
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
       </button>
+      <button id="btn-tasks" title="Tarefas do lead" onclick="openTasks()" style="background:none;border:none;color:#8696a0;cursor:pointer;padding:6px;border-radius:50%;display:flex;align-items:center;justify-content:center">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      </button>
     </div>
     <div id="notes-panel">
       <div id="notes-panel-label">📝 Anotações do lead</div>
@@ -1880,7 +1898,8 @@ function renderMessageContent(m) {
   const mediaTypes = ['image', 'audio', 'video', 'document', 'sticker'];
   if (mediaTypes.includes(m.type) && m.media_id) {
     const acct = encodeURIComponent(currentAccountId || '');
-    const proxyUrl  = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${acct}`;
+    const mimeParam = m.media_mime_type ? `&mime=${encodeURIComponent(m.media_mime_type)}` : '';
+    const proxyUrl  = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${acct}${mimeParam}`;
 
     if (m.type === 'sticker') {
       return quotedHtml + `<div class="media-wrap">
@@ -1922,12 +1941,9 @@ function renderMessageContent(m) {
       const mime = m.media_mime_type || 'video/mp4';
       const dlUrl = `${proxyUrl}&download=1&filename=${encodeURIComponent('video.mp4')}`;
       return quotedHtml + `<div class="media-wrap">
-        <video controls preload="metadata" style="max-width:280px;border-radius:8px;display:block"
-          onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+        <video controls preload="metadata" playsinline style="max-width:280px;border-radius:8px;display:block">
           <source src="${proxyUrl}" type="${mime}">
-          <source src="${proxyUrl}" type="video/mp4">
         </video>
-        <span style="display:none;opacity:.6">[Vídeo não disponível]</span>
         <a href="${dlUrl}" class="media-dl-link" title="Baixar vídeo" download>⬇ Baixar vídeo</a>
         ${caption}
       </div>`;
@@ -2351,6 +2367,66 @@ function renderMediaGallery() {
         }).join('')
       : '<p style="color:#8696a0;font-size:13px">Nenhum documento nesta conversa.</p>';
   }
+}
+
+// ── TAREFAS / LEMBRETES POR LEAD ──
+let currentTasks = [];
+function openTasks() {
+  if (!currentPhone) return;
+  document.getElementById('task-title').value = '';
+  document.getElementById('task-due').value = '';
+  document.getElementById('tasks-overlay').style.display = 'flex';
+  loadTasks();
+}
+function closeTasks() { document.getElementById('tasks-overlay').style.display = 'none'; }
+async function loadTasks() {
+  const list = document.getElementById('tasks-list');
+  list.innerHTML = '<p style="color:#8696a0;font-size:13px">Carregando...</p>';
+  try {
+    const r = await fetch(`${SERVER_URL}/tasks?phone=${encodeURIComponent(currentPhone)}`);
+    currentTasks = await r.json();
+    renderTasks();
+  } catch(e) { list.innerHTML = '<p style="color:#ef4444;font-size:13px">Erro ao carregar tarefas.</p>'; }
+}
+function fmtTaskDue(due) {
+  if (!due) return '';
+  const d = new Date(parseUTC(due) - _BRT_OFFSET);
+  return `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')} ${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}`;
+}
+function renderTasks() {
+  const list = document.getElementById('tasks-list');
+  if (!currentTasks.length) { list.innerHTML = '<p style="color:#8696a0;font-size:13px">Nenhuma tarefa para este lead.</p>'; return; }
+  list.innerHTML = currentTasks.map(t => {
+    const due = t.due_at ? `<div style="font-size:11px;color:#f59e0b;margin-top:2px">⏰ ${fmtTaskDue(t.due_at)}</div>` : '';
+    return `<div style="display:flex;align-items:flex-start;gap:10px;padding:10px;background:#111b21;border-radius:8px;margin-bottom:8px">
+      <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask('${t.id}',this.checked)" style="width:18px;height:18px;cursor:pointer;margin-top:2px">
+      <div style="flex:1;min-width:0">
+        <div style="${t.done?'text-decoration:line-through;opacity:.6':''};word-break:break-word">${escHtml(t.title)}</div>
+        ${due}
+      </div>
+      <button onclick="deleteTask('${t.id}')" title="Excluir" style="background:none;border:none;color:#8696a0;cursor:pointer;font-size:15px">🗑️</button>
+    </div>`;
+  }).join('');
+}
+async function addTask() {
+  const title = document.getElementById('task-title').value.trim();
+  if (!title) return alert('Escreva a tarefa.');
+  const dueRaw = document.getElementById('task-due').value;
+  const due_at = dueRaw ? new Date(dueRaw).toISOString() : null;
+  try {
+    await fetch(`${SERVER_URL}/tasks`, { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ phone: currentPhone, account_id: currentAccountId || null, title, due_at }) });
+    document.getElementById('task-title').value = '';
+    document.getElementById('task-due').value = '';
+    loadTasks();
+  } catch(e) { alert('Erro ao adicionar tarefa.'); }
+}
+async function toggleTask(id, done) {
+  try { await fetch(`${SERVER_URL}/tasks/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ done }) }); loadTasks(); } catch(e){}
+}
+async function deleteTask(id) {
+  if (!confirm('Excluir esta tarefa?')) return;
+  try { await fetch(`${SERVER_URL}/tasks/${id}`, { method:'DELETE' }); loadTasks(); } catch(e){}
 }
 
 async function sendFile() {
