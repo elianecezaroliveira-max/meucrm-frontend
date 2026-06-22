@@ -3449,7 +3449,8 @@ function selectTemplate(el, id, name, language, components) {
     const vars = [...new Set(body.text.match(/\{\{\d+\}\}/g))];
     varsArea.style.display = 'block';
     varsArea.innerHTML = `<label>Preencha as variáveis:</label>` +
-      vars.map(v => `<input type="text" id="var-${v.replace(/[{}]/g,'')}" placeholder="${v}" />`).join('');
+      vars.map((v,i) => `<input type="text" id="var-${v.replace(/[{}]/g,'')}" placeholder="${v}" value="${i===0?escHtml(currentName||''):''}" />`).join('') +
+      `<div style="font-size:11px;color:#8696a0;margin-top:4px">${vars.length?'A 1ª variável já vem com o nome do lead. Edite se precisar.':''}</div>`;
   } else {
     varsArea.style.display = 'none';
     varsArea.innerHTML = '';
@@ -3464,7 +3465,7 @@ async function confirmSendTemplate() {
     const vars = [...new Set(body.text.match(/\{\{\d+\}\}/g))];
     const params = vars.map(v => {
       const val = document.getElementById('var-' + v.replace(/[{}]/g,'')).value.trim();
-      return { type: 'text', text: val || v };
+      return { type: 'text', text: val || currentName || 'Cliente' }; // nunca manda "{{1}}" literal
     });
     components.push({ type: 'body', parameters: params });
   }
