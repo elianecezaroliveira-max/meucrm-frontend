@@ -2059,7 +2059,7 @@ async function loadMessages(phone, scroll = true) {
         if (m.direction === 'outbound') {
           if (m.status === 'read')           ticks = '<span class="msg-ticks read">✓✓</span>';
           else if (m.status === 'delivered') ticks = '<span class="msg-ticks delivered">✓✓</span>';
-          else if (m.status === 'failed')    ticks = `<span class="msg-ticks failed" style="cursor:pointer" title="${escHtml(m.error_info||'Falha no envio — a Meta não informou o motivo.')}" onclick="alert('❌ Falha no envio:\\n\\n'+this.title)">⚠️</span>`;
+          else if (m.status === 'failed')    ticks = `<span class="msg-ticks failed" style="cursor:pointer" title="${escHtml(m.error_info||'Falha no envio sem motivo registrado (mensagem anterior à atualização). Reenvie para ver o detalhe da Meta.')}" onclick="alert('❌ Falha no envio:\\n\\n'+this.title)">⚠️</span>`;
           else                               ticks = '<span class="msg-ticks sent">✓</span>';
         }
 
