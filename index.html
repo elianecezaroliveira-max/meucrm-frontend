@@ -4832,12 +4832,13 @@ function renderConfigPanel(node) {
       </select>
       <div id="cfg-msg-custom" style="display:${mode==='template'?'none':'block'}">
         <label class="bot-cfg-label" style="margin-top:12px">Mensagem</label>
-        <div style="display:flex;gap:6px;margin-bottom:6px">
+        <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">
           <button type="button" onclick="insertMsgVar('{nome}')" style="background:#0d2e1f;border:1px solid #00a884;color:#00a884;border-radius:6px;padding:3px 10px;font-size:12px;cursor:pointer">+ {nome}</button>
           <button type="button" onclick="insertMsgVar('{telefone}')" style="background:#0d2e1f;border:1px solid #00a884;color:#00a884;border-radius:6px;padding:3px 10px;font-size:12px;cursor:pointer">+ {telefone}</button>
+          <button type="button" onclick="insertMsgVar('{notas}')" style="background:#0d2e1f;border:1px solid #00a884;color:#00a884;border-radius:6px;padding:3px 10px;font-size:12px;cursor:pointer">+ {notas}</button>
         </div>
         <textarea class="bot-cfg-textarea" id="cfg-msg-text" placeholder="Olá, {nome}! Como posso ajudar?">${escHtml(node.config.text||'')}</textarea>
-        <div style="font-size:11px;color:#8696a0;margin-top:6px">{nome} é trocado pelo nome do lead no envio. Também aceita (nome) e [nome].</div>
+        <div style="font-size:11px;color:#8696a0;margin-top:6px">{nome} = nome do lead · {telefone} = telefone · {notas} = anotações do lead. Também aceita (nome), [nome].</div>
       </div>
       <div id="cfg-msg-template" style="display:${mode==='template'?'block':'none'}">
         <label class="bot-cfg-label" style="margin-top:12px">Escolha um modelo aprovado</label>
@@ -4846,7 +4847,7 @@ function renderConfigPanel(node) {
         <input class="bot-cfg-input" id="cfg-tmpl-name" placeholder="ex: anac3" value="${escHtml(node.config.template_name||'')}" />
         <label class="bot-cfg-label" style="margin-top:10px">Idioma</label>
         <input class="bot-cfg-input" id="cfg-tmpl-lang" placeholder="pt_BR" value="${escHtml(node.config.language||'pt_BR')}" />
-        <label class="bot-cfg-label" style="margin-top:10px">Valores das variáveis <span style="color:#8696a0">(um por linha: {{1}}, {{2}}… — pode usar {nome})</span></label>
+        <label class="bot-cfg-label" style="margin-top:10px">Valores das variáveis <span style="color:#8696a0">(um por linha: {{1}}, {{2}}… — pode usar {nome}, {telefone}, {notas})</span></label>
         <textarea class="bot-cfg-textarea" id="cfg-tmpl-vars" placeholder="{nome}">${escHtml((node.config.vars||[]).join('\n'))}</textarea>
         <div id="cfg-tmpl-buttons" style="margin-top:8px"></div>
         <div style="font-size:11px;color:#8696a0;margin-top:6px">Use modelo aprovado para iniciar conversa com quem ainda não te respondeu.</div>
