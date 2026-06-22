@@ -79,7 +79,7 @@
   #btn-mark-read svg { width: 18px; height: 18px; }
   #empty-contacts { padding: 24px 16px; text-align: center; color: #8696a0; font-size: 13px; line-height: 1.6; }
   /* CHAT */
-  #chat-area { flex: 1; display: flex; flex-direction: column; background: #0b141a; }
+  #chat-area { flex: 1; display: flex; flex-direction: column; background: #0b141a; position: relative; }
   #chat-header { background: #202c33; padding: 12px 16px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #2a3942; min-height: 60px; }
   #chat-header .avatar { width: 40px; height: 40px; border-radius: 50%; background: #2a3942; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 600; color: #00a884; flex-shrink: 0; }
   #chat-header .info .name { font-size: 15px; font-weight: 600; }
@@ -119,8 +119,10 @@
   #btn-notes:hover { background: #2a3942; color: #e9edef; }
   #btn-notes.active { color: #00a884; background: #1a3028; }
   #btn-notes svg { width: 18px; height: 18px; }
-  #notes-panel { background: #111b21; border-bottom: 2px solid #00a884; padding: 12px 16px 14px; display: none; flex-shrink: 0; }
+  #notes-panel { position: absolute; left: 0; right: 0; z-index: 30; background: #111b21; border-bottom: 2px solid #00a884; padding: 12px 16px 14px; display: none; max-height: 45%; overflow-y: auto; box-shadow: 0 8px 20px rgba(0,0,0,0.5); }
   #notes-panel.open { display: block; }
+  #notes-close-btn { margin-left: auto; background: none; border: none; color: #8696a0; cursor: pointer; font-size: 16px; line-height: 1; padding: 0 2px; }
+  #notes-close-btn:hover { color: #e9edef; }
   #notes-panel-label { font-size: 11px; color: #00a884; text-transform: uppercase; letter-spacing: 0.7px; font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
   #notes-textarea { width: 100%; background: #202c33; border: 1px solid #2a3942; color: #e9edef; padding: 10px 14px; border-radius: 8px; font-size: 13px; resize: none; outline: none; line-height: 1.6; min-height: 72px; max-height: 180px; font-family: inherit; }
   #notes-textarea:focus { border-color: #00a884; }
@@ -1858,7 +1860,7 @@ async function selectContact(phone, name, accountId) {
       </button>
     </div>
     <div id="notes-panel">
-      <div id="notes-panel-label">📝 Anotações do lead</div>
+      <div id="notes-panel-label">📝 Anotações do lead <button id="notes-close-btn" onclick="toggleNotes()" title="Fechar">✕</button></div>
       <textarea id="notes-textarea" placeholder="Escreva informações sobre esse lead: simulação, dados, observações..."></textarea>
       <div id="notes-status"></div>
     </div>
@@ -2856,7 +2858,11 @@ function toggleNotes() {
   if (!panel) return;
   const open = panel.classList.toggle('open');
   if (btn) btn.classList.toggle('active', open);
-  if (open) document.getElementById('notes-textarea')?.focus();
+  if (open) {
+    const h = document.getElementById('chat-header')?.offsetHeight || 60;
+    panel.style.top = h + 'px'; // flutua logo abaixo do cabeçalho, sem empurrar o chat
+    document.getElementById('notes-textarea')?.focus();
+  }
 }
 
 async function loadNotes(phone) {
