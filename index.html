@@ -3461,11 +3461,13 @@ async function confirmSendTemplate() {
   if (!selectedTemplate) return;
   const components = [];
   const body = selectedTemplate.components?.find ? selectedTemplate.components.find(c => c.type === 'BODY') : null;
+  let bodyText = body ? body.text : '';
   if (body && body.text.match(/\{\{\d+\}\}/g)) {
     const vars = [...new Set(body.text.match(/\{\{\d+\}\}/g))];
     const params = vars.map(v => {
-      const val = document.getElementById('var-' + v.replace(/[{}]/g,'')).value.trim();
-      return { type: 'text', text: val || currentName || 'Cliente' }; // nunca manda "{{1}}" literal
+      const val = document.getElementById('var-' + v.replace(/[{}]/g,'')).value.trim() || currentName || 'Cliente';
+      bodyText = bodyText.split(v).join(val); // monta o texto real exibido no chat
+      return { type: 'text', text: val }; // nunca manda "{{1}}" literal
     });
     components.push({ type: 'body', parameters: params });
   }
@@ -3478,7 +3480,8 @@ async function confirmSendTemplate() {
         account_id: currentAccountId,
         template_name: selectedTemplate.name,
         language_code: selectedTemplate.language,
-        components
+        components,
+        body_text: bodyText
       })
     });
     const data = await res.json();
