@@ -4557,12 +4557,19 @@ function extractQuickReplyButtons(t){
   if(!comp || !comp.buttons) return [];
   return comp.buttons.filter(b=>b.type==='QUICK_REPLY').map(b=>b.text).filter(Boolean);
 }
+function _botPickAccount(){
+  if(currentAccountId) return currentAccountId;
+  const as=document.getElementById('account-select');
+  const opt = as ? Array.from(as.options).find(o=>o.value) : null;
+  return opt ? opt.value : '';
+}
 async function loadBotTmplOptions(node){
   const sel = document.getElementById('cfg-tmpl-select');
   if(!sel) return;
-  if(!currentAccountId){ sel.innerHTML='<option value="">Abra uma conversa/conta para listar modelos</option>'; return; }
+  const acctId = _botPickAccount();
+  if(!acctId){ sel.innerHTML='<option value="">Nenhuma conta disponível</option>'; return; }
   try{
-    const res = await fetch(SERVER_URL+'/templates?account_id='+currentAccountId);
+    const res = await fetch(SERVER_URL+'/templates?account_id='+acctId);
     const tmpls = (await res.json()).filter(t=>t.status==='APPROVED');
     _botTmplCache = {};
     sel.innerHTML = '<option value="">-- escolher modelo --</option>' + tmpls.map(t=>{
@@ -4571,6 +4578,18 @@ async function loadBotTmplOptions(node){
       const selAttr = (node.config.template_name===t.name && (node.config.language||'pt_BR')===t.language) ? 'selected' : '';
       return `<option value="${escHtml(key)}" ${selAttr}>${escHtml(t.name)} (${t.language})</option>`;
     }).join('');
+    // Auto-detecta os botões do modelo já configurado (sem precisar re-escolher)
+    if(node.config.template_name){
+      const t = tmpls.find(x=>x.name===node.config.template_name && (node.config.language||'pt_BR')===x.language)
+             || tmpls.find(x=>x.name===node.config.template_name);
+      if(t){
+        const buttons = extractQuickReplyButtons(t);
+        if(JSON.stringify(node.config.buttons||[]) !== JSON.stringify(buttons)){
+          updateNodeConfig(node.id, {buttons});
+          renderTmplButtonsInfo(node);
+        }
+      }
+    }
   }catch(e){ sel.innerHTML='<option value="">Erro ao carregar modelos</option>'; }
 }
 function onBotTmplSelect(node, key){
