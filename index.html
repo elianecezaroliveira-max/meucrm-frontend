@@ -4047,6 +4047,7 @@ function renderBotsList(bots) {
       </div>
       <div class="bot-card-actions">
         <button onclick="event.stopPropagation();openBotEditor('${b.id}')" title="Editar">✏️</button>
+        <button onclick="event.stopPropagation();duplicateBot('${b.id}')" title="Duplicar">📋</button>
         <button onclick="event.stopPropagation();deleteBotItem('${b.id}')" title="Excluir">🗑</button>
       </div>
     </div>
@@ -4060,6 +4061,18 @@ async function createNewBot() {
     // Add a start node automatically
     await openBotEditor(bot.id, true);
   }
+}
+
+async function duplicateBot(id) {
+  try {
+    const res = await fetch(SERVER_URL+'/bots/'+id+'/duplicate', {method:'POST'});
+    const d = await res.json();
+    if (d.success && d.id) {
+      await openBotEditor(d.id); // abre a cópia já para editar
+    } else {
+      alert('Erro ao duplicar: '+(d.error||''));
+    }
+  } catch(e) { alert('Erro ao duplicar bot'); }
 }
 
 async function deleteBotItem(id) {
