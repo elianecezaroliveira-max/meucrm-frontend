@@ -2059,7 +2059,7 @@ async function loadMessages(phone, scroll = true) {
         if (m.direction === 'outbound') {
           if (m.status === 'read')           ticks = '<span class="msg-ticks read">✓✓</span>';
           else if (m.status === 'delivered') ticks = '<span class="msg-ticks delivered">✓✓</span>';
-          else if (m.status === 'failed')    ticks = '<span class="msg-ticks failed">!</span>';
+          else if (m.status === 'failed')    ticks = `<span class="msg-ticks failed" style="cursor:pointer" title="${escHtml(m.error_info||'Falha no envio — a Meta não informou o motivo.')}" onclick="alert('❌ Falha no envio:\\n\\n'+this.title)">⚠️</span>`;
           else                               ticks = '<span class="msg-ticks sent">✓</span>';
         }
 
@@ -3482,7 +3482,7 @@ async function confirmSendTemplate() {
       })
     });
     const data = await res.json();
-    if (!res.ok) return alert('Erro: ' + (data.error || 'Tente novamente'));
+    if (!res.ok) return alert('❌ O WhatsApp recusou o envio:\n\n' + (data.error || 'Tente novamente') + (data.detail ? '\n\n' + data.detail : '') + (data.code ? '\n\n(código ' + data.code + ')' : ''));
     closeSendTemplate();
     await loadMessages(currentPhone);
   } catch(e) { alert('Erro ao enviar template.'); }
