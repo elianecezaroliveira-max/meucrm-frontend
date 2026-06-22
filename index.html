@@ -3917,9 +3917,9 @@ let _nodeDragState = null;
 let _botStages = [];
 let _activeBotRun = null;
 const NODE_W = 220;
-const NODE_COLORS = { start:'#25D366', message:'#1d9bf0', wait_reply:'#FF9800', pause:'#6B7280', move_stage:'#8B5CF6', end:'#EF4444', round_robin:'#0ea5e9', tags:'#14b8a6', task:'#f59e0b', complete_task:'#16a34a', mark_read:'#22c55e' };
-const NODE_ICONS  = { start:'▶', message:'📨', wait_reply:'💬', pause:'⏱', move_stage:'📋', end:'⏹', round_robin:'🔀', tags:'🏷', task:'✅', complete_task:'☑️', mark_read:'👁' };
-const NODE_LABELS = { start:'Início', message:'Enviar mensagem', wait_reply:'Aguardar resposta', pause:'Cronômetro', move_stage:'Mudar status', end:'Fim', round_robin:'Round Robin', tags:'Gerenciar tags', task:'Criar tarefa', complete_task:'Concluir tarefas', mark_read:'Marcar como lida' };
+const NODE_COLORS = { start:'#25D366', message:'#1d9bf0', wait_reply:'#FF9800', pause:'#6B7280', move_stage:'#8B5CF6', end:'#EF4444', round_robin:'#0ea5e9', tags:'#14b8a6', task:'#f59e0b', complete_task:'#16a34a', mark_read:'#22c55e', business_hours:'#f97316' };
+const NODE_ICONS  = { start:'▶', message:'📨', wait_reply:'💬', pause:'⏱', move_stage:'📋', end:'⏹', round_robin:'🔀', tags:'🏷', task:'✅', complete_task:'☑️', mark_read:'👁', business_hours:'🕐' };
+const NODE_LABELS = { start:'Início', message:'Enviar mensagem', wait_reply:'Aguardar resposta', pause:'Cronômetro', move_stage:'Mudar status', end:'Fim', round_robin:'Round Robin', tags:'Gerenciar tags', task:'Criar tarefa', complete_task:'Concluir tarefas', mark_read:'Marcar como lida', business_hours:'Horário comercial' };
 
 function _botGenId() { return 'n' + Date.now().toString(36) + Math.random().toString(36).substring(2,6); }
 
@@ -4244,7 +4244,7 @@ const BOT_NW = 190, BOT_NH = 66, BOT_HG = 90, BOT_VG = 26;
 
 function botOutSlots(node){
   if (node.type==='end') return [];
-  if (node.type==='wait_reply' || node.type==='round_robin' || node.type==='message')
+  if (node.type==='wait_reply' || node.type==='round_robin' || node.type==='message' || node.type==='business_hours')
     return getOutputPorts(node).map(p=>({label:p.label, display:p.display||p.label||''}));
   return [{label:'', display:''}];
 }
@@ -4552,6 +4552,13 @@ function getNodePreview(node) {
   }
   if (node.type==='task') return cfg.title ? (cfg.title.length>50?cfg.title.substring(0,50)+'…':cfg.title) : '(descreva a tarefa)';
   if (node.type==='complete_task') return cfg.title_filter ? ('Concluir: "'+cfg.title_filter+'"') : 'Concluir todas as tarefas do lead';
+  if (node.type==='business_hours') {
+    const dn=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+    const days=(cfg.days||[1,2,3,4,5]);
+    const isMonFri = days.length===5 && [1,2,3,4,5].every(d=>days.includes(d));
+    const ds = isMonFri ? 'Seg–Sex' : days.slice().sort((a,b)=>a-b).map(d=>dn[d]).join(',');
+    return `${ds} ${cfg.start||'08:00'}–${cfg.end||'18:00'}`;
+  }
   if (node.type==='mark_read') return 'Zera as não lidas';
   return '';
 }
@@ -4637,6 +4644,11 @@ function getOutputPorts(node) {
   if (node.type==='round_robin') {
     const branches = node.config?.branches||[];
     return branches.map((b,i)=>({label:String(i), display:'Opção '+(i+1)}));
+  }
+  if (node.type==='business_hours') {
+    const ports = [{label:'__open__', display:'Em expediente'}];
+    if (node.config?.wait===false) ports.push({label:'__closed__', display:'Fora do expediente'});
+    return ports;
   }
   return [{label:'', display:''}];
 }
@@ -4751,6 +4763,7 @@ function botDefaultConfig(type) {
   if (type==='round_robin') c.branches=[{},{}];
   if (type==='task') c.due_hours=24;
   if (type==='complete_task') c.match='all';
+  if (type==='business_hours') { c.days=[1,2,3,4,5]; c.start='08:00'; c.end='18:00'; c.wait=true; }
   return c;
 }
 
@@ -4762,6 +4775,7 @@ const STEP_TYPES = [
   ['tags','🏷 Gerenciar tags'],
   ['task','✅ Criar tarefa'],
   ['complete_task','☑️ Concluir tarefas'],
+  ['business_hours','🕐 Horário comercial'],
   ['mark_read','👁 Marcar como lida'],
   ['move_stage','📋 Mudar status'],
   ['pause','⏱ Cronômetro'],
@@ -4974,6 +4988,27 @@ function renderConfigPanel(node) {
     return;
   }
 
+  if (node.type==='business_hours') {
+    const days = node.config.days || [1,2,3,4,5];
+    const dn=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+    form.innerHTML = `
+      <label class="bot-cfg-label">Dias de expediente</label>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px">
+        ${dn.map((n,i)=>`<label style="display:flex;align-items:center;gap:4px;background:#2a3942;border-radius:6px;padding:5px 9px;font-size:12px;color:#e9edef;cursor:pointer">
+          <input type="checkbox" ${days.includes(i)?'checked':''} onchange="toggleBizDay('${node.id}',${i},this.checked)"/> ${n}</label>`).join('')}
+      </div>
+      <div style="display:flex;gap:8px">
+        <div style="flex:1"><label class="bot-cfg-label">Abre às</label><input class="bot-cfg-input" type="time" value="${node.config.start||'08:00'}" onchange="updateNodeConfig('${node.id}',{start:this.value})"/></div>
+        <div style="flex:1"><label class="bot-cfg-label">Fecha às</label><input class="bot-cfg-input" type="time" value="${node.config.end||'18:00'}" onchange="updateNodeConfig('${node.id}',{end:this.value})"/></div>
+      </div>
+      <label style="display:flex;align-items:flex-start;gap:8px;margin-top:14px;font-size:13px;color:#e9edef;cursor:pointer">
+        <input type="checkbox" id="cfg-bh-wait" ${node.config.wait!==false?'checked':''} onchange="onBizWaitChange('${node.id}',this.checked)"/>
+        <span>Fora do expediente, <b>aguardar até reabrir</b> e então seguir por "Em expediente"</span>
+      </label>
+      <div style="font-size:11px;color:#8696a0;margin-top:10px">Horário de Brasília (UTC-3).<br>• <b>Em expediente</b>: caminho seguido quando está dentro do horário agora (coloque aqui a mensagem extra do horário comercial).<br>• Se desmarcar o "aguardar", aparece a saída <b>Fora do expediente</b> para tratar fora de hora.</div>`;
+    return;
+  }
+
   if (node.type==='mark_read') {
     form.innerHTML = `<div style="color:#8696a0;font-size:13px">Marca a conversa do lead como lida (zera o contador de não lidas). Não tem configuração.</div>`;
     return;
@@ -5008,6 +5043,16 @@ function updateNodeConfig(nodeId, patch) {
   if (!node) return;
   node.config = {...(node.config||{}), ...patch};
   renderBotList(); // atualiza o resumo do passo na lista (foco fica no painel de config)
+}
+
+function toggleBizDay(id, day, on){
+  const node = botNodes.find(n=>n.id===id); if(!node) return;
+  let days = (node.config.days||[1,2,3,4,5]).slice();
+  if(on){ if(!days.includes(day)) days.push(day); } else { days = days.filter(d=>d!==day); }
+  updateNodeConfig(id, {days});
+}
+function onBizWaitChange(id, on){
+  updateNodeConfig(id, {wait:on}); // muda as saídas (mostra/esconde "Fora do expediente")
 }
 
 function updateOptionLabel(idx, val) {
