@@ -3436,6 +3436,13 @@ async function loadApprovedTemplates() {
   } catch(e) { el.innerHTML = '<p style="color:#ef4444;font-size:13px">Erro ao carregar modelos.</p>'; }
 }
 
+// Nome do lead da conversa ABERTA (lê do cabeçalho, garantindo que é o lead certo)
+function getCurrentLeadName() {
+  const el = document.getElementById('chat-name-text');
+  const n = el ? el.textContent.trim() : '';
+  return n || currentName || '';
+}
+
 function selectTemplate(el, id, name, language, components) {
   document.querySelectorAll('.tmpl-select-item').forEach(i => i.classList.remove('selected'));
   el.classList.add('selected');
@@ -3449,7 +3456,7 @@ function selectTemplate(el, id, name, language, components) {
     const vars = [...new Set(body.text.match(/\{\{\d+\}\}/g))];
     varsArea.style.display = 'block';
     varsArea.innerHTML = `<label>Preencha as variáveis:</label>` +
-      vars.map((v,i) => `<input type="text" id="var-${v.replace(/[{}]/g,'')}" placeholder="${v}" value="${i===0?escHtml(currentName||''):''}" />`).join('') +
+      vars.map((v,i) => `<input type="text" id="var-${v.replace(/[{}]/g,'')}" placeholder="${v}" value="${i===0?escHtml(getCurrentLeadName()):''}" />`).join('') +
       `<div style="font-size:11px;color:#8696a0;margin-top:4px">${vars.length?'A 1ª variável já vem com o nome do lead. Edite se precisar.':''}</div>`;
   } else {
     varsArea.style.display = 'none';
@@ -3464,8 +3471,9 @@ async function confirmSendTemplate() {
   let bodyText = body ? body.text : '';
   if (body && body.text.match(/\{\{\d+\}\}/g)) {
     const vars = [...new Set(body.text.match(/\{\{\d+\}\}/g))];
+    const leadName = getCurrentLeadName();
     const params = vars.map(v => {
-      const val = document.getElementById('var-' + v.replace(/[{}]/g,'')).value.trim() || currentName || 'Cliente';
+      const val = document.getElementById('var-' + v.replace(/[{}]/g,'')).value.trim() || leadName || 'Cliente';
       bodyText = bodyText.split(v).join(val); // monta o texto real exibido no chat
       return { type: 'text', text: val }; // nunca manda "{{1}}" literal
     });
