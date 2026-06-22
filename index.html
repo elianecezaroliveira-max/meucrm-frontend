@@ -4550,8 +4550,56 @@ function getNodePreview(node) {
   return '';
 }
 
+// ── Modelos no nó de mensagem (lista + detecção de botões) ──
+let _botTmplCache = {};
+function extractQuickReplyButtons(t){
+  const comp = (t.components||[]).find(c=>c.type==='BUTTONS');
+  if(!comp || !comp.buttons) return [];
+  return comp.buttons.filter(b=>b.type==='QUICK_REPLY').map(b=>b.text).filter(Boolean);
+}
+async function loadBotTmplOptions(node){
+  const sel = document.getElementById('cfg-tmpl-select');
+  if(!sel) return;
+  if(!currentAccountId){ sel.innerHTML='<option value="">Abra uma conversa/conta para listar modelos</option>'; return; }
+  try{
+    const res = await fetch(SERVER_URL+'/templates?account_id='+currentAccountId);
+    const tmpls = (await res.json()).filter(t=>t.status==='APPROVED');
+    _botTmplCache = {};
+    sel.innerHTML = '<option value="">-- escolher modelo --</option>' + tmpls.map(t=>{
+      const key = t.name+'|'+t.language;
+      _botTmplCache[key] = t;
+      const selAttr = (node.config.template_name===t.name && (node.config.language||'pt_BR')===t.language) ? 'selected' : '';
+      return `<option value="${escHtml(key)}" ${selAttr}>${escHtml(t.name)} (${t.language})</option>`;
+    }).join('');
+  }catch(e){ sel.innerHTML='<option value="">Erro ao carregar modelos</option>'; }
+}
+function onBotTmplSelect(node, key){
+  const t = _botTmplCache[key];
+  if(!t) return;
+  const buttons = extractQuickReplyButtons(t);
+  const nameEl=document.getElementById('cfg-tmpl-name'); if(nameEl) nameEl.value=t.name;
+  const langEl=document.getElementById('cfg-tmpl-lang'); if(langEl) langEl.value=t.language;
+  updateNodeConfig(node.id, {template_name:t.name, language:t.language, buttons});
+  renderConfigPanel(node); // re-renderiza painel (mostra botões) — o canvas já atualiza via updateNodeConfig
+}
+function renderTmplButtonsInfo(node){
+  const el=document.getElementById('cfg-tmpl-buttons');
+  if(!el) return;
+  const btns = node.config.buttons||[];
+  if(!btns.length){ el.innerHTML='<div style="font-size:11px;color:#8696a0">Modelo sem botões de resposta rápida — o bot segue pela saída "Enviada ✓".</div>'; return; }
+  el.innerHTML = `<div style="font-size:12px;color:#00a884;margin-bottom:4px">Botões do modelo (cada um vira uma saída no fluxo):</div>` +
+    btns.map(b=>`<span style="display:inline-block;background:#0d2e1f;border:1px solid #00a884;color:#00a884;border-radius:6px;padding:2px 8px;font-size:12px;margin:2px">🔘 ${escHtml(b)}</span>`).join('');
+}
+
 function getOutputPorts(node) {
   if (node.type==='message') {
+    const btns = (node.config?.mode==='template' && Array.isArray(node.config.buttons)) ? node.config.buttons : [];
+    if (btns.length) {
+      const ports = btns.map(b=>({label:b, display:'🔘 '+b}));
+      ports.push({label:'__other__', display:'Outra resposta'});
+      ports.push({label:'__failed__', display:'Falha no envio'});
+      return ports;
+    }
     return [{label:'', display:'Enviada ✓'}, {label:'__failed__', display:'Falha no envio'}];
   }
   if (node.type==='wait_reply') {
@@ -4773,12 +4821,15 @@ function renderConfigPanel(node) {
         <div style="font-size:11px;color:#8696a0;margin-top:6px">{nome} é trocado pelo nome do lead no envio. Também aceita (nome) e [nome].</div>
       </div>
       <div id="cfg-msg-template" style="display:${mode==='template'?'block':'none'}">
-        <label class="bot-cfg-label" style="margin-top:12px">Nome do modelo aprovado</label>
+        <label class="bot-cfg-label" style="margin-top:12px">Escolha um modelo aprovado</label>
+        <select class="bot-cfg-select" id="cfg-tmpl-select"><option value="">⏳ Carregando...</option></select>
+        <label class="bot-cfg-label" style="margin-top:10px">Nome do modelo <span style="color:#8696a0">(ou digite manualmente)</span></label>
         <input class="bot-cfg-input" id="cfg-tmpl-name" placeholder="ex: anac3" value="${escHtml(node.config.template_name||'')}" />
         <label class="bot-cfg-label" style="margin-top:10px">Idioma</label>
         <input class="bot-cfg-input" id="cfg-tmpl-lang" placeholder="pt_BR" value="${escHtml(node.config.language||'pt_BR')}" />
         <label class="bot-cfg-label" style="margin-top:10px">Valores das variáveis <span style="color:#8696a0">(um por linha: {{1}}, {{2}}… — pode usar {nome})</span></label>
         <textarea class="bot-cfg-textarea" id="cfg-tmpl-vars" placeholder="{nome}">${escHtml((node.config.vars||[]).join('\n'))}</textarea>
+        <div id="cfg-tmpl-buttons" style="margin-top:8px"></div>
         <div style="font-size:11px;color:#8696a0;margin-top:6px">Use modelo aprovado para iniciar conversa com quem ainda não te respondeu.</div>
       </div>`;
     document.getElementById('cfg-msg-mode').addEventListener('change', function(){
@@ -4797,6 +4848,9 @@ function renderConfigPanel(node) {
     document.getElementById('cfg-tmpl-name').addEventListener('input', function(){ updateNodeConfig(node.id,{template_name:this.value.trim()}); });
     document.getElementById('cfg-tmpl-lang').addEventListener('input', function(){ updateNodeConfig(node.id,{language:this.value.trim()}); });
     document.getElementById('cfg-tmpl-vars').addEventListener('input', function(){ updateNodeConfig(node.id,{vars:this.value.split('\n').map(s=>s.trim()).filter(Boolean)}); });
+    document.getElementById('cfg-tmpl-select').addEventListener('change', function(){ onBotTmplSelect(node, this.value); });
+    loadBotTmplOptions(node);
+    renderTmplButtonsInfo(node);
     return;
   }
 
