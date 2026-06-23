@@ -680,6 +680,12 @@ const AUTH_CONFIG = {
   url:     'https://yfrxgyhkygqhjrwpksry.supabase.co',
   anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlmcnhneWhreWdxaGpyd3Brc3J5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1Mjk4MDcsImV4cCI6MjA5NDEwNTgwN30.6vjbaJdWk-u55xegMrHnv64pvlo0DByfPdtDSj2C7z4'
 };
+// E-mails autorizados a acessar (deixe vazio [] para liberar qualquer um)
+const AUTH_ALLOWED = [
+  'elianecezaroliveira@gmail.com',
+  'solucoesvalorize@gmail.com',
+  'vendetta.freedon@gmail.com'
+];
 let _supaAuth = null;
 function _showLogin(){ const o=document.getElementById('login-overlay'); if(o) o.style.display='flex'; }
 function _hideLogin(){ const o=document.getElementById('login-overlay'); if(o) o.style.display='none'; }
@@ -689,13 +695,28 @@ async function loginGoogle(){
   await _supaAuth.auth.signInWithOAuth({ provider:'google', options:{ redirectTo: window.location.origin } });
 }
 async function logoutCRM(){ if(_supaAuth){ await _supaAuth.auth.signOut(); _showLogin(); } }
+function _emailAllowed(email){
+  if(!AUTH_ALLOWED.length) return true; // lista vazia = libera geral
+  return AUTH_ALLOWED.map(e=>e.toLowerCase()).includes(String(email||'').toLowerCase());
+}
+async function _gate(session){
+  if(!session){ _showLogin(); return; }
+  const email = session.user?.email || '';
+  if(!_emailAllowed(email)){
+    const m=document.getElementById('login-msg'); if(m) m.textContent='Acesso não autorizado: '+email;
+    await _supaAuth.auth.signOut();
+    _showLogin();
+    return;
+  }
+  _hideLogin();
+}
 async function initAuth(){
   if(!AUTH_CONFIG.enabled) return;            // desligado = app funciona como hoje
   if(!window.supabase){ console.warn('supabase-js não carregou'); return; }
   _supaAuth = window.supabase.createClient(AUTH_CONFIG.url, AUTH_CONFIG.anonKey);
   const { data:{ session } } = await _supaAuth.auth.getSession();
-  if(session) _hideLogin(); else _showLogin();
-  _supaAuth.auth.onAuthStateChange((_evt, sess)=>{ if(sess) _hideLogin(); else _showLogin(); });
+  await _gate(session);
+  _supaAuth.auth.onAuthStateChange((_evt, sess)=>{ _gate(sess); });
 }
 window.addEventListener('load', initAuth);
 </script>
