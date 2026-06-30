@@ -2060,13 +2060,17 @@ function renderMessageContent(m) {
       const seed = m.media_id || m.id || '';
       const barH = [6,14,10,18,8,22,12,20,6,16,10,14,18,8,20,12,6,16,10,14];
       const bars = barH.map((h,i) => `<i style="height:${h}px"></i>`).join('');
+      const aid = m.id || m.media_id;
       return quotedHtml + `<div class="media-wrap">
-        <div class="voice-player" id="${vpId}">
-          <button class="vp-btn" onclick="voiceToggle('${m.id||m.media_id}','${proxyUrl}')" title="Tocar áudio">▶</button>
-          <div class="vp-bars" onclick="voiceSeek('${m.id||m.media_id}',event)">${bars}</div>
+        <div class="voice-player" id="vp-${aid}">
+          <button class="vp-btn" onclick="voiceToggle('${aid}')" title="Tocar áudio">▶</button>
+          <div class="vp-bars" onclick="voiceSeek('${aid}',event)">${bars}</div>
           <span class="vp-time">0:00</span>
-          <button class="vp-speed" onclick="voiceSpeed('${m.id||m.media_id}')" title="Velocidade">1x</button>
+          <button class="vp-speed" onclick="voiceSpeed('${aid}')" title="Velocidade">1x</button>
           <a href="${dlUrl}" class="media-dl-link" download title="Baixar">⬇</a>
+          <audio preload="none" src="${proxyUrl}"
+            onloadedmetadata="voiceMeta('${aid}')" ontimeupdate="voiceTime('${aid}')"
+            onplay="voiceUI('${aid}',true)" onpause="voiceUI('${aid}',false)" onended="voiceEnded('${aid}')"></audio>
         </div>
       </div>`;
 
@@ -2188,104 +2192,72 @@ async function loadMessages(phone, scroll = true) {
 }
 
 // ── Web Audio API — Voice Player ──
-const _voiceCache = {};
-let _curVoice = null;
+// ── Player de áudio nativo (<audio>): preserva a voz na velocidade, toca no 1º clique ──
+let _curAudioId = null;
 let _voiceSpeed = 1;          // velocidade global (1, 1.5, 2)
-const _voiceOffset = {};      // id -> ponto de retomada (segundos) quando pausado/buscado
-
 function _vpEl(id){ return document.getElementById('vp-' + id); }
+function _vpAudio(id){ const w = _vpEl(id); return w ? w.querySelector('audio') : null; }
 function _vpSpeedLabel(){ return _voiceSpeed === 1 ? '1x' : _voiceSpeed + 'x'; }
-function _vpFill(vp, frac){
-  if (!vp) return;
-  const bars = vp.querySelectorAll('.vp-bars i');
-  const n = Math.round(Math.min(1, Math.max(0, frac)) * bars.length);
+function _fmtVoice(s){ s = Math.max(0, s || 0); if(!isFinite(s)) s = 0; return Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0'); }
+function _vpFill(w, frac){
+  if (!w) return;
+  const bars = w.querySelectorAll('.vp-bars i');
+  const n = Math.round(Math.min(1, Math.max(0, frac || 0)) * bars.length);
   bars.forEach((b,i)=> b.classList.toggle('played', i < n));
 }
-function _vpElapsed(){
-  if (!_curVoice) return 0;
-  return Math.min((_curVoice.ctx.currentTime - _curVoice.startTime) * _curVoice.rate + _curVoice.offset, _curVoice.buf.duration);
+function _vpApplyPitch(a){ try { a.preservesPitch = true; a.mozPreservesPitch = true; a.webkitPreservesPitch = true; } catch(_){} }
+
+function voiceToggle(id){
+  const a = _vpAudio(id), w = _vpEl(id); if (!a) return;
+  if (a.paused) {
+    if (_curAudioId && _curAudioId !== id) { const p = _vpAudio(_curAudioId); if (p) p.pause(); }
+    _vpApplyPitch(a); a.playbackRate = _voiceSpeed;
+    const spd = w && w.querySelector('.vp-speed'); if (spd) spd.textContent = _vpSpeedLabel();
+    a.play().catch(()=>{});
+    _curAudioId = id;
+  } else { a.pause(); }
 }
-function _voiceStop(updateUI){
-  if (!_curVoice) return;
-  try { _curVoice.source.onended = null; _curVoice.source.stop(); } catch(_){}
-  cancelAnimationFrame(_curVoice.raf);
-  _curVoice.playing = false;
-  if (updateUI) { const vp = _vpEl(_curVoice.id); if (vp) vp.querySelector('.vp-btn').innerHTML = '▶'; }
+function voiceUI(id, playing){
+  const w = _vpEl(id); if (!w) return;
+  const btn = w.querySelector('.vp-btn'); if (btn) btn.innerHTML = playing ? '⏸' : '▶';
+  if (playing) _curAudioId = id;
 }
-async function _voiceLoad(id, url, vp){
-  if (_voiceCache[id]) return _voiceCache[id];
-  const btn = vp.querySelector('.vp-btn');
-  btn.innerHTML = '⏳'; btn.disabled = true;
-  try {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(res.status);
-    const ab  = await res.arrayBuffer();
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const buf = await ctx.decodeAudioData(ab);
-    _voiceCache[id] = { buf, ctx };
-    vp.querySelector('.vp-time').textContent = _fmtVoice(buf.duration);
-  } catch(e) { btn.innerHTML = '⚠'; btn.disabled = false; return null; }
-  btn.disabled = false;
-  return _voiceCache[id];
+function voiceTime(id){
+  const a = _vpAudio(id), w = _vpEl(id); if (!a || !w) return;
+  const dur = (isFinite(a.duration) && a.duration > 0) ? a.duration : 0;
+  w.querySelector('.vp-time').textContent = _fmtVoice(a.currentTime);
+  _vpFill(w, dur ? a.currentTime / dur : 0);
 }
-async function _voiceStart(id, vp, startOffset){
-  const { buf, ctx } = _voiceCache[id];
-  if (ctx.state === 'suspended') await ctx.resume();
-  const offset = Math.min(Math.max(0, startOffset || 0), buf.duration);
-  const src = ctx.createBufferSource();
-  src.buffer = buf; src.playbackRate.value = _voiceSpeed;
-  src.connect(ctx.destination); src.start(0, offset);
-  _curVoice = { id, source: src, ctx, buf, startTime: ctx.currentTime, offset, rate: _voiceSpeed, playing: true, raf: null };
-  const btn = vp.querySelector('.vp-btn'), timeEl = vp.querySelector('.vp-time'), spd = vp.querySelector('.vp-speed');
-  if (spd) spd.textContent = _vpSpeedLabel();
-  btn.innerHTML = '⏸';
-  function tick(){
-    const el = _vpElapsed();
-    timeEl.textContent = _fmtVoice(el);
-    _vpFill(vp, el / buf.duration);
-    if (_curVoice?.playing) _curVoice.raf = requestAnimationFrame(tick);
-  }
-  tick();
-  src.onended = () => {
-    if (_curVoice?.source !== src) return;
-    _curVoice.playing = false; _voiceOffset[id] = 0;
-    btn.innerHTML = '▶'; timeEl.textContent = _fmtVoice(buf.duration); _vpFill(vp, 0);
-    cancelAnimationFrame(_curVoice.raf);
-  };
-}
-async function voiceToggle(id, url){
-  const vp = _vpEl(id); if (!vp) return;
-  if (_curVoice?.id === id && _curVoice.playing) {   // pausar este
-    _voiceOffset[id] = _vpElapsed();
-    _voiceStop(true);
+function voiceMeta(id){
+  const a = _vpAudio(id), w = _vpEl(id); if (!a || !w) return;
+  if (!isFinite(a.duration)) { // alguns áudios do WhatsApp não trazem a duração: força o cálculo
+    const fix = () => { a.removeEventListener('timeupdate', fix); a.currentTime = 0; if (w && a.currentTime === 0) w.querySelector('.vp-time').textContent = _fmtVoice(a.duration); };
+    a.addEventListener('timeupdate', fix);
+    a.currentTime = 1e101;
     return;
   }
-  if (_curVoice?.playing) _voiceStop(true);          // parar outro
-  if (!await _voiceLoad(id, url, vp)) return;
-  await _voiceStart(id, vp, _voiceOffset[id] || 0);
+  if (a.currentTime === 0) w.querySelector('.vp-time').textContent = _fmtVoice(a.duration);
+}
+function voiceEnded(id){
+  const a = _vpAudio(id), w = _vpEl(id); if (!w) return;
+  const btn = w.querySelector('.vp-btn'); if (btn) btn.innerHTML = '▶';
+  if (a) a.currentTime = 0;
+  _vpFill(w, 0);
+  w.querySelector('.vp-time').textContent = _fmtVoice(a ? a.duration : 0);
 }
 function voiceSpeed(id){
   const cycle = [1, 1.5, 2];
   _voiceSpeed = cycle[(cycle.indexOf(_voiceSpeed) + 1) % cycle.length] || 1;
-  const vp = _vpEl(id), spd = vp && vp.querySelector('.vp-speed'); if (spd) spd.textContent = _vpSpeedLabel();
-  if (_curVoice?.playing) { // aplica na hora ao que está tocando
-    _curVoice.offset = _vpElapsed(); _curVoice.startTime = _curVoice.ctx.currentTime; _curVoice.rate = _voiceSpeed;
-    try { _curVoice.source.playbackRate.value = _voiceSpeed; } catch(_){}
-    const pvp = _vpEl(_curVoice.id), pspd = pvp && pvp.querySelector('.vp-speed'); if (pspd) pspd.textContent = _vpSpeedLabel();
-  }
+  const w = _vpEl(id), spd = w && w.querySelector('.vp-speed'); if (spd) spd.textContent = _vpSpeedLabel();
+  const a = _vpAudio(id); if (a) { _vpApplyPitch(a); a.playbackRate = _voiceSpeed; }
 }
 function voiceSeek(id, ev){
-  const vp = _vpEl(id); if (!vp) return;
-  const c = _voiceCache[id]; if (!c) return; // só dá pra buscar depois de tocar uma vez
-  const barsEl = vp.querySelector('.vp-bars'), r = barsEl.getBoundingClientRect();
+  const a = _vpAudio(id), w = _vpEl(id); if (!a || !w) return;
+  const dur = (isFinite(a.duration) && a.duration > 0) ? a.duration : 0; if (!dur) return;
+  const barsEl = w.querySelector('.vp-bars'), r = barsEl.getBoundingClientRect();
   const frac = Math.min(1, Math.max(0, (ev.clientX - r.left) / r.width));
-  const newOffset = frac * c.buf.duration;
-  _voiceOffset[id] = newOffset;
-  _vpFill(vp, frac);
-  vp.querySelector('.vp-time').textContent = _fmtVoice(newOffset);
-  if (_curVoice?.id === id && _curVoice.playing) { _voiceStop(false); _voiceStart(id, vp, newOffset); }
+  a.currentTime = frac * dur; _vpFill(w, frac);
 }
-function _fmtVoice(s) { return Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0'); }
 
 // ── Reações (emoji) ──
 let _reactTone = localStorage.getItem('reactTone') || '';
