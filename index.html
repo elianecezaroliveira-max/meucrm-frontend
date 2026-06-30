@@ -417,9 +417,14 @@
   .vp-btn { width:36px; height:36px; border-radius:50%; background:#25d366; border:none; cursor:pointer; color:#fff; font-size:15px; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:background .15s; }
   .vp-btn:disabled { opacity:.55; cursor:default; }
   .msg.outbound .vp-btn { background:#1f9e6e; }
-  .vp-bars { display:flex; gap:2px; align-items:center; flex:1; height:22px; overflow:hidden; }
-  .vp-bars i { display:block; width:3px; border-radius:2px; background:#9aa6ac; flex-shrink:0; transition:background .2s; }
-  .msg.outbound .vp-bars i { background:rgba(0,0,0,.25); }
+  .vp-bars { display:flex; gap:2px; align-items:center; flex:1; height:22px; overflow:hidden; cursor:pointer; }
+  .vp-bars i { display:block; width:3px; border-radius:2px; background:#c4ccd1; flex-shrink:0; transition:background .1s; }
+  .vp-bars i.played { background:#1f9e6e; }
+  .msg.outbound .vp-bars i { background:rgba(0,0,0,.18); }
+  .msg.outbound .vp-bars i.played { background:#0a7d5a; }
+  .vp-speed { background:rgba(0,0,0,.06); border:none; color:#54656f; font-size:11px; font-weight:700; border-radius:11px; padding:2px 8px; cursor:pointer; flex-shrink:0; line-height:1; }
+  .vp-speed:hover { background:rgba(0,0,0,.12); }
+  .msg.outbound .vp-speed { background:rgba(0,0,0,.1); color:#0a5e44; }
   .vp-bars.playing i { background:#25d366; animation:vpPulse .6s ease-in-out infinite alternate; }
   .msg.outbound .vp-bars.playing i { background:#1f9e6e; }
   @keyframes vpPulse { from{opacity:.5} to{opacity:1} }
@@ -2058,8 +2063,9 @@ function renderMessageContent(m) {
       return quotedHtml + `<div class="media-wrap">
         <div class="voice-player" id="${vpId}">
           <button class="vp-btn" onclick="voiceToggle('${m.id||m.media_id}','${proxyUrl}')" title="Tocar áudio">▶</button>
-          <div class="vp-bars">${bars}</div>
+          <div class="vp-bars" onclick="voiceSeek('${m.id||m.media_id}',event)">${bars}</div>
           <span class="vp-time">0:00</span>
+          <button class="vp-speed" onclick="voiceSpeed('${m.id||m.media_id}')" title="Velocidade">1x</button>
           <a href="${dlUrl}" class="media-dl-link" download title="Baixar">⬇</a>
         </div>
       </div>`;
@@ -2184,68 +2190,100 @@ async function loadMessages(phone, scroll = true) {
 // ── Web Audio API — Voice Player ──
 const _voiceCache = {};
 let _curVoice = null;
+let _voiceSpeed = 1;          // velocidade global (1, 1.5, 2)
+const _voiceOffset = {};      // id -> ponto de retomada (segundos) quando pausado/buscado
 
-async function voiceToggle(id, url) {
-  const vp  = document.getElementById('vp-' + id);
+function _vpEl(id){ return document.getElementById('vp-' + id); }
+function _vpSpeedLabel(){ return _voiceSpeed === 1 ? '1x' : _voiceSpeed + 'x'; }
+function _vpFill(vp, frac){
   if (!vp) return;
-  const btn    = vp.querySelector('.vp-btn');
-  const bars   = vp.querySelector('.vp-bars');
-  const timeEl = vp.querySelector('.vp-time');
-
-  // Pausar se já tocando este
-  if (_curVoice?.id === id && _curVoice.playing) {
-    _curVoice.source.stop();
-    _curVoice.offset += _curVoice.ctx.currentTime - _curVoice.startTime;
-    _curVoice.playing = false;
-    btn.innerHTML = '▶'; bars.classList.remove('playing');
-    cancelAnimationFrame(_curVoice.raf);
-    return;
-  }
-  // Parar outro que esteja tocando
-  if (_curVoice?.playing) {
-    _curVoice.source.stop();
-    cancelAnimationFrame(_curVoice.raf);
-    const prev = document.getElementById('vp-' + _curVoice.id);
-    if (prev) { prev.querySelector('.vp-btn').innerHTML = '▶'; prev.querySelector('.vp-bars').classList.remove('playing'); }
-  }
-
-  // Carregar se ainda não em cache
-  if (!_voiceCache[id]) {
-    btn.innerHTML = '⏳'; btn.disabled = true;
-    try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(res.status);
-      const ab  = await res.arrayBuffer();
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const buf = await ctx.decodeAudioData(ab);
-      _voiceCache[id] = { buf, ctx };
-      timeEl.textContent = _fmtVoice(buf.duration);
-    } catch(e) { btn.innerHTML = '⚠'; btn.disabled = false; return; }
-    btn.disabled = false;
-  }
-
+  const bars = vp.querySelectorAll('.vp-bars i');
+  const n = Math.round(Math.min(1, Math.max(0, frac)) * bars.length);
+  bars.forEach((b,i)=> b.classList.toggle('played', i < n));
+}
+function _vpElapsed(){
+  if (!_curVoice) return 0;
+  return Math.min((_curVoice.ctx.currentTime - _curVoice.startTime) * _curVoice.rate + _curVoice.offset, _curVoice.buf.duration);
+}
+function _voiceStop(updateUI){
+  if (!_curVoice) return;
+  try { _curVoice.source.onended = null; _curVoice.source.stop(); } catch(_){}
+  cancelAnimationFrame(_curVoice.raf);
+  _curVoice.playing = false;
+  if (updateUI) { const vp = _vpEl(_curVoice.id); if (vp) vp.querySelector('.vp-btn').innerHTML = '▶'; }
+}
+async function _voiceLoad(id, url, vp){
+  if (_voiceCache[id]) return _voiceCache[id];
+  const btn = vp.querySelector('.vp-btn');
+  btn.innerHTML = '⏳'; btn.disabled = true;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(res.status);
+    const ab  = await res.arrayBuffer();
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const buf = await ctx.decodeAudioData(ab);
+    _voiceCache[id] = { buf, ctx };
+    vp.querySelector('.vp-time').textContent = _fmtVoice(buf.duration);
+  } catch(e) { btn.innerHTML = '⚠'; btn.disabled = false; return null; }
+  btn.disabled = false;
+  return _voiceCache[id];
+}
+async function _voiceStart(id, vp, startOffset){
   const { buf, ctx } = _voiceCache[id];
   if (ctx.state === 'suspended') await ctx.resume();
-  const offset = (_curVoice?.id === id) ? (_curVoice.offset || 0) : 0;
-  const src    = ctx.createBufferSource();
-  src.buffer   = buf; src.connect(ctx.destination); src.start(0, offset);
-  const t0     = ctx.currentTime;
-  _curVoice    = { id, source: src, ctx, buf, startTime: t0, offset, playing: true, raf: null };
-  btn.innerHTML = '⏸'; bars.classList.add('playing');
-
-  function tick() {
-    const elapsed = Math.min((ctx.currentTime - t0) + offset, buf.duration);
-    timeEl.textContent = _fmtVoice(elapsed);
+  const offset = Math.min(Math.max(0, startOffset || 0), buf.duration);
+  const src = ctx.createBufferSource();
+  src.buffer = buf; src.playbackRate.value = _voiceSpeed;
+  src.connect(ctx.destination); src.start(0, offset);
+  _curVoice = { id, source: src, ctx, buf, startTime: ctx.currentTime, offset, rate: _voiceSpeed, playing: true, raf: null };
+  const btn = vp.querySelector('.vp-btn'), timeEl = vp.querySelector('.vp-time'), spd = vp.querySelector('.vp-speed');
+  if (spd) spd.textContent = _vpSpeedLabel();
+  btn.innerHTML = '⏸';
+  function tick(){
+    const el = _vpElapsed();
+    timeEl.textContent = _fmtVoice(el);
+    _vpFill(vp, el / buf.duration);
     if (_curVoice?.playing) _curVoice.raf = requestAnimationFrame(tick);
   }
   tick();
   src.onended = () => {
     if (_curVoice?.source !== src) return;
-    _curVoice.playing = false; _curVoice.offset = 0;
-    btn.innerHTML = '▶'; bars.classList.remove('playing');
-    timeEl.textContent = _fmtVoice(buf.duration);
+    _curVoice.playing = false; _voiceOffset[id] = 0;
+    btn.innerHTML = '▶'; timeEl.textContent = _fmtVoice(buf.duration); _vpFill(vp, 0);
     cancelAnimationFrame(_curVoice.raf);
   };
+}
+async function voiceToggle(id, url){
+  const vp = _vpEl(id); if (!vp) return;
+  if (_curVoice?.id === id && _curVoice.playing) {   // pausar este
+    _voiceOffset[id] = _vpElapsed();
+    _voiceStop(true);
+    return;
+  }
+  if (_curVoice?.playing) _voiceStop(true);          // parar outro
+  if (!await _voiceLoad(id, url, vp)) return;
+  await _voiceStart(id, vp, _voiceOffset[id] || 0);
+}
+function voiceSpeed(id){
+  const cycle = [1, 1.5, 2];
+  _voiceSpeed = cycle[(cycle.indexOf(_voiceSpeed) + 1) % cycle.length] || 1;
+  const vp = _vpEl(id), spd = vp && vp.querySelector('.vp-speed'); if (spd) spd.textContent = _vpSpeedLabel();
+  if (_curVoice?.playing) { // aplica na hora ao que está tocando
+    _curVoice.offset = _vpElapsed(); _curVoice.startTime = _curVoice.ctx.currentTime; _curVoice.rate = _voiceSpeed;
+    try { _curVoice.source.playbackRate.value = _voiceSpeed; } catch(_){}
+    const pvp = _vpEl(_curVoice.id), pspd = pvp && pvp.querySelector('.vp-speed'); if (pspd) pspd.textContent = _vpSpeedLabel();
+  }
+}
+function voiceSeek(id, ev){
+  const vp = _vpEl(id); if (!vp) return;
+  const c = _voiceCache[id]; if (!c) return; // só dá pra buscar depois de tocar uma vez
+  const barsEl = vp.querySelector('.vp-bars'), r = barsEl.getBoundingClientRect();
+  const frac = Math.min(1, Math.max(0, (ev.clientX - r.left) / r.width));
+  const newOffset = frac * c.buf.duration;
+  _voiceOffset[id] = newOffset;
+  _vpFill(vp, frac);
+  vp.querySelector('.vp-time').textContent = _fmtVoice(newOffset);
+  if (_curVoice?.id === id && _curVoice.playing) { _voiceStop(false); _voiceStart(id, vp, newOffset); }
 }
 function _fmtVoice(s) { return Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0'); }
 
