@@ -1069,6 +1069,7 @@ window.addEventListener('load', initAuth);
   <button id="btn-accounts" onclick="openModal()">📱 Contas</button>
   <button id="btn-bots" onclick="openBotsList()">🤖 Bots</button>
   <button id="btn-tasks-global" onclick="openTasksPage()">✅ Tarefas</button>
+  <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens" style="display:none">🔔 Ativar avisos</button>
   <button id="btn-logout" onclick="logoutCRM()" title="Sair da conta">🚪 Sair</button>
 </div>
 
@@ -5353,6 +5354,74 @@ function copyN8NSendUrl() {
 document.getElementById('n8n-overlay')?.addEventListener('click', (e) => {
   if (e.target === document.getElementById('n8n-overlay')) closeN8NModal();
 });
+
+// ═══════════════════════════════════════
+// NOTIFICAÇÕES PUSH (Web Push / PWA)
+// ═══════════════════════════════════════
+function _pushB64ToU8(s) {
+  const pad = '='.repeat((4 - s.length % 4) % 4);
+  const b = atob((s + pad).replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from(b, c => c.charCodeAt(0));
+}
+
+// (Re)registra a inscrição no backend — chamado a cada abertura para renovar
+// a validade (o iOS pode expirar inscrições de PWA inativas)
+async function _pushRegister() {
+  try {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    if (typeof SERVER_URL === 'undefined' || !SERVER_URL) return;
+    const reg = await navigator.serviceWorker.ready;
+    const r = await fetch(SERVER_URL + '/push/public-key');
+    const { key } = await r.json();
+    if (!key) { console.warn('Push: backend sem chave VAPID (web-push instalado?)'); return; }
+    const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: _pushB64ToU8(key) });
+    await fetch(SERVER_URL + '/push/subscribe', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subscription: sub.toJSON() }),
+    });
+    console.log('🔔 Notificações push registradas');
+  } catch (e) { console.warn('Push register:', e.message); }
+}
+
+// Botão "Ativar avisos" — o pedido de permissão PRECISA vir de um clique (exigência do iOS)
+async function enablePushNotifications() {
+  if (!('Notification' in window) || !('PushManager' in window)) {
+    return alert('Notificações não disponíveis aqui.\n\nNo iPhone: abra no Safari, toque em Compartilhar → "Adicionar à Tela de Início" e abra o app instalado.');
+  }
+  const perm = await Notification.requestPermission();
+  if (perm !== 'granted') return;
+  const b = document.getElementById('btn-push'); if (b) b.style.display = 'none';
+  await _pushRegister();
+}
+
+function _pushInit() {
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'granted') { _pushRegister(); return; }
+  if (Notification.permission === 'default') {
+    const b = document.getElementById('btn-push'); if (b) b.style.display = '';
+  }
+}
+window.addEventListener('load', () => setTimeout(_pushInit, 800));
+
+// Clique na notificação (app já aberto): SW manda mensagem → abre a conversa
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', ev => {
+    if (ev.data?.type === 'open-chat' && ev.data.phone) {
+      const c = (allContacts || []).find(x => x.phone === ev.data.phone);
+      selectContact(ev.data.phone, c?.name || ev.data.phone, c?.account_id);
+    }
+  });
+}
+
+// App aberto pela notificação com ?phone=... → abre a conversa após carregar contatos
+window.addEventListener('load', () => setTimeout(() => {
+  const ph = new URLSearchParams(location.search).get('phone');
+  if (ph) {
+    const c = (allContacts || []).find(x => x.phone === ph);
+    selectContact(ph, c?.name || ph, c?.account_id);
+    history.replaceState(null, '', '/'); // limpa a URL
+  }
+}, 1800));
 </script>
 </body>
 </html>
