@@ -2041,7 +2041,7 @@ function renderMessageContent(m) {
       </div>`;
 
     } else if (m.type === 'image') {
-      const caption = m.content && !m.content.startsWith('[Imagem') ? `<div class="media-caption">${m.content}</div>` : '';
+      const caption = m.content && !m.content.startsWith('[Imagem') ? `<div class="media-caption">${escHtml(m.content)}</div>` : '';
       const dlUrl = `${proxyUrl}&download=1&filename=${encodeURIComponent('imagem.jpg')}`;
       return quotedHtml + `<div class="media-wrap">
         <div style="position:relative;display:inline-block">
@@ -2075,13 +2075,11 @@ function renderMessageContent(m) {
       </div>`;
 
     } else if (m.type === 'video') {
-      const caption = m.content && !m.content.startsWith('[Vídeo') ? `<div class="media-caption">${m.content}</div>` : '';
-      const mime = m.media_mime_type || 'video/mp4';
+      const caption = m.content && !m.content.startsWith('[Vídeo') ? `<div class="media-caption">${escHtml(m.content)}</div>` : '';
       const dlUrl = `${proxyUrl}&download=1&filename=${encodeURIComponent('video.mp4')}`;
       return quotedHtml + `<div class="media-wrap">
-        <video controls preload="metadata" playsinline style="max-width:280px;border-radius:8px;display:block">
-          <source src="${proxyUrl}" type="${mime}">
-        </video>
+        <video controls preload="metadata" playsinline src="${proxyUrl}"
+          style="max-width:280px;border-radius:8px;display:block"></video>
         <a href="${dlUrl}" class="media-dl-link" title="Baixar vídeo" download>⬇ Baixar vídeo</a>
         ${caption}
       </div>`;
@@ -2090,7 +2088,7 @@ function renderMessageContent(m) {
       const fileName = (m.content || '').replace(/^\[Documento: ?/, '').replace(/\]$/, '') || 'Documento';
       const dlUrl = `${proxyUrl}&download=1&filename=${encodeURIComponent(fileName)}`;
       return quotedHtml + `<div class="media-wrap doc-wrap">
-        📄 <span style="word-break:break-all">${fileName}</span>
+        📄 <span style="word-break:break-all">${escHtml(fileName)}</span>
         <a href="${dlUrl}" class="media-dl-link" download>⬇ Baixar arquivo</a>
       </div>`;
     }
@@ -2227,6 +2225,8 @@ function _vpApplyPitch(a){ try { a.preservesPitch = true; a.mozPreservesPitch = 
 
 function voiceToggle(id){
   const a = _vpAudio(id), w = _vpEl(id); if (!a) return;
+  // Carrega o áudio na 1ª reprodução (o src fica em data-url para não baixar tudo ao abrir a conversa)
+  if (!a.getAttribute('src') && a.dataset.url) { a.src = a.dataset.url; a.load(); }
   if (a.paused) {
     if (_curAudioId && _curAudioId !== id) { const p = _vpAudio(_curAudioId); if (p) p.pause(); }
     _vpApplyPitch(a); a.playbackRate = _voiceSpeed;
@@ -2271,6 +2271,7 @@ function voiceSpeed(id){
 }
 function voiceSeek(id, ev){
   const a = _vpAudio(id), w = _vpEl(id); if (!a || !w) return;
+  if (!a.getAttribute('src') && a.dataset.url) { a.src = a.dataset.url; a.load(); }
   const dur = (isFinite(a.duration) && a.duration > 0) ? a.duration : 0; if (!dur) return;
   const barsEl = w.querySelector('.vp-bars'), r = barsEl.getBoundingClientRect();
   const frac = Math.min(1, Math.max(0, (ev.clientX - r.left) / r.width));
@@ -2664,7 +2665,7 @@ async function sendFile() {
     const icon = file.type.startsWith('image/') ? '🖼️' : file.type.startsWith('video/') ? '🎬' : file.type.startsWith('audio/') ? '🎵' : '📄';
     const div = document.createElement('div');
     div.className = 'msg outbound';
-    div.innerHTML = `${icon} <em style="font-size:13px;opacity:.8">${file.name}</em><div class="time">${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div>`;
+    div.innerHTML = `${icon} <em style="font-size:13px;opacity:.8">${escHtml(file.name)}</em><div class="time">${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div>`;
     area.appendChild(div);
     area.scrollTop = area.scrollHeight;
   }
