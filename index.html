@@ -5369,38 +5369,61 @@ function _pushB64ToU8(s) {
 // a validade (o iOS pode expirar inscrições de PWA inativas)
 async function _pushRegister() {
   try {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-    if (typeof SERVER_URL === 'undefined' || !SERVER_URL) return;
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return { ok: false, error: 'Push não suportado neste navegador' };
+    if (typeof SERVER_URL === 'undefined' || !SERVER_URL) return { ok: false, error: 'Servidor não configurado' };
     const reg = await navigator.serviceWorker.ready;
     const r = await fetch(SERVER_URL + '/push/public-key');
     const { key } = await r.json();
-    if (!key) { console.warn('Push: backend sem chave VAPID (web-push instalado?)'); return; }
+    if (!key) return { ok: false, error: 'Backend sem chave VAPID (web-push não instalado no servidor?)' };
     const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: _pushB64ToU8(key) });
-    await fetch(SERVER_URL + '/push/subscribe', {
+    const sr = await fetch(SERVER_URL + '/push/subscribe', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ subscription: sub.toJSON() }),
     });
+    const sd = await sr.json().catch(() => ({}));
+    if (!sr.ok) return { ok: false, error: sd.error || ('HTTP ' + sr.status) };
     console.log('🔔 Notificações push registradas');
-  } catch (e) { console.warn('Push register:', e.message); }
+    return { ok: true };
+  } catch (e) { return { ok: false, error: e.message }; }
 }
 
-// Botão "Ativar avisos" — o pedido de permissão PRECISA vir de um clique (exigência do iOS)
+function _pushSetBtn() {
+  const b = document.getElementById('btn-push'); if (!b) return;
+  if (!('Notification' in window) || !('PushManager' in window)) { b.style.display = 'none'; return; }
+  b.style.display = '';
+  b.textContent = Notification.permission === 'granted' ? '🔔 Testar avisos' : '🔔 Ativar avisos';
+}
+
+// Botão — pede permissão (precisa vir de um clique, exigência do iOS),
+// registra a inscrição e dispara uma notificação de TESTE com diagnóstico
 async function enablePushNotifications() {
   if (!('Notification' in window) || !('PushManager' in window)) {
     return alert('Notificações não disponíveis aqui.\n\nNo iPhone: abra no Safari, toque em Compartilhar → "Adicionar à Tela de Início" e abra o app instalado.');
   }
-  const perm = await Notification.requestPermission();
-  if (perm !== 'granted') return;
-  const b = document.getElementById('btn-push'); if (b) b.style.display = 'none';
-  await _pushRegister();
+  if (Notification.permission !== 'granted') {
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') return;
+  }
+  const reg = await _pushRegister();
+  if (!reg.ok) { alert('❌ Falha ao registrar: ' + reg.error); return; }
+  try {
+    const t = await fetch(SERVER_URL + '/push/test', { method: 'POST' });
+    const d = await t.json();
+    if (d.error) { alert('❌ Servidor: ' + d.error); return; }
+    if (!d.minhas_inscricoes) {
+      alert('⚠️ Nenhuma inscrição encontrada para seu usuário.\n(Total geral no servidor: ' + d.total_geral + ')\nUsuário: ' + (d.owner || 'sem login'));
+      return;
+    }
+    const fails = (d.results || []).filter(x => !x.ok);
+    if (fails.length) alert('⚠️ Falha no envio (' + fails.length + '/' + d.results.length + '):\nStatus ' + fails[0].status + '\n' + fails[0].msg);
+    else alert('✅ Teste enviado para ' + d.minhas_inscricoes + ' aparelho(s)!\nA notificação deve aparecer em instantes.');
+  } catch (e) { alert('Erro no teste: ' + e.message); }
+  _pushSetBtn();
 }
 
 function _pushInit() {
-  if (!('Notification' in window)) return;
-  if (Notification.permission === 'granted') { _pushRegister(); return; }
-  if (Notification.permission === 'default') {
-    const b = document.getElementById('btn-push'); if (b) b.style.display = '';
-  }
+  _pushSetBtn();
+  if (('Notification' in window) && Notification.permission === 'granted') _pushRegister();
 }
 window.addEventListener('load', () => setTimeout(_pushInit, 800));
 
