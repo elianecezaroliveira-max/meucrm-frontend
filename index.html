@@ -1060,6 +1060,8 @@ window.addEventListener('load', initAuth);
 <div id="topbar">
   <h1>MeuCRM</h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
+  <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
+    style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
   <button id="btn-pipeline" onclick="openPipeline()">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="5" height="18" rx="1"/><rect x="10" y="3" width="5" height="12" rx="1"/><rect x="17" y="3" width="5" height="15" rx="1"/></svg>
     Pipeline
@@ -1069,7 +1071,6 @@ window.addEventListener('load', initAuth);
   <button id="btn-accounts" onclick="openModal()">📱 Contas</button>
   <button id="btn-bots" onclick="openBotsList()">🤖 Bots</button>
   <button id="btn-tasks-global" onclick="openTasksPage()">✅ Tarefas</button>
-  <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens" style="display:none">🔔 Ativar avisos</button>
   <button id="btn-logout" onclick="logoutCRM()" title="Sair da conta">🚪 Sair</button>
 </div>
 
