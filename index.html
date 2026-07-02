@@ -2118,6 +2118,7 @@ function msgDayKey(dateStr) {
   return new Date(parseUTC(dateStr) - _BRT_OFFSET).toISOString().substring(0, 10);
 }
 
+let _lastMsgsSig = ''; // assinatura da última renderização — evita re-render desnecessário
 async function loadMessages(phone, scroll = true) {
   try {
     const res = await fetch(SERVER_URL + '/messages/' + phone);
@@ -2130,6 +2131,23 @@ async function loadMessages(phone, scroll = true) {
       return;
     }
     currentMessages = msgs; // guarda para a galeria de mídias
+
+    // ── Proteção contra re-render que destrói vídeos/áudios ──
+    // O polling chama esta função a cada 3s; recriar o innerHTML reinicia o
+    // carregamento dos vídeos e fecha a tela cheia. Só re-renderiza se algo mudou
+    // e se nenhuma mídia estiver tocando ou em tela cheia.
+    const sig = phone + '::' + msgs.map(m =>
+      `${m.id}|${m.status || ''}|${m.reaction || ''}|${m.error_info ? 1 : 0}`).join(';');
+    if (!scroll) {
+      if (sig === _lastMsgsSig) return; // nada mudou — não mexe no DOM
+      const mediaEls = area.querySelectorAll('video, audio');
+      const mediaPlaying = Array.from(mediaEls).some(el => !el.paused && !el.ended);
+      const inFullscreen = document.fullscreenElement && area.contains(document.fullscreenElement);
+      // Adia o re-render enquanto o usuário assiste/ouve (sem atualizar a assinatura,
+      // para renderizar assim que a reprodução terminar)
+      if (mediaPlaying || inFullscreen) return;
+    }
+    _lastMsgsSig = sig;
 
     let lastDay = null;
     const parts = [];
