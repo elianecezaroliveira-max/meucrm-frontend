@@ -5378,7 +5378,15 @@ async function _pushRegister(verbose) {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return { ok: false, error: 'Push não suportado neste navegador' };
     if (typeof SERVER_URL === 'undefined' || !SERVER_URL) return { ok: false, error: 'Servidor não configurado' };
     if (verbose) _pushStep('⏳ 1/4 service worker...');
-    const reg = await _pushTimeout(navigator.serviceWorker.ready, 8000, 'service worker (1/4)');
+    // Não usa .ready (fica travado se a instalação anterior falhou); registra e espera ativar
+    let reg = await navigator.serviceWorker.getRegistration();
+    if (!reg) reg = await _pushTimeout(navigator.serviceWorker.register('/sw.js'), 8000, 'registrar service worker (1/4)');
+    if (reg && !reg.active) { try { await _pushTimeout(reg.update(), 8000, 'atualizar service worker (1/4)'); } catch (_) {} }
+    for (let i = 0; i < 40 && !(reg && reg.active); i++) {
+      await new Promise(r => setTimeout(r, 250));
+      reg = await navigator.serviceWorker.getRegistration() || reg;
+    }
+    if (!reg || !reg.active) return { ok: false, error: 'Service worker não ativou. Feche o app por completo e abra de novo (1/4).' };
     if (verbose) _pushStep('⏳ 2/4 chave...');
     const r = await _pushTimeout(fetch(SERVER_URL + '/push/public-key'), 10000, 'buscar chave no servidor (2/4)');
     const { key } = await r.json();
