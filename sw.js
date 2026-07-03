@@ -1,5 +1,5 @@
 // MeuCRM Service Worker — PWA
-const CACHE_NAME = 'meucrm-v2';
+const CACHE_NAME = 'meucrm-v3';
 
 // ── NOTIFICAÇÕES PUSH ──
 // IMPORTANTE (iOS): todo push DEVE exibir notificação visível dentro de event.waitUntil,
@@ -42,11 +42,13 @@ const STATIC_ASSETS = [
 ];
 
 // Instala e faz cache dos recursos estáticos
+// Cacheia um a um: se um arquivo faltar (404), a instalação NÃO aborta.
+// (cache.addAll falha em bloco — era isso que impedia o SW de ativar e travava o push)
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(STATIC_ASSETS);
-    })
+    caches.open(CACHE_NAME).then(cache =>
+      Promise.all(STATIC_ASSETS.map(u => cache.add(u).catch(() => null)))
+    )
   );
   self.skipWaiting();
 });
