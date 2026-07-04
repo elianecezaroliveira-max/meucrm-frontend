@@ -2205,9 +2205,9 @@ function stopVoiceRec(cancel) {
   if (cancel) return;
   const total = bufs.reduce((s, c) => s + c.length, 0);
   if (total < rate * 0.4) return; // menos de meio segundo: descarta
-  sendVoiceBlob(_encodeWav(bufs, rate));
+  sendVoiceBlob(_encodeWav(bufs, rate), Math.round(total / rate));
 }
-async function sendVoiceBlob(blob) {
+async function sendVoiceBlob(blob, durationSecs) {
   if (!currentPhone) return;
   const base64 = await new Promise(res => {
     const r = new FileReader();
@@ -2227,7 +2227,8 @@ async function sendVoiceBlob(blob) {
     const res = await fetch(SERVER_URL + '/send-media', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ to: currentPhone, account_id: currentAccountId || null,
-        fileBase64: base64, fileName: 'audio.' + ext, mimeType: mime, voice: true }),
+        fileBase64: base64, fileName: 'audio.' + ext, mimeType: mime, voice: true,
+        duration: durationSecs || 0 }),
     });
     const d = await res.json().catch(() => ({}));
     if (!res.ok) alert('❌ Falha ao enviar o áudio: ' + (d.error || ('HTTP ' + res.status)));
