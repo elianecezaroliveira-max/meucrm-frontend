@@ -7,7 +7,7 @@ const CACHE_NAME = 'meucrm-v3';
 self.addEventListener('push', event => {
   let data = {};
   try { data = event.data ? event.data.json() : {}; } catch (_) {}
-  event.waitUntil(
+  const tasks = [
     self.registration.showNotification(data.title || 'VETRA', {
       body: data.body || 'Nova mensagem recebida',
       icon: '/icons/icon-192.png',
@@ -15,7 +15,12 @@ self.addEventListener('push', event => {
       tag: data.tag || 'meucrm',
       data: { phone: data.phone || null },
     })
-  );
+  ];
+  // Número de não lidas no ícone do app (iOS 16.4+ / Android)
+  if (typeof data.badge === 'number' && 'setAppBadge' in self.navigator) {
+    tasks.push(data.badge > 0 ? self.navigator.setAppBadge(data.badge) : self.navigator.clearAppBadge());
+  }
+  event.waitUntil(Promise.all(tasks));
 });
 
 // Clique na notificação: foca o app (abrindo a conversa) ou abre uma janela nova
