@@ -122,7 +122,7 @@
   /* Nome do lead SEMPRE no centro exato do cabeçalho, independente dos botões */
   #chat-header { position: relative; }
   #chat-header .info { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); max-width: 60%; text-align: center; }
-  #chat-header .info .name { font-size: 17px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #chat-header .info .name { font-size: 19px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #chat-header .info .phone { font-size: 12px; color: #667781; }
   #messages-area { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 4px; transition: background 0.2s; background-color: #efeae2; background-image: radial-gradient(rgba(0,0,0,0.028) 1px, transparent 1px); background-size: 22px 22px; }
   #messages-area.drag-over { background: rgba(0,168,132,0.08); outline: 2px dashed #00a884; outline-offset: -6px; }
@@ -696,7 +696,7 @@
   #msg-input { font-size: 16px; line-height: 20px; height: 40px; padding: 10px 12px; }
 
   /* Chat header: nome e telefone menores */
-  #chat-header .info .name { font-size: 16px; }
+  #chat-header .info .name { font-size: 18px; }
   #chat-header .info .phone { font-size: 11px; }
 
   /* Tag manager oculto no mobile para economizar espaço */
@@ -2454,7 +2454,7 @@ async function selectContact(phone, name, accountId) {
         <button onclick="stopVoiceRec(false)" style="background:#00a884;border:none;color:#fff;cursor:pointer;font-size:13px;font-weight:700;border-radius:16px;padding:6px 14px">Enviar ➤</button>
       </div>
       <button id="mic-btn" onclick="startVoiceRec()" title="Gravar áudio" style="background:none;border:none;font-size:20px;cursor:pointer;color:#667781;padding:6px;flex-shrink:0">🎤</button>
-      <button id="send-btn" onclick="sendMessage()">
+      <button id="send-btn" onclick="sendMessage()" style="display:none">
         <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
       </button>
     </div>
