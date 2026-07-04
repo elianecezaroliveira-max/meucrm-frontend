@@ -2095,9 +2095,13 @@ async function startVoiceRec() {
   if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined')
     return alert('Gravação de áudio não é suportada neste navegador.');
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+    });
     const mime = _recMime();
-    _rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+    const opts = { audioBitsPerSecond: 128000 };
+    if (mime) opts.mimeType = mime;
+    _rec = new MediaRecorder(stream, opts);
     _recChunks = []; _recCancel = false; _recSecs = 0;
     const timeEl = document.getElementById('rec-time'); if (timeEl) timeEl.textContent = '0:00';
     _rec.ondataavailable = e => { if (e.data && e.data.size) _recChunks.push(e.data); };
@@ -2109,7 +2113,9 @@ async function startVoiceRec() {
       if (blob.size < 1200) return; // gravação vazia/acidental
       await sendVoiceBlob(blob);
     };
-    _rec.start(250);
+    // Grava em bloco ÚNICO (sem fatiar): fatias de 250ms causavam microcortes
+    // nas emendas no iPhone — a "voz tremida"
+    _rec.start();
     _recUI(true);
     _recTimer = setInterval(() => {
       _recSecs++;
@@ -2509,7 +2515,7 @@ async function loadMessages(phone, scroll = true) {
         const dayKey = msgDayKey(m.timestamp);
         if (dayKey !== lastDay) {
           lastDay = dayKey;
-          parts.push(`<div class="day-divider"><span>${formatDayLabel(m.timestamp)}</span></div>`);
+          parts.push({ key: 'day-' + dayKey, html: `<div class="day-divider" data-key="day-${dayKey}"><span>${formatDayLabel(m.timestamp)}</span></div>` });
         }
 
         let ticks = '';
@@ -2536,30 +2542,46 @@ async function loadMessages(phone, scroll = true) {
           ? `<span class="msg-reaction" style="position:absolute;bottom:-11px;${reactSide};background:#e9edef;border:1px solid #ffffff;border-radius:11px;padding:0 5px;font-size:13px;line-height:20px;box-shadow:0 1px 3px rgba(0,0,0,.5);z-index:2">${escHtml(m.reaction)}</span>`
           : '';
 
-        parts.push(`<div class="msg ${safeDir}" style="position:relative${m.reaction?';margin-bottom:14px':''}"
-          data-msg-id="${safeId}" data-msg-content="${dataCont}" data-msg-dir="${safeDir}" data-msg-wamid="${safeWamid}">
+        parts.push({ key: 'm-' + safeId, html: `<div class="msg ${safeDir}" style="position:relative${m.reaction?';margin-bottom:14px':''}"
+          data-key="m-${safeId}" data-msg-id="${safeId}" data-msg-content="${dataCont}" data-msg-dir="${safeDir}" data-msg-wamid="${safeWamid}">
           <div class="msg-actions">
             <button class="msg-menu-btn" title="Opções da mensagem" onclick="openMsgMenu(event,'${safeId}')">⌄</button>
           </div>
           ${msgContent}
           <div class="time">${timeStr}${ticks}</div>
           ${reactBadge}
-        </div>`);
+        </div>` });
       } catch(msgErr) {
         console.error('[loadMessages] erro ao renderizar mensagem id=' + (m?.id || '?'), msgErr, m);
-        parts.push(`<div class="msg ${m?.direction||'inbound'}" style="opacity:.5;font-size:12px">[mensagem não pôde ser exibida]</div>`);
+        const errKey = 'err-' + (m?.id || Math.random().toString(36).slice(2));
+        parts.push({ key: errKey, html: `<div class="msg ${m?.direction||'inbound'}" data-key="${errKey}" style="opacity:.5;font-size:12px">[mensagem não pôde ser exibida]</div>` });
       }
     }
 
-    // Preserva a posição da rolagem no re-render (senão a tela "pula" sozinha)
     const prevTop = area.scrollTop;
     const nearBottom = (area.scrollHeight - area.scrollTop - area.clientHeight) < 80;
-    area.innerHTML = parts.join('');
+
+    // Atualização INCREMENTAL: mexe só no que mudou — nada de recriar a conversa
+    // inteira (que recarregava fotos/áudios e fazia a tela subir/descer sozinha)
+    const _mkEl = html => { const t = document.createElement('div'); t.innerHTML = html; const el = t.firstElementChild; el._html = html; return el; };
+    const kids = Array.from(area.children);
+    const samePrefix = kids.length > 0 && kids.length <= parts.length &&
+      kids.every((el, i) => el.dataset && el.dataset.key === parts[i].key);
+    if (samePrefix) {
+      // troca apenas os blocos alterados (ex.: ✓ → ✓✓) e acrescenta os novos no fim
+      kids.forEach((el, i) => { if (el._html !== parts[i].html) el.replaceWith(_mkEl(parts[i].html)); });
+      for (let i = kids.length; i < parts.length; i++) area.appendChild(_mkEl(parts[i].html));
+    } else {
+      // estrutura mudou (conversa nova, mensagem apagada...) → render completo
+      area.innerHTML = parts.map(b => b.html).join('');
+      Array.from(area.children).forEach((el, i) => { if (parts[i]) el._html = parts[i].html; });
+    }
+
     if (scroll || nearBottom) {
       area.scrollTop = area.scrollHeight; // no fim → acompanha novas mensagens
       hideNewMsgPill();
     } else {
-      area.scrollTop = prevTop;           // lendo antigas → não mexe
+      if (!samePrefix) area.scrollTop = prevTop; // no incremental a posição nem chega a mudar
       // Chegou mensagem nova enquanto lia antigas? Mostra o aviso flutuante
       const newCount = (_pillLastPhone === phone && _pillLastTotal > 0) ? msgs.length - _pillLastTotal : 0;
       if (newCount > 0) showNewMsgPill(newCount);
