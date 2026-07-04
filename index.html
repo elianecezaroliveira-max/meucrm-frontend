@@ -675,7 +675,9 @@
   #input-area { gap: 4px; padding-left: 8px; padding-right: 8px; }
   #emoji-btn, #attach-btn, .btn-template-icon, #btn-start-bot { padding: 5px !important; font-size: 17px !important; }
   #emoji-btn svg, #attach-btn svg, .btn-template-icon svg { width: 20px; height: 20px; }
-  /* 16px evita o zoom automático do iPhone ao tocar no campo */
+  /* 16px evita o zoom automático do iPhone ao tocar em QUALQUER campo
+     (anotações, busca, etiquetas, tarefas...) — abaixo disso o iOS amplia a tela */
+  input, textarea, select { font-size: 16px !important; }
   #msg-input { font-size: 16px; line-height: 20px; height: 40px; padding: 10px 12px; }
 
   /* Chat header: nome e telefone menores */
@@ -1200,6 +1202,20 @@ window.addEventListener('load', initAuth);
 </div>
 
 <!-- MODAL N8N -->
+<!-- ETIQUETAS DO CLIENTE (folha inferior, usável no celular) -->
+<div id="tag-overlay" onclick="if(event.target===this)closeTagSheet()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:600;align-items:flex-end;justify-content:center">
+  <div style="background:#ffffff;width:100%;max-width:480px;border-radius:16px 16px 0 0;padding:16px 16px calc(20px + env(safe-area-inset-bottom));max-height:70vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <strong style="font-size:15px">🏷️ Etiquetas do cliente</strong>
+      <button onclick="closeTagSheet()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#667781">✕</button>
+    </div>
+    <div id="tag-sheet-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px"></div>
+    <input id="tag-sheet-input" autocomplete="off" placeholder="Digite a etiqueta e aperte Enter" maxlength="20"
+      style="width:100%;padding:10px 12px;border:1px solid #e9edef;border-radius:8px;font-size:16px;outline:none">
+    <div id="tag-sheet-suggest" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px"></div>
+  </div>
+</div>
+
 <div id="n8n-overlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:900;align-items:center;justify-content:center">
   <div id="n8n-modal" style="background:#ffffff;border-radius:12px;width:640px;max-width:95vw;max-height:90vh;overflow-y:auto;padding:0;box-shadow:0 8px 32px rgba(0,0,0,0.5)">
 
@@ -2030,6 +2046,8 @@ async function selectContact(phone, name, accountId) {
         <div class="phone">${phone} <span onclick="copyPhone('${phone}', this)" title="Copiar número (sem o 55)" style="cursor:pointer;opacity:.6">📋</span></div>
       </div>
       <div id="tag-manager"></div>
+      <button id="btn-tags" title="Etiquetas do cliente" onclick="openTagSheet()"
+        style="background:none;border:none;font-size:18px;cursor:pointer;color:#667781;padding:6px;flex-shrink:0">🏷️</button>
       <button id="btn-mark-read" title="Marcar como lida" onclick="markAsRead('${phone}')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="20 6 9 17 4 12"/>
@@ -3039,6 +3057,7 @@ async function addTag(phone, raw) {
   contact.tags = [...(contact.tags||[]), tag];
   if (!allTagsList.includes(tag)) { allTagsList.push(tag); allTagsList.sort((a,b)=>a.localeCompare(b)); }
   renderTagManager(contact);
+  renderTagSheet();
   await saveTags(phone, contact.tags);
   renderContacts(allContacts);
   const pc = pipelineContacts.find(c => c.phone === phone);
@@ -3050,10 +3069,44 @@ async function removeTag(phone, tag) {
   if (!contact) return;
   contact.tags = (contact.tags||[]).filter(t => t !== tag);
   renderTagManager(contact);
+  renderTagSheet();
   await saveTags(phone, contact.tags);
   renderContacts(allContacts);
   const pc = pipelineContacts.find(c => c.phone === phone);
   if (pc) pc.tags = contact.tags;
+}
+
+// ── Folha de etiquetas (botão 🏷️ no chat — funciona no celular) ──
+let _tagSheetPhone = null;
+function openTagSheet() {
+  if (!currentPhone) return;
+  _tagSheetPhone = currentPhone;
+  document.getElementById('tag-overlay').style.display = 'flex';
+  renderTagSheet();
+  const inp = document.getElementById('tag-sheet-input');
+  inp.value = '';
+  inp.onkeydown = e => {
+    if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTag(_tagSheetPhone, inp.value); inp.value = ''; }
+  };
+}
+function closeTagSheet() {
+  document.getElementById('tag-overlay').style.display = 'none';
+  _tagSheetPhone = null;
+}
+function renderTagSheet() {
+  if (!_tagSheetPhone) return;
+  const c = allContacts.find(x => x.phone === _tagSheetPhone);
+  if (!c) return;
+  const tags = c.tags || [];
+  const esc = t => t.replace(/'/g, "\\'");
+  document.getElementById('tag-sheet-chips').innerHTML = tags.length
+    ? tags.map((t,i) => `<span class="tag-chip ${TAG_COLORS[i%6]} removable" title="Toque para remover" onclick="removeTag('${c.phone}','${esc(t)}')" style="font-size:13px;padding:6px 11px">${escHtml(t)} ×</span>`).join('')
+    : '<span style="color:#667781;font-size:13px">Este cliente ainda não tem etiquetas.</span>';
+  const sug = allTagsList.filter(t => !tags.includes(t)).slice(0, 12);
+  document.getElementById('tag-sheet-suggest').innerHTML = sug.length
+    ? '<span style="width:100%;font-size:11px;color:#667781;text-transform:uppercase">Toque para adicionar</span>' +
+      sug.map(t => `<span class="tag-chip tc0" onclick="addTag('${c.phone}','${esc(t)}')" style="cursor:pointer;font-size:13px;padding:6px 11px;opacity:.75">+ ${escHtml(t)}</span>`).join('')
+    : '';
 }
 
 async function saveTags(phone, tags) {
