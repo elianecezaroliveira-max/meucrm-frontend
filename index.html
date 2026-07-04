@@ -97,7 +97,10 @@
   .contact-menu-btn { display: none; position: absolute; right: 10px; bottom: 8px; z-index: 2;
     background: #ffffff; border: 1px solid #e9edef; border-radius: 6px; color: #667781;
     font-size: 16px; line-height: 1; padding: 2px 8px; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,.12); }
-  .contact-item:hover .contact-menu-btn { display: block; }
+  /* Só em aparelho com mouse — no celular o hover simulado exigia 2 toques para abrir a conversa */
+  @media (hover: hover) and (pointer: fine) {
+    .contact-item:hover .contact-menu-btn { display: block; }
+  }
   .cm-item { padding: 9px 14px; font-size: 14px; cursor: pointer; border-radius: 6px; white-space: nowrap; }
   .cm-item:hover { background: #f0f2f5; }
   .contact-item.has-unread .contact-name { font-weight: 700; color: #131c20; }
@@ -680,7 +683,7 @@
   #send-btn { width: 48px; height: 48px; }
   /* Compacta a barra de digitação: botões menores = caixa de texto maior */
   #input-area { gap: 4px; padding-left: 8px; padding-right: 8px; }
-  #emoji-btn, #attach-btn, .btn-template-icon, #btn-start-bot { padding: 5px !important; font-size: 17px !important; }
+  #emoji-btn, #attach-btn, .btn-template-icon, #btn-start-bot, #mic-btn { padding: 5px !important; font-size: 17px !important; }
   #emoji-btn svg, #attach-btn svg, .btn-template-icon svg { width: 20px; height: 20px; }
   /* 16px evita o zoom automático do iPhone ao tocar em QUALQUER campo
      (anotações, busca, etiquetas, tarefas...) — abaixo disso o iOS amplia a tela */
@@ -2026,6 +2029,100 @@ document.addEventListener('click', e => {
   if (!e.target.closest('#info-menu') && !e.target.closest('#btn-info')) closeInfoMenu();
 });
 
+// ── Menu ℹ️ "Informações do lead" (etiquetas, anotações, mídias, tarefas) ──
+function openInfoMenu(ev) {
+  ev.stopPropagation();
+  const menu = document.getElementById('info-menu');
+  if (!menu) return;
+  const r = ev.currentTarget.getBoundingClientRect();
+  menu.style.display = 'block';
+  menu.style.left = Math.max(8, Math.min(r.right - 210, window.innerWidth - 220)) + 'px';
+  menu.style.top = (r.bottom + 6) + 'px';
+}
+function closeInfoMenu() {
+  const m = document.getElementById('info-menu');
+  if (m) m.style.display = 'none';
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('#info-menu') && !e.target.closest('#btn-info')) closeInfoMenu();
+});
+
+// ── Gravação e envio de áudio (botão 🎤) ──
+let _rec = null, _recTimer = null, _recSecs = 0, _recChunks = [], _recCancel = false;
+function _recMime() {
+  const cands = ['audio/mp4', 'audio/mpeg', 'audio/ogg;codecs=opus', 'audio/webm'];
+  for (const m of cands) { try { if (MediaRecorder.isTypeSupported(m)) return m; } catch (_) {} }
+  return '';
+}
+function _recUI(on) {
+  const bar = document.getElementById('rec-bar');  if (bar)  bar.style.display  = on ? 'flex' : 'none';
+  const wrap = document.getElementById('input-wrap'); if (wrap) wrap.style.display = on ? 'none' : '';
+  const mic = document.getElementById('mic-btn');  if (mic)  mic.style.display  = on ? 'none' : '';
+  const send = document.getElementById('send-btn'); if (send) send.style.display = on ? 'none' : '';
+}
+async function startVoiceRec() {
+  if (!currentPhone) return;
+  if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined')
+    return alert('Gravação de áudio não é suportada neste navegador.');
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const mime = _recMime();
+    _rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+    _recChunks = []; _recCancel = false; _recSecs = 0;
+    const timeEl = document.getElementById('rec-time'); if (timeEl) timeEl.textContent = '0:00';
+    _rec.ondataavailable = e => { if (e.data && e.data.size) _recChunks.push(e.data); };
+    _rec.onstop = async () => {
+      stream.getTracks().forEach(t => t.stop());
+      _recUI(false);
+      if (_recCancel || !_recChunks.length) return;
+      const blob = new Blob(_recChunks, { type: _rec.mimeType || mime || 'audio/mp4' });
+      if (blob.size < 1200) return; // gravação vazia/acidental
+      await sendVoiceBlob(blob);
+    };
+    _rec.start(250);
+    _recUI(true);
+    _recTimer = setInterval(() => {
+      _recSecs++;
+      const el = document.getElementById('rec-time');
+      if (el) el.textContent = Math.floor(_recSecs / 60) + ':' + String(_recSecs % 60).padStart(2, '0');
+    }, 1000);
+  } catch (e) {
+    alert('Não consegui acessar o microfone.\nVerifique a permissão do microfone para o app.\n(' + e.message + ')');
+  }
+}
+function stopVoiceRec(cancel) {
+  _recCancel = !!cancel;
+  clearInterval(_recTimer);
+  if (_rec && _rec.state !== 'inactive') _rec.stop(); else _recUI(false);
+}
+async function sendVoiceBlob(blob) {
+  if (!currentPhone) return;
+  const base64 = await new Promise(res => {
+    const r = new FileReader();
+    r.onload = e => res(String(e.target.result).split(',')[1]);
+    r.readAsDataURL(blob);
+  });
+  const mime = (blob.type || 'audio/mp4').split(';')[0];
+  const ext = mime.includes('mp4') ? 'm4a' : mime.includes('mpeg') ? 'mp3' : mime.includes('ogg') ? 'ogg' : 'webm';
+  const area = document.getElementById('messages-area');
+  if (area) {
+    const d = document.createElement('div');
+    d.className = 'msg outbound';
+    d.innerHTML = '🎤 <em style="font-size:13px;opacity:.8">Enviando áudio...</em>';
+    area.appendChild(d); area.scrollTop = area.scrollHeight;
+  }
+  try {
+    const res = await fetch(SERVER_URL + '/send-media', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to: currentPhone, account_id: currentAccountId || null,
+        fileBase64: base64, fileName: 'audio.' + ext, mimeType: mime }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) alert('❌ Falha ao enviar o áudio: ' + (d.error || ('HTTP ' + res.status)));
+  } catch (e) { alert('❌ Erro ao enviar o áudio: ' + e.message); }
+  await loadMessages(currentPhone, false);
+}
+
 // ── Menu "⋯" da conversa (computador) ──
 function openContactMenu(ev, phone) {
   const c = allContacts.find(x => x.phone === phone);
@@ -2135,6 +2232,8 @@ async function selectContact(phone, name, accountId) {
     </div>
     <div id="notes-panel">
       <div id="notes-panel-label">📝 Anotações do lead <button id="notes-close-btn" onclick="toggleNotes()" title="Fechar">✕</button></div>
+      <input id="notes-email" type="email" autocomplete="off" placeholder="✉️ E-mail do cliente"
+        style="width:100%;padding:8px 10px;border:1px solid #e9edef;border-radius:6px;margin-bottom:6px;font-size:14px;outline:none;background:#ffffff">
       <textarea id="notes-textarea" placeholder="Escreva informações sobre esse lead: simulação, dados, observações..."></textarea>
       <div id="notes-status"></div>
     </div>
@@ -2182,6 +2281,14 @@ async function selectContact(phone, name, accountId) {
         </div>
         <textarea id="msg-input" placeholder="Mensagem" rows="1" onkeydown="handleKey(event)"></textarea>
       </div>
+      <div id="rec-bar" style="display:none;flex:1;align-items:center;gap:10px;background:#e9edef;border-radius:24px;padding:8px 14px;min-width:0">
+        <span style="color:#ef4444;font-size:14px">●</span>
+        <span id="rec-time" style="font-size:14px;color:#131c20;font-variant-numeric:tabular-nums">0:00</span>
+        <span style="flex:1"></span>
+        <button onclick="stopVoiceRec(true)" style="background:none;border:none;color:#667781;cursor:pointer;font-size:13px;font-weight:600">Cancelar</button>
+        <button onclick="stopVoiceRec(false)" style="background:#00a884;border:none;color:#fff;cursor:pointer;font-size:13px;font-weight:700;border-radius:16px;padding:6px 14px">Enviar ➤</button>
+      </div>
+      <button id="mic-btn" onclick="startVoiceRec()" title="Gravar áudio" style="background:none;border:none;font-size:20px;cursor:pointer;color:#667781;padding:6px;flex-shrink:0">🎤</button>
       <button id="send-btn" onclick="sendMessage()">
         <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
       </button>
@@ -3224,14 +3331,18 @@ async function loadNotes(phone) {
     if (res.ok) {
       const data = await res.json();
       ta.value = data.notes || '';
+      const emv = document.getElementById('notes-email');
+      if (emv) emv.value = data.email || '';
     }
   } catch(e) {}
-  // Auto-save ao digitar (debounce 1s)
-  ta.addEventListener('input', () => {
+  // Auto-save ao digitar (debounce 1s) — anotações e e-mail
+  const autoSave = () => {
     if (status) status.textContent = 'Salvando...';
     clearTimeout(notesTimer);
     notesTimer = setTimeout(() => saveNotes(), 1000);
-  });
+  };
+  ta.addEventListener('input', autoSave);
+  document.getElementById('notes-email')?.addEventListener('input', autoSave);
 }
 
 async function saveNotes() {
@@ -3242,7 +3353,7 @@ async function saveNotes() {
     const res = await fetch(`${SERVER_URL}/contacts/${encodeURIComponent(notesPhone)}/notes`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ notes: ta.value })
+      body: JSON.stringify({ notes: ta.value, email: document.getElementById('notes-email')?.value ?? undefined })
     });
     if (res.ok && status) status.textContent = 'Salvo ✓';
     setTimeout(() => { if (status) status.textContent = ''; }, 2000);
