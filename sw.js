@@ -8,7 +8,7 @@ self.addEventListener('push', event => {
   let data = {};
   try { data = event.data ? event.data.json() : {}; } catch (_) {}
   event.waitUntil(
-    self.registration.showNotification(data.title || 'MeuCRM', {
+    self.registration.showNotification(data.title || 'VETRA', {
       body: data.body || 'Nova mensagem recebida',
       icon: '/icons/icon-192.png',
       badge: '/icons/icon-192.png',
