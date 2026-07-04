@@ -2477,6 +2477,38 @@ function goBackToSidebar() {
   document.getElementById('layout').classList.remove('mobile-chat-open');
 }
 
+// ── Gesto de voltar: arrastar da borda esquerda para a direita (como no WhatsApp) ──
+(function initSwipeBack() {
+  let active = false, horiz = false, sx = 0, sy = 0, dx = 0, chat = null;
+  document.addEventListener('touchstart', e => {
+    const layout = document.getElementById('layout');
+    if (!layout || !layout.classList.contains('mobile-chat-open')) return;
+    const t = e.touches[0];
+    if (t.clientX > 32) return; // só quando começa na borda esquerda
+    chat = document.getElementById('chat-area');
+    if (!chat) return;
+    active = true; horiz = false; sx = t.clientX; sy = t.clientY; dx = 0;
+    chat.style.transition = 'none';
+  }, { passive: true });
+  document.addEventListener('touchmove', e => {
+    if (!active || !chat) return;
+    const t = e.touches[0];
+    dx = t.clientX - sx;
+    const dy = t.clientY - sy;
+    if (!horiz && Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) horiz = true;
+    if (horiz && dx > 0) chat.style.transform = 'translateX(' + dx + 'px)'; // segue o dedo
+  }, { passive: true });
+  const finish = () => {
+    if (!active || !chat) return;
+    chat.style.transition = ''; // devolve a animação suave ao CSS
+    chat.style.transform = '';
+    if (horiz && dx > Math.min(110, (window.innerWidth || 360) * 0.3)) goBackToSidebar();
+    active = false; chat = null; dx = 0;
+  };
+  document.addEventListener('touchend', finish);
+  document.addEventListener('touchcancel', finish);
+})();
+
 // Cache de conteúdo de mensagens para o reply
 const _msgData = {};
 
