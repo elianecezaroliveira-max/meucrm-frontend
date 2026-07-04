@@ -2062,9 +2062,34 @@ function _recMime() {
 function _recUI(on) {
   const bar = document.getElementById('rec-bar');  if (bar)  bar.style.display  = on ? 'flex' : 'none';
   const wrap = document.getElementById('input-wrap'); if (wrap) wrap.style.display = on ? 'none' : '';
-  const mic = document.getElementById('mic-btn');  if (mic)  mic.style.display  = on ? 'none' : '';
-  const send = document.getElementById('send-btn'); if (send) send.style.display = on ? 'none' : '';
+  const mic = document.getElementById('mic-btn');  if (mic)  mic.style.display  = 'none';
+  const send = document.getElementById('send-btn'); if (send) send.style.display = 'none';
+  if (!on) updateSendMicButtons(); // fora da gravação, quem decide é o conteúdo do campo
 }
+
+// Estilo WhatsApp: 🎤 quando o campo está vazio, ➤ quando há texto ou arquivo
+function updateSendMicButtons() {
+  const inp  = document.getElementById('msg-input');
+  const send = document.getElementById('send-btn');
+  const mic  = document.getElementById('mic-btn');
+  if (!send || !mic) return;
+  const hasContent = (inp && inp.value.trim().length > 0) ||
+    (typeof selectedFile !== 'undefined' && selectedFile);
+  send.style.display = hasContent ? '' : 'none';
+  mic.style.display  = hasContent ? 'none' : '';
+}
+// Reavalia os botões após ações que mudam o campo fora do evento de digitação
+(function _hookSendMicUpdates() {
+  const wrap = fn => async function () {
+    const r = await fn.apply(this, arguments);
+    try { updateSendMicButtons(); } catch (_) {}
+    return r;
+  };
+  if (typeof sendMessage === 'function')      sendMessage      = wrap(sendMessage);
+  if (typeof selectContact === 'function')    selectContact    = wrap(selectContact);
+  if (typeof handleFileSelect === 'function') handleFileSelect = wrap(handleFileSelect);
+  if (typeof removeFile === 'function')       removeFile       = wrap(removeFile);
+})();
 async function startVoiceRec() {
   if (!currentPhone) return;
   if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined')
@@ -2120,7 +2145,7 @@ async function sendVoiceBlob(blob) {
     const res = await fetch(SERVER_URL + '/send-media', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ to: currentPhone, account_id: currentAccountId || null,
-        fileBase64: base64, fileName: 'audio.' + ext, mimeType: mime }),
+        fileBase64: base64, fileName: 'audio.' + ext, mimeType: mime, voice: true }),
     });
     const d = await res.json().catch(() => ({}));
     if (!res.ok) alert('❌ Falha ao enviar o áudio: ' + (d.error || ('HTTP ' + res.status)));
@@ -2307,7 +2332,7 @@ async function selectContact(phone, name, accountId) {
           </div>
           <button id="file-chip-remove" onclick="removeFile()" title="Remover">✕</button>
         </div>
-        <textarea id="msg-input" placeholder="Mensagem" rows="1" onkeydown="handleKey(event)"></textarea>
+        <textarea id="msg-input" placeholder="Mensagem" rows="1" onkeydown="handleKey(event)" oninput="updateSendMicButtons()"></textarea>
       </div>
       <div id="rec-bar" style="display:none;flex:1;align-items:center;gap:10px;background:#e9edef;border-radius:24px;padding:8px 14px;min-width:0">
         <span style="color:#ef4444;font-size:14px">●</span>
