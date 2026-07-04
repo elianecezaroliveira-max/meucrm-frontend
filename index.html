@@ -122,7 +122,7 @@
   /* Nome do lead SEMPRE no centro exato do cabeçalho, independente dos botões */
   #chat-header { position: relative; }
   #chat-header .info { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); max-width: 60%; text-align: center; }
-  #chat-header .info .name { font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #chat-header .info .name { font-size: 17px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #chat-header .info .phone { font-size: 12px; color: #667781; }
   #messages-area { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 4px; transition: background 0.2s; background-color: #efeae2; background-image: radial-gradient(rgba(0,0,0,0.028) 1px, transparent 1px); background-size: 22px 22px; }
   #messages-area.drag-over { background: rgba(0,168,132,0.08); outline: 2px dashed #00a884; outline-offset: -6px; }
@@ -696,7 +696,7 @@
   #msg-input { font-size: 16px; line-height: 20px; height: 40px; padding: 10px 12px; }
 
   /* Chat header: nome e telefone menores */
-  #chat-header .info .name { font-size: 14px; }
+  #chat-header .info .name { font-size: 16px; }
   #chat-header .info .phone { font-size: 11px; }
 
   /* Tag manager oculto no mobile para economizar espaço */
@@ -2138,11 +2138,16 @@ async function startVoiceRec() {
     _recStream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
     });
-    _recCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // 48 kHz direto (evita reamostragem) e PAUSA o polling da conversa durante a
+    // gravação — a atualização a cada 3s travava a captura e criava microlacunas
+    // que o acelerador (1,5x/2x) do WhatsApp do cliente transformava em distorção
+    const AC = window.AudioContext || window.webkitAudioContext;
+    try { _recCtx = new AC({ sampleRate: 48000 }); } catch (_) { _recCtx = new AC(); }
     try { await _recCtx.resume(); } catch (_) {}
+    if (typeof pollInterval !== 'undefined' && pollInterval) { clearInterval(pollInterval); pollInterval = null; window._recPausedPoll = true; }
     _recRate = _recCtx.sampleRate;
     _recSrc  = _recCtx.createMediaStreamSource(_recStream);
-    _recProc = _recCtx.createScriptProcessor(4096, 1, 1);
+    _recProc = _recCtx.createScriptProcessor(16384, 1, 1); // buffer grande = menos chances de perder pedaços
     _recGain = _recCtx.createGain(); _recGain.gain.value = 0; // mudo: não ecoa no alto-falante
     _recBufs = []; _recSecs = 0;
     _recProc.onaudioprocess = e => _recBufs.push(new Float32Array(e.inputBuffer.getChannelData(0)));
@@ -2168,6 +2173,8 @@ function _recTeardown() {
   try { _recStream && _recStream.getTracks().forEach(t => t.stop()); } catch (_) {}
   try { _recCtx && _recCtx.close(); } catch (_) {}
   _recProc = _recSrc = _recGain = _recCtx = _recStream = null;
+  // Religa o polling da conversa que foi pausado durante a gravação
+  if (window._recPausedPoll) { window._recPausedPoll = false; try { startPolling(); } catch (_) {} }
 }
 
 function stopVoiceRec(cancel) {
