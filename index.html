@@ -84,6 +84,15 @@
   .unread-badge { background: #00a884; color: #fff; border-radius: 50%; min-width: 20px; height: 20px; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; padding: 0 5px; flex-shrink: 0; box-shadow: 0 1px 4px rgba(0,168,132,.4); }
   .contact-item.has-unread { background: #e7f7ef !important; border-left: 4px solid #00a884 !important; }
   .contact-item.has-unread:hover { background: #d7f0e3 !important; }
+  /* Swipe nas conversas (celular): direita = lida, esquerda = favorita */
+  .contact-swipe-wrap { position: relative; overflow: hidden; }
+  .contact-swipe-wrap > .contact-item { position: relative; z-index: 1; background: #ffffff; touch-action: pan-y; will-change: transform; }
+  .swipe-action { position: absolute; top: 0; bottom: 0; width: 92px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #fff; font-size: 11px; font-weight: 600; z-index: 0; }
+  .swipe-action.read { left: 0; background: #4a76d0; }
+  .swipe-action.fav  { right: 0; background: #f0b400; }
+  .contact-swipe-wrap > .contact-item.is-fav { background: #fdf6e3; }
+  .contact-swipe-wrap > .contact-item.is-fav:hover { background: #f8eed2; }
+  .fav-star { color: #f0b400; font-size: 13px; margin-left: 5px; flex-shrink: 0; }
   .contact-item.has-unread .contact-name { font-weight: 700; color: #131c20; }
   .contact-item.has-unread .contact-preview { color: #9de0c7; }
   /* Prévia da mensagem */
@@ -110,7 +119,7 @@
   .msg .time { font-size: 11px; color: #667781; text-align: right; margin-top: 4px; }
   #input-area { background: #f0f2f5; padding: 10px 16px; display: flex; align-items: center; gap: 10px; border-top: 1px solid #e9edef; position: relative; }
   #input-wrap { flex: 1; display: flex; align-items: center; background: #e9edef; border-radius: 24px; overflow: hidden; min-width: 0; }
-  #msg-input { flex: 1; background: transparent; border: none; color: #131c20; padding: 10px 16px; font-size: 15px; resize: none; outline: none; min-width: 0; }
+  #msg-input { flex: 1; background: transparent; border: none; color: #131c20; padding: 10px 16px; font-size: 15px; line-height: 20px; height: 40px; overflow-y: auto; resize: none; outline: none; min-width: 0; }
   #msg-input::placeholder { color: #667781; }
   /* chip de arquivo dentro do input */
   #file-chip { display: none; align-items: center; gap: 8px; padding: 8px 14px; min-width: 0; flex: 1; }
@@ -663,6 +672,8 @@
   /* Input area: botões maiores (touch friendly) */
   #send-btn { width: 48px; height: 48px; }
   #emoji-btn, #attach-btn, .btn-template-icon { padding: 8px; }
+  /* 16px evita o zoom automático do iPhone ao tocar no campo */
+  #msg-input { font-size: 16px; line-height: 20px; height: 40px; }
 
   /* Chat header: nome e telefone menores */
   #chat-header .info .name { font-size: 14px; }
@@ -1888,11 +1899,15 @@ function renderContacts(contacts) {
     const previewHtml = isOut
       ? `<span style="color:#667781">Você: </span>${preview}`
       : preview;
-    return `<div class="contact-item${c.phone===currentPhone?' active':''}${hasUnread}" onclick="selectContact('${c.phone}','${(c.name||'').replace(/'/g,"\\'")}','${c.account_id||''}')">
+    const isFav = !!c.favorite;
+    return `<div class="contact-swipe-wrap" data-phone="${c.phone}">
+      <div class="swipe-action read">📖<span>Lida</span></div>
+      <div class="swipe-action fav">${isFav?'☆':'⭐'}<span>${isFav?'Remover':'Favoritar'}</span></div>
+      <div class="contact-item${c.phone===currentPhone?' active':''}${hasUnread}${isFav?' is-fav':''}" onclick="selectContact('${c.phone}','${(c.name||'').replace(/'/g,"\\'")}','${c.account_id||''}')">
       <div class="contact-avatar">${(c.name||'?')[0].toUpperCase()}</div>
       <div class="contact-info">
         <div class="contact-row-top">
-          <div class="contact-name">${c.name||c.phone}</div>
+          <div class="contact-name">${c.name||c.phone}${isFav?'<span class="fav-star">★</span>':''}</div>
           <div class="contact-time">${timeStr}</div>
         </div>
         <div class="contact-preview-row">
@@ -1901,12 +1916,63 @@ function renderContacts(contacts) {
         </div>
         ${tagsHtml}
       </div>
+      </div>
     </div>`;
   }).join('');
 }
 
+// ── SWIPE nas conversas (direita = marcar lida, esquerda = favoritar) ──
+async function markContactRead(phone) {
+  const c = allContacts.find(x => x.phone === phone);
+  if (c) { c.unread_count = 0; c.first_unread_at = null; }
+  applyFilters();
+  try { await fetch(`${SERVER_URL}/contacts/${encodeURIComponent(phone)}/read`, { method: 'PUT' }); } catch (_) {}
+}
+async function toggleFavorite(phone) {
+  const c = allContacts.find(x => x.phone === phone);
+  const fav = !(c && c.favorite);
+  if (c) c.favorite = fav;
+  applyFilters();
+  try {
+    await fetch(`${SERVER_URL}/contacts/${encodeURIComponent(phone)}/favorite`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ favorite: fav }),
+    });
+  } catch (_) {}
+}
+(function initContactSwipe() {
+  const list = document.getElementById('contacts-list');
+  if (!list) return;
+  let startX = 0, startY = 0, item = null, dx = 0, swiping = false;
+  list.addEventListener('touchstart', e => {
+    const wrap = e.target.closest('.contact-swipe-wrap'); if (!wrap) return;
+    item = wrap.querySelector('.contact-item'); dx = 0; swiping = false;
+    startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+    if (item) item.style.transition = 'none';
+  }, { passive: true });
+  list.addEventListener('touchmove', e => {
+    if (!item) return;
+    dx = e.touches[0].clientX - startX;
+    const dy = e.touches[0].clientY - startY;
+    if (!swiping && Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.4) swiping = true;
+    if (swiping) item.style.transform = `translateX(${Math.max(-100, Math.min(100, dx))}px)`;
+  }, { passive: true });
+  list.addEventListener('touchend', () => {
+    if (!item) return;
+    item.style.transition = 'transform .22s ease';
+    item.style.transform = '';
+    const phone = item.parentElement?.dataset?.phone;
+    if (swiping && phone) {
+      window._lastSwipeTs = Date.now(); // impede o clique de abrir a conversa junto
+      if (dx > 70) markContactRead(phone);
+      else if (dx < -70) toggleFavorite(phone);
+    }
+    item = null;
+  });
+})();
+
 // ── CHAT ──
 async function selectContact(phone, name, accountId) {
+  if (Date.now() - (window._lastSwipeTs || 0) < 450) return; // clique fantasma pós-swipe
   currentPhone = phone;
   currentName = name || phone;
   currentAccountId = accountId || document.getElementById('account-select').value || '';
@@ -2004,7 +2070,7 @@ async function selectContact(phone, name, accountId) {
           </div>
           <button id="file-chip-remove" onclick="removeFile()" title="Remover">✕</button>
         </div>
-        <textarea id="msg-input" placeholder="Digite uma mensagem..." rows="1" onkeydown="handleKey(event)"></textarea>
+        <textarea id="msg-input" placeholder="Mensagem" rows="1" onkeydown="handleKey(event)"></textarea>
       </div>
       <button id="send-btn" onclick="sendMessage()">
         <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
