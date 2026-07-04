@@ -1,6 +1,6 @@
 {
-  "name": "MeuCRM",
-  "short_name": "MeuCRM",
+  "name": "VETRA",
+  "short_name": "VETRA",
   "description": "CRM de atendimento via WhatsApp",
   "start_url": "/",
   "display": "standalone",
