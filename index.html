@@ -431,7 +431,11 @@
   /* Setinha de opções da mensagem (estilo WhatsApp Web) — some para não atrapalhar áudio/vídeo */
   .msg-actions { position:absolute; top:2px; right:4px; opacity:0; transition:opacity .15s; z-index:2; }
   @media (hover: hover) and (pointer: fine) { .msg:hover .msg-actions { opacity:1; } }
-  @media (hover: none) { .msg-actions { opacity:.55; } } /* celular: sempre visível, discreta */
+  /* Celular: sem setinha (tampava o texto) — o menu abre com TOQUE LONGO na mensagem */
+  @media (hover: none) {
+    .msg-actions { display: none; }
+    .msg { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+  }
   .msg-menu-btn { background:rgba(255,255,255,.9); border:none; cursor:pointer; color:#667781; font-size:13px; padding:1px 8px; border-radius:10px; line-height:1.5; box-shadow:0 1px 3px rgba(0,0,0,.18); }
   .msg-menu-btn:hover { background:#e9edef; color:#131c20; }
   /* Reply preview bar acima do input */
@@ -1211,7 +1215,10 @@ window.addEventListener('load', initAuth);
 
 <!-- MODAL N8N -->
 <!-- Menu "informações do lead" (botão ℹ️ no chat) -->
-<div id="info-menu" style="display:none;position:fixed;z-index:700;background:#ffffff;border:1px solid #e9edef;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.25);min-width:210px;padding:4px">
+<div id="info-menu" style="display:none;position:fixed;z-index:700;background:#ffffff;border:1px solid #e9edef;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.25);min-width:230px;padding:4px">
+  <div id="info-menu-phone" style="padding:8px 14px 6px;font-size:13px;color:#667781;border-bottom:1px solid #e9edef;margin-bottom:4px"></div>
+  <div class="cm-item" onclick="menuCopyPhone(this)">📋 Copiar número (sem o 55)</div>
+  <div class="cm-item" onclick="closeInfoMenu();editLeadName()">✏️ Editar nome</div>
   <div class="cm-item" onclick="closeInfoMenu();openTagSheet()">🏷️ Etiquetas</div>
   <div class="cm-item" onclick="closeInfoMenu();toggleNotes()">📝 Anotações do lead</div>
   <div class="cm-item" onclick="closeInfoMenu();openMediaGallery()">🖼️ Fotos e arquivos</div>
@@ -2039,10 +2046,23 @@ function openInfoMenu(ev) {
   ev.stopPropagation();
   const menu = document.getElementById('info-menu');
   if (!menu) return;
+  const ph = document.getElementById('info-menu-phone');
+  if (ph) ph.textContent = '📞 ' + (currentPhone || '');
   const r = ev.currentTarget.getBoundingClientRect();
   menu.style.display = 'block';
-  menu.style.left = Math.max(8, Math.min(r.right - 210, window.innerWidth - 220)) + 'px';
+  menu.style.left = Math.max(8, Math.min(r.right - 230, window.innerWidth - 240)) + 'px';
   menu.style.top = (r.bottom + 6) + 'px';
+}
+
+// Copia o número do menu ℹ️ sem o 55, com confirmação visual
+function menuCopyPhone(el) {
+  let p = String(currentPhone || '').replace(/\D/g, '');
+  if (p.startsWith('55') && p.length >= 12) p = p.slice(2);
+  const orig = el.textContent;
+  const done = () => { el.textContent = '✅ Copiado!'; setTimeout(() => { el.textContent = orig; closeInfoMenu(); }, 700); };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(p).then(done).catch(() => { prompt('Copie o número:', p); closeInfoMenu(); });
+  } else { prompt('Copie o número:', p); closeInfoMenu(); }
 }
 function closeInfoMenu() {
   const m = document.getElementById('info-menu');
@@ -2053,11 +2073,27 @@ document.addEventListener('click', e => {
 });
 
 // ── Gravação e envio de áudio (botão 🎤) ──
-let _rec = null, _recTimer = null, _recSecs = 0, _recChunks = [], _recCancel = false;
-function _recMime() {
-  const cands = ['audio/mp4', 'audio/mpeg', 'audio/ogg;codecs=opus', 'audio/webm'];
-  for (const m of cands) { try { if (MediaRecorder.isTypeSupported(m)) return m; } catch (_) {} }
-  return '';
+// Captura PCM cru via Web Audio (o MediaRecorder do iOS ora tremia, ora cortava em 1s)
+let _recCtx = null, _recProc = null, _recSrc = null, _recGain = null, _recStream = null;
+let _recBufs = [], _recRate = 44100, _recTimer = null, _recSecs = 0;
+const REC_MAX_SECS = 180; // limite de 3 min por mensagem de voz
+
+function _encodeWav(chunks, rate) {
+  let len = 0; chunks.forEach(c => len += c.length);
+  const pcm = new Int16Array(len); let o = 0;
+  for (const c of chunks) for (let i = 0; i < c.length; i++) {
+    const s = Math.max(-1, Math.min(1, c[i]));
+    pcm[o++] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+  }
+  const buf = new ArrayBuffer(44 + pcm.length * 2);
+  const v = new DataView(buf);
+  const ws = (off, s) => { for (let i = 0; i < s.length; i++) v.setUint8(off + i, s.charCodeAt(i)); };
+  ws(0, 'RIFF'); v.setUint32(4, 36 + pcm.length * 2, true); ws(8, 'WAVE'); ws(12, 'fmt ');
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  ws(36, 'data'); v.setUint32(40, pcm.length * 2, true);
+  new Int16Array(buf, 44).set(pcm);
+  return new Blob([buf], { type: 'audio/wav' });
 }
 function _recUI(on) {
   const bar = document.getElementById('rec-bar');  if (bar)  bar.style.display  = on ? 'flex' : 'none';
@@ -2092,46 +2128,55 @@ function updateSendMicButtons() {
 })();
 async function startVoiceRec() {
   if (!currentPhone) return;
-  if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined')
+  if (!navigator.mediaDevices?.getUserMedia)
     return alert('Gravação de áudio não é suportada neste navegador.');
   try {
-    // Microfone CRU, como o WhatsApp grava: os filtros de chamada (eco/ruído/ganho
-    // automático) "bombeiam" o volume e deixam a voz tremida em gravações
-    const stream = await navigator.mediaDevices.getUserMedia({
+    // Microfone CRU, como o WhatsApp grava (filtros de chamada deixavam a voz tremida)
+    _recStream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
     });
-    const mime = _recMime();
-    const opts = { audioBitsPerSecond: 128000 };
-    if (mime) opts.mimeType = mime;
-    _rec = new MediaRecorder(stream, opts);
-    _recChunks = []; _recCancel = false; _recSecs = 0;
+    _recCtx = new (window.AudioContext || window.webkitAudioContext)();
+    try { await _recCtx.resume(); } catch (_) {}
+    _recRate = _recCtx.sampleRate;
+    _recSrc  = _recCtx.createMediaStreamSource(_recStream);
+    _recProc = _recCtx.createScriptProcessor(4096, 1, 1);
+    _recGain = _recCtx.createGain(); _recGain.gain.value = 0; // mudo: não ecoa no alto-falante
+    _recBufs = []; _recSecs = 0;
+    _recProc.onaudioprocess = e => _recBufs.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+    _recSrc.connect(_recProc); _recProc.connect(_recGain); _recGain.connect(_recCtx.destination);
     const timeEl = document.getElementById('rec-time'); if (timeEl) timeEl.textContent = '0:00';
-    _rec.ondataavailable = e => { if (e.data && e.data.size) _recChunks.push(e.data); };
-    _rec.onstop = async () => {
-      stream.getTracks().forEach(t => t.stop());
-      _recUI(false);
-      if (_recCancel || !_recChunks.length) return;
-      const blob = new Blob(_recChunks, { type: _rec.mimeType || mime || 'audio/mp4' });
-      if (blob.size < 1200) return; // gravação vazia/acidental
-      await sendVoiceBlob(blob);
-    };
-    // Grava em bloco ÚNICO (sem fatiar): fatias de 250ms causavam microcortes
-    // nas emendas no iPhone — a "voz tremida"
-    _rec.start();
     _recUI(true);
     _recTimer = setInterval(() => {
       _recSecs++;
       const el = document.getElementById('rec-time');
       if (el) el.textContent = Math.floor(_recSecs / 60) + ':' + String(_recSecs % 60).padStart(2, '0');
+      if (_recSecs >= REC_MAX_SECS) stopVoiceRec(false); // envia ao atingir o limite
     }, 1000);
   } catch (e) {
     alert('Não consegui acessar o microfone.\nVerifique a permissão do microfone para o app.\n(' + e.message + ')');
   }
 }
+
+function _recTeardown() {
+  clearInterval(_recTimer); _recTimer = null;
+  try { _recProc && _recProc.disconnect(); } catch (_) {}
+  try { _recSrc  && _recSrc.disconnect();  } catch (_) {}
+  try { _recGain && _recGain.disconnect(); } catch (_) {}
+  try { _recStream && _recStream.getTracks().forEach(t => t.stop()); } catch (_) {}
+  try { _recCtx && _recCtx.close(); } catch (_) {}
+  _recProc = _recSrc = _recGain = _recCtx = _recStream = null;
+}
+
 function stopVoiceRec(cancel) {
-  _recCancel = !!cancel;
-  clearInterval(_recTimer);
-  if (_rec && _rec.state !== 'inactive') _rec.stop(); else _recUI(false);
+  if (!_recCtx && !_recBufs.length) { _recUI(false); return; }
+  const bufs = _recBufs, rate = _recRate;
+  _recBufs = [];
+  _recTeardown();
+  _recUI(false);
+  if (cancel) return;
+  const total = bufs.reduce((s, c) => s + c.length, 0);
+  if (total < rate * 0.4) return; // menos de meio segundo: descarta
+  sendVoiceBlob(_encodeWav(bufs, rate));
 }
 async function sendVoiceBlob(blob) {
   if (!currentPhone) return;
@@ -2140,8 +2185,8 @@ async function sendVoiceBlob(blob) {
     r.onload = e => res(String(e.target.result).split(',')[1]);
     r.readAsDataURL(blob);
   });
-  const mime = (blob.type || 'audio/mp4').split(';')[0];
-  const ext = mime.includes('mp4') ? 'm4a' : mime.includes('mpeg') ? 'mp3' : mime.includes('ogg') ? 'ogg' : 'webm';
+  const mime = (blob.type || 'audio/wav').split(';')[0];
+  const ext = mime.includes('wav') ? 'wav' : mime.includes('mp4') ? 'm4a' : mime.includes('mpeg') ? 'mp3' : mime.includes('ogg') ? 'ogg' : 'webm';
   const area = document.getElementById('messages-area');
   if (area) {
     const d = document.createElement('div');
@@ -2181,8 +2226,40 @@ function msgMenuReact()  { const a = _msgMenuAnchor, id = _msgMenuId; closeMsgMe
 function msgMenuReply()  { const id = _msgMenuId; closeMsgMenu(); if (id) startReply(id); }
 function msgMenuDelete() { const a = _msgMenuAnchor, id = _msgMenuId; closeMsgMenu(); if (id) deleteMessage(id, a); }
 document.addEventListener('click', e => {
+  if (Date.now() - (window._msgMenuTs || 0) < 400) return; // ignora o clique fantasma pós-toque longo
   if (!e.target.closest('#msg-menu') && !e.target.closest('.msg-menu-btn')) closeMsgMenu();
 });
+
+// Celular: TOQUE LONGO (meio segundo) na mensagem abre o menu de opções
+function openMsgMenuAt(id, x, y, anchorEl) {
+  _msgMenuId = id; _msgMenuAnchor = anchorEl;
+  window._msgMenuTs = Date.now();
+  const menu = document.getElementById('msg-menu');
+  if (!menu) return;
+  menu.style.display = 'block';
+  menu.style.left = Math.max(8, Math.min(x - 60, window.innerWidth - 185)) + 'px';
+  menu.style.top  = Math.min(y + 10, window.innerHeight - 170) + 'px';
+}
+(function initMsgLongPress() {
+  let timer = null, sx = 0, sy = 0;
+  document.addEventListener('touchstart', e => {
+    const msg = e.target.closest('#messages-area .msg');
+    if (!msg || !msg.dataset.msgId) return;
+    sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      openMsgMenuAt(msg.dataset.msgId, sx, sy, msg);
+      if (navigator.vibrate) navigator.vibrate(12);
+    }, 480);
+  }, { passive: true });
+  const cancelLP = () => { clearTimeout(timer); timer = null; };
+  document.addEventListener('touchmove', e => {
+    if (!timer) return;
+    if (Math.abs(e.touches[0].clientX - sx) > 10 || Math.abs(e.touches[0].clientY - sy) > 10) cancelLP();
+  }, { passive: true });
+  document.addEventListener('touchend', cancelLP);
+  document.addEventListener('touchcancel', cancelLP);
+})();
 
 // ── Menu "⋯" da conversa (computador) ──
 function openContactMenu(ev, phone) {
@@ -2279,10 +2356,8 @@ async function selectContact(phone, name, accountId) {
           <polyline points="15 18 9 12 15 6"/>
         </svg>
       </button>
-      <div class="avatar">${(name || phone)[0].toUpperCase()}</div>
       <div class="info">
-        <div class="name"><span id="chat-name-text">${name || phone}</span> <span onclick="editLeadName()" title="Editar nome do lead" style="cursor:pointer;opacity:.55;font-size:12px">✏️</span></div>
-        <div class="phone">${phone} <span onclick="copyPhone('${phone}', this)" title="Copiar número (sem o 55)" style="cursor:pointer;opacity:.6">📋</span></div>
+        <div class="name"><span id="chat-name-text">${name || phone}</span></div>
       </div>
       <button id="btn-info" title="Informações do lead" onclick="openInfoMenu(event)"
         style="background:none;border:none;color:#667781;cursor:pointer;padding:6px;border-radius:50%;margin-left:auto;flex-shrink:0;display:flex;align-items:center;justify-content:center">
