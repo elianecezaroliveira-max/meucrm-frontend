@@ -1922,6 +1922,17 @@ function renderContacts(contacts) {
       </div>
     </div>`;
   }).join('');
+  updateAppBadge(); // mantém o número no ícone do app em dia
+}
+
+// Atualiza o número de não lidas no ícone do app (badge)
+function updateAppBadge() {
+  if (!('setAppBadge' in navigator)) return;
+  const n = (allContacts || []).filter(c => (c.unread_count || 0) > 0).length;
+  try {
+    if (n > 0) navigator.setAppBadge(n).catch(() => {});
+    else navigator.clearAppBadge().catch(() => {});
+  } catch (_) {}
 }
 
 // Copia o número do contato SEM o código do país (55)
