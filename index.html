@@ -39,6 +39,21 @@
 </script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  /* Áreas seguras (câmera/notch e barra de gesto em telas de borda infinita) */
+  @supports (padding: env(safe-area-inset-top)) {
+    #topbar {
+      padding-top: calc(10px + env(safe-area-inset-top)) !important;
+      padding-left: calc(16px + env(safe-area-inset-left)) !important;
+      padding-right: calc(16px + env(safe-area-inset-right)) !important;
+    }
+    #input-area { padding-bottom: calc(10px + env(safe-area-inset-bottom)) !important; }
+    #contacts-list { padding-bottom: env(safe-area-inset-bottom); }
+    /* Páginas em tela cheia (bots, tarefas, editor) também respeitam a câmera */
+    #bots-page, #bot-editor-page, #tasks-page {
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+  }
   body { font-family: 'Segoe UI', sans-serif; background: #ffffff; color: #131c20; height: 100vh; display: flex; flex-direction: column; }
   /* TOPBAR */
   #topbar { background: #f0f2f5; padding: 10px 16px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #e9edef; }
