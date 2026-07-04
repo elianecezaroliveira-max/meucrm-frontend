@@ -668,6 +668,10 @@
   /* Mensagens mais largas no mobile */
   .msg { max-width: 88%; }
 
+  /* Rolagem vertical fica com o navegador; arrasto HORIZONTAL chega ao código
+     (sem isso o iOS "engole" o gesto de voltar arrastando para a direita) */
+  #messages-area { touch-action: pan-y; }
+
   /* Emoji picker menor no mobile */
   emoji-picker { width: 300px !important; height: 340px !important; }
   #emoji-picker-wrap { left: 6px; }
@@ -2481,6 +2485,7 @@ function goBackToSidebar() {
 (function initSwipeBack() {
   let active = false, horiz = false, sx = 0, sy = 0, dx = 0, chat = null;
   document.addEventListener('touchstart', e => {
+    if (!window.matchMedia('(hover: none)').matches) return; // gesto SÓ no celular
     const layout = document.getElementById('layout');
     if (!layout || !layout.classList.contains('mobile-chat-open')) return;
     // Funciona de qualquer ponto da conversa (a borda é reservada pelo iOS),
