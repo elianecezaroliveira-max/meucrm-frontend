@@ -2329,8 +2329,12 @@ async function loadMessages(phone, scroll = true) {
       }
     }
 
+    // Preserva a posição da rolagem no re-render (senão a tela "pula" sozinha)
+    const prevTop = area.scrollTop;
+    const nearBottom = (area.scrollHeight - area.scrollTop - area.clientHeight) < 80;
     area.innerHTML = parts.join('');
-    if (scroll) area.scrollTop = area.scrollHeight;
+    if (scroll || nearBottom) area.scrollTop = area.scrollHeight; // no fim → acompanha novas mensagens
+    else area.scrollTop = prevTop;                                // lendo antigas → não mexe
   } catch(e) {
     console.error('[loadMessages] erro ao carregar mensagens:', e);
   }
