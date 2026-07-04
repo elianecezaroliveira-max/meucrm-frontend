@@ -120,7 +120,7 @@
   #input-area { background: #f0f2f5; padding: 10px 16px; display: flex; align-items: center; gap: 10px; border-top: 1px solid #e9edef; position: relative; }
   #input-wrap { flex: 1; display: flex; align-items: center; background: #e9edef; border-radius: 24px; overflow: hidden; min-width: 0; }
   #msg-input { flex: 1; background: transparent; border: none; color: #131c20; padding: 10px 16px; font-size: 15px; line-height: 20px; height: 40px; overflow-y: auto; resize: none; outline: none; min-width: 0; }
-  #msg-input::placeholder { color: #667781; }
+  #msg-input::placeholder { color: #667781; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   /* chip de arquivo dentro do input */
   #file-chip { display: none; align-items: center; gap: 8px; padding: 8px 14px; min-width: 0; flex: 1; }
   #file-chip.visible { display: flex; }
@@ -671,9 +671,12 @@
 
   /* Input area: botões maiores (touch friendly) */
   #send-btn { width: 48px; height: 48px; }
-  #emoji-btn, #attach-btn, .btn-template-icon { padding: 8px; }
+  /* Compacta a barra de digitação: botões menores = caixa de texto maior */
+  #input-area { gap: 4px; padding-left: 8px; padding-right: 8px; }
+  #emoji-btn, #attach-btn, .btn-template-icon, #btn-start-bot { padding: 5px !important; font-size: 17px !important; }
+  #emoji-btn svg, #attach-btn svg, .btn-template-icon svg { width: 20px; height: 20px; }
   /* 16px evita o zoom automático do iPhone ao tocar no campo */
-  #msg-input { font-size: 16px; line-height: 20px; height: 40px; }
+  #msg-input { font-size: 16px; line-height: 20px; height: 40px; padding: 10px 12px; }
 
   /* Chat header: nome e telefone menores */
   #chat-header .info .name { font-size: 14px; }
@@ -1921,6 +1924,20 @@ function renderContacts(contacts) {
   }).join('');
 }
 
+// Copia o número do contato SEM o código do país (55)
+function copyPhone(phone, el) {
+  let p = String(phone || '').replace(/\D/g, '');
+  if (p.startsWith('55') && p.length >= 12) p = p.slice(2); // remove o 55 só de números BR completos
+  const done = () => {
+    if (el) { el.textContent = '✅'; setTimeout(() => { el.textContent = '📋'; }, 1200); }
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(p).then(done).catch(() => prompt('Copie o número:', p));
+  } else {
+    prompt('Copie o número:', p);
+  }
+}
+
 // ── SWIPE nas conversas (direita = marcar lida, esquerda = favoritar) ──
 async function markContactRead(phone) {
   const c = allContacts.find(x => x.phone === phone);
@@ -1999,7 +2016,7 @@ async function selectContact(phone, name, accountId) {
       <div class="avatar">${(name || phone)[0].toUpperCase()}</div>
       <div class="info">
         <div class="name"><span id="chat-name-text">${name || phone}</span> <span onclick="editLeadName()" title="Editar nome do lead" style="cursor:pointer;opacity:.55;font-size:12px">✏️</span></div>
-        <div class="phone">${phone}</div>
+        <div class="phone">${phone} <span onclick="copyPhone('${phone}', this)" title="Copiar número (sem o 55)" style="cursor:pointer;opacity:.6">📋</span></div>
       </div>
       <div id="tag-manager"></div>
       <button id="btn-mark-read" title="Marcar como lida" onclick="markAsRead('${phone}')">
