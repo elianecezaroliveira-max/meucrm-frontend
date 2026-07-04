@@ -2483,19 +2483,25 @@ function goBackToSidebar() {
   document.addEventListener('touchstart', e => {
     const layout = document.getElementById('layout');
     if (!layout || !layout.classList.contains('mobile-chat-open')) return;
+    // Funciona de qualquer ponto da conversa (a borda é reservada pelo iOS),
+    // exceto sobre player, vídeo, cabeçalho e barra de digitação
+    if (!e.target.closest('#chat-area')) return;
+    if (e.target.closest('video, .voice-player, #input-area, #chat-header, #notes-panel')) return;
     const t = e.touches[0];
-    if (t.clientX > 32) return; // só quando começa na borda esquerda
     chat = document.getElementById('chat-area');
     if (!chat) return;
     active = true; horiz = false; sx = t.clientX; sy = t.clientY; dx = 0;
-    chat.style.transition = 'none';
   }, { passive: true });
   document.addEventListener('touchmove', e => {
     if (!active || !chat) return;
     const t = e.touches[0];
     dx = t.clientX - sx;
     const dy = t.clientY - sy;
-    if (!horiz && Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) horiz = true;
+    // Só "engata" com movimento claramente horizontal para a direita
+    if (!horiz && dx > 22 && Math.abs(dx) > Math.abs(dy) * 1.6) {
+      horiz = true;
+      chat.style.transition = 'none';
+    }
     if (horiz && dx > 0) chat.style.transform = 'translateX(' + dx + 'px)'; // segue o dedo
   }, { passive: true });
   const finish = () => {
