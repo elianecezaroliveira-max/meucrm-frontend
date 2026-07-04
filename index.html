@@ -2095,8 +2095,10 @@ async function startVoiceRec() {
   if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined')
     return alert('Gravação de áudio não é suportada neste navegador.');
   try {
+    // Microfone CRU, como o WhatsApp grava: os filtros de chamada (eco/ruído/ganho
+    // automático) "bombeiam" o volume e deixam a voz tremida em gravações
     const stream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
     });
     const mime = _recMime();
     const opts = { audioBitsPerSecond: 128000 };
