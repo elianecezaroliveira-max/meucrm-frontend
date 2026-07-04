@@ -428,14 +428,12 @@
   .msg-ticks.read     { color:#53bdeb; }
   .msg-ticks.failed   { color:#ef4444; font-size:11px; }
   /* Ações de mensagem (reply + delete) */
-  .msg-actions { position:absolute; top:4px; display:flex; gap:2px; opacity:0; transition:opacity .15s; }
-  .msg.inbound  .msg-actions { right:-62px; }
-  .msg.outbound .msg-actions { left:-62px; }
-  .msg:hover .msg-actions { opacity:1; }
-  .msg-action-btn { background:#e9edef; border:none; cursor:pointer; color:#667781; font-size:14px; padding:3px 6px; border-radius:4px; line-height:1; }
-  .msg-action-btn:hover { background:#3a4a52; }
-  .msg-action-btn.reply:hover { color:#25d366; }
-  .msg-action-btn.del:hover   { color:#ef4444; }
+  /* Setinha de opções da mensagem (estilo WhatsApp Web) — some para não atrapalhar áudio/vídeo */
+  .msg-actions { position:absolute; top:2px; right:4px; opacity:0; transition:opacity .15s; z-index:2; }
+  @media (hover: hover) and (pointer: fine) { .msg:hover .msg-actions { opacity:1; } }
+  @media (hover: none) { .msg-actions { opacity:.55; } } /* celular: sempre visível, discreta */
+  .msg-menu-btn { background:rgba(255,255,255,.9); border:none; cursor:pointer; color:#667781; font-size:13px; padding:1px 8px; border-radius:10px; line-height:1.5; box-shadow:0 1px 3px rgba(0,0,0,.18); }
+  .msg-menu-btn:hover { background:#e9edef; color:#131c20; }
   /* Reply preview bar acima do input */
   #reply-bar { display:none; align-items:center; gap:8px; padding:6px 12px; background:#1d2b36; border-left:3px solid #25d366; width:100%; box-sizing:border-box; }
   #reply-bar span { flex:1; color:#131c20; font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -1218,6 +1216,13 @@ window.addEventListener('load', initAuth);
   <div class="cm-item" onclick="closeInfoMenu();toggleNotes()">📝 Anotações do lead</div>
   <div class="cm-item" onclick="closeInfoMenu();openMediaGallery()">🖼️ Fotos e arquivos</div>
   <div class="cm-item" onclick="closeInfoMenu();openTasks()">✅ Tarefas</div>
+</div>
+
+<!-- Menu de opções da mensagem (reagir / responder / apagar) -->
+<div id="msg-menu" style="display:none;position:fixed;z-index:700;background:#ffffff;border:1px solid #e9edef;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.25);min-width:170px;padding:4px">
+  <div class="cm-item" onclick="msgMenuReact()">😊 Reagir</div>
+  <div class="cm-item" onclick="msgMenuReply()">↩ Responder</div>
+  <div class="cm-item" onclick="msgMenuDelete()" style="color:#ef4444">🗑 Apagar</div>
 </div>
 
 <!-- Menu "⋯" da conversa (marcar como lida / favoritar) -->
@@ -2123,6 +2128,29 @@ async function sendVoiceBlob(blob) {
   await loadMessages(currentPhone, false);
 }
 
+// ── Menu ⌄ de opções da mensagem (reagir / responder / apagar) ──
+let _msgMenuId = null, _msgMenuAnchor = null;
+function openMsgMenu(ev, id) {
+  ev.stopPropagation();
+  _msgMenuId = id; _msgMenuAnchor = ev.currentTarget;
+  const menu = document.getElementById('msg-menu');
+  if (!menu) return;
+  const r = ev.currentTarget.getBoundingClientRect();
+  menu.style.display = 'block';
+  menu.style.left = Math.max(8, Math.min(r.left - 80, window.innerWidth - 185)) + 'px';
+  menu.style.top  = Math.min(r.bottom + 4, window.innerHeight - 150) + 'px';
+}
+function closeMsgMenu() {
+  const m = document.getElementById('msg-menu');
+  if (m) m.style.display = 'none';
+}
+function msgMenuReact()  { const a = _msgMenuAnchor, id = _msgMenuId; closeMsgMenu(); if (id) openReactPicker(id, a || document.body); }
+function msgMenuReply()  { const id = _msgMenuId; closeMsgMenu(); if (id) startReply(id); }
+function msgMenuDelete() { const a = _msgMenuAnchor, id = _msgMenuId; closeMsgMenu(); if (id) deleteMessage(id, a); }
+document.addEventListener('click', e => {
+  if (!e.target.closest('#msg-menu') && !e.target.closest('.msg-menu-btn')) closeMsgMenu();
+});
+
 // ── Menu "⋯" da conversa (computador) ──
 function openContactMenu(ev, phone) {
   const c = allContacts.find(x => x.phone === phone);
@@ -2486,9 +2514,7 @@ async function loadMessages(phone, scroll = true) {
         parts.push(`<div class="msg ${safeDir}" style="position:relative${m.reaction?';margin-bottom:14px':''}"
           data-msg-id="${safeId}" data-msg-content="${dataCont}" data-msg-dir="${safeDir}" data-msg-wamid="${safeWamid}">
           <div class="msg-actions">
-            <button class="msg-action-btn react" title="Reagir" onclick="openReactPicker('${safeId}',this)">😊</button>
-            <button class="msg-action-btn reply" title="Responder" onclick="startReply('${safeId}')">↩</button>
-            <button class="msg-action-btn del"   title="Apagar"    onclick="deleteMessage('${safeId}',this)">🗑</button>
+            <button class="msg-menu-btn" title="Opções da mensagem" onclick="openMsgMenu(event,'${safeId}')">⌄</button>
           </div>
           ${msgContent}
           <div class="time">${timeStr}${ticks}</div>
