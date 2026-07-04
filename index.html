@@ -2147,10 +2147,29 @@ async function startVoiceRec() {
     if (typeof pollInterval !== 'undefined' && pollInterval) { clearInterval(pollInterval); pollInterval = null; window._recPausedPoll = true; }
     _recRate = _recCtx.sampleRate;
     _recSrc  = _recCtx.createMediaStreamSource(_recStream);
-    _recProc = _recCtx.createScriptProcessor(16384, 1, 1); // buffer grande = menos chances de perder pedaços
     _recGain = _recCtx.createGain(); _recGain.gain.value = 0; // mudo: não ecoa no alto-falante
     _recBufs = []; _recSecs = 0;
-    _recProc.onaudioprocess = e => _recBufs.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+    // Captura na THREAD DE ÁUDIO (AudioWorklet): imune a travadas da interface.
+    // A captura antiga (na thread principal) criava microfalhas inaudíveis em 1x
+    // que o acelerador (1,5x/2x) do WhatsApp transformava em distorção.
+    let workletOk = false;
+    if (_recCtx.audioWorklet && window.AudioWorkletNode) {
+      try {
+        if (!window._recWorkletUrl) {
+          const code = "class VRec extends AudioWorkletProcessor{process(i){const c=i[0]&&i[0][0];if(c){const b=new Float32Array(c);this.port.postMessage(b,[b.buffer]);}return true;}}registerProcessor('vetra-rec',VRec);";
+          window._recWorkletUrl = URL.createObjectURL(new Blob([code], { type: 'application/javascript' }));
+        }
+        await _recCtx.audioWorklet.addModule(window._recWorkletUrl);
+        _recProc = new AudioWorkletNode(_recCtx, 'vetra-rec', { channelCount: 1 });
+        _recProc.port.onmessage = e => _recBufs.push(e.data);
+        workletOk = true;
+        console.log('🎙️ Captura via AudioWorklet (thread de áudio)');
+      } catch (e) { console.warn('AudioWorklet indisponível, usando fallback:', e.message); }
+    }
+    if (!workletOk) { // navegador antigo: método anterior
+      _recProc = _recCtx.createScriptProcessor(16384, 1, 1);
+      _recProc.onaudioprocess = e => _recBufs.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+    }
     _recSrc.connect(_recProc); _recProc.connect(_recGain); _recGain.connect(_recCtx.destination);
     const timeEl = document.getElementById('rec-time'); if (timeEl) timeEl.textContent = '0:00';
     _recUI(true);
@@ -2513,7 +2532,6 @@ function renderMessageContent(m) {
           <div class="vp-bars" onclick="voiceSeek('${aid}',event)">${bars}</div>
           <span class="vp-time">0:00</span>
           <button class="vp-speed" onclick="voiceSpeed('${aid}')" title="Velocidade">1x</button>
-          <a href="${dlUrl}" class="media-dl-link" download title="Baixar">⬇</a>
           <audio preload="none" data-url="${proxyUrl}"
             onloadedmetadata="voiceMeta('${aid}')" ontimeupdate="voiceTime('${aid}')"
             onplay="voiceUI('${aid}',true)" onpause="voiceUI('${aid}',false)" onended="voiceEnded('${aid}')"></audio>
