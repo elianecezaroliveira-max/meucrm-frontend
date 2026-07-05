@@ -76,7 +76,8 @@
   .contact-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #f0f2f5; transition: background 0.15s; }
   .contact-item:hover { background: #f0f2f5; }
   .contact-item.active { background: #e9edef; }
-  .contact-avatar { width: 46px; height: 46px; border-radius: 50%; background: #e9edef; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 600; color: #00a884; flex-shrink: 0; }
+  .contact-avatar { width: 46px; height: 46px; border-radius: 50%; background: #e9edef; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 600; color: #00a884; flex-shrink: 0; position: relative; overflow: hidden; }
+  .contact-avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   .contact-info { flex: 1; min-width: 0; }
   .contact-name { font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .contact-preview { font-size: 13px; color: #667781; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
@@ -1967,7 +1968,7 @@ function renderContacts(contacts) {
       <div class="swipe-action read">📖<span>Lida</span></div>
       <div class="swipe-action fav">${isFav?'☆':'⭐'}<span>${isFav?'Remover':'Favoritar'}</span></div>
       <div class="contact-item${c.phone===currentPhone?' active':''}${hasUnread}${isFav?' is-fav':''}" onclick="selectContact('${c.phone}','${(c.name||'').replace(/'/g,"\\'")}','${c.account_id||''}')">
-      <div class="contact-avatar">${(c.name||'?')[0].toUpperCase()}</div>
+      <div class="contact-avatar">${(c.name||'?')[0].toUpperCase()}${c.avatar ? `<img src="${SERVER_URL}/media-proxy/${encodeURIComponent(c.avatar)}" loading="lazy" alt="" onerror="this.remove()">` : ''}</div>
       <div class="contact-info">
         <div class="contact-row-top">
           <div class="contact-name">${c.name||c.phone}${isFav?'<span class="fav-star">★</span>':''}</div>
