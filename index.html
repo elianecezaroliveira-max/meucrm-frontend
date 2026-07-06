@@ -431,6 +431,7 @@
   .msg-ticks.delivered{ color:#667781; }
   .msg-ticks.read     { color:#53bdeb; }
   .msg-ticks.failed   { color:#ef4444; font-size:11px; }
+  .msg-ticks.pending  { color:#8696a0; font-size:11px; }
   /* Ações de mensagem (reply + delete) */
   /* Setinha de opções da mensagem (estilo WhatsApp Web) — some para não atrapalhar áudio/vídeo */
   .msg-actions { position:absolute; top:2px; right:4px; opacity:0; transition:opacity .15s; z-index:2; }
@@ -1968,7 +1969,7 @@ function renderContacts(contacts) {
       <div class="swipe-action read">📖<span>Lida</span></div>
       <div class="swipe-action fav">${isFav?'☆':'⭐'}<span>${isFav?'Remover':'Favoritar'}</span></div>
       <div class="contact-item${c.phone===currentPhone?' active':''}${hasUnread}${isFav?' is-fav':''}" onclick="selectContact('${c.phone}','${(c.name||'').replace(/'/g,"\\'")}','${c.account_id||''}')">
-      <div class="contact-avatar">${(c.name||'?')[0].toUpperCase()}${c.avatar ? `<img src="${SERVER_URL}/media-proxy/${encodeURIComponent(c.avatar)}" loading="lazy" alt="" onerror="this.remove()">` : ''}</div>
+      <div class="contact-avatar">${(c.name||'?')[0].toUpperCase()}${c.avatar ? `<img src="${SERVER_URL}/avatar/${encodeURIComponent(String(c.avatar).split('/').pop())}" loading="lazy" alt="" onerror="this.remove()">` : ''}</div>
       <div class="contact-info">
         <div class="contact-row-top">
           <div class="contact-name">${c.name||c.phone}${isFav?'<span class="fav-star">★</span>':''}</div>
@@ -2673,6 +2674,7 @@ async function loadMessages(phone, scroll = true) {
           if (m.status === 'read')           ticks = '<span class="msg-ticks read">✓✓</span>';
           else if (m.status === 'delivered') ticks = '<span class="msg-ticks delivered">✓✓</span>';
           else if (m.status === 'failed')    ticks = `<span class="msg-ticks failed" style="cursor:pointer" title="${escHtml(m.error_info||'Falha no envio sem motivo registrado (mensagem anterior à atualização). Reenvie para ver o detalhe da Meta.')}" onclick="alert('❌ Falha no envio:\\n\\n'+this.title)">⚠️</span>`;
+          else if (m.status === 'pending')   ticks = '<span class="msg-ticks pending" title="Enviando… aguardando confirmação do WhatsApp">🕐</span>';
           else                               ticks = '<span class="msg-ticks sent">✓</span>';
         }
 
