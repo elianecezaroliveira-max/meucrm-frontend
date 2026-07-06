@@ -5273,22 +5273,44 @@ function _botPickAccount(){
 async function loadBotTmplOptions(node){
   const sel = document.getElementById('cfg-tmpl-select');
   if(!sel) return;
-  const acctId = _botPickAccount();
-  if(!acctId){ sel.innerHTML='<option value="">Nenhuma conta disponível</option>'; return; }
+  sel.innerHTML = '<option value="">Carregando modelos…</option>';
   try{
-    const res = await fetch(SERVER_URL+'/templates?account_id='+acctId);
-    const tmpls = (await res.json()).filter(t=>t.status==='APPROVED');
+    // Modelos pertencem à WABA de cada número. O bot envia pelo número DO CONTATO,
+    // então mostramos a UNIÃO dos modelos aprovados de TODAS as contas da API oficial
+    // (Evolution/QR não tem modelos). Antes aparecia só o número de uma conta.
+    const accs = await (await fetch(SERVER_URL+'/accounts')).json();
+    const apiAccs = (Array.isArray(accs)?accs:[]).filter(a=>a.type!=='evolution');
+    if(!apiAccs.length){ sel.innerHTML='<option value="">Nenhuma conta da API disponível</option>'; return; }
+    const results = await Promise.all(apiAccs.map(async a=>{
+      try{
+        const list = await (await fetch(SERVER_URL+'/templates?account_id='+a.id)).json();
+        return { acc:a, tmpls: Array.isArray(list) ? list.filter(t=>t.status==='APPROVED') : [] };
+      }catch(_){ return { acc:a, tmpls:[] }; }
+    }));
+    // Une e deduplica por nome+idioma, guardando de quais números o modelo veio
     _botTmplCache = {};
-    sel.innerHTML = '<option value="">-- escolher modelo --</option>' + tmpls.map(t=>{
-      const key = t.name+'|'+t.language;
-      _botTmplCache[key] = t;
+    const merged = {}; // key -> { t, accounts:[] }
+    for(const {acc, tmpls} of results){
+      const label = acc.name + (acc.phone_display?` (${acc.phone_display})`:'');
+      for(const t of tmpls){
+        const key = t.name+'|'+t.language;
+        if(!merged[key]) merged[key] = { t, accounts:[] };
+        if(!merged[key].accounts.includes(label)) merged[key].accounts.push(label);
+        _botTmplCache[key] = t;
+      }
+    }
+    const keys = Object.keys(merged).sort((a,b)=>a.localeCompare(b));
+    if(!keys.length){ sel.innerHTML='<option value="">Nenhum modelo aprovado</option>'; return; }
+    sel.innerHTML = '<option value="">-- escolher modelo --</option>' + keys.map(key=>{
+      const { t, accounts } = merged[key];
       const selAttr = (node.config.template_name===t.name && (node.config.language||'pt_BR')===t.language) ? 'selected' : '';
-      return `<option value="${escHtml(key)}" ${selAttr}>${escHtml(t.name)} (${t.language})</option>`;
+      const nums = accounts.length>1 ? ` · ${accounts.length} números` : ` · ${accounts[0]}`;
+      return `<option value="${escHtml(key)}" ${selAttr}>${escHtml(t.name)} (${t.language})${escHtml(nums)}</option>`;
     }).join('');
     // Auto-detecta os botões do modelo já configurado (sem precisar re-escolher)
     if(node.config.template_name){
-      const t = tmpls.find(x=>x.name===node.config.template_name && (node.config.language||'pt_BR')===x.language)
-             || tmpls.find(x=>x.name===node.config.template_name);
+      const t = _botTmplCache[node.config.template_name+'|'+(node.config.language||'pt_BR')]
+             || Object.values(_botTmplCache).find(x=>x.name===node.config.template_name);
       if(t){
         const buttons = extractQuickReplyButtons(t);
         if(JSON.stringify(node.config.buttons||[]) !== JSON.stringify(buttons)){
