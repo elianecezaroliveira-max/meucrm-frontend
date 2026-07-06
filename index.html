@@ -4984,6 +4984,66 @@ function computeBotLayout(){
   return {pos,adds,loops};
 }
 
+// ── Arrastar para conectar: ligar uma saída a um nó JÁ existente ──
+// Converte a posição do cursor (tela) para coordenadas do "palco" (considerando pan/zoom)
+function _botStageCoords(clientX, clientY){
+  const wrap=document.getElementById('bot-canvas-wrap');
+  const r=wrap.getBoundingClientRect();
+  return { x:(clientX-r.left-botPanX)/botZoom, y:(clientY-r.top-botPanY)/botZoom };
+}
+// Descobre sobre qual nó o cursor está
+function _botNodeIdFromPoint(clientX, clientY){
+  const el=document.elementFromPoint(clientX, clientY);
+  const n=el && el.closest ? el.closest('[data-node-id]') : null;
+  return n ? n.getAttribute('data-node-id') : null;
+}
+// Cria (ou troca) a ligação de uma saída para um nó existente
+function connectExisting(fromId, label, toId){
+  connectingFrom=null;
+  document.getElementById('bot-connect-hint')?.remove();
+  const to=botNodes.find(n=>n.id===toId);
+  if(!fromId || !toId || fromId===toId || !to || to.type==='start'){ renderBotList(); return; }
+  botEdges = botEdges.filter(e=>!(e.from_node_id===fromId && e.label===(label||'')));
+  botEdges.push({ id:_botGenId(), bot_id:botEditorId, from_node_id:fromId, to_node_id:toId, label:label||'' });
+  renderBotList();
+}
+// Inicia o arraste a partir de uma saída. Se o usuário só clicar (sem arrastar), executa onClick.
+function beginPortDrag(ev, fromId, label, sx, sy, onClick){
+  ev.stopPropagation(); ev.preventDefault();
+  const svg=document.getElementById('bot-edges-svg');
+  if(!svg) return;
+  const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+  path.setAttribute('fill','none'); path.setAttribute('stroke','#00a884');
+  path.setAttribute('stroke-width','2'); path.setAttribute('stroke-dasharray','6 4');
+  svg.appendChild(path);
+  let moved=false, lastTgt=null;
+  const startX=ev.clientX, startY=ev.clientY;
+  const hiOf=(nid)=>document.querySelector('[data-node-id="'+nid+'"]');
+  function clearHi(){ if(lastTgt){ const e=hiOf(lastTgt); if(e) e.style.boxShadow=''; lastTgt=null; } }
+  function onMove(m){
+    if(Math.abs(m.clientX-startX)+Math.abs(m.clientY-startY) > 4) moved=true;
+    const p=_botStageCoords(m.clientX, m.clientY);
+    const dx=Math.max(40,(p.x-sx)/2);
+    path.setAttribute('d',`M ${sx} ${sy} C ${sx+dx} ${sy}, ${p.x-dx} ${p.y}, ${p.x} ${p.y}`);
+    const tgt=_botNodeIdFromPoint(m.clientX, m.clientY);
+    if(tgt!==lastTgt){
+      clearHi();
+      if(tgt && tgt!==fromId){ const e=hiOf(tgt); if(e){ e.style.boxShadow='0 0 0 3px #00a884'; lastTgt=tgt; } }
+    }
+  }
+  function onUp(u){
+    window.removeEventListener('mousemove',onMove);
+    window.removeEventListener('mouseup',onUp);
+    path.remove(); clearHi();
+    if(moved){
+      const tgt=_botNodeIdFromPoint(u.clientX, u.clientY);
+      if(tgt && tgt!==fromId) connectExisting(fromId, label, tgt);
+    } else if(typeof onClick==='function'){ onClick(u); }
+  }
+  window.addEventListener('mousemove',onMove);
+  window.addEventListener('mouseup',onUp);
+}
+
 // mantém o nome renderBotList (usado por selectNode/deleteNode/updateNodeConfig/addStep)
 function renderBotList(){
   const layer=document.getElementById('bot-nodes-layer');
@@ -5024,15 +5084,26 @@ function renderBotList(){
       const isFail = slot.label==='__failed__';
       const sx=P.x+BOT_NW, sy=P.y+BOT_NH/2;
       const edge=botChildEdge(id, slot.label);
-      let target=null, color=isFail?'#ef4444':'#d1d7db', dash=isFail;
-      if(edge && pos[edge.to_node_id]){ const T=pos[edge.to_node_id]; target={x:T.x,y:T.y+BOT_NH/2}; }
+      let target=null, color=isFail?'#ef4444':'#d1d7db', dash=isFail, connected=false;
+      if(edge && pos[edge.to_node_id]){ const T=pos[edge.to_node_id]; target={x:T.x,y:T.y+BOT_NH/2}; connected=true; }
       else {
         const lp=loops.find(l=>l.fromId===id && l.label===slot.label);
         const ap=adds.find(a=>a.fromId===id && a.label===slot.label);
         if(lp){ target={x:lp.x,y:lp.y+BOT_NH/2}; color='#f59e0b'; dash=true; }
         else if(ap){ target={x:ap.x,y:ap.y+BOT_NH/2}; color=isFail?'#ef4444':'#274d3d'; dash=true; }
       }
-      if(target){ curve(sx,sy,target.x,target.y,color,dash); slotPill(slot.display,(sx+target.x)/2,(sy+target.y)/2, isFail?'#ef4444':'#00a884'); }
+      if(target){
+        curve(sx,sy,target.x,target.y,color,dash);
+        slotPill(slot.display,(sx+target.x)/2,(sy+target.y)/2, isFail?'#ef4444':'#00a884');
+        if(connected){
+          // Alça para RE-conectar esta saída (já ligada) a outro nó — arraste até o nó desejado
+          const rh=document.createElement('div');
+          rh.title='Arraste para ligar esta saída a outro nó';
+          rh.style.cssText=`position:absolute;left:${target.x-7}px;top:${target.y-7}px;width:14px;height:14px;border-radius:50%;background:#fff;border:2px solid #00a884;cursor:grab;z-index:5`;
+          rh.addEventListener('mousedown',(e)=>beginPortDrag(e, id, slot.label, sx, sy));
+          layer.appendChild(rh);
+        }
+      }
     });
   });
 
@@ -5042,9 +5113,9 @@ function renderBotList(){
   // botões "+"
   adds.forEach(a=>{
     const b=document.createElement('button');
-    b.textContent='+'; b.title='Adicionar passo';
-    b.style.cssText=`position:absolute;left:${a.x}px;top:${a.y+BOT_NH/2-16}px;width:32px;height:32px;border-radius:50%;background:#e7f7ef;border:1px dashed #00a884;color:#00a884;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center`;
-    b.addEventListener('click',(e)=>{e.stopPropagation();openStepMenu(a.fromId,a.label,e);});
+    b.textContent='+'; b.title='Clique para adicionar um passo, ou arraste até um nó para conectar';
+    b.style.cssText=`position:absolute;left:${a.x}px;top:${a.y+BOT_NH/2-16}px;width:32px;height:32px;border-radius:50%;background:#e7f7ef;border:1px dashed #00a884;color:#00a884;font-size:18px;cursor:grab;display:flex;align-items:center;justify-content:center`;
+    b.addEventListener('mousedown',(e)=>beginPortDrag(e, a.fromId, a.label, a.x+16, a.y+BOT_NH/2, (u)=>openStepMenu(a.fromId,a.label,u)));
     layer.appendChild(b);
   });
   // marcadores de loop
@@ -5065,6 +5136,7 @@ function botNodeEl(node,x,y){
   const title=NODE_LABELS[node.type]||node.type;
   const summary=node.type==='start'?'Início do fluxo':(getNodePreview(node)||'');
   const el=document.createElement('div');
+  el.dataset.nodeId=node.id;
   el.style.cssText=`position:absolute;left:${x}px;top:${y}px;width:${BOT_NW}px;min-height:${BOT_NH}px;box-sizing:border-box;background:#ffffff;border:2px solid ${node.id===selectedNodeId?'#00a884':'#e9edef'};border-radius:12px;padding:10px 12px;cursor:pointer;display:flex;gap:10px;align-items:flex-start`;
   el.innerHTML=`
     <div style="width:30px;height:30px;border-radius:8px;background:${color};display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">${icon}</div>
@@ -5073,7 +5145,11 @@ function botNodeEl(node,x,y){
       ${summary?`<div style="font-size:11px;color:#667781;margin-top:2px;word-break:break-word;max-height:32px;overflow:hidden">${escHtml(summary)}</div>`:''}
     </div>
     ${node.type!=='start'?`<button title="Remover" style="background:none;border:none;color:#667781;cursor:pointer;font-size:13px;flex-shrink:0">🗑</button>`:''}`;
-  el.addEventListener('click',(e)=>{ if(e.target.tagName==='BUTTON') return; selectNode(node.id); });
+  el.addEventListener('click',(e)=>{
+    if(e.target.tagName==='BUTTON') return;
+    if(connectingFrom && connectingFrom.nodeId!==node.id){ connectExisting(connectingFrom.nodeId, connectingFrom.portLabel, node.id); return; }
+    selectNode(node.id);
+  });
   const del=el.querySelector('button');
   if(del) del.addEventListener('click',(e)=>{e.stopPropagation(); if(confirm('Remover este passo?')) deleteNode(node.id);});
   return el;
@@ -5513,7 +5589,21 @@ function openStepMenu(fromNodeId, portLabel, ev){
   menu.style.top  = Math.min(y, window.innerHeight-340)+'px';
   setTimeout(()=>document.addEventListener('click', closeStepMenu, {once:true}), 0);
 }
-function startManualConnect(fromNodeId, portLabel){ closeStepMenu(); connectingFrom={nodeId:fromNodeId, portLabel}; renderBotCanvas(); }
+function startManualConnect(fromNodeId, portLabel){
+  closeStepMenu();
+  connectingFrom={nodeId:fromNodeId, portLabel};
+  renderBotList();
+  // Dica flutuante + cancelar com Esc
+  let hint=document.getElementById('bot-connect-hint');
+  if(!hint){
+    hint=document.createElement('div'); hint.id='bot-connect-hint';
+    hint.style.cssText='position:absolute;top:12px;left:50%;transform:translateX(-50%);background:#00a884;color:#fff;padding:6px 12px;border-radius:8px;font-size:12px;z-index:20;box-shadow:0 4px 12px rgba(0,0,0,.3)';
+    document.getElementById('bot-canvas-wrap')?.appendChild(hint);
+  }
+  hint.textContent='Clique no nó de destino (Esc para cancelar)';
+  const onEsc=(e)=>{ if(e.key==='Escape'){ connectingFrom=null; document.getElementById('bot-connect-hint')?.remove(); document.removeEventListener('keydown',onEsc); } };
+  document.addEventListener('keydown', onEsc);
+}
 function addStep(fromNodeId, portLabel, type){
   closeStepMenu();
   const src = botNodes.find(n=>n.id===fromNodeId);
