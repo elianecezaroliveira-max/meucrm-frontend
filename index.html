@@ -136,7 +136,7 @@
   .lp-section { padding: 12px 14px; border-bottom: 1px solid #f0f2f5; }
   .lp-label { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: #667781; font-weight: 600; margin-bottom: 6px; }
   .lp-input, .lp-textarea, .lp-select { width: 100%; box-sizing: border-box; border: 1px solid #e9edef; border-radius: 8px; padding: 8px; font-size: 13px; font-family: inherit; outline: none; background: #fff; color: #131c20; }
-  .lp-textarea { resize: vertical; min-height: 70px; }
+  .lp-textarea { resize: none; overflow: hidden; min-height: 70px; }
   .lp-tag { display: inline-flex; align-items: center; gap: 4px; background: #e7f7ef; color: #00a884; border-radius: 10px; padding: 2px 8px; font-size: 12px; margin: 2px 2px 0 0; }
   .lp-mini { background: #e7f7ef; border: none; color: #00a884; border-radius: 6px; padding: 3px 8px; font-size: 11px; cursor: pointer; font-weight: 600; }
   .lp-mini:hover { background: #d7f0e3; }
@@ -2510,6 +2510,7 @@ function toggleLeadPanel(force){
   p.classList.toggle('lp-hidden', !show);
   const b = document.getElementById('btn-lead-panel');
   if (b) b.style.color = show ? '#00a884' : '#667781';
+  if (show) { const nt = document.getElementById('lp-notes'); if (nt) { nt.style.height = 'auto'; nt.style.height = nt.scrollHeight + 'px'; } }
 }
 async function renderLeadPanel(phone){
   const p = document.getElementById('lead-panel');
@@ -2518,6 +2519,10 @@ async function renderLeadPanel(phone){
   if (!c) { p.classList.add('lp-hidden'); p.innerHTML = ''; return; }
   p.classList.toggle('lp-hidden', !_leadPanelVisible);
   const b = document.getElementById('btn-lead-panel'); if (b) b.style.color = _leadPanelVisible ? '#00a884' : '#667781';
+  // Garante que as etapas do pipeline estejam carregadas (senão o seletor fica vazio)
+  if (!Array.isArray(pipelineStages) || !pipelineStages.length) {
+    try { const ss = await (await fetch(SERVER_URL + '/pipeline/stages')).json(); if (Array.isArray(ss)) pipelineStages = ss; } catch(_){}
+  }
   const telShow = phone.startsWith('55') ? phone.slice(2) : phone;
   const stageOpts = '<option value="">Sem etapa</option>' +
     (pipelineStages||[]).map(s => `<option value="${s.id}" ${c.stage_id===s.id?'selected':''}>${escHtml(s.name)}</option>`).join('');
@@ -2579,8 +2584,10 @@ async function renderLeadPanel(phone){
     } catch(_){ if (st) st.textContent = 'Erro ao salvar'; }
   };
   const deb = () => { clearTimeout(_t); _t = setTimeout(save, 900); };
+  const grow = (t) => { if (!t) return; t.style.height = 'auto'; t.style.height = t.scrollHeight + 'px'; };
   document.getElementById('lp-email')?.addEventListener('input', deb);
-  document.getElementById('lp-notes')?.addEventListener('input', deb);
+  const ntEl = document.getElementById('lp-notes');
+  if (ntEl) { ntEl.addEventListener('input', () => { grow(ntEl); deb(); }); grow(ntEl); }
   lpLoadTasks(phone);
   lpLoadMedia(phone);
 }
@@ -2619,7 +2626,7 @@ async function lpLoadTasks(phone){
   const el = document.getElementById('lp-tasks'); if (!el) return;
   let tasks = [];
   try { tasks = (await (await fetch(SERVER_URL+'/tasks')).json()) || []; } catch(_){}
-  const mine = (Array.isArray(tasks)?tasks:[]).filter(t => t.phone === phone);
+  const mine = (Array.isArray(tasks)?tasks:[]).filter(t => t.phone === phone && !t.done);
   el.innerHTML = mine.length ? mine.map(t => `
     <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:7px">
       <button onclick="lpToggleTask('${t.id}',${t.done?'false':'true'},'${phone}')" title="${t.done?'Reabrir':'Concluir'}" style="width:18px;height:18px;border-radius:50%;border:2px solid #00a884;background:${t.done?'#00a884':'transparent'};color:#fff;cursor:pointer;flex-shrink:0;font-size:11px;line-height:14px;padding:0">${t.done?'✓':''}</button>
