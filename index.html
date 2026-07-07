@@ -4939,6 +4939,7 @@ function onCanvasWheel(e) {
 // ── Render do fluxo como CANVAS horizontal estilo n8n (auto-layout) ──
 let botZoom = 1, botPanX = 40, botPanY = 40, _botPanInit = false, _botBounds = null;
 const BOT_NW = 190, BOT_NH = 66, BOT_HG = 90, BOT_VG = 26;
+const BOT_SP = 30; // espaçamento vertical entre as saídas de um mesmo nó
 
 function botOutSlots(node){
   if (node.type==='end') return [];
@@ -5078,7 +5079,7 @@ function _redrawBotEdges(){
     if(node.type==='end' || node.pos_x==null) return;
     const slots=botOutSlots(node), n=slots.length;
     slots.forEach((slot,i)=>{
-      const sx=node.pos_x+BOT_NW, sy=node.pos_y+(n>1?(BOT_NH/(n+1))*(i+1):BOT_NH/2);
+      const sx=node.pos_x+BOT_NW, sy=node.pos_y+BOT_NH/2+(i-(n-1)/2)*BOT_SP;
       const isFail=slot.label==='__failed__';
       const edge=botChildEdge(node.id, slot.label); const to=edge?byId(edge.to_node_id):null;
       if(to && to.pos_x!=null) mk(sx,sy,to.pos_x,to.pos_y+BOT_NH/2, isFail?'#ef4444':'#94a3b8', isFail);
@@ -5125,7 +5126,7 @@ function renderBotList(){
     if(node.type==='end') return;
     const slots=botOutSlots(node), n=slots.length;
     slots.forEach((slot,i)=>{
-      const sx=node.pos_x+BOT_NW, sy=node.pos_y+(n>1?(BOT_NH/(n+1))*(i+1):BOT_NH/2);
+      const sx=node.pos_x+BOT_NW, sy=node.pos_y+BOT_NH/2+(i-(n-1)/2)*BOT_SP;
       const isFail=slot.label==='__failed__';
       const edge=botChildEdge(node.id, slot.label);
       const to=edge?byId(edge.to_node_id):null;
