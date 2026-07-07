@@ -562,7 +562,39 @@
 #btn-n8n { background:none; border:1px solid #EA4B71; color:#EA4B71; padding:6px 12px; border-radius:6px; cursor:pointer; font-size:13px; transition:all 0.2s; }
 #btn-n8n:hover, #btn-n8n.connected { background:#EA4B71; color:#fff; }
 
-#bots-page, #bot-editor-page, #tasks-page { position:fixed; top:0;left:0;right:0;bottom:0; background:#ffffff; z-index:500; display:none; flex-direction:column; }
+#bots-page, #bot-editor-page, #tasks-page, #faq-page { position:fixed; top:0;left:0;right:0;bottom:0; background:#ffffff; z-index:500; display:none; flex-direction:column; }
+/* ── IA / FAQ ── */
+#faq-page-topbar { background:#f0f2f5; padding:10px 16px; display:flex; align-items:center; gap:12px; border-bottom:1px solid #e9edef; flex-shrink:0; }
+#faq-page-topbar h2 { font-size:16px;font-weight:700;color:#131c20; }
+#faq-list-area { flex:1;overflow-y:auto;padding:20px;max-width:760px;margin:0 auto;width:100%;box-sizing:border-box; }
+.faq-master { display:flex;align-items:center;gap:12px;background:#ffffff;border:1px solid #e9edef;border-radius:12px;padding:14px 16px;margin-bottom:16px; }
+.faq-master .faq-master-txt { flex:1; }
+.faq-master b { font-size:14px;color:#131c20; }
+.faq-master small { display:block;color:#667781;font-size:12px;margin-top:2px; }
+.faq-switch { position:relative;width:50px;height:28px;flex-shrink:0;cursor:pointer; }
+.faq-switch input { opacity:0;width:0;height:0; }
+.faq-slider { position:absolute;inset:0;background:#c8d0d4;border-radius:28px;transition:.2s; }
+.faq-slider:before { content:'';position:absolute;height:22px;width:22px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s; }
+.faq-switch input:checked + .faq-slider { background:#00a884; }
+.faq-switch input:checked + .faq-slider:before { transform:translateX(22px); }
+.faq-card { background:#ffffff;border:1px solid #e9edef;border-radius:12px;padding:14px 16px;margin-bottom:12px; }
+.faq-card.off { opacity:.55; }
+.faq-card-head { display:flex;align-items:center;gap:10px;margin-bottom:6px; }
+.faq-card-head b { flex:1;font-size:14px;color:#131c20; }
+.faq-card .faq-ans { font-size:13px;color:#3b4a54;white-space:pre-wrap;margin:4px 0 8px; }
+.faq-card .faq-trg { font-size:12px;color:#667781; }
+.faq-card .faq-trg span { display:inline-block;background:#e9edef;border-radius:6px;padding:2px 8px;margin:2px 4px 0 0; }
+.faq-actions { display:flex;gap:8px;margin-top:10px; }
+.faq-actions button { font-size:12px;padding:5px 12px;border-radius:7px;border:none;cursor:pointer; }
+.faq-btn-edit { background:#e9edef;color:#131c20; }
+.faq-btn-del { background:#fde8e8;color:#c0392b; }
+#faq-form { background:#ffffff;border:1px solid #00a884;border-radius:12px;padding:16px;margin-bottom:16px; }
+#faq-form label { display:block;font-size:12px;color:#667781;text-transform:uppercase;letter-spacing:.5px;margin:12px 0 4px; }
+#faq-form label:first-child { margin-top:0; }
+#faq-form input, #faq-form textarea { width:100%;box-sizing:border-box;background:#f0f2f5;border:1px solid #e0e4e6;border-radius:8px;padding:10px 12px;font-size:14px;font-family:inherit;color:#131c20; }
+#faq-form textarea { resize:vertical; }
+#faq-form .faq-hint { font-size:12px;color:#667781;margin-top:4px;line-height:1.4; }
+#faq-form .faq-form-actions { display:flex;gap:10px;justify-content:flex-end;margin-top:16px; }
 #tasks-page-topbar { background:#f0f2f5; padding:10px 16px; display:flex; align-items:center; gap:12px; border-bottom:1px solid #e9edef; flex-shrink:0; }
 #tasks-page-topbar h2 { font-size:16px;font-weight:700;color:#131c20;flex:1; }
 #tasks-list-area { flex:1;overflow-y:auto;padding:20px;max-width:760px;margin:0 auto;width:100%;box-sizing:border-box; }
@@ -1123,6 +1155,7 @@ window.addEventListener('load', initAuth);
   <button id="btn-quick-replies" onclick="openQRManager()">⚡ Respostas</button>
   <button id="btn-accounts" onclick="openModal()">📱 Contas</button>
   <button id="btn-bots" onclick="openBotsList()">🤖 Bots</button>
+  <button id="btn-faq" onclick="openFaqPage()">🧠 IA</button>
   <button id="btn-tasks-global" onclick="openTasksPage()">✅ Tarefas</button>
   <button id="btn-logout" onclick="logoutCRM()" title="Sair da conta">🚪 Sair</button>
 </div>
@@ -1400,6 +1433,19 @@ window.addEventListener('load', initAuth);
   </div>
   <div id="bots-list-area">
     <div style="color:#667781;font-size:13px;padding:20px">Carregando bots...</div>
+  </div>
+</div>
+
+<!-- PÁGINA IA / FAQ -->
+<div id="faq-page">
+  <div id="faq-page-topbar">
+    <button class="btn-secondary" onclick="closeFaqPage()">← Voltar</button>
+    <h2>🧠 IA — Respostas automáticas</h2>
+    <div style="flex:1"></div>
+    <button class="btn-primary" onclick="faqShowForm()">+ Nova pergunta</button>
+  </div>
+  <div id="faq-list-area">
+    <div style="color:#667781;font-size:13px;padding:20px">Carregando...</div>
   </div>
 </div>
 
@@ -4841,6 +4887,138 @@ async function openBotsList() {
 
 function closeBotsList() {
   document.getElementById('bots-page').style.display = 'none';
+}
+
+// ═══════════════════════ IA / FAQ ═══════════════════════
+let _faqCache = [];
+let _faqMaster = false;
+let _faqEditId = null;
+function _faqEsc(s){ return (s||'').toString().replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+async function openFaqPage(){
+  document.getElementById('faq-page').style.display = 'flex';
+  const area = document.getElementById('faq-list-area');
+  area.innerHTML = '<div style="color:#667781;font-size:13px;padding:20px">Carregando...</div>';
+  try{
+    const [tRes, fRes] = await Promise.all([
+      fetch(SERVER_URL + '/settings/faq_enabled'),
+      fetch(SERVER_URL + '/faqs')
+    ]);
+    const t = await tRes.json();
+    _faqMaster = (t && t.value === 'on');
+    _faqCache = await fRes.json();
+    if(!Array.isArray(_faqCache)) _faqCache = [];
+    faqRender();
+  }catch(e){
+    area.innerHTML = '<div style="color:#ef4444;padding:20px">Erro ao carregar. Verifique a conexão com o servidor.</div>';
+  }
+}
+function closeFaqPage(){ document.getElementById('faq-page').style.display = 'none'; _faqEditId = null; }
+
+function faqRender(){
+  const area = document.getElementById('faq-list-area');
+  let html = '';
+  // interruptor geral
+  html += '<div class="faq-master">'
+    + '<div class="faq-master-txt"><b>IA de respostas automáticas</b>'
+    + '<small>' + (_faqMaster ? 'Ligada — responde às perguntas cadastradas abaixo.' : 'Desligada — a IA não responde nada.') + '</small></div>'
+    + '<label class="faq-switch"><input type="checkbox" ' + (_faqMaster?'checked':'') + ' onchange="faqSetMaster(this.checked)"><span class="faq-slider"></span></label>'
+    + '</div>';
+
+  if(!_faqCache.length){
+    html += '<div style="text-align:center;color:#667781;padding:30px 20px">'
+      + '<div style="font-size:40px;margin-bottom:10px">🧠</div>'
+      + 'Nenhuma pergunta cadastrada ainda.<br>Clique em <b>+ Nova pergunta</b> para começar.</div>';
+  } else {
+    for(const f of _faqCache){
+      const triggers = (f.triggers||'').split('\n').map(s=>s.trim()).filter(Boolean);
+      const trgHtml = triggers.length
+        ? triggers.map(t=>'<span>'+_faqEsc(t)+'</span>').join('')
+        : '<span style="opacity:.7">(usa a própria pergunta como gatilho)</span>';
+      html += '<div class="faq-card' + (f.enabled?'':' off') + '">'
+        + '<div class="faq-card-head">'
+        + '<b>' + _faqEsc(f.question) + '</b>'
+        + '<label class="faq-switch" title="Ligar/desligar esta pergunta"><input type="checkbox" ' + (f.enabled?'checked':'') + ' onchange="faqToggleOne(' + f.id + ', this.checked)"><span class="faq-slider"></span></label>'
+        + '</div>'
+        + '<div class="faq-ans">' + _faqEsc(f.answer) + '</div>'
+        + '<div class="faq-trg">Gatilhos: ' + trgHtml + '</div>'
+        + '<div class="faq-actions">'
+        + '<button class="faq-btn-edit" onclick="faqShowForm(' + f.id + ')">✏️ Editar</button>'
+        + '<button class="faq-btn-del" onclick="faqDelete(' + f.id + ')">🗑️ Excluir</button>'
+        + '</div></div>';
+    }
+  }
+  area.innerHTML = html;
+}
+
+async function faqSetMaster(on){
+  _faqMaster = on;
+  try{
+    await fetch(SERVER_URL + '/settings/faq_enabled', {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ value: on ? 'on' : 'off' })
+    });
+  }catch(e){ alert('Não foi possível salvar. Tente de novo.'); }
+  faqRender();
+}
+
+// Formulário inline (nova ou edição)
+function faqShowForm(id){
+  _faqEditId = id || null;
+  const f = id ? _faqCache.find(x=>x.id===id) : null;
+  const area = document.getElementById('faq-list-area');
+  const html = '<div id="faq-form">'
+    + '<label>Pergunta (para você identificar)</label>'
+    + '<input id="faq-f-question" type="text" placeholder="Ex: Horário de funcionamento" value="' + _faqEsc(f? f.question : '') + '">'
+    + '<label>Resposta que a IA vai enviar</label>'
+    + '<textarea id="faq-f-answer" rows="4" placeholder="Ex: Olá! Funcionamos de segunda a sexta, das 9h às 18h. 😊">' + _faqEsc(f? f.answer : '') + '</textarea>'
+    + '<label>Gatilhos (quando responder) — um por linha</label>'
+    + '<textarea id="faq-f-triggers" rows="4" placeholder="horario\nque horas abre\nfuncionamento\naberto, que horas">' + _faqEsc(f? (f.triggers||'') : '') + '</textarea>'
+    + '<div class="faq-hint">A IA responde quando a mensagem do cliente bate com um destes gatilhos. '
+    + 'Escreva variações (uma por linha). Acentos e maiúsculas não importam. '
+    + 'Para exigir <b>todas</b> as palavras, separe-as por vírgula na mesma linha (ex.: <i>aberto, que horas</i>). '
+    + 'Se deixar em branco, a própria pergunta vira o gatilho.</div>'
+    + '<div class="faq-form-actions">'
+    + '<button class="btn-secondary" onclick="faqRender()">Cancelar</button>'
+    + '<button class="btn-primary" onclick="faqSave()">Salvar</button>'
+    + '</div></div>';
+  area.innerHTML = html;
+  document.getElementById('faq-f-question').focus();
+}
+
+async function faqSave(){
+  const question = document.getElementById('faq-f-question').value.trim();
+  const answer = document.getElementById('faq-f-answer').value;
+  const triggers = document.getElementById('faq-f-triggers').value;
+  if(!question || !answer.trim()){ alert('Preencha a pergunta e a resposta.'); return; }
+  const body = JSON.stringify({ question, answer, triggers });
+  try{
+    if(_faqEditId){
+      await fetch(SERVER_URL + '/faqs/' + _faqEditId, { method:'PUT', headers:{'Content-Type':'application/json'}, body });
+    } else {
+      await fetch(SERVER_URL + '/faqs', { method:'POST', headers:{'Content-Type':'application/json'}, body });
+    }
+    _faqEditId = null;
+    await openFaqPage(); // recarrega lista
+  }catch(e){ alert('Erro ao salvar. Tente de novo.'); }
+}
+
+async function faqToggleOne(id, enabled){
+  try{
+    await fetch(SERVER_URL + '/faqs/' + id, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ enabled }) });
+    const f = _faqCache.find(x=>x.id===id); if(f) f.enabled = enabled;
+    faqRender();
+  }catch(e){ alert('Não foi possível alterar. Tente de novo.'); }
+}
+
+async function faqDelete(id){
+  const f = _faqCache.find(x=>x.id===id);
+  if(!confirm('Excluir a pergunta "' + (f? f.question : '') + '"?')) return;
+  try{
+    await fetch(SERVER_URL + '/faqs/' + id, { method:'DELETE' });
+    _faqCache = _faqCache.filter(x=>x.id!==id);
+    faqRender();
+  }catch(e){ alert('Erro ao excluir. Tente de novo.'); }
 }
 
 // ── Aba global de Tarefas ──
