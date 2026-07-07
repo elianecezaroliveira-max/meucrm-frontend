@@ -1156,6 +1156,7 @@ window.addEventListener('load', initAuth);
   <button id="btn-accounts" onclick="openModal()">📱 Contas</button>
   <button id="btn-bots" onclick="openBotsList()">🤖 Bots</button>
   <button id="btn-faq" onclick="openFaqPage()">🧠 IA</button>
+  <button id="btn-tags" onclick="openTagManager()">🏷️ Tags</button>
   <button id="btn-tasks-global" onclick="openTasksPage()">✅ Tarefas</button>
   <button id="btn-logout" onclick="logoutCRM()" title="Sair da conta">🚪 Sair</button>
 </div>
@@ -1446,6 +1447,23 @@ window.addEventListener('load', initAuth);
   </div>
   <div id="faq-list-area">
     <div style="color:#667781;font-size:13px;padding:20px">Carregando...</div>
+  </div>
+</div>
+
+<!-- GERENCIADOR DE TAGS -->
+<div id="tagmgr-overlay" onclick="if(event.target===this)closeTagManager()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:600;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:12px;width:460px;max-width:94vw;max-height:88vh;display:flex;flex-direction:column;overflow:hidden">
+    <div style="display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid #e9edef">
+      <h3 style="flex:1;margin:0;font-size:16px;color:#131c20">🏷️ Gerenciar etiquetas</h3>
+      <button onclick="closeTagManager()" style="background:none;border:none;font-size:20px;color:#667781;cursor:pointer;line-height:1">✕</button>
+    </div>
+    <div style="padding:14px 18px;border-bottom:1px solid #f0f2f5;display:flex;gap:8px">
+      <input id="tagmgr-new" type="text" maxlength="30" placeholder="Nova etiqueta..." onkeydown="if(event.key==='Enter')tagMgrAdd()" style="flex:1;background:#f0f2f5;border:1px solid #e0e4e6;border-radius:8px;padding:9px 12px;font-size:14px;color:#131c20">
+      <button class="btn-primary" onclick="tagMgrAdd()">Adicionar</button>
+    </div>
+    <div id="tagmgr-list" style="flex:1;overflow-y:auto;padding:6px 18px 16px">
+      <div style="color:#667781;font-size:13px;padding:16px 0">Carregando...</div>
+    </div>
   </div>
 </div>
 
@@ -4896,6 +4914,11 @@ let _faqEditId = null;
 let _faqDelay = 25;
 let _faqAccounts = [];   // todas as contas de WhatsApp
 let _faqAccSel = null;   // IDs com IA ativa (null = todas)
+// regra "contato errado"
+const WP_DEFAULT_ANSWER = 'Desculpe o incômodo, vou retirar seu contato da lista 🙏🏼';
+const WP_DEFAULT_TAG = 'REMOVER';
+const WP_DEFAULT_TRIGGERS = ['pessoa errada','numero errado','nao conheco','nao te conheco','quem e voce','foi engano','nao sou essa pessoa','parem de mandar mensagem','tirar meu contato','remover meu contato','sair da lista','nao quero receber','me descadastrar'].join('\n');
+let _wpEnabled = false, _wpAnswer = WP_DEFAULT_ANSWER, _wpTag = WP_DEFAULT_TAG, _wpTriggers = WP_DEFAULT_TRIGGERS;
 function _faqEsc(s){ return (s||'').toString().replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
 async function openFaqPage(){
@@ -4903,18 +4926,27 @@ async function openFaqPage(){
   const area = document.getElementById('faq-list-area');
   area.innerHTML = '<div style="color:#667781;font-size:13px;padding:20px">Carregando...</div>';
   try{
-    const [tRes, dRes, aRes, accRes, fRes] = await Promise.all([
+    const [tRes, dRes, aRes, accRes, fRes, wpeRes, wpaRes, wptRes, wpgRes] = await Promise.all([
       fetch(SERVER_URL + '/settings/faq_enabled'),
       fetch(SERVER_URL + '/settings/faq_delay_seconds'),
       fetch(SERVER_URL + '/settings/faq_accounts'),
       fetch(SERVER_URL + '/accounts'),
-      fetch(SERVER_URL + '/faqs')
+      fetch(SERVER_URL + '/faqs'),
+      fetch(SERVER_URL + '/settings/wrongperson_enabled'),
+      fetch(SERVER_URL + '/settings/wrongperson_answer'),
+      fetch(SERVER_URL + '/settings/wrongperson_tag'),
+      fetch(SERVER_URL + '/settings/wrongperson_triggers')
     ]);
     const t = await tRes.json();
     _faqMaster = (t && t.value === 'on');
     const d = await dRes.json();
     const dNum = parseInt(d && d.value, 10);
     _faqDelay = Number.isFinite(dNum) ? dNum : 25;
+    // regra "contato errado" (usa padrões se ainda não configurado)
+    const wpe = await wpeRes.json(); _wpEnabled = (wpe && wpe.value === 'on');
+    const wpa = await wpaRes.json(); _wpAnswer = (wpa && wpa.value) ? wpa.value : WP_DEFAULT_ANSWER;
+    const wpt = await wptRes.json(); _wpTag = (wpt && wpt.value) ? wpt.value : WP_DEFAULT_TAG;
+    const wpg = await wpgRes.json(); _wpTriggers = (wpg && wpg.value) ? wpg.value : WP_DEFAULT_TRIGGERS;
     // contas de WhatsApp e quais têm IA ativa
     _faqAccounts = await accRes.json();
     if(!Array.isArray(_faqAccounts)) _faqAccounts = [];
@@ -4966,6 +4998,24 @@ function faqRender(){
     }
   }
   html += '</div>';
+
+  // regra "contato errado" (resposta + tag automática)
+  const wpFld = 'width:100%;box-sizing:border-box;background:#f0f2f5;border:1px solid #e0e4e6;border-radius:8px;padding:10px 12px;font-size:14px;font-family:inherit;color:#131c20;margin-top:4px';
+  const wpLbl = 'display:block;font-size:12px;color:#667781;text-transform:uppercase;letter-spacing:.5px;margin-top:12px';
+  html += '<div class="faq-master" style="display:block">'
+    + '<div style="display:flex;align-items:center;gap:12px">'
+    + '<div class="faq-master-txt" style="flex:1"><b>Mensagem para contato errado</b>'
+    + '<small>Quando o cliente avisa que foi engano, a IA pede desculpas e aplica uma etiqueta no lead.</small></div>'
+    + '<label class="faq-switch"><input type="checkbox" ' + (_wpEnabled?'checked':'') + ' onchange="wpSetEnabled(this.checked)"><span class="faq-slider"></span></label>'
+    + '</div>'
+    + '<label style="' + wpLbl + '">Mensagem que a IA envia</label>'
+    + '<textarea id="wp-answer" rows="2" style="' + wpFld + ';resize:vertical">' + _faqEsc(_wpAnswer) + '</textarea>'
+    + '<label style="' + wpLbl + '">Etiqueta aplicada no lead</label>'
+    + '<input id="wp-tag" type="text" style="' + wpFld + '" value="' + _faqEsc(_wpTag) + '">'
+    + '<label style="' + wpLbl + '">Gatilhos (um por linha)</label>'
+    + '<textarea id="wp-triggers" rows="4" style="' + wpFld + ';resize:vertical">' + _faqEsc(_wpTriggers) + '</textarea>'
+    + '<div style="text-align:right;margin-top:12px"><button class="btn-primary" onclick="wpSave()">Salvar mensagem</button></div>'
+    + '</div>';
 
   if(!_faqCache.length){
     html += '<div style="text-align:center;color:#667781;padding:30px 20px">'
@@ -5030,7 +5080,89 @@ async function faqSaveAccounts(){
       body: JSON.stringify({ value: JSON.stringify(sel) })
     });
   }catch(e){ alert('Não foi possível salvar as contas. Tente de novo.'); }
-  faqRender();
+}
+
+// ── Regra "contato errado" ──
+async function _faqPutSetting(key, value){
+  await fetch(SERVER_URL + '/settings/' + key, {
+    method:'PUT', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ value: value })
+  });
+}
+async function wpSetEnabled(on){
+  _wpEnabled = on;
+  try{ await _faqPutSetting('wrongperson_enabled', on ? 'on' : 'off'); }
+  catch(e){ alert('Não foi possível salvar. Tente de novo.'); }
+}
+async function wpSave(){
+  const answer = document.getElementById('wp-answer').value;
+  const tag = document.getElementById('wp-tag').value.trim();
+  const triggers = document.getElementById('wp-triggers').value;
+  if(!answer.trim()){ alert('Escreva a mensagem que a IA vai enviar.'); return; }
+  if(!tag){ alert('Informe a etiqueta que será aplicada no lead.'); return; }
+  _wpAnswer = answer; _wpTag = tag; _wpTriggers = triggers;
+  try{
+    await Promise.all([
+      _faqPutSetting('wrongperson_answer', answer),
+      _faqPutSetting('wrongperson_tag', tag),
+      _faqPutSetting('wrongperson_triggers', triggers)
+    ]);
+    alert('Mensagem de contato errado salva! ✅');
+  }catch(e){ alert('Erro ao salvar. Tente de novo.'); }
+}
+
+// ═══════════════════════ Gerenciador de etiquetas (tags) ═══════════════════════
+let _tagMgrList = [];
+async function openTagManager(){
+  document.getElementById('tagmgr-overlay').style.display = 'flex';
+  const el = document.getElementById('tagmgr-list');
+  el.innerHTML = '<div style="color:#667781;font-size:13px;padding:16px 0">Carregando...</div>';
+  try{
+    const r = await fetch(SERVER_URL + '/tags/manage');
+    _tagMgrList = await r.json();
+    if(!Array.isArray(_tagMgrList)) _tagMgrList = [];
+    renderTagManager();
+  }catch(e){ el.innerHTML = '<div style="color:#ef4444;padding:16px 0">Erro ao carregar. Verifique a conexão.</div>'; }
+}
+function closeTagManager(){ document.getElementById('tagmgr-overlay').style.display = 'none'; }
+function renderTagManager(){
+  const el = document.getElementById('tagmgr-list');
+  if(!_tagMgrList.length){
+    el.innerHTML = '<div style="color:#667781;font-size:13px;padding:20px 0;text-align:center">Nenhuma etiqueta ainda.<br>Adicione uma acima.</div>';
+    return;
+  }
+  el.innerHTML = _tagMgrList.map((t,i) => {
+    const uso = t.count > 0 ? (t.count + (t.count>1?' leads':' lead')) : 'sem uso';
+    return '<div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid #f0f2f5">'
+      + '<span style="flex:1;font-size:14px;color:#131c20;word-break:break-word">' + _faqEsc(t.name) + '</span>'
+      + '<span style="font-size:12px;color:#667781;white-space:nowrap">' + uso + '</span>'
+      + '<button onclick="tagMgrDelete(' + i + ')" style="background:#fde8e8;color:#c0392b;border:none;border-radius:7px;padding:5px 12px;font-size:12px;cursor:pointer">Excluir</button>'
+      + '</div>';
+  }).join('');
+}
+async function tagMgrAdd(){
+  const inp = document.getElementById('tagmgr-new');
+  const name = inp.value.trim();
+  if(!name) return;
+  try{
+    await fetch(SERVER_URL + '/tags/manage', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) });
+    inp.value = '';
+    await openTagManager();
+    if(typeof loadAllTags === 'function') loadAllTags();
+  }catch(e){ alert('Erro ao adicionar. Tente de novo.'); }
+}
+async function tagMgrDelete(i){
+  const t = _tagMgrList[i];
+  if(!t) return;
+  const msg = t.count > 0
+    ? ('Excluir a etiqueta "' + t.name + '"? Ela será removida de ' + t.count + ' lead(s).')
+    : ('Excluir a etiqueta "' + t.name + '"?');
+  if(!confirm(msg)) return;
+  try{
+    await fetch(SERVER_URL + '/tags/manage', { method:'DELETE', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name: t.name }) });
+    await openTagManager();
+    if(typeof loadAllTags === 'function') loadAllTags();
+  }catch(e){ alert('Erro ao excluir. Tente de novo.'); }
 }
 
 // Formulário inline (nova ou edição)
