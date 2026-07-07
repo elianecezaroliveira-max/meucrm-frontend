@@ -1408,7 +1408,8 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <button class="btn-primary" onclick="saveBotFlow()" style="margin-left:auto">💾 Salvar</button>
+    <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
+    <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
   <div id="bot-editor-body">
     <div id="bot-canvas-wrap" style="flex:1;position:relative;overflow:hidden;background:#f0f2f5;cursor:grab">
@@ -4826,6 +4827,9 @@ async function openBotEditor(id, isNew=false) {
   }
 
   showConfigPlaceholder();
+  // Bots sem layout manual salvo começam organizados (organograma); os demais respeitam as posições salvas
+  const _s=botNodes.find(n=>n.type==='start');
+  if(!(_s && _s.config && _s.config._manual)) seedBotPositions(true);
   renderBotList();
   setTimeout(botZoomFit, 30);
 }
@@ -5045,6 +5049,45 @@ function beginPortDrag(ev, fromId, label, sx, sy, onClick){
 }
 
 // mantém o nome renderBotList (usado por selectNode/deleteNode/updateNodeConfig/addStep)
+// Marca que o layout passou a ser MANUAL (posições definidas pelo usuário) — persiste no nó inicial
+function _markBotManual(){ const s=botNodes.find(n=>n.type==='start'); if(s){ s.config=s.config||{}; s.config._manual=true; } }
+
+// Calcula posições automáticas (organograma) e grava em pos_x/pos_y de cada nó.
+// force=true sobrescreve tudo; senão só preenche os que estão sem posição.
+function seedBotPositions(force){
+  const {pos}=computeBotLayout();
+  let maxY=0; Object.values(pos).forEach(p=>{ maxY=Math.max(maxY,p.y+BOT_NH); });
+  botNodes.forEach(n=>{
+    if(pos[n.id] && (force || n.pos_x==null || n.pos_y==null)){ n.pos_x=Math.round(pos[n.id].x); n.pos_y=Math.round(pos[n.id].y); }
+  });
+  // Nós órfãos (não alcançáveis a partir do início) ganham um lugar embaixo
+  let oy=maxY+40;
+  botNodes.forEach(n=>{ if(!pos[n.id] && (force || n.pos_x==null || n.pos_y==null)){ n.pos_x=0; n.pos_y=oy; oy+=BOT_NH+BOT_VG; } });
+}
+
+// Botão "Organizar": reorganiza tudo no formato de organograma e enquadra
+function organizeBot(){ seedBotPositions(true); _markBotManual(); renderBotList(); setTimeout(botZoomFit, 20); }
+
+// Redesenha SOMENTE as linhas (usado durante o arraste de um nó, sem recriar os elementos)
+function _redrawBotEdges(){
+  const svg=document.getElementById('bot-edges-svg'); if(!svg) return;
+  svg.innerHTML='';
+  const byId=id=>botNodes.find(n=>n.id===id);
+  const mk=(sx,sy,tx,ty,color,dash)=>{ const dx=Math.max(40,(tx-sx)/2); const p=document.createElementNS('http://www.w3.org/2000/svg','path'); p.setAttribute('d',`M ${sx} ${sy} C ${sx+dx} ${sy}, ${tx-dx} ${ty}, ${tx} ${ty}`); p.setAttribute('fill','none'); p.setAttribute('stroke',color||'#94a3b8'); p.setAttribute('stroke-width','2'); if(dash) p.setAttribute('stroke-dasharray','5 4'); svg.appendChild(p); };
+  botNodes.forEach(node=>{
+    if(node.type==='end' || node.pos_x==null) return;
+    const slots=botOutSlots(node), n=slots.length;
+    slots.forEach((slot,i)=>{
+      const sx=node.pos_x+BOT_NW, sy=node.pos_y+(n>1?(BOT_NH/(n+1))*(i+1):BOT_NH/2);
+      const isFail=slot.label==='__failed__';
+      const edge=botChildEdge(node.id, slot.label); const to=edge?byId(edge.to_node_id):null;
+      if(to && to.pos_x!=null) mk(sx,sy,to.pos_x,to.pos_y+BOT_NH/2, isFail?'#ef4444':'#94a3b8', isFail);
+      else mk(sx,sy,sx+BOT_HG,sy, isFail?'#ef4444':'#274d3d', true);
+    });
+  });
+}
+
+// Render do fluxo usando POSIÇÕES LIVRES (arrastáveis). "Organizar" gera o organograma.
 function renderBotList(){
   const layer=document.getElementById('bot-nodes-layer');
   const svg=document.getElementById('bot-edges-svg');
@@ -5052,20 +5095,19 @@ function renderBotList(){
   layer.innerHTML=''; svg.innerHTML='';
   const start=botNodes.find(n=>n.type==='start');
   if(!start){ setupBotCanvasPanZoom(); return; }
-  const {pos,adds,loops}=computeBotLayout();
+  // Garante posição para todos os nós (organiza automaticamente quando faltar)
+  if(botNodes.some(n=>n.pos_x==null||n.pos_y==null)) seedBotPositions(false);
 
   let maxX=0,maxY=0;
-  Object.values(pos).forEach(p=>{maxX=Math.max(maxX,p.x+BOT_NW);maxY=Math.max(maxY,p.y+BOT_NH);});
-  adds.forEach(a=>{maxX=Math.max(maxX,a.x+40);maxY=Math.max(maxY,a.y+BOT_NH);});
-  loops.forEach(l=>{maxX=Math.max(maxX,l.x+90);maxY=Math.max(maxY,l.y+BOT_NH);});
-  svg.setAttribute('width', maxX+60); svg.setAttribute('height', maxY+60);
-  _botBounds = { w:maxX, h:maxY };
+  botNodes.forEach(n=>{ maxX=Math.max(maxX,(n.pos_x||0)+BOT_NW); maxY=Math.max(maxY,(n.pos_y||0)+BOT_NH); });
+  svg.setAttribute('width', maxX+400); svg.setAttribute('height', maxY+300);
+  _botBounds = { w:maxX+200, h:maxY+120 };
 
   function curve(sx,sy,tx,ty,color,dash){
     const dx=Math.max(40,(tx-sx)/2);
     const p=document.createElementNS('http://www.w3.org/2000/svg','path');
     p.setAttribute('d',`M ${sx} ${sy} C ${sx+dx} ${sy}, ${tx-dx} ${ty}, ${tx} ${ty}`);
-    p.setAttribute('fill','none'); p.setAttribute('stroke',color||'#d1d7db'); p.setAttribute('stroke-width','2');
+    p.setAttribute('fill','none'); p.setAttribute('stroke',color||'#94a3b8'); p.setAttribute('stroke-width','2');
     if(dash) p.setAttribute('stroke-dasharray','5 4');
     svg.appendChild(p);
   }
@@ -5073,58 +5115,45 @@ function renderBotList(){
     if(!text) return;
     const d=document.createElement('div');
     d.textContent=text;
-    d.style.cssText=`position:absolute;left:${x}px;top:${y-9}px;transform:translateX(-50%);background:#f0f2f5;color:${col||'#00a884'};font-size:10px;font-weight:600;padding:1px 6px;border:1px solid #e9edef;border-radius:8px;white-space:nowrap;pointer-events:none;max-width:120px;overflow:hidden;text-overflow:ellipsis`;
+    d.style.cssText=`position:absolute;left:${x}px;top:${y-9}px;transform:translateX(-50%);background:#f0f2f5;color:${col||'#00a884'};font-size:10px;font-weight:600;padding:1px 6px;border:1px solid #e9edef;border-radius:8px;white-space:nowrap;pointer-events:none;max-width:120px;overflow:hidden;text-overflow:ellipsis;z-index:2`;
     layer.appendChild(d);
   }
+  const byId=id=>botNodes.find(n=>n.id===id);
 
-  // arestas
-  Object.keys(pos).forEach(id=>{
-    const P=pos[id]; const node=P.node;
-    botOutSlots(node).forEach(slot=>{
-      const isFail = slot.label==='__failed__';
-      const sx=P.x+BOT_NW, sy=P.y+BOT_NH/2;
-      const edge=botChildEdge(id, slot.label);
-      let target=null, color=isFail?'#ef4444':'#d1d7db', dash=isFail, connected=false;
-      if(edge && pos[edge.to_node_id]){ const T=pos[edge.to_node_id]; target={x:T.x,y:T.y+BOT_NH/2}; connected=true; }
-      else {
-        const lp=loops.find(l=>l.fromId===id && l.label===slot.label);
-        const ap=adds.find(a=>a.fromId===id && a.label===slot.label);
-        if(lp){ target={x:lp.x,y:lp.y+BOT_NH/2}; color='#f59e0b'; dash=true; }
-        else if(ap){ target={x:ap.x,y:ap.y+BOT_NH/2}; color=isFail?'#ef4444':'#274d3d'; dash=true; }
-      }
-      if(target){
-        curve(sx,sy,target.x,target.y,color,dash);
-        slotPill(slot.display,(sx+target.x)/2,(sy+target.y)/2, isFail?'#ef4444':'#00a884');
-        if(connected){
-          // Alça para RE-conectar esta saída (já ligada) a outro nó — arraste até o nó desejado
-          const rh=document.createElement('div');
-          rh.title='Arraste para ligar esta saída a outro nó';
-          rh.style.cssText=`position:absolute;left:${target.x-7}px;top:${target.y-7}px;width:14px;height:14px;border-radius:50%;background:#fff;border:2px solid #00a884;cursor:grab;z-index:5`;
-          rh.addEventListener('mousedown',(e)=>beginPortDrag(e, id, slot.label, sx, sy));
-          layer.appendChild(rh);
-        }
+  // arestas + alças de reconexão + botões "+"
+  botNodes.forEach(node=>{
+    if(node.type==='end') return;
+    const slots=botOutSlots(node), n=slots.length;
+    slots.forEach((slot,i)=>{
+      const sx=node.pos_x+BOT_NW, sy=node.pos_y+(n>1?(BOT_NH/(n+1))*(i+1):BOT_NH/2);
+      const isFail=slot.label==='__failed__';
+      const edge=botChildEdge(node.id, slot.label);
+      const to=edge?byId(edge.to_node_id):null;
+      if(to){
+        const tx=to.pos_x, ty=to.pos_y+BOT_NH/2;
+        curve(sx,sy,tx,ty, isFail?'#ef4444':'#94a3b8', isFail);
+        slotPill(slot.display,(sx+tx)/2,(sy+ty)/2, isFail?'#ef4444':'#00a884');
+        // Alça no destino: arraste para religar esta saída a outro nó
+        const rh=document.createElement('div');
+        rh.title='Arraste para ligar esta saída a outro nó';
+        rh.style.cssText=`position:absolute;left:${tx-7}px;top:${ty-7}px;width:14px;height:14px;border-radius:50%;background:#fff;border:2px solid #00a884;cursor:grab;z-index:6`;
+        rh.addEventListener('mousedown',(e)=>beginPortDrag(e, node.id, slot.label, sx, sy));
+        layer.appendChild(rh);
+      } else {
+        const bx=sx+BOT_HG, by=sy;
+        curve(sx,sy,bx,by, isFail?'#ef4444':'#274d3d', true);
+        if(slot.display) slotPill(slot.display,(sx+bx)/2,(sy+by)/2, isFail?'#ef4444':'#00a884');
+        const b=document.createElement('button');
+        b.textContent='+'; b.title='Clique para adicionar um passo, ou arraste até um nó para conectar';
+        b.style.cssText=`position:absolute;left:${bx}px;top:${by-16}px;width:32px;height:32px;border-radius:50%;background:#e7f7ef;border:1px dashed #00a884;color:#00a884;font-size:18px;cursor:grab;display:flex;align-items:center;justify-content:center;z-index:5`;
+        b.addEventListener('mousedown',(e)=>beginPortDrag(e, node.id, slot.label, bx+16, by, (u)=>openStepMenu(node.id,slot.label,u)));
+        layer.appendChild(b);
       }
     });
   });
 
-  // nós
-  Object.keys(pos).forEach(id=>{ const P=pos[id]; layer.appendChild(botNodeEl(P.node,P.x,P.y)); });
-
-  // botões "+"
-  adds.forEach(a=>{
-    const b=document.createElement('button');
-    b.textContent='+'; b.title='Clique para adicionar um passo, ou arraste até um nó para conectar';
-    b.style.cssText=`position:absolute;left:${a.x}px;top:${a.y+BOT_NH/2-16}px;width:32px;height:32px;border-radius:50%;background:#e7f7ef;border:1px dashed #00a884;color:#00a884;font-size:18px;cursor:grab;display:flex;align-items:center;justify-content:center`;
-    b.addEventListener('mousedown',(e)=>beginPortDrag(e, a.fromId, a.label, a.x+16, a.y+BOT_NH/2, (u)=>openStepMenu(a.fromId,a.label,u)));
-    layer.appendChild(b);
-  });
-  // marcadores de loop
-  loops.forEach(l=>{
-    const d=document.createElement('div');
-    d.textContent='↩ volta';
-    d.style.cssText=`position:absolute;left:${l.x}px;top:${l.y+BOT_NH/2-12}px;background:#3a2e12;color:#f59e0b;font-size:11px;padding:4px 8px;border-radius:8px;border:1px solid #5a4718`;
-    layer.appendChild(d);
-  });
+  // nós (arrastáveis)
+  botNodes.forEach(node=> layer.appendChild(botNodeEl(node,node.pos_x,node.pos_y)));
 
   applyBotTransform();
   setupBotCanvasPanZoom();
@@ -5137,7 +5166,7 @@ function botNodeEl(node,x,y){
   const summary=node.type==='start'?'Início do fluxo':(getNodePreview(node)||'');
   const el=document.createElement('div');
   el.dataset.nodeId=node.id;
-  el.style.cssText=`position:absolute;left:${x}px;top:${y}px;width:${BOT_NW}px;min-height:${BOT_NH}px;box-sizing:border-box;background:#ffffff;border:2px solid ${node.id===selectedNodeId?'#00a884':'#e9edef'};border-radius:12px;padding:10px 12px;cursor:pointer;display:flex;gap:10px;align-items:flex-start`;
+  el.style.cssText=`position:absolute;left:${x}px;top:${y}px;width:${BOT_NW}px;min-height:${BOT_NH}px;box-sizing:border-box;background:#ffffff;border:2px solid ${node.id===selectedNodeId?'#00a884':'#e9edef'};border-radius:12px;padding:10px 12px;cursor:grab;display:flex;gap:10px;align-items:flex-start;z-index:3`;
   el.innerHTML=`
     <div style="width:30px;height:30px;border-radius:8px;background:${color};display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">${icon}</div>
     <div style="flex:1;min-width:0">
@@ -5145,13 +5174,32 @@ function botNodeEl(node,x,y){
       ${summary?`<div style="font-size:11px;color:#667781;margin-top:2px;word-break:break-word;max-height:32px;overflow:hidden">${escHtml(summary)}</div>`:''}
     </div>
     ${node.type!=='start'?`<button title="Remover" style="background:none;border:none;color:#667781;cursor:pointer;font-size:13px;flex-shrink:0">🗑</button>`:''}`;
-  el.addEventListener('click',(e)=>{
-    if(e.target.tagName==='BUTTON') return;
-    if(connectingFrom && connectingFrom.nodeId!==node.id){ connectExisting(connectingFrom.nodeId, connectingFrom.portLabel, node.id); return; }
-    selectNode(node.id);
-  });
   const del=el.querySelector('button');
   if(del) del.addEventListener('click',(e)=>{e.stopPropagation(); if(confirm('Remover este passo?')) deleteNode(node.id);});
+  // Arraste do nó (estilo n8n) — mover livremente; clique simples seleciona / conclui conexão
+  el.addEventListener('mousedown',(e)=>{
+    if(e.target.tagName==='BUTTON') return;
+    e.stopPropagation(); // impede o pan do canvas
+    const startX=e.clientX, startY=e.clientY, ox=node.pos_x, oy=node.pos_y;
+    let moved=false;
+    function mv(m){
+      if(!moved && (Math.abs(m.clientX-startX)+Math.abs(m.clientY-startY))>4){ moved=true; el.style.cursor='grabbing'; }
+      if(moved){
+        node.pos_x=Math.round(ox+(m.clientX-startX)/botZoom);
+        node.pos_y=Math.round(oy+(m.clientY-startY)/botZoom);
+        el.style.left=node.pos_x+'px'; el.style.top=node.pos_y+'px';
+        _redrawBotEdges();
+      }
+    }
+    function up(){
+      window.removeEventListener('mousemove',mv); window.removeEventListener('mouseup',up);
+      el.style.cursor='grab';
+      if(moved){ _markBotManual(); renderBotList(); }
+      else if(connectingFrom && connectingFrom.nodeId!==node.id){ connectExisting(connectingFrom.nodeId, connectingFrom.portLabel, node.id); }
+      else selectNode(node.id);
+    }
+    window.addEventListener('mousemove',mv); window.addEventListener('mouseup',up);
+  });
   return el;
 }
 
