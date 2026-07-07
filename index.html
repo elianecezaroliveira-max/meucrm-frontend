@@ -1358,7 +1358,11 @@ window.addEventListener('load', initAuth);
   <div id="tasks-page-topbar">
     <button class="btn-secondary" onclick="closeTasksPage()">← Voltar</button>
     <h2>✅ Tarefas</h2>
-    <button class="btn-secondary" onclick="openBulkBotMenu(event)" title="Disparar um bot para todos os leads com tarefa em aberto">📢 Disparar bot</button>
+    <label style="font-size:13px;color:#667781;display:flex;align-items:center;gap:6px;cursor:pointer" title="Selecionar/desmarcar todos os leads da lista">
+      <input type="checkbox" id="tasks-select-all" onchange="toggleSelectAllTasks(this.checked)" /> Selecionar todos
+    </label>
+    <span id="tasks-sel-count" style="font-size:12px;color:#00a884;font-weight:600"></span>
+    <button class="btn-secondary" onclick="openBulkBotMenu(event)" title="Disparar um bot para os leads selecionados">📢 Disparar bot</button>
     <label style="font-size:13px;color:#667781;display:flex;align-items:center;gap:6px;cursor:pointer">
       <input type="checkbox" id="tasks-show-done" onchange="renderTasksPage()" /> Mostrar concluídas
     </label>
@@ -4644,6 +4648,7 @@ function fmtTaskDue(ts){
 }
 async function openTasksPage(){
   document.getElementById('tasks-page').style.display='flex';
+  _selTaskPhones.clear();
   const area=document.getElementById('tasks-list-area');
   area.innerHTML='<div style="color:#667781;font-size:13px;padding:20px">Carregando...</div>';
   try{
@@ -4655,35 +4660,44 @@ async function openTasksPage(){
 }
 function closeTasksPage(){ document.getElementById('tasks-page').style.display='none'; }
 
-// ── Disparo em massa de bot para leads com tarefa em aberto ──
+// ── Disparo em massa de bot para os leads SELECIONADOS na lista de tarefas ──
+let _selTaskPhones = new Set();
+function toggleTaskSel(phone){ if(_selTaskPhones.has(phone)) _selTaskPhones.delete(phone); else _selTaskPhones.add(phone); renderTasksPage(); }
+function toggleSelectAllTasks(checked){
+  const showDone=document.getElementById('tasks-show-done')?.checked;
+  let list=(_allTasksCache||[]).slice(); if(!showDone) list=list.filter(t=>!t.done);
+  const phones=[...new Set(list.filter(t=>t.phone).map(t=>t.phone))];
+  if(checked) phones.forEach(p=>_selTaskPhones.add(p)); else phones.forEach(p=>_selTaskPhones.delete(p));
+  renderTasksPage();
+}
 function closeBulkBotMenu(){ document.getElementById('bulk-bot-menu')?.remove(); }
 async function openBulkBotMenu(ev){
   ev.stopPropagation();
   closeBulkBotMenu();
   const btn=ev.currentTarget; const r=btn.getBoundingClientRect(); // captura antes do await
-  // leads DISTINTOS com tarefa em aberto
-  const phones=new Set((_allTasksCache||[]).filter(t=>!t.done && t.phone).map(t=>t.phone));
-  if(phones.size===0){ alert('Nenhum lead com tarefa em aberto.'); return; }
+  if(_selTaskPhones.size===0){ alert('Tique ao menos um lead na lista (ou use "Selecionar todos") antes de disparar.'); return; }
   let bots=[];
   try{ bots=((await (await fetch(SERVER_URL+'/bots')).json())||[]).filter(b=>b.active); }catch(_){}
   if(!bots.length){ alert('Nenhum bot ativo. Ative um bot antes de disparar.'); return; }
   const menu=document.createElement('div');
   menu.id='bulk-bot-menu';
   menu.style.cssText='position:fixed;z-index:2000;background:#ffffff;border:1px solid #e9edef;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.25);padding:6px;min-width:250px;max-height:60vh;overflow:auto';
-  menu.innerHTML='<div style="font-size:11px;color:#667781;padding:6px 8px;text-transform:uppercase;letter-spacing:.5px">Disparar para '+phones.size+' lead(s) com tarefa em aberto</div>'+
-    bots.map(b=>`<div style="padding:8px 10px;border-radius:6px;cursor:pointer;font-size:13px;color:#131c20" onmouseover="this.style.background='#e9edef'" onmouseout="this.style.background='transparent'" onclick="confirmBulkDispatch('${b.id}','${escHtml(b.name).replace(/'/g,"\\'")}',${phones.size})">🤖 ${escHtml(b.name)}</div>`).join('');
+  menu.innerHTML='<div style="font-size:11px;color:#667781;padding:6px 8px;text-transform:uppercase;letter-spacing:.5px">Disparar para '+_selTaskPhones.size+' lead(s) selecionado(s)</div>'+
+    bots.map(b=>`<div style="padding:8px 10px;border-radius:6px;cursor:pointer;font-size:13px;color:#131c20" onmouseover="this.style.background='#e9edef'" onmouseout="this.style.background='transparent'" onclick="confirmBulkDispatch('${b.id}','${escHtml(b.name).replace(/'/g,"\\'")}')">🤖 ${escHtml(b.name)}</div>`).join('');
   document.body.appendChild(menu);
   menu.style.left=Math.min(r.left, window.innerWidth-270)+'px';
   menu.style.top=(r.bottom+6)+'px';
   setTimeout(()=>document.addEventListener('click', closeBulkBotMenu, {once:true}),0);
 }
-async function confirmBulkDispatch(botId, botName, count){
+async function confirmBulkDispatch(botId, botName){
   closeBulkBotMenu();
-  if(!confirm(`Disparar o bot "${botName}" para ${count} lead(s) com tarefa em aberto?\n\nQuem já estiver com esse bot rodando será ignorado.`)) return;
+  const phones=[..._selTaskPhones];
+  if(!phones.length){ alert('Nenhum lead selecionado.'); return; }
+  if(!confirm(`Disparar o bot "${botName}" para ${phones.length} lead(s) selecionado(s)?\n\nQuem já estiver com esse bot rodando será ignorado.`)) return;
   try{
-    const r=await fetch(SERVER_URL+'/bots/'+botId+'/start-open-tasks',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})});
+    const r=await fetch(SERVER_URL+'/bots/'+botId+'/start-bulk',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phones})});
     const d=await r.json();
-    if(d.success) alert(`✅ Disparo iniciado para ${d.total} lead(s). O envio acontece em segundo plano (aprox. 5 por segundo).`);
+    if(d.success){ alert(`✅ Disparo iniciado para ${d.total} lead(s). O envio acontece em segundo plano (aprox. 5 por segundo).`); _selTaskPhones.clear(); renderTasksPage(); }
     else alert('Erro: '+(d.error||'tente novamente'));
   }catch(e){ alert('Erro ao disparar o bot em massa.'); }
 }
@@ -4693,16 +4707,20 @@ function renderTasksPage(){
   const showDone=document.getElementById('tasks-show-done')?.checked;
   let list=_allTasksCache.slice();
   if(!showDone) list=list.filter(t=>!t.done);
-  if(!list.length){ area.innerHTML=`<div style="color:#667781;padding:40px;text-align:center">Nenhuma tarefa ${showDone?'':'ativa'}. 🎉</div>`; return; }
+  if(!list.length){ area.innerHTML=`<div style="color:#667781;padding:40px;text-align:center">Nenhuma tarefa ${showDone?'':'ativa'}. 🎉</div>`; const sc0=document.getElementById('tasks-sel-count'); if(sc0) sc0.textContent=''; const sa0=document.getElementById('tasks-select-all'); if(sa0) sa0.checked=false; return; }
   const now=Date.now();
   area.innerHTML=list.map(t=>{
     const overdue=t.due_at && !t.done && parseUTC(t.due_at)<now;
+    const selBox=t.phone
+      ? `<input type="checkbox" class="task-sel" onclick="toggleTaskSel('${escHtml(t.phone)}')" ${_selTaskPhones.has(t.phone)?'checked':''} title="Selecionar este lead para o disparo" style="width:16px;height:16px;cursor:pointer;flex-shrink:0;margin-right:2px" />`
+      : `<span style="width:16px;flex-shrink:0;display:inline-block"></span>`;
     const due=t.due_at?`<span style="color:${overdue?'#ef4444':'#667781'};font-size:12px">⏰ ${fmtTaskDue(t.due_at)}</span>`:'';
     const lead=t.contact_name?`<span style="color:#00a884;font-size:12px;cursor:pointer" onclick="openTaskLead('${t.phone}','${escHtml(t.contact_name).replace(/'/g,"\\'")}',${t.account_id?`'${t.account_id}'`:'null'})">👤 ${escHtml(t.contact_name)}</span>`:'';
     const noteBlock = t.notes
       ? `<div style="margin-top:6px;background:#ffffff;border-left:3px solid #e9edef;border-radius:4px;padding:6px 8px;font-size:12px;color:#cdd6db;white-space:pre-wrap;word-break:break-word">${escHtml(t.notes)}</div>`
       : '';
     return `<div class="task-row${overdue?' overdue':''}">
+      ${selBox}
       <button class="task-check" title="${t.done?'Reabrir':'Concluir'}" onclick="toggleTaskGlobal('${t.id}',${t.done?'false':'true'})">${t.done?'✓':''}</button>
       <div style="flex:1;min-width:0">
         <div style="color:#131c20;font-size:14px;${t.done?'text-decoration:line-through;opacity:.6':''}">${escHtml(t.title)}</div>
@@ -4714,6 +4732,12 @@ function renderTasksPage(){
       <button title="Excluir" onclick="deleteTaskGlobal('${t.id}')" style="background:none;border:none;color:#667781;cursor:pointer;font-size:14px">🗑</button>
     </div>`;
   }).join('');
+  // Sincroniza "selecionar todos" e o contador de selecionados
+  const visPhones=[...new Set(list.filter(t=>t.phone).map(t=>t.phone))];
+  const selAll=document.getElementById('tasks-select-all');
+  if(selAll) selAll.checked = visPhones.length>0 && visPhones.every(p=>_selTaskPhones.has(p));
+  const selCnt=document.getElementById('tasks-sel-count');
+  if(selCnt) selCnt.textContent = _selTaskPhones.size ? `${_selTaskPhones.size} selecionado(s)` : '';
 }
 async function toggleTaskGlobal(id, done){
   try{
