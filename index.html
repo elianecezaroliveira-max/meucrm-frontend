@@ -4917,8 +4917,10 @@ let _faqAccSel = null;   // IDs com IA ativa (null = todas)
 // regra "contato errado"
 const WP_DEFAULT_ANSWER = 'Desculpe o incômodo, vou retirar seu contato da lista 🙏🏼';
 const WP_DEFAULT_TAG = 'REMOVER';
-const WP_DEFAULT_TRIGGERS = ['pessoa errada','numero errado','nao conheco','nao te conheco','quem e voce','foi engano','nao sou essa pessoa','parem de mandar mensagem','tirar meu contato','remover meu contato','sair da lista','nao quero receber','me descadastrar'].join('\n');
+const WP_DEFAULT_TRIGGERS = ['pessoa errada','numero errado','foi engano','nao sou essa pessoa','nao te conheco','esse nome','com esse nome','descadastrar','me descadastrar','remover meu contato','tirar meu contato','sair da lista','nao quero receber','parar de receber'].join('\n');
 let _wpEnabled = false, _wpAnswer = WP_DEFAULT_ANSWER, _wpTag = WP_DEFAULT_TAG, _wpTriggers = WP_DEFAULT_TRIGGERS;
+// modo de reconhecimento: 'text' (grátis) ou 'ai' (contexto via Groq)
+let _faqMode = 'text', _faqAiKey = false, _faqAiModel = '';
 function _faqEsc(s){ return (s||'').toString().replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
 async function openFaqPage(){
@@ -4926,7 +4928,7 @@ async function openFaqPage(){
   const area = document.getElementById('faq-list-area');
   area.innerHTML = '<div style="color:#667781;font-size:13px;padding:20px">Carregando...</div>';
   try{
-    const [tRes, dRes, aRes, accRes, fRes, wpeRes, wpaRes, wptRes, wpgRes] = await Promise.all([
+    const [tRes, dRes, aRes, accRes, fRes, wpeRes, wpaRes, wptRes, wpgRes, aiRes] = await Promise.all([
       fetch(SERVER_URL + '/settings/faq_enabled'),
       fetch(SERVER_URL + '/settings/faq_delay_seconds'),
       fetch(SERVER_URL + '/settings/faq_accounts'),
@@ -4935,7 +4937,8 @@ async function openFaqPage(){
       fetch(SERVER_URL + '/settings/wrongperson_enabled'),
       fetch(SERVER_URL + '/settings/wrongperson_answer'),
       fetch(SERVER_URL + '/settings/wrongperson_tag'),
-      fetch(SERVER_URL + '/settings/wrongperson_triggers')
+      fetch(SERVER_URL + '/settings/wrongperson_triggers'),
+      fetch(SERVER_URL + '/faqs/ai-status')
     ]);
     const t = await tRes.json();
     _faqMaster = (t && t.value === 'on');
@@ -4947,6 +4950,11 @@ async function openFaqPage(){
     const wpa = await wpaRes.json(); _wpAnswer = (wpa && wpa.value) ? wpa.value : WP_DEFAULT_ANSWER;
     const wpt = await wptRes.json(); _wpTag = (wpt && wpt.value) ? wpt.value : WP_DEFAULT_TAG;
     const wpg = await wpgRes.json(); _wpTriggers = (wpg && wpg.value) ? wpg.value : WP_DEFAULT_TRIGGERS;
+    // status da IA de contexto (Groq)
+    const ai = await aiRes.json();
+    _faqMode = (ai && ai.mode === 'ai') ? 'ai' : 'text';
+    _faqAiKey = !!(ai && ai.keyConfigured);
+    _faqAiModel = (ai && ai.model) || '';
     // contas de WhatsApp e quais têm IA ativa
     _faqAccounts = await accRes.json();
     if(!Array.isArray(_faqAccounts)) _faqAccounts = [];
@@ -4971,6 +4979,27 @@ function faqRender(){
     + '<small>' + (_faqMaster ? 'Ligada — responde às perguntas cadastradas abaixo.' : 'Desligada — a IA não responde nada.') + '</small></div>'
     + '<label class="faq-switch"><input type="checkbox" ' + (_faqMaster?'checked':'') + ' onchange="faqSetMaster(this.checked)"><span class="faq-slider"></span></label>'
     + '</div>';
+
+  // modo de reconhecimento: texto grátis x IA de contexto (Groq)
+  html += '<div class="faq-master" style="display:block;margin-top:-8px">'
+    + '<div style="display:flex;align-items:center;gap:12px">'
+    + '<div class="faq-master-txt" style="flex:1"><b>Entendimento por contexto (IA)</b>'
+    + '<small>' + (_faqMode==='ai'
+        ? 'Ligado — a IA lê a conversa inteira e escolhe qual resposta pronta usar.'
+        : 'Desligado — reconhecimento grátis por palavras-chave.') + '</small></div>'
+    + '<label class="faq-switch"><input type="checkbox" ' + (_faqMode==='ai'?'checked':'') + ' onchange="faqSetMode(this.checked)"><span class="faq-slider"></span></label>'
+    + '</div>';
+  if(_faqMode==='ai'){
+    html += '<div style="margin-top:8px;font-size:12px;font-weight:600;' + (_faqAiKey?'color:#00a884':'color:#c0392b') + '">'
+      + (_faqAiKey ? '✓ Chave conectada · modelo: ' + _faqEsc(_faqAiModel)
+                   : '⚠ Falta configurar a chave GROQ_API_KEY no servidor (Railway) — sem ela, a IA usa o modo texto.')
+      + '</div>'
+      + '<div style="display:flex;gap:8px;margin-top:10px">'
+      + '<input id="faq-ai-test-in" type="text" placeholder="Testar: escreva uma mensagem de cliente..." style="flex:1;background:#f0f2f5;border:1px solid #e0e4e6;border-radius:8px;padding:8px 10px;font-size:13px;color:#131c20">'
+      + '<button class="btn-secondary" onclick="faqAiTest()">Testar</button></div>'
+      + '<div id="faq-ai-test-out" style="font-size:13px;color:#667781;margin-top:8px"></div>';
+  }
+  html += '</div>';
 
   // tempo de espera antes de responder
   html += '<div class="faq-master" style="margin-top:-8px">'
@@ -5041,6 +5070,28 @@ function faqRender(){
     }
   }
   area.innerHTML = html;
+}
+
+async function faqSetMode(on){
+  _faqMode = on ? 'ai' : 'text';
+  try{ await _faqPutSetting('faq_mode', _faqMode); }
+  catch(e){ alert('Não foi possível salvar. Tente de novo.'); }
+  faqRender();
+}
+async function faqAiTest(){
+  const inp = document.getElementById('faq-ai-test-in');
+  const out = document.getElementById('faq-ai-test-out');
+  const text = (inp.value || '').trim();
+  if(!text){ out.textContent = 'Escreva uma mensagem para testar.'; return; }
+  out.style.color = '#667781'; out.textContent = 'Testando...';
+  try{
+    const r = await fetch(SERVER_URL + '/faqs/ai-test', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text }) });
+    const d = await r.json();
+    if(!d.ok){ out.style.color = '#c0392b'; out.textContent = '⚠ ' + (d.error || 'Falha no teste.'); return; }
+    if(!d.match){ out.style.color = '#667781'; out.textContent = 'A IA entendeu, mas nenhuma pergunta cadastrada se aplica a essa mensagem.'; return; }
+    out.style.color = '#00a884';
+    out.textContent = '✓ Encaixaria em: "' + d.question + '" → responderia: ' + d.answer;
+  }catch(e){ out.style.color = '#c0392b'; out.textContent = '⚠ Erro ao testar. Verifique a conexão.'; }
 }
 
 async function faqSetMaster(on){
