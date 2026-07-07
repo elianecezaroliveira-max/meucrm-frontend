@@ -1362,7 +1362,7 @@ window.addEventListener('load', initAuth);
       <input type="checkbox" id="tasks-select-all" onchange="toggleSelectAllTasks(this.checked)" /> Selecionar todos
     </label>
     <span id="tasks-sel-count" style="font-size:12px;color:#00a884;font-weight:600"></span>
-    <button class="btn-secondary" onclick="openBulkBotMenu(event)" title="Disparar um bot para os leads selecionados">📢 Disparar bot</button>
+    <button class="btn-secondary" onclick="openBulkBotMenu(event)" title="Dispara o bot SEGUE SIMULAÇÃO para os leads selecionados">📢 Disparar bot</button>
     <label style="font-size:13px;color:#667781;display:flex;align-items:center;gap:6px;cursor:pointer">
       <input type="checkbox" id="tasks-show-done" onchange="renderTasksPage()" /> Mostrar concluídas
     </label>
@@ -4670,34 +4670,24 @@ function toggleSelectAllTasks(checked){
   if(checked) phones.forEach(p=>_selTaskPhones.add(p)); else phones.forEach(p=>_selTaskPhones.delete(p));
   renderTasksPage();
 }
-function closeBulkBotMenu(){ document.getElementById('bulk-bot-menu')?.remove(); }
+// Bot pré-fixado para o disparo em massa na tela de Tarefas
+const BULK_BOT_NAME = 'SEGUE SIMULAÇÃO';
+function _normBot(s){ return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').trim().toLowerCase(); }
+// Dispara direto o bot pré-fixado, com UMA só confirmação (sem menu de escolha)
 async function openBulkBotMenu(ev){
-  ev.stopPropagation();
-  closeBulkBotMenu();
-  const btn=ev.currentTarget; const r=btn.getBoundingClientRect(); // captura antes do await
-  if(_selTaskPhones.size===0){ alert('Tique ao menos um lead na lista (ou use "Selecionar todos") antes de disparar.'); return; }
+  if(ev) ev.stopPropagation();
+  const phones=[..._selTaskPhones];
+  if(!phones.length){ alert('Tique ao menos um lead na lista (ou use "Selecionar todos") antes de disparar.'); return; }
   let bots=[];
   try{ bots=((await (await fetch(SERVER_URL+'/bots')).json())||[]).filter(b=>b.active); }catch(_){}
-  if(!bots.length){ alert('Nenhum bot ativo. Ative um bot antes de disparar.'); return; }
-  const menu=document.createElement('div');
-  menu.id='bulk-bot-menu';
-  menu.style.cssText='position:fixed;z-index:2000;background:#ffffff;border:1px solid #e9edef;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.25);padding:6px;min-width:250px;max-height:60vh;overflow:auto';
-  menu.innerHTML='<div style="font-size:11px;color:#667781;padding:6px 8px;text-transform:uppercase;letter-spacing:.5px">Disparar para '+_selTaskPhones.size+' lead(s) selecionado(s)</div>'+
-    bots.map(b=>`<div style="padding:8px 10px;border-radius:6px;cursor:pointer;font-size:13px;color:#131c20" onmouseover="this.style.background='#e9edef'" onmouseout="this.style.background='transparent'" onclick="confirmBulkDispatch('${b.id}','${escHtml(b.name).replace(/'/g,"\\'")}')">🤖 ${escHtml(b.name)}</div>`).join('');
-  document.body.appendChild(menu);
-  menu.style.left=Math.min(r.left, window.innerWidth-270)+'px';
-  menu.style.top=(r.bottom+6)+'px';
-  setTimeout(()=>document.addEventListener('click', closeBulkBotMenu, {once:true}),0);
-}
-async function confirmBulkDispatch(botId, botName){
-  closeBulkBotMenu();
-  const phones=[..._selTaskPhones];
-  if(!phones.length){ alert('Nenhum lead selecionado.'); return; }
-  if(!confirm(`Disparar o bot "${botName}" para ${phones.length} lead(s) selecionado(s)?\n\nQuem já estiver com esse bot rodando será ignorado.`)) return;
+  const target=_normBot(BULK_BOT_NAME);
+  const bot = bots.find(b=>_normBot(b.name)===target) || bots.find(b=>_normBot(b.name).includes('segue simula'));
+  if(!bot){ alert('O bot "'+BULK_BOT_NAME+'" não foi encontrado ou não está ativo. Ative-o na tela de Bots.'); return; }
+  if(!confirm(`Disparar "${bot.name}" para ${phones.length} lead(s) selecionado(s)?`)) return;
   try{
-    const r=await fetch(SERVER_URL+'/bots/'+botId+'/start-bulk',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phones})});
+    const r=await fetch(SERVER_URL+'/bots/'+bot.id+'/start-bulk',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phones})});
     const d=await r.json();
-    if(d.success){ alert(`✅ Disparo iniciado para ${d.total} lead(s). O envio acontece em segundo plano (aprox. 5 por segundo).`); _selTaskPhones.clear(); renderTasksPage(); }
+    if(d.success){ alert(`✅ Disparo iniciado para ${d.total} lead(s).`); _selTaskPhones.clear(); renderTasksPage(); }
     else alert('Erro: '+(d.error||'tente novamente'));
   }catch(e){ alert('Erro ao disparar o bot em massa.'); }
 }
