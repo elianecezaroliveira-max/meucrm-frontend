@@ -4894,6 +4894,8 @@ let _faqCache = [];
 let _faqMaster = false;
 let _faqEditId = null;
 let _faqDelay = 25;
+let _faqAccounts = [];   // todas as contas de WhatsApp
+let _faqAccSel = null;   // IDs com IA ativa (null = todas)
 function _faqEsc(s){ return (s||'').toString().replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
 async function openFaqPage(){
@@ -4901,9 +4903,11 @@ async function openFaqPage(){
   const area = document.getElementById('faq-list-area');
   area.innerHTML = '<div style="color:#667781;font-size:13px;padding:20px">Carregando...</div>';
   try{
-    const [tRes, dRes, fRes] = await Promise.all([
+    const [tRes, dRes, aRes, accRes, fRes] = await Promise.all([
       fetch(SERVER_URL + '/settings/faq_enabled'),
       fetch(SERVER_URL + '/settings/faq_delay_seconds'),
+      fetch(SERVER_URL + '/settings/faq_accounts'),
+      fetch(SERVER_URL + '/accounts'),
       fetch(SERVER_URL + '/faqs')
     ]);
     const t = await tRes.json();
@@ -4911,6 +4915,12 @@ async function openFaqPage(){
     const d = await dRes.json();
     const dNum = parseInt(d && d.value, 10);
     _faqDelay = Number.isFinite(dNum) ? dNum : 25;
+    // contas de WhatsApp e quais têm IA ativa
+    _faqAccounts = await accRes.json();
+    if(!Array.isArray(_faqAccounts)) _faqAccounts = [];
+    const a = await aRes.json();
+    if(a && a.value){ try{ const arr = JSON.parse(a.value); _faqAccSel = Array.isArray(arr) ? arr.map(String) : null; }catch(_){ _faqAccSel = null; } }
+    else { _faqAccSel = null; } // null = todas as contas
     _faqCache = await fRes.json();
     if(!Array.isArray(_faqCache)) _faqCache = [];
     faqRender();
@@ -4939,6 +4949,23 @@ function faqRender(){
     + 'onchange="faqSetDelay(this.value)" style="width:70px;text-align:center;background:#f0f2f5;border:1px solid #e0e4e6;border-radius:8px;padding:8px;font-size:14px">'
     + '<span style="color:#667781;font-size:13px">seg</span></div>'
     + '</div>';
+
+  // contas de WhatsApp onde a IA responde
+  html += '<div class="faq-master" style="display:block;margin-top:-8px">'
+    + '<div class="faq-master-txt" style="margin-bottom:6px"><b>Contas onde a IA responde</b>'
+    + '<small>Marque as contas de WhatsApp que devem usar a IA. Se desmarcar todas, a IA não responde em nenhuma.</small></div>';
+  if(!_faqAccounts.length){
+    html += '<div style="color:#667781;font-size:13px;padding:4px 0">Nenhuma conta de WhatsApp conectada ainda.</div>';
+  } else {
+    for(const acc of _faqAccounts){
+      const on = (_faqAccSel === null) || _faqAccSel.includes(String(acc.id));
+      const label = _faqEsc(acc.name || 'Conta') + (acc.phone_display ? ' (' + _faqEsc(acc.phone_display) + ')' : '');
+      html += '<label style="display:flex;align-items:center;gap:10px;padding:7px 0;cursor:pointer;border-top:1px solid #f0f2f5">'
+        + '<input type="checkbox" class="faq-acc-cb" data-id="' + acc.id + '" ' + (on?'checked':'') + ' onchange="faqSaveAccounts()" style="width:18px;height:18px;accent-color:#00a884">'
+        + '<span style="font-size:14px;color:#131c20">' + label + '</span></label>';
+    }
+  }
+  html += '</div>';
 
   if(!_faqCache.length){
     html += '<div style="text-align:center;color:#667781;padding:30px 20px">'
@@ -4990,6 +5017,20 @@ async function faqSetDelay(val){
       body: JSON.stringify({ value: String(n) })
     });
   }catch(e){ alert('Não foi possível salvar o tempo. Tente de novo.'); }
+}
+
+async function faqSaveAccounts(){
+  const cbs = document.querySelectorAll('.faq-acc-cb');
+  const sel = [];
+  cbs.forEach(cb => { if(cb.checked) sel.push(cb.getAttribute('data-id')); });
+  _faqAccSel = sel; // vira lista explícita (mesmo vazia = nenhuma)
+  try{
+    await fetch(SERVER_URL + '/settings/faq_accounts', {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ value: JSON.stringify(sel) })
+    });
+  }catch(e){ alert('Não foi possível salvar as contas. Tente de novo.'); }
+  faqRender();
 }
 
 // Formulário inline (nova ou edição)
