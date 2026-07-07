@@ -125,6 +125,22 @@
   #chat-header .info { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); max-width: 60%; text-align: center; }
   #chat-header .info .name { font-size: 19px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #chat-header .info .phone { font-size: 12px; color: #667781; }
+  /* ── Painel de detalhes do lead (estilo CRM) ── */
+  #lead-panel { width: 300px; flex-shrink: 0; background: #ffffff; border-left: 1px solid #e9edef; border-right: 1px solid #e9edef; display: flex; flex-direction: column; overflow-y: auto; }
+  #lead-panel.lp-hidden { display: none; }
+  .lp-head { display: flex; align-items: center; gap: 10px; padding: 14px; border-bottom: 1px solid #e9edef; background: #f0f2f5; position: sticky; top: 0; z-index: 2; }
+  .lp-avatar { width: 40px; height: 40px; border-radius: 50%; background: #00a884; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; }
+  .lp-name { font-size: 15px; font-weight: 600; color: #131c20; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lp-sub { font-size: 12px; color: #667781; }
+  .lp-x { background: none; border: none; color: #667781; cursor: pointer; font-size: 15px; flex-shrink: 0; }
+  .lp-section { padding: 12px 14px; border-bottom: 1px solid #f0f2f5; }
+  .lp-label { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: #667781; font-weight: 600; margin-bottom: 6px; }
+  .lp-input, .lp-textarea, .lp-select { width: 100%; box-sizing: border-box; border: 1px solid #e9edef; border-radius: 8px; padding: 8px; font-size: 13px; font-family: inherit; outline: none; background: #fff; color: #131c20; }
+  .lp-textarea { resize: vertical; min-height: 70px; }
+  .lp-tag { display: inline-flex; align-items: center; gap: 4px; background: #e7f7ef; color: #00a884; border-radius: 10px; padding: 2px 8px; font-size: 12px; margin: 2px 2px 0 0; }
+  .lp-mini { background: #e7f7ef; border: none; color: #00a884; border-radius: 6px; padding: 3px 8px; font-size: 11px; cursor: pointer; font-weight: 600; }
+  .lp-mini:hover { background: #d7f0e3; }
+  @media (max-width: 900px) { #lead-panel { display: none !important; } #btn-lead-panel { display: none !important; } }
   #messages-area { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 4px; transition: background 0.2s; background-color: #efeae2; background-image: radial-gradient(rgba(0,0,0,0.028) 1px, transparent 1px); background-size: 22px 22px; }
   #messages-area.drag-over { background: rgba(0,168,132,0.08); outline: 2px dashed #00a884; outline-offset: -6px; }
   .msg { max-width: 65%; padding: 8px 12px; border-radius: 8px; font-size: 14px; line-height: 1.4; position: relative; word-wrap: break-word; color: #131c20; }
@@ -1196,6 +1212,9 @@ window.addEventListener('load', initAuth);
       <div id="empty-contacts">Nenhuma conversa ainda.<br>Envie uma mensagem pelo WhatsApp para o número de teste.</div>
     </div>
   </div>
+
+  <!-- PAINEL DE DETALHES DO LEAD (entre a lista e a conversa) -->
+  <div id="lead-panel" class="lp-hidden"></div>
 
   <!-- CHAT -->
   <div id="chat-area">
@@ -2386,8 +2405,14 @@ async function selectContact(phone, name, accountId) {
       <div class="info">
         <div class="name"><span id="chat-name-text">${name || phone}</span></div>
       </div>
-      <button id="btn-info" title="Informações do lead" onclick="openInfoMenu(event)"
+      <button id="btn-lead-panel" title="Mostrar/ocultar detalhes do lead" onclick="toggleLeadPanel()"
         style="background:none;border:none;color:#667781;cursor:pointer;padding:6px;border-radius:50%;margin-left:auto;flex-shrink:0;display:flex;align-items:center;justify-content:center">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+        </svg>
+      </button>
+      <button id="btn-info" title="Informações do lead" onclick="openInfoMenu(event)"
+        style="background:none;border:none;color:#667781;cursor:pointer;padding:6px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
         </svg>
@@ -2463,10 +2488,182 @@ async function selectContact(phone, name, accountId) {
   if (_tagContact) renderTagManager(_tagContact);
   // Carrega anotações do lead
   loadNotes(phone);
+  // Painel de detalhes do lead (abre junto com a conversa)
+  renderLeadPanel(phone);
 
   await loadMessages(phone);
   // Verifica bot ativo para este contato
   checkActiveBotRun(phone);
+  // Mídia do lead (depois que as mensagens carregaram)
+  lpLoadMedia(phone);
+}
+
+// ══════════════════════════════════════════════
+// PAINEL DE DETALHES DO LEAD (estilo CRM)
+// ══════════════════════════════════════════════
+let _leadPanelVisible = true; // abre junto com a conversa; o usuário pode ocultar
+function toggleLeadPanel(force){
+  const p = document.getElementById('lead-panel');
+  if (!p) return;
+  const show = (typeof force === 'boolean') ? force : p.classList.contains('lp-hidden');
+  _leadPanelVisible = show;
+  p.classList.toggle('lp-hidden', !show);
+  const b = document.getElementById('btn-lead-panel');
+  if (b) b.style.color = show ? '#00a884' : '#667781';
+}
+async function renderLeadPanel(phone){
+  const p = document.getElementById('lead-panel');
+  if (!p) return;
+  const c = allContacts.find(x => x.phone === phone);
+  if (!c) { p.classList.add('lp-hidden'); p.innerHTML = ''; return; }
+  p.classList.toggle('lp-hidden', !_leadPanelVisible);
+  const b = document.getElementById('btn-lead-panel'); if (b) b.style.color = _leadPanelVisible ? '#00a884' : '#667781';
+  const telShow = phone.startsWith('55') ? phone.slice(2) : phone;
+  const stageOpts = '<option value="">Sem etapa</option>' +
+    (pipelineStages||[]).map(s => `<option value="${s.id}" ${c.stage_id===s.id?'selected':''}>${escHtml(s.name)}</option>`).join('');
+  p.innerHTML = `
+    <div class="lp-head">
+      <div class="lp-avatar">${escHtml((c.name||phone).charAt(0).toUpperCase())}</div>
+      <div style="flex:1;min-width:0">
+        <div class="lp-name" title="${escHtml(c.name||phone)}">${escHtml(c.name||phone)}</div>
+        <div class="lp-sub">+${escHtml(phone)}</div>
+      </div>
+      <button class="lp-x" onclick="toggleLeadPanel(false)" title="Ocultar painel">✕</button>
+    </div>
+    <div class="lp-section">
+      <div class="lp-label">Telefone</div>
+      <div style="display:flex;gap:6px;align-items:center;justify-content:space-between">
+        <span style="font-size:13px;color:#131c20">${escHtml(telShow)}</span>
+        <button class="lp-mini" onclick="lpCopy('${escHtml(telShow)}')">Copiar</button>
+      </div>
+    </div>
+    <div class="lp-section">
+      <div class="lp-label">E-mail</div>
+      <input id="lp-email" class="lp-input" type="email" placeholder="email@exemplo.com" autocomplete="off" />
+    </div>
+    <div class="lp-section">
+      <div class="lp-label">Etapa do pipeline</div>
+      <select id="lp-stage" class="lp-select" onchange="lpSetStage('${phone}', this.value)">${stageOpts}</select>
+    </div>
+    <div class="lp-section">
+      <div class="lp-label">Etiquetas <button class="lp-mini" style="float:right" onclick="lpAddTag('${phone}')">＋ Add</button></div>
+      <div id="lp-tags"></div>
+    </div>
+    <div class="lp-section">
+      <div class="lp-label">Anotações</div>
+      <textarea id="lp-notes" class="lp-textarea" placeholder="Simulação, dados, observações..."></textarea>
+      <div id="lp-notes-status" style="font-size:11px;color:#00a884;height:14px;margin-top:2px"></div>
+    </div>
+    <div class="lp-section">
+      <div class="lp-label">Tarefas <button class="lp-mini" style="float:right" onclick="lpAddTask('${phone}')">＋ Nova</button></div>
+      <div id="lp-tasks"><div style="color:#8696a0;font-size:12px">Carregando...</div></div>
+    </div>
+    <div class="lp-section">
+      <div class="lp-label">Mídias e arquivos</div>
+      <div id="lp-media"><div style="color:#8696a0;font-size:12px">—</div></div>
+    </div>`;
+  lpRenderTags(phone);
+  try {
+    const r = await fetch(`${SERVER_URL}/contacts/${encodeURIComponent(phone)}/notes`);
+    if (r.ok) { const d = await r.json();
+      const em = document.getElementById('lp-email'); if (em) em.value = d.email || '';
+      const nt = document.getElementById('lp-notes'); if (nt) nt.value = d.notes || ''; }
+  } catch(_){}
+  let _t = null; const st = document.getElementById('lp-notes-status');
+  const save = async () => {
+    if (st) st.textContent = 'Salvando...';
+    try {
+      await fetch(`${SERVER_URL}/contacts/${encodeURIComponent(phone)}/notes`, { method:'PUT', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ notes: document.getElementById('lp-notes')?.value || '', email: document.getElementById('lp-email')?.value || '' }) });
+      if (st) { st.textContent = 'Salvo ✓'; setTimeout(()=>{ if (st) st.textContent = ''; }, 1500); }
+    } catch(_){ if (st) st.textContent = 'Erro ao salvar'; }
+  };
+  const deb = () => { clearTimeout(_t); _t = setTimeout(save, 900); };
+  document.getElementById('lp-email')?.addEventListener('input', deb);
+  document.getElementById('lp-notes')?.addEventListener('input', deb);
+  lpLoadTasks(phone);
+  lpLoadMedia(phone);
+}
+function lpCopy(txt){ navigator.clipboard?.writeText(txt).then(()=>{},()=>{}); }
+function lpRenderTags(phone){
+  const el = document.getElementById('lp-tags');
+  const c = allContacts.find(x => x.phone === phone);
+  if (!el || !c) return;
+  const tags = c.tags || [];
+  el.innerHTML = tags.length
+    ? tags.map(t => `<span class="lp-tag">${escHtml(t)} <span onclick="lpRemoveTag('${phone}','${String(t).replace(/'/g,"\\'")}')" style="cursor:pointer;font-weight:700">×</span></span>`).join('')
+    : '<span style="color:#8696a0;font-size:12px">Nenhuma etiqueta</span>';
+}
+async function lpAddTag(phone){
+  const raw = prompt('Nova etiqueta:'); if (raw === null) return;
+  const tag = String(raw).trim().replace(/,/g,''); if (!tag) return;
+  const c = allContacts.find(x => x.phone === phone); if (!c) return;
+  if (!(c.tags||[]).includes(tag)) c.tags = [...(c.tags||[]), tag];
+  await saveTags(phone, c.tags);
+  renderContacts(allContacts); lpRenderTags(phone);
+}
+async function lpRemoveTag(phone, tag){
+  const c = allContacts.find(x => x.phone === phone); if (!c) return;
+  c.tags = (c.tags||[]).filter(t => t !== tag);
+  await saveTags(phone, c.tags);
+  renderContacts(allContacts); lpRenderTags(phone);
+}
+async function lpSetStage(phone, val){
+  const c = allContacts.find(x => x.phone === phone); if (!c) return;
+  const newStage = val || null; c.stage_id = newStage;
+  try { await fetch(`${SERVER_URL}/contacts/${encodeURIComponent(phone)}/stage`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ stage_id: newStage }) }); } catch(_){}
+  renderContacts(allContacts);
+  if (typeof pipelineContacts !== 'undefined') { const pc = pipelineContacts.find(x => x.phone === phone); if (pc) pc.stage_id = newStage; }
+}
+async function lpLoadTasks(phone){
+  const el = document.getElementById('lp-tasks'); if (!el) return;
+  let tasks = [];
+  try { tasks = (await (await fetch(SERVER_URL+'/tasks')).json()) || []; } catch(_){}
+  const mine = (Array.isArray(tasks)?tasks:[]).filter(t => t.phone === phone);
+  el.innerHTML = mine.length ? mine.map(t => `
+    <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:7px">
+      <button onclick="lpToggleTask('${t.id}',${t.done?'false':'true'},'${phone}')" title="${t.done?'Reabrir':'Concluir'}" style="width:18px;height:18px;border-radius:50%;border:2px solid #00a884;background:${t.done?'#00a884':'transparent'};color:#fff;cursor:pointer;flex-shrink:0;font-size:11px;line-height:14px;padding:0">${t.done?'✓':''}</button>
+      <div style="flex:1;min-width:0;font-size:13px;color:#131c20;${t.done?'text-decoration:line-through;opacity:.6':''}">${escHtml(t.title)}${t.due_at?`<div style="font-size:11px;color:#667781">⏰ ${fmtTaskDue(t.due_at)}</div>`:''}</div>
+    </div>`).join('') : '<div style="color:#8696a0;font-size:12px">Nenhuma tarefa</div>';
+}
+async function lpToggleTask(id, done, phone){
+  try { await fetch(SERVER_URL+'/tasks/'+id, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ done }) }); } catch(_){}
+  lpLoadTasks(phone);
+}
+async function lpAddTask(phone){
+  const title = prompt('Nova tarefa:'); if (title === null) return;
+  const tt = title.trim(); if (!tt) return;
+  const c = allContacts.find(x => x.phone === phone);
+  try { await fetch(SERVER_URL+'/tasks', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, account_id: c?.account_id || null, title: tt }) }); } catch(_){}
+  lpLoadTasks(phone);
+}
+function lpLoadMedia(phone){
+  const el = document.getElementById('lp-media'); if (!el) return;
+  if (phone !== currentPhone) return;
+  const acct = encodeURIComponent(currentAccountId || '');
+  const msgs = (typeof currentMessages !== 'undefined' && Array.isArray(currentMessages)) ? currentMessages : [];
+  const imgs = msgs.filter(m => m.type === 'image' && m.media_id).slice(-9).reverse();
+  const docs = msgs.filter(m => m.type === 'document' && m.media_id).slice(-5).reverse();
+  let html = '';
+  if (imgs.length) {
+    html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:8px">' + imgs.map(m => {
+      const url = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${acct}`;
+      return `<img src="${url}" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;cursor:pointer" onclick="window.open('${url}','_blank')" onerror="this.style.display='none'">`;
+    }).join('') + '</div>';
+  }
+  if (docs.length) {
+    html += docs.map(m => {
+      const fname = (m.content||'').replace(/^\[Documento: ?/,'').replace(/\]$/,'') || 'Documento';
+      const url = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${acct}&download=1&filename=${encodeURIComponent(fname)}`;
+      return `<a href="${url}" download style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:#f0f2f5;border-radius:6px;margin-bottom:5px;color:#131c20;text-decoration:none;font-size:12px">📄 <span style="flex:1;word-break:break-all">${escHtml(fname)}</span> ⬇</a>`;
+    }).join('');
+  }
+  if (imgs.length || docs.length) {
+    html += `<button class="lp-mini" style="margin-top:4px" onclick="openMediaGallery()">Ver todas</button>`;
+  } else {
+    html = '<div style="color:#8696a0;font-size:12px">Nenhuma mídia nesta conversa</div>';
+  }
+  el.innerHTML = html;
 }
 
 // Volta para sidebar no mobile
