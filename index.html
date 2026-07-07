@@ -4893,6 +4893,7 @@ function closeBotsList() {
 let _faqCache = [];
 let _faqMaster = false;
 let _faqEditId = null;
+let _faqDelay = 25;
 function _faqEsc(s){ return (s||'').toString().replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
 async function openFaqPage(){
@@ -4900,12 +4901,16 @@ async function openFaqPage(){
   const area = document.getElementById('faq-list-area');
   area.innerHTML = '<div style="color:#667781;font-size:13px;padding:20px">Carregando...</div>';
   try{
-    const [tRes, fRes] = await Promise.all([
+    const [tRes, dRes, fRes] = await Promise.all([
       fetch(SERVER_URL + '/settings/faq_enabled'),
+      fetch(SERVER_URL + '/settings/faq_delay_seconds'),
       fetch(SERVER_URL + '/faqs')
     ]);
     const t = await tRes.json();
     _faqMaster = (t && t.value === 'on');
+    const d = await dRes.json();
+    const dNum = parseInt(d && d.value, 10);
+    _faqDelay = Number.isFinite(dNum) ? dNum : 25;
     _faqCache = await fRes.json();
     if(!Array.isArray(_faqCache)) _faqCache = [];
     faqRender();
@@ -4923,6 +4928,16 @@ function faqRender(){
     + '<div class="faq-master-txt"><b>IA de respostas automáticas</b>'
     + '<small>' + (_faqMaster ? 'Ligada — responde às perguntas cadastradas abaixo.' : 'Desligada — a IA não responde nada.') + '</small></div>'
     + '<label class="faq-switch"><input type="checkbox" ' + (_faqMaster?'checked':'') + ' onchange="faqSetMaster(this.checked)"><span class="faq-slider"></span></label>'
+    + '</div>';
+
+  // tempo de espera antes de responder
+  html += '<div class="faq-master" style="margin-top:-8px">'
+    + '<div class="faq-master-txt"><b>Tempo de espera</b>'
+    + '<small>Quantos segundos a IA aguarda antes de enviar a resposta (deixa mais natural).</small></div>'
+    + '<div style="display:flex;align-items:center;gap:6px;flex-shrink:0">'
+    + '<input id="faq-delay-input" type="number" min="0" max="600" value="' + _faqDelay + '" '
+    + 'onchange="faqSetDelay(this.value)" style="width:70px;text-align:center;background:#f0f2f5;border:1px solid #e0e4e6;border-radius:8px;padding:8px;font-size:14px">'
+    + '<span style="color:#667781;font-size:13px">seg</span></div>'
     + '</div>';
 
   if(!_faqCache.length){
@@ -4960,6 +4975,21 @@ async function faqSetMaster(on){
     });
   }catch(e){ alert('Não foi possível salvar. Tente de novo.'); }
   faqRender();
+}
+
+async function faqSetDelay(val){
+  let n = parseInt(val, 10);
+  if(!Number.isFinite(n) || n < 0) n = 0;
+  if(n > 600) n = 600; // teto de 10 minutos
+  _faqDelay = n;
+  const el = document.getElementById('faq-delay-input');
+  if(el) el.value = n;
+  try{
+    await fetch(SERVER_URL + '/settings/faq_delay_seconds', {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ value: String(n) })
+    });
+  }catch(e){ alert('Não foi possível salvar o tempo. Tente de novo.'); }
 }
 
 // Formulário inline (nova ou edição)
