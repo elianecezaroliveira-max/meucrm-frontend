@@ -1358,6 +1358,7 @@ window.addEventListener('load', initAuth);
   <div id="tasks-page-topbar">
     <button class="btn-secondary" onclick="closeTasksPage()">← Voltar</button>
     <h2>✅ Tarefas</h2>
+    <button class="btn-secondary" onclick="openBulkBotMenu(event)" title="Disparar um bot para todos os leads com tarefa em aberto">📢 Disparar bot</button>
     <label style="font-size:13px;color:#667781;display:flex;align-items:center;gap:6px;cursor:pointer">
       <input type="checkbox" id="tasks-show-done" onchange="renderTasksPage()" /> Mostrar concluídas
     </label>
@@ -4653,6 +4654,39 @@ async function openTasksPage(){
   }catch(e){ area.innerHTML='<div style="color:#ef4444;padding:20px">Erro ao carregar tarefas</div>'; }
 }
 function closeTasksPage(){ document.getElementById('tasks-page').style.display='none'; }
+
+// ── Disparo em massa de bot para leads com tarefa em aberto ──
+function closeBulkBotMenu(){ document.getElementById('bulk-bot-menu')?.remove(); }
+async function openBulkBotMenu(ev){
+  ev.stopPropagation();
+  closeBulkBotMenu();
+  const btn=ev.currentTarget; const r=btn.getBoundingClientRect(); // captura antes do await
+  // leads DISTINTOS com tarefa em aberto
+  const phones=new Set((_allTasksCache||[]).filter(t=>!t.done && t.phone).map(t=>t.phone));
+  if(phones.size===0){ alert('Nenhum lead com tarefa em aberto.'); return; }
+  let bots=[];
+  try{ bots=((await (await fetch(SERVER_URL+'/bots')).json())||[]).filter(b=>b.active); }catch(_){}
+  if(!bots.length){ alert('Nenhum bot ativo. Ative um bot antes de disparar.'); return; }
+  const menu=document.createElement('div');
+  menu.id='bulk-bot-menu';
+  menu.style.cssText='position:fixed;z-index:2000;background:#ffffff;border:1px solid #e9edef;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.25);padding:6px;min-width:250px;max-height:60vh;overflow:auto';
+  menu.innerHTML='<div style="font-size:11px;color:#667781;padding:6px 8px;text-transform:uppercase;letter-spacing:.5px">Disparar para '+phones.size+' lead(s) com tarefa em aberto</div>'+
+    bots.map(b=>`<div style="padding:8px 10px;border-radius:6px;cursor:pointer;font-size:13px;color:#131c20" onmouseover="this.style.background='#e9edef'" onmouseout="this.style.background='transparent'" onclick="confirmBulkDispatch('${b.id}','${escHtml(b.name).replace(/'/g,"\\'")}',${phones.size})">🤖 ${escHtml(b.name)}</div>`).join('');
+  document.body.appendChild(menu);
+  menu.style.left=Math.min(r.left, window.innerWidth-270)+'px';
+  menu.style.top=(r.bottom+6)+'px';
+  setTimeout(()=>document.addEventListener('click', closeBulkBotMenu, {once:true}),0);
+}
+async function confirmBulkDispatch(botId, botName, count){
+  closeBulkBotMenu();
+  if(!confirm(`Disparar o bot "${botName}" para ${count} lead(s) com tarefa em aberto?\n\nQuem já estiver com esse bot rodando será ignorado.`)) return;
+  try{
+    const r=await fetch(SERVER_URL+'/bots/'+botId+'/start-open-tasks',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})});
+    const d=await r.json();
+    if(d.success) alert(`✅ Disparo iniciado para ${d.total} lead(s). O envio acontece em segundo plano (aprox. 5 por segundo).`);
+    else alert('Erro: '+(d.error||'tente novamente'));
+  }catch(e){ alert('Erro ao disparar o bot em massa.'); }
+}
 function renderTasksPage(){
   const area=document.getElementById('tasks-list-area');
   if(!area) return;
