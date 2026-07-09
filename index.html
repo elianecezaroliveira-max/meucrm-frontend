@@ -141,6 +141,8 @@
   .lp-mini { background: #e7f7ef; border: none; color: #00a884; border-radius: 6px; padding: 3px 8px; font-size: 11px; cursor: pointer; font-weight: 600; }
   .lp-mini:hover { background: #d7f0e3; }
   @media (max-width: 768px) { #lead-panel { display: none !important; } #btn-lead-panel { display: none !important; } }
+  /* Computador: o menu ℹ️ é redundante (o painel de detalhes do lead já tem tudo) — só aparece no celular */
+  @media (min-width: 769px) { #btn-info { display: none !important; } }
   #messages-area { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 4px; transition: background 0.2s; background-color: #efeae2; background-image: radial-gradient(rgba(0,0,0,0.028) 1px, transparent 1px); background-size: 22px 22px; }
   #messages-area.drag-over { background: rgba(0,168,132,0.08); outline: 2px dashed #00a884; outline-offset: -6px; }
   .msg { max-width: 65%; padding: 8px 12px; border-radius: 8px; font-size: 14px; line-height: 1.4; position: relative; word-wrap: break-word; color: #131c20; }
@@ -725,6 +727,10 @@
   /* Rolagem vertical fica com o navegador; arrasto HORIZONTAL chega ao código
      (sem isso o iOS "engole" o gesto de voltar arrastando para a direita) */
   #messages-area { touch-action: pan-y; }
+
+  /* Barra "Enviar de:" compacta no celular (o seletor não pode estourar a tela) */
+  #chat-account-bar { padding: 5px 12px; gap: 8px; }
+  #chat-account-bar select { font-size: 13px; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   /* Emoji picker menor no mobile */
   emoji-picker { width: 300px !important; height: 340px !important; }
@@ -2520,11 +2526,15 @@ async function selectContact(phone, name, accountId) {
   applyFilters(); // preserva a busca/filtros ativos ao abrir a conversa
   const chatArea = document.getElementById('chat-area');
 
-  // Monta opções de contas para o seletor
+  // Monta opções de contas para o seletor "Enviar de:" — só o NOME da conta
+  // (sem o número, que deixava o seletor desproporcional/cortado no celular)
   const accountSel = document.getElementById('account-select');
   let accountOptions = '<option value="">Selecione uma conta...</option>';
   Array.from(accountSel.options).forEach(opt => {
-    if (opt.value) accountOptions += `<option value="${opt.value}" ${opt.value === currentAccountId ? 'selected' : ''}>${opt.text}</option>`;
+    if (!opt.value) return;
+    const acc = (window._accountsById || {})[opt.value];
+    const label = acc ? acc.name : opt.text.replace(/\s*\(.*\)\s*$/, '');
+    accountOptions += `<option value="${opt.value}" ${opt.value === currentAccountId ? 'selected' : ''}>${escHtml(label)}</option>`;
   });
 
   // Mobile: mostra chat e esconde sidebar
@@ -2668,6 +2678,7 @@ async function renderLeadPanel(phone){
         <div class="lp-name" title="${escHtml(c.name||phone)}">${escHtml(c.name||phone)}</div>
         <div class="lp-sub">+${escHtml(phone)}</div>
       </div>
+      <button class="lp-x" onclick="editLeadName()" title="Editar nome do lead" style="font-size:13px">✏️</button>
       <button class="lp-x" onclick="toggleLeadPanel(false)" title="Ocultar painel">✕</button>
     </div>
     <div class="lp-section">
@@ -3766,6 +3777,9 @@ async function editLeadName() {
     const c = allContacts.find(x => x.phone === currentPhone); if (c) c.name = name;
     if (searchResults) { const sc = searchResults.find(x => x.phone === currentPhone); if (sc) sc.name = name; }
     const pc = (typeof pipelineContacts !== 'undefined') ? pipelineContacts.find(x => x.phone === currentPhone) : null; if (pc) pc.name = name;
+    // Atualiza o painel de detalhes do lead (nome, título e letra do avatar)
+    const lpn = document.querySelector('#lead-panel .lp-name'); if (lpn) { lpn.textContent = name; lpn.title = name; }
+    const lpa = document.querySelector('#lead-panel .lp-avatar'); if (lpa) lpa.textContent = name.charAt(0).toUpperCase();
     applyFilters();
   } catch(e) { alert('Erro ao salvar o nome.'); }
 }
