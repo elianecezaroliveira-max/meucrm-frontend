@@ -715,8 +715,10 @@
   /* Botão voltar aparece no mobile */
   #btn-back-mobile { display: flex !important; }
 
-  /* Mensagens mais largas no mobile */
-  .msg { max-width: 88%; }
+  /* Mensagens mais largas no mobile + letra maior (tamanho do WhatsApp) */
+  .msg { max-width: 88%; font-size: 16px; line-height: 1.35; }
+  .media-caption { font-size: 15px; }
+  .quoted-bubble { font-size: 13px; }
 
   /* Rolagem vertical fica com o navegador; arrasto HORIZONTAL chega ao código
      (sem isso o iOS "engole" o gesto de voltar arrastando para a direita) */
@@ -1272,8 +1274,9 @@ window.addEventListener('load', initAuth);
   <div class="cm-item" onclick="closeInfoMenu();openTasks()">✅ Tarefas</div>
 </div>
 
-<!-- Menu de opções da mensagem (reagir / responder / apagar) -->
+<!-- Menu de opções da mensagem (copiar / reagir / responder / apagar) -->
 <div id="msg-menu" style="display:none;position:fixed;z-index:700;background:#ffffff;border:1px solid #e9edef;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.25);min-width:170px;padding:4px">
+  <div class="cm-item" onclick="msgMenuCopy()">📋 Copiar</div>
   <div class="cm-item" onclick="msgMenuReact()">😊 Reagir</div>
   <div class="cm-item" onclick="msgMenuReply()">↩ Responder</div>
   <div class="cm-item" onclick="msgMenuDelete()" style="color:#ef4444">🗑 Apagar</div>
@@ -2326,11 +2329,53 @@ function openMsgMenu(ev, id) {
   const r = ev.currentTarget.getBoundingClientRect();
   menu.style.display = 'block';
   menu.style.left = Math.max(8, Math.min(r.left - 80, window.innerWidth - 185)) + 'px';
-  menu.style.top  = Math.min(r.bottom + 4, window.innerHeight - 150) + 'px';
+  menu.style.top  = Math.min(r.bottom + 4, window.innerHeight - 190) + 'px';
 }
 function closeMsgMenu() {
   const m = document.getElementById('msg-menu');
   if (m) m.style.display = 'none';
+}
+function msgMenuCopy()   { const id = _msgMenuId; closeMsgMenu(); if (id) copyMsgText(id); }
+// Copia o texto da mensagem (estilo WhatsApp) — funciona no celular e no computador
+function copyMsgText(id) {
+  let txt = (_msgData[id] && _msgData[id].content) || '';
+  if (!txt) {
+    const el = document.querySelector(`#messages-area .msg[data-msg-id="${(window.CSS && CSS.escape) ? CSS.escape(String(id)) : String(id)}"]`);
+    txt = el ? (el.dataset.msgContent || '') : '';
+  }
+  if (!txt) { showCopyToast('Nada para copiar nesta mensagem'); return; }
+  const done = () => showCopyToast('✅ Mensagem copiada');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(txt).then(done).catch(() => _copyFallback(txt, done));
+  } else {
+    _copyFallback(txt, done);
+  }
+}
+function _copyFallback(txt, done) {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = txt;
+    ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0';
+    document.body.appendChild(ta);
+    ta.focus(); ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    if (ok) done(); else prompt('Copie a mensagem:', txt);
+  } catch (_) { prompt('Copie a mensagem:', txt); }
+}
+let _copyToastTimer = null;
+function showCopyToast(texto) {
+  let t = document.getElementById('copy-toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'copy-toast';
+    t.style.cssText = 'display:none;position:fixed;left:50%;transform:translateX(-50%);bottom:calc(96px + env(safe-area-inset-bottom));background:#1d2b36;color:#fff;padding:9px 18px;border-radius:22px;font-size:13px;font-weight:600;z-index:900;box-shadow:0 3px 10px rgba(0,0,0,.35);pointer-events:none';
+    document.body.appendChild(t);
+  }
+  t.textContent = texto;
+  t.style.display = 'block';
+  clearTimeout(_copyToastTimer);
+  _copyToastTimer = setTimeout(() => { t.style.display = 'none'; }, 1600);
 }
 function msgMenuReact()  { const a = _msgMenuAnchor, id = _msgMenuId; closeMsgMenu(); if (id) openReactPicker(id, a || document.body); }
 function msgMenuReply()  { const id = _msgMenuId; closeMsgMenu(); if (id) startReply(id); }
@@ -2348,7 +2393,7 @@ function openMsgMenuAt(id, x, y, anchorEl) {
   if (!menu) return;
   menu.style.display = 'block';
   menu.style.left = Math.max(8, Math.min(x - 60, window.innerWidth - 185)) + 'px';
-  menu.style.top  = Math.min(y + 10, window.innerHeight - 170) + 'px';
+  menu.style.top  = Math.min(y + 10, window.innerHeight - 210) + 'px';
 }
 (function initMsgLongPress() {
   let timer = null, sx = 0, sy = 0;
