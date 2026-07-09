@@ -231,6 +231,8 @@
   .account-row .acc-id { font-size: 11px; color: #667781; margin-top: 2px; }
   .btn-delete { background: none; border: none; color: #ef4444; cursor: pointer; font-size: 16px; padding: 2px 6px; border-radius: 4px; }
   .btn-delete:hover { background: #3b2020; }
+  .btn-rename { background: none; border: none; color: #667781; cursor: pointer; font-size: 15px; padding: 2px 6px; border-radius: 4px; }
+  .btn-rename:hover { background: #e9edef; color: #131c20; }
   /* EMBEDDED SIGNUP SECTION */
   #embedded-signup-section { border-top: 1px solid #d1d7db; padding-top: 20px; margin-top: 4px; }
   #embedded-signup-section h3 { font-size: 14px; color: #131c20; font-weight: 600; margin-bottom: 6px; }
@@ -1811,6 +1813,9 @@ async function loadAccounts() {
 
 function renderAccountsModal(accounts) {
   const el = document.getElementById('accounts-list-modal');
+  // Guarda as contas para o renomear saber o nome atual
+  window._accountsById = {};
+  accounts.forEach(a => { window._accountsById[a.id] = a; });
   if (!accounts.length) {
     el.innerHTML = '<p style="color:#667781;font-size:13px;margin-bottom:12px">Nenhuma conta conectada ainda.</p>';
     return;
@@ -1829,9 +1834,30 @@ function renderAccountsModal(accounts) {
         <div class="acc-name">${escHtml(acc.name)}${badge}</div>
         <div class="acc-id">${escHtml(sub)}</div>
       </div>
+      <button class="btn-rename" onclick="renameAccount('${acc.id}')" title="Renomear conta">✏️</button>
       <button class="btn-delete" onclick="deleteAccount('${acc.id}')" title="Remover conta">🗑️</button>
     </div>`;
   }).join('');
+}
+
+// Renomeia a conta (API oficial ou QR Code) — atualiza lista, seletor "Enviar de" e filtros
+async function renameAccount(id) {
+  const acc = (window._accountsById || {})[id];
+  const novo = prompt('Novo nome da conta:', acc ? acc.name : '');
+  if (novo === null) return; // cancelou
+  const name = novo.trim();
+  if (!name) return alert('O nome não pode ficar vazio.');
+  if (name.length > 40) return alert('Nome muito longo (máximo 40 caracteres).');
+  try {
+    const res = await fetch(SERVER_URL + '/accounts/' + id, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name })
+    });
+    const d = await res.json();
+    if (d.error) return alert('Erro: ' + d.error);
+    await loadAccounts();
+  } catch(e) { alert('Erro ao conectar ao servidor.'); }
 }
 
 async function addAccount() {
