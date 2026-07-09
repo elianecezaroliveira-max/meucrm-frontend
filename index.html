@@ -5088,7 +5088,13 @@ async function faqAiTest(){
     const r = await fetch(SERVER_URL + '/faqs/ai-test', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text }) });
     const d = await r.json();
     if(!d.ok){ out.style.color = '#c0392b'; out.textContent = '⚠ ' + (d.error || 'Falha no teste.'); return; }
-    if(!d.match){ out.style.color = '#667781'; out.textContent = 'A IA entendeu, mas nenhuma pergunta cadastrada se aplica a essa mensagem.'; return; }
+    if(!d.match){
+      out.style.color = '#667781';
+      out.textContent = (d.faqCount === 0)
+        ? '⚠ Nenhuma pergunta cadastrada foi encontrada. Cadastre perguntas na lista abaixo e teste de novo.'
+        : ('A IA leu suas ' + d.faqCount + ' pergunta(s), mas achou que nenhuma se aplica a essa mensagem.');
+      return;
+    }
     out.style.color = '#00a884';
     out.textContent = '✓ Encaixaria em: "' + d.question + '" → responderia: ' + d.answer;
   }catch(e){ out.style.color = '#c0392b'; out.textContent = '⚠ Erro ao testar. Verifique a conexão.'; }
