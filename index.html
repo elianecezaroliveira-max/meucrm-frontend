@@ -2030,8 +2030,8 @@ function renderContacts(contacts) {
     return;
   }
   list.innerHTML = contacts.map(c => {
-    const tags = c.tags || [];
-    const tagsHtml = tags.length ? `<div class="contact-tags">${tags.map((t,i)=>`<span class="tag-chip tc${i%6}">${t}</span>`).join('')}</div>` : '';
+    // Etiquetas não aparecem mais na lista de conversas — só nos detalhes do cliente
+    const tagsHtml = '';
     const unread = c.unread_count || 0;
     const badge = unread > 0 ? `<div class="unread-badge">${unread > 99 ? '99+' : unread}</div>` : '';
     const hasUnread = unread > 0 ? ' has-unread' : '';
