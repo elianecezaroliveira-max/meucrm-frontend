@@ -1556,30 +1556,42 @@ async function init(url) {
 }
 
 // ── POLLING ──
+async function _pollTick() {
+  // Snapshot unread counts antes de atualizar
+  const prevUnreads = {};
+  allContacts.forEach(c => { prevUnreads[c.phone] = c.unread_count || 0; });
+  const prevCount = allContacts.length;
+
+  await loadContacts(false); // atualiza allContacts sem renderizar
+
+  // Detecta se houve mudança (novo contato ou nova mensagem não lida)
+  const hasNewContact = allContacts.length !== prevCount;
+  const hasUnreadChange = allContacts.some(c => (c.unread_count || 0) !== (prevUnreads[c.phone] || 0));
+
+  if (hasNewContact || hasUnreadChange) {
+    const list = document.getElementById('contacts-list');
+    const scrollTop = list ? list.scrollTop : 0;
+    renderContactsSmartUpdate(); // re-renderiza respeitando filtros ativos
+    if (list) setTimeout(() => { list.scrollTop = scrollTop; }, 0);
+  }
+
+  if (currentPhone) await loadMessages(currentPhone, false);
+}
+
 function startPolling() {
   if (pollInterval) clearInterval(pollInterval);
-  pollInterval = setInterval(async () => {
-    // Snapshot unread counts antes de atualizar
-    const prevUnreads = {};
-    allContacts.forEach(c => { prevUnreads[c.phone] = c.unread_count || 0; });
-    const prevCount = allContacts.length;
-
-    await loadContacts(false); // atualiza allContacts sem renderizar
-
-    // Detecta se houve mudança (novo contato ou nova mensagem não lida)
-    const hasNewContact = allContacts.length !== prevCount;
-    const hasUnreadChange = allContacts.some(c => (c.unread_count || 0) !== (prevUnreads[c.phone] || 0));
-
-    if (hasNewContact || hasUnreadChange) {
-      const list = document.getElementById('contacts-list');
-      const scrollTop = list ? list.scrollTop : 0;
-      renderContactsSmartUpdate(); // re-renderiza respeitando filtros ativos
-      if (list) setTimeout(() => { list.scrollTop = scrollTop; }, 0);
-    }
-
-    if (currentPhone) await loadMessages(currentPhone, false);
+  pollInterval = setInterval(() => {
+    // Aba em segundo plano: NÃO consulta o servidor (economiza os créditos do
+    // Railway — as notificações push continuam avisando das mensagens novas)
+    if (document.hidden) return;
+    _pollTick();
   }, 3000);
 }
+
+// Ao voltar para a aba, atualiza na mesma hora (compensa a pausa acima)
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && SERVER_URL) _pollTick().catch(() => {});
+});
 
 // Re-renderiza respeitando filtros ativos (usado pelo polling)
 function renderContactsSmartUpdate() {
