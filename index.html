@@ -1286,6 +1286,7 @@ window.addEventListener('load', initAuth);
   <div class="cm-item" onclick="closeInfoMenu();toggleNotes()">📝 Anotações do lead</div>
   <div class="cm-item" onclick="closeInfoMenu();openMediaGallery()">🖼️ Fotos e arquivos</div>
   <div class="cm-item" onclick="closeInfoMenu();openTasks()">✅ Tarefas</div>
+  <div class="cm-item" onclick="closeInfoMenu();deleteConversation(currentPhone)" style="color:#ef4444">🗑 Apagar conversa</div>
 </div>
 
 <!-- Menu de opções da mensagem (copiar / reagir / responder / apagar) -->
@@ -2473,7 +2474,8 @@ function openContactMenu(ev, phone) {
   if (!menu) return;
   menu.innerHTML =
     `<div class="cm-item" onclick="markContactRead('${phone}');closeContactMenu()">✓ Marcar como lida</div>` +
-    `<div class="cm-item" onclick="toggleFavorite('${phone}');closeContactMenu()">${c && c.favorite ? '★ Remover dos favoritos' : '⭐ Favoritar conversa'}</div>`;
+    `<div class="cm-item" onclick="toggleFavorite('${phone}');closeContactMenu()">${c && c.favorite ? '★ Remover dos favoritos' : '⭐ Favoritar conversa'}</div>` +
+    `<div class="cm-item" style="color:#ef4444" onclick="closeContactMenu();deleteConversation('${phone}')">🗑 Apagar conversa</div>`;
   menu.style.display = 'block';
   menu.style.left = Math.min(ev.clientX, window.innerWidth - 210) + 'px';
   menu.style.top  = Math.min(ev.clientY, window.innerHeight - 110) + 'px';
@@ -4856,6 +4858,40 @@ async function bulkMoveStage(stageId) {
       body: JSON.stringify({ phones, stage_id: stageId })
     });
   } catch(e) { alert('Erro ao mover leads'); }
+}
+
+// Apaga UMA conversa (contato + todas as mensagens do CRM)
+async function deleteConversation(phone) {
+  if (!phone) return;
+  const c = allContacts.find(x => x.phone === phone);
+  const nome = (c && c.name) ? c.name : phone;
+  if (!confirm(`Apagar a conversa com "${nome}"?\n\nTodas as mensagens serão excluídas do CRM (não afeta o WhatsApp do cliente).\nEsta ação não pode ser desfeita.`)) return;
+  try {
+    const r = await fetch(`${SERVER_URL}/contacts/bulk-delete`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phones: [phone] })
+    });
+    const d = await r.json();
+    if (d.error) return alert('Erro: ' + d.error);
+    allContacts = allContacts.filter(x => x.phone !== phone);
+    if (typeof pipelineContacts !== 'undefined') pipelineContacts = pipelineContacts.filter(x => x.phone !== phone);
+    // Se a conversa apagada estava aberta, volta para a tela inicial
+    if (currentPhone === phone) {
+      currentPhone = null; currentName = ''; currentAccountId = null;
+      const chatArea = document.getElementById('chat-area');
+      if (chatArea) chatArea.innerHTML = `
+    <div id="no-chat">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" fill="currentColor"/></svg>
+      <p>Selecione uma conversa</p>
+      <span style="font-size:13px">Suas mensagens do WhatsApp aparecerão aqui</span>
+    </div>`;
+      document.getElementById('layout')?.classList.remove('mobile-chat-open'); // celular: volta para a lista
+      const lp = document.getElementById('lead-panel');
+      if (lp) { lp.classList.add('lp-hidden'); lp.innerHTML = ''; }
+    }
+    applyFilters();
+  } catch (e) { alert('Erro ao apagar a conversa.'); }
 }
 
 async function bulkDeleteLeads() {
