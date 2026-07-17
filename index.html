@@ -2665,6 +2665,16 @@ async function selectContact(phone, name, accountId) {
   renderLeadPanel(phone);
 
   await loadMessages(phone);
+  // "Enviar de:" automático — se o contato não tem conta definida, usa a conta
+  // da ÚLTIMA mensagem da conversa (o número pelo qual o lead falou com você)
+  if (!currentAccountId && Array.isArray(currentMessages) && currentMessages.length) {
+    const withAcct = [...currentMessages].reverse().find(m => m.account_id);
+    if (withAcct) {
+      currentAccountId = withAcct.account_id;
+      const sel = document.getElementById('chat-account-select');
+      if (sel) sel.value = currentAccountId;
+    }
+  }
   // Verifica bot ativo para este contato
   checkActiveBotRun(phone);
   // Mídia do lead (depois que as mensagens carregaram)
@@ -3297,6 +3307,20 @@ async function deleteMessage(id, btn) {
   }
 }
 
+// Mostra a mensagem NA HORA na conversa (com 🕐), antes da resposta do servidor
+function appendPendingBubble(text) {
+  const area = document.getElementById('messages-area');
+  if (!area) return null;
+  const el = document.createElement('div');
+  el.className = 'msg outbound';
+  el.style.position = 'relative';
+  el.dataset.key = 'temp-' + Date.now();
+  el.innerHTML = `${escHtml(text)}<div class="time">${_brtTime(Date.now())}<span class="msg-ticks pending" title="Enviando…">🕐</span></div>`;
+  area.appendChild(el);
+  area.scrollTop = area.scrollHeight;
+  return el;
+}
+
 async function sendMessage() {
   // Se há arquivo pendente, envia o arquivo (com ou sem legenda)
   if (selectedFile) { await sendFile(); return; }
@@ -3305,27 +3329,32 @@ async function sendMessage() {
   if (!message || !currentPhone) return;
   const savedMessage = message; // guarda antes de limpar
   input.value = '';
+  // Sem delay: a bolha aparece imediatamente; o servidor confirma em seguida
+  const reply = replyingTo; cancelReply();
+  const tempEl = appendPendingBubble(savedMessage);
   try {
     const res = await fetch(SERVER_URL + '/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         to: currentPhone, message, account_id: currentAccountId,
-        quoted_id:        replyingTo ? replyingTo.id        : null,
-        quoted_content:   replyingTo ? (replyingTo.content || '(mídia)') : null,
-        quoted_direction: replyingTo ? replyingTo.direction : null,
+        quoted_id:        reply ? reply.id        : null,
+        quoted_content:   reply ? (reply.content || '(mídia)') : null,
+        quoted_direction: reply ? reply.direction : null,
       })
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
+      if (tempEl) tempEl.remove();
       input.value = savedMessage;
       alert('Erro ao enviar: ' + (data.error || 'Tente novamente'));
       return;
     }
-    cancelReply();
     markAsRead(currentPhone);
-    await loadMessages(currentPhone);
+    await loadMessages(currentPhone); // substitui a bolha temporária pela definitiva
+    if (tempEl && tempEl.parentElement) tempEl.remove();
   } catch(e) {
+    if (tempEl) tempEl.remove();
     input.value = savedMessage; // restaura mensagem se erro de rede
     alert('Erro ao enviar mensagem.');
   }
@@ -4868,22 +4897,18 @@ async function bulkMoveStage(stageId) {
   } catch(e) { alert('Erro ao mover leads'); }
 }
 
-// Apaga UMA conversa (contato + todas as mensagens do CRM)
+// Apaga UMA conversa (somente as MENSAGENS — o lead continua no Pipeline,
+// com etapa, etiquetas, anotações e tarefas preservadas)
 async function deleteConversation(phone) {
   if (!phone) return;
   const c = allContacts.find(x => x.phone === phone);
   const nome = (c && c.name) ? c.name : phone;
-  if (!confirm(`Apagar a conversa com "${nome}"?\n\nTodas as mensagens serão excluídas do CRM (não afeta o WhatsApp do cliente).\nEsta ação não pode ser desfeita.`)) return;
+  if (!confirm(`Apagar a conversa com "${nome}"?\n\nAs mensagens serão excluídas do CRM (não afeta o WhatsApp do cliente).\nO lead CONTINUA no Pipeline, com etiquetas e anotações.\nEsta ação não pode ser desfeita.`)) return;
   try {
-    const r = await fetch(`${SERVER_URL}/contacts/bulk-delete`, {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phones: [phone] })
-    });
+    const r = await fetch(`${SERVER_URL}/contacts/${encodeURIComponent(phone)}/messages`, { method: 'DELETE' });
     const d = await r.json();
     if (d.error) return alert('Erro: ' + d.error);
-    allContacts = allContacts.filter(x => x.phone !== phone);
-    if (typeof pipelineContacts !== 'undefined') pipelineContacts = pipelineContacts.filter(x => x.phone !== phone);
+    if (c) { c.last_message_preview = null; c.unread_count = 0; }
     // Se a conversa apagada estava aberta, volta para a tela inicial
     if (currentPhone === phone) {
       currentPhone = null; currentName = ''; currentAccountId = null;
