@@ -3274,6 +3274,8 @@ async function reactMessage(msgId, emoji){
   if(!el) return;
   const wamid=el.dataset.msgWamid;
   if(!wamid){ alert('Esta mensagem não tem ID do WhatsApp, então não dá para reagir a ela.'); return; }
+  // Reagiu = leu: marca a conversa como lida (some o contador de não lidas)
+  try { markAsRead(currentPhone); } catch (_) {}
   // INSTANTÂNEO: a reação aparece na hora; o servidor confirma em seguida
   const prev = el.querySelector('.msg-reaction');
   const prevHtml = prev ? prev.outerHTML : null;
