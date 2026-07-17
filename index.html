@@ -461,6 +461,11 @@
   @media (hover: none) {
     .msg-actions { display: none; }
     .msg { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+    /* Menus também sem seleção: o toque longo continuava no menu que abre sob o
+       dedo e o iOS selecionava o texto dele (balão "Copiar|Pesquisar|Traduzir") */
+    #msg-menu, #contact-menu, #info-menu, #react-picker, .cm-item {
+      -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;
+    }
   }
   .msg-menu-btn { background:rgba(255,255,255,.9); border:none; cursor:pointer; color:#667781; font-size:13px; padding:1px 8px; border-radius:10px; line-height:1.5; box-shadow:0 1px 3px rgba(0,0,0,.18); }
   .msg-menu-btn:hover { background:#e9edef; color:#131c20; }
@@ -2509,6 +2514,8 @@ function openMsgMenuAt(id, x, y, anchorEl) {
   window._msgMenuTs = Date.now();
   const menu = document.getElementById('msg-menu');
   if (!menu) return;
+  // Limpa qualquer seleção de texto que o iOS tenha iniciado no toque longo
+  try { window.getSelection()?.removeAllRanges(); } catch (_) {}
   _updateMsgMenuItems(id);
   menu.style.display = 'block';
   menu.style.left = Math.max(8, Math.min(x - 60, window.innerWidth - 185)) + 'px';
