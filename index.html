@@ -2248,6 +2248,23 @@ function _recUI(on) {
   if (!on) updateSendMicButtons(); // fora da gravação, quem decide é o conteúdo do campo
 }
 
+// ── "digitando…"/"gravando áudio…" para o cliente (QR Code e API oficial) ──
+let _typingLastSent = 0, _typingStopTimer = null;
+function notifyTyping(state) {
+  if (!currentPhone || !SERVER_URL) return;
+  fetch(SERVER_URL + '/typing', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ to: currentPhone, account_id: currentAccountId || null, state })
+  }).catch(() => {});
+}
+// Ao digitar: avisa no máximo a cada 7s (economia); parou de digitar por 6s → cancela
+function notifyTypingThrottled() {
+  const now = Date.now();
+  if (now - _typingLastSent > 7000) { _typingLastSent = now; notifyTyping('composing'); }
+  clearTimeout(_typingStopTimer);
+  _typingStopTimer = setTimeout(() => { _typingLastSent = 0; notifyTyping('paused'); }, 6000);
+}
+
 // Estilo WhatsApp: 🎤 quando o campo está vazio, ➤ quando há texto ou arquivo
 function updateSendMicButtons() {
   const inp  = document.getElementById('msg-input');
@@ -2315,8 +2332,11 @@ async function startVoiceRec() {
     _recSrc.connect(_recProc); _recProc.connect(_recGain); _recGain.connect(_recCtx.destination);
     const timeEl = document.getElementById('rec-time'); if (timeEl) timeEl.textContent = '0:00';
     _recUI(true);
+    // Cliente vê "gravando áudio…" (renovado a cada 8s enquanto grava)
+    notifyTyping('recording');
     _recTimer = setInterval(() => {
       _recSecs++;
+      if (_recSecs % 8 === 0) notifyTyping('recording');
       const el = document.getElementById('rec-time');
       if (el) el.textContent = Math.floor(_recSecs / 60) + ':' + String(_recSecs % 60).padStart(2, '0');
       if (_recSecs >= REC_MAX_SECS) stopVoiceRec(false); // envia ao atingir o limite
@@ -2344,6 +2364,7 @@ function stopVoiceRec(cancel) {
   _recBufs = [];
   _recTeardown();
   _recUI(false);
+  notifyTyping('paused'); // some o "gravando áudio…" no cliente
   if (cancel) return;
   const total = bufs.reduce((s, c) => s + c.length, 0);
   if (total < rate * 0.4) return; // menos de meio segundo: descarta
@@ -2640,7 +2661,7 @@ async function selectContact(phone, name, accountId) {
           </div>
           <button id="file-chip-remove" onclick="removeFile()" title="Remover">✕</button>
         </div>
-        <textarea id="msg-input" placeholder="Mensagem" rows="1" onkeydown="handleKey(event)" oninput="updateSendMicButtons()"></textarea>
+        <textarea id="msg-input" placeholder="Mensagem" rows="1" onkeydown="handleKey(event)" oninput="updateSendMicButtons();notifyTypingThrottled()"></textarea>
       </div>
       <div id="rec-bar" style="display:none;flex:1;align-items:center;gap:10px;background:#e9edef;border-radius:24px;padding:8px 14px;min-width:0">
         <span style="color:#ef4444;font-size:14px">●</span>
@@ -3253,12 +3274,28 @@ async function reactMessage(msgId, emoji){
   if(!el) return;
   const wamid=el.dataset.msgWamid;
   if(!wamid){ alert('Esta mensagem não tem ID do WhatsApp, então não dá para reagir a ela.'); return; }
+  // INSTANTÂNEO: a reação aparece na hora; o servidor confirma em seguida
+  const prev = el.querySelector('.msg-reaction');
+  const prevHtml = prev ? prev.outerHTML : null;
+  const side = el.dataset.msgDir === 'outbound' ? 'left:8px' : 'right:8px';
+  if (prev) prev.remove();
+  if (emoji) {
+    el.style.marginBottom = '14px';
+    el.insertAdjacentHTML('beforeend', `<span class="msg-reaction" style="position:absolute;bottom:-11px;${side};background:#e9edef;border:1px solid #ffffff;border-radius:11px;padding:0 5px;font-size:13px;line-height:20px;box-shadow:0 1px 3px rgba(0,0,0,.5);z-index:2">${emoji}</span>`);
+  } else {
+    el.style.marginBottom = '';
+  }
+  const revert = () => { // falhou: desfaz e volta como estava
+    const cur = el.querySelector('.msg-reaction'); if (cur) cur.remove();
+    if (prevHtml) { el.insertAdjacentHTML('beforeend', prevHtml); el.style.marginBottom = '14px'; }
+    else el.style.marginBottom = '';
+  };
   try{
     const res=await fetch(SERVER_URL+'/react',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({to:currentPhone, wamid, emoji, account_id:currentAccountId})});
-    if(!res.ok){ const d=await res.json().catch(()=>({})); alert('Erro ao reagir: '+(d.error||'Tente novamente')); return; }
-    await loadMessages(currentPhone, false);
-  }catch(e){ alert('Erro de rede ao reagir'); }
+    if(!res.ok){ revert(); const d=await res.json().catch(()=>({})); alert('Erro ao reagir: '+(d.error||'Tente novamente')); return; }
+    await loadMessages(currentPhone, false); // confirma/normaliza com o banco
+  }catch(e){ revert(); alert('Erro de rede ao reagir'); }
 }
 
 // ── Reply (responder mensagem específica) ──
@@ -3332,6 +3369,8 @@ async function sendMessage() {
   // Sem delay: a bolha aparece imediatamente; o servidor confirma em seguida
   const reply = replyingTo; cancelReply();
   const tempEl = appendPendingBubble(savedMessage);
+  // Enviou → o "digitando…" do cliente some na hora (não fica os 6s restantes)
+  clearTimeout(_typingStopTimer); _typingLastSent = 0; notifyTyping('paused');
   try {
     const res = await fetch(SERVER_URL + '/send', {
       method: 'POST',
