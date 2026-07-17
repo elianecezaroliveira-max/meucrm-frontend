@@ -3084,7 +3084,7 @@ async function loadMessages(phone, scroll = true) {
     // carregamento dos vídeos e fecha a tela cheia. Só re-renderiza se algo mudou
     // e se nenhuma mídia estiver tocando ou em tela cheia.
     const sig = phone + '::' + msgs.map(m =>
-      `${m.id}|${m.status || ''}|${m.reaction || ''}|${m.error_info ? 1 : 0}`).join(';');
+      `${m.id}|${m.status || ''}|${m.reaction || ''}|${m.error_info ? 1 : 0}|${(m.content || '').length}.${String(m.content || '').slice(0, 16)}`).join(';');
     if (!scroll) {
       if (sig === _lastMsgsSig) return; // nada mudou — não mexe no DOM
       const mediaEls = area.querySelectorAll('video, audio');
