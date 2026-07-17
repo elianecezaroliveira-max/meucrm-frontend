@@ -1850,13 +1850,21 @@ function renderAccountsModal(accounts) {
     const badge = isEvo
       ? '<span style="background:#25d366;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;margin-left:6px;">QR</span>'
       : '<span style="background:#1877f2;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;margin-left:6px;">API</span>';
+    // Indicador de conexão (vem do servidor: QR em tempo real, API com cache de 5 min)
+    const stBadge = acc.status === 'connected'
+      ? '<span style="color:#00a884;font-size:11px;font-weight:600;margin-left:8px">● Conectada</span>'
+      : acc.status === 'connecting'
+        ? '<span style="color:#f0b400;font-size:11px;font-weight:600;margin-left:8px">● Conectando…</span>'
+        : acc.status === 'disconnected'
+          ? '<span style="color:#ef4444;font-size:11px;font-weight:600;margin-left:8px">● Desconectada</span>'
+          : '';
     const sub = isEvo
       ? (acc.phone_display ? `📱 ${acc.phone_display}` : '📱 WhatsApp Pessoal')
       : (acc.phone_display || '') + (acc.phone_number_id ? ` · ID: ${acc.phone_number_id}` : '');
     return `
     <div class="account-row">
       <div class="acc-info">
-        <div class="acc-name">${escHtml(acc.name)}${badge}</div>
+        <div class="acc-name">${escHtml(acc.name)}${badge}${stBadge}</div>
         <div class="acc-id">${escHtml(sub)}</div>
       </div>
       <button class="btn-rename" onclick="renameAccount('${acc.id}')" title="Renomear conta">✏️</button>
