@@ -1292,6 +1292,7 @@ window.addEventListener('load', initAuth);
 <!-- Menu de opções da mensagem (copiar / reagir / responder / apagar) -->
 <div id="msg-menu" style="display:none;position:fixed;z-index:700;background:#ffffff;border:1px solid #e9edef;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.25);min-width:170px;padding:4px">
   <div class="cm-item" onclick="msgMenuCopy()">📋 Copiar</div>
+  <div class="cm-item" id="msg-menu-edit" style="display:none" onclick="msgMenuEdit()">✏️ Editar</div>
   <div class="cm-item" onclick="msgMenuReact()">😊 Reagir</div>
   <div class="cm-item" onclick="msgMenuReply()">↩ Responder</div>
   <div class="cm-item" onclick="msgMenuDelete()" style="color:#ef4444">🗑 Apagar</div>
@@ -2406,6 +2407,7 @@ function openMsgMenu(ev, id) {
   _msgMenuId = id; _msgMenuAnchor = ev.currentTarget;
   const menu = document.getElementById('msg-menu');
   if (!menu) return;
+  _updateMsgMenuItems(id);
   const r = ev.currentTarget.getBoundingClientRect();
   menu.style.display = 'block';
   menu.style.left = Math.max(8, Math.min(r.left - 80, window.innerWidth - 185)) + 'px';
@@ -2414,6 +2416,42 @@ function openMsgMenu(ev, id) {
 function closeMsgMenu() {
   const m = document.getElementById('msg-menu');
   if (m) m.style.display = 'none';
+}
+// Mostra "✏️ Editar" só quando dá: mensagem SUA, de texto, em conversa QR Code,
+// com menos de 15 minutos (janela de edição do WhatsApp)
+function _updateMsgMenuItems(id) {
+  const item = document.getElementById('msg-menu-edit');
+  if (!item) return;
+  let show = false;
+  try {
+    const el = document.querySelector(`#messages-area .msg[data-msg-id="${(window.CSS && CSS.escape) ? CSS.escape(String(id)) : String(id)}"]`);
+    if (el && el.dataset.msgDir === 'outbound' && el.dataset.msgWamid && (el.dataset.msgType || 'text') === 'text') {
+      const acc = (window._accountsById || {})[currentAccountId];
+      const isQr = !!(acc && (acc.type === 'evolution' || acc.evolution_instance));
+      const ts = el.dataset.msgTs ? parseUTC(el.dataset.msgTs) : 0;
+      show = isQr && ts > 0 && (Date.now() - ts) < 15 * 60000;
+    }
+  } catch (_) {}
+  item.style.display = show ? '' : 'none';
+}
+function msgMenuEdit() {
+  const id = _msgMenuId; closeMsgMenu(); if (!id) return;
+  const el = document.querySelector(`#messages-area .msg[data-msg-id="${(window.CSS && CSS.escape) ? CSS.escape(String(id)) : String(id)}"]`);
+  if (!el) return;
+  const wamid = el.dataset.msgWamid;
+  if (!wamid) return alert('Esta mensagem não tem ID do WhatsApp.');
+  const atual = (_msgData[id] && _msgData[id].content) || el.dataset.msgContent || '';
+  const novo = prompt('Editar mensagem:', atual);
+  if (novo === null) return;
+  const text = novo.trim();
+  if (!text || text === atual) return;
+  fetch(SERVER_URL + '/edit-message', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ to: currentPhone, wamid, text, account_id: currentAccountId || null })
+  }).then(r => r.json()).then(d => {
+    if (d.error) return alert('Erro: ' + d.error);
+    loadMessages(currentPhone, false); // atualiza a bolha com o texto novo
+  }).catch(() => alert('Erro ao editar mensagem.'));
 }
 function msgMenuCopy()   { const id = _msgMenuId; closeMsgMenu(); if (id) copyMsgText(id); }
 // Copia o texto da mensagem (estilo WhatsApp) — funciona no celular e no computador
@@ -2471,6 +2509,7 @@ function openMsgMenuAt(id, x, y, anchorEl) {
   window._msgMenuTs = Date.now();
   const menu = document.getElementById('msg-menu');
   if (!menu) return;
+  _updateMsgMenuItems(id);
   menu.style.display = 'block';
   menu.style.left = Math.max(8, Math.min(x - 60, window.innerWidth - 185)) + 'px';
   menu.style.top  = Math.min(y + 10, window.innerHeight - 210) + 'px';
@@ -3095,7 +3134,7 @@ async function loadMessages(phone, scroll = true) {
           : '';
 
         parts.push({ key: 'm-' + safeId, html: `<div class="msg ${safeDir}" style="position:relative${m.reaction?';margin-bottom:14px':''}"
-          data-key="m-${safeId}" data-msg-id="${safeId}" data-msg-content="${dataCont}" data-msg-dir="${safeDir}" data-msg-wamid="${safeWamid}">
+          data-key="m-${safeId}" data-msg-id="${safeId}" data-msg-content="${dataCont}" data-msg-dir="${safeDir}" data-msg-wamid="${safeWamid}" data-msg-ts="${escHtml(String(m.timestamp || ''))}" data-msg-type="${escHtml(String(m.type || 'text'))}">
           <div class="msg-actions">
             <button class="msg-menu-btn" title="Opções da mensagem" onclick="openMsgMenu(event,'${safeId}')">⌄</button>
           </div>
