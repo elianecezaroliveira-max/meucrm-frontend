@@ -3391,6 +3391,8 @@ function toggleEmojiPicker(e) {
       ta.value = ta.value.substring(0, s) + emoji + ta.value.substring(en);
       ta.selectionStart = ta.selectionEnd = s + emoji.length;
       ta.focus();
+      // Emoji entra por código (sem evento de digitação) — reavalia o botão ➤/🎤
+      try { updateSendMicButtons(); } catch (_) {}
       // Não fecha o picker automaticamente — usuário pode escolher mais
     });
     wrap.appendChild(emojiPickerInstance);
