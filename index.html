@@ -2790,7 +2790,7 @@ async function renderLeadPanel(phone){
       <div class="lp-label">Telefone</div>
       <div style="display:flex;gap:6px;align-items:center;justify-content:space-between">
         <span style="font-size:13px;color:#131c20">${escHtml(telShow)}</span>
-        <button class="lp-mini" onclick="lpCopy('${escHtml(telShow)}')">Copiar</button>
+        <button class="lp-mini" onclick="lpCopy('${escHtml(telShow)}', this)">Copiar</button>
       </div>
     </div>
     <div class="lp-section">
@@ -2842,7 +2842,25 @@ async function renderLeadPanel(phone){
   lpLoadTasks(phone);
   lpLoadMedia(phone);
 }
-function lpCopy(txt){ navigator.clipboard?.writeText(txt).then(()=>{},()=>{}); }
+// Copia com confirmação discreta: o botão vira "✅ Copiado" (verde) por 1,5s
+function lpCopy(txt, btn){
+  const ok = () => {
+    if (btn) {
+      const orig = btn.textContent;
+      btn.textContent = '✅ Copiado';
+      btn.style.color = '#00a884';
+      btn.style.borderColor = '#00a884';
+      setTimeout(() => { btn.textContent = orig; btn.style.color = ''; btn.style.borderColor = ''; }, 1500);
+    } else {
+      try { showCopyToast('✅ Número copiado'); } catch (_) {}
+    }
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(txt).then(ok).catch(() => prompt('Copie o número:', txt));
+  } else {
+    prompt('Copie o número:', txt);
+  }
+}
 function lpRenderTags(phone){
   const el = document.getElementById('lp-tags');
   const c = allContacts.find(x => x.phone === phone);
