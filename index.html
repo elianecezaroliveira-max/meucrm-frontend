@@ -154,7 +154,7 @@
   .msg-text, .media-caption { white-space: pre-wrap; }
   #input-area { background: #f0f2f5; padding: 10px 16px; display: flex; align-items: center; gap: 10px; border-top: 1px solid #e9edef; position: relative; }
   #input-wrap { flex: 1; display: flex; align-items: center; background: #e9edef; border-radius: 24px; overflow: hidden; min-width: 0; }
-  #msg-input { flex: 1; background: transparent; border: none; color: #131c20; padding: 10px 16px; font-size: 15px; line-height: 20px; height: 40px; overflow-y: auto; resize: none; outline: none; min-width: 0; }
+  #msg-input { flex: 1; background: transparent; border: none; color: #131c20; padding: 10px 16px; font-size: 15px; line-height: 20px; height: 40px; max-height: 132px; overflow-y: auto; resize: none; outline: none; min-width: 0; }
   #msg-input::placeholder { color: #667781; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   /* chip de arquivo dentro do input */
   #file-chip { display: none; align-items: center; gap: 8px; padding: 8px 14px; min-width: 0; flex: 1; }
@@ -2256,6 +2256,14 @@ function _recUI(on) {
   if (!on) updateSendMicButtons(); // fora da gravação, quem decide é o conteúdo do campo
 }
 
+// Campo de mensagem cresce com o texto (até ~6 linhas; depois rola) — sem cortar
+function autoGrowMsgInput(ta) {
+  ta = ta || document.getElementById('msg-input');
+  if (!ta) return;
+  ta.style.height = '40px';
+  ta.style.height = Math.min(ta.scrollHeight, 132) + 'px';
+}
+
 // ── "digitando…"/"gravando áudio…" para o cliente (QR Code e API oficial) ──
 let _typingLastSent = 0, _typingStopTimer = null;
 function notifyTyping(state) {
@@ -2709,7 +2717,7 @@ async function selectContact(phone, name, accountId) {
           </div>
           <button id="file-chip-remove" onclick="removeFile()" title="Remover">✕</button>
         </div>
-        <textarea id="msg-input" placeholder="Mensagem" rows="1" onkeydown="handleKey(event)" oninput="updateSendMicButtons();notifyTypingThrottled()"></textarea>
+        <textarea id="msg-input" placeholder="Mensagem" rows="1" onkeydown="handleKey(event)" oninput="updateSendMicButtons();notifyTypingThrottled();autoGrowMsgInput(this)"></textarea>
       </div>
       <div id="rec-bar" style="display:none;flex:1;align-items:center;gap:10px;background:#e9edef;border-radius:24px;padding:8px 14px;min-width:0">
         <span style="color:#ef4444;font-size:14px">●</span>
@@ -3434,6 +3442,7 @@ async function sendMessage() {
   if (!message || !currentPhone) return;
   const savedMessage = message; // guarda antes de limpar
   input.value = '';
+  autoGrowMsgInput(input); // campo volta à altura normal
   // Sem delay: a bolha aparece imediatamente; o servidor confirma em seguida
   const reply = replyingTo; cancelReply();
   const tempEl = appendPendingBubble(savedMessage);
@@ -3454,6 +3463,7 @@ async function sendMessage() {
       const data = await res.json().catch(() => ({}));
       if (tempEl) tempEl.remove();
       input.value = savedMessage;
+      autoGrowMsgInput(input);
       alert('Erro ao enviar: ' + (data.error || 'Tente novamente'));
       return;
     }
@@ -3463,6 +3473,7 @@ async function sendMessage() {
   } catch(e) {
     if (tempEl) tempEl.remove();
     input.value = savedMessage; // restaura mensagem se erro de rede
+    autoGrowMsgInput(input);
     alert('Erro ao enviar mensagem.');
   }
 }
@@ -3499,7 +3510,7 @@ function toggleEmojiPicker(e) {
       ta.selectionStart = ta.selectionEnd = s + emoji.length;
       ta.focus();
       // Emoji entra por código (sem evento de digitação) — reavalia o botão ➤/🎤
-      try { updateSendMicButtons(); } catch (_) {}
+      try { updateSendMicButtons(); autoGrowMsgInput(ta); } catch (_) {}
       // Não fecha o picker automaticamente — usuário pode escolher mais
     });
     wrap.appendChild(emojiPickerInstance);
