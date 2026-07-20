@@ -451,6 +451,8 @@
   #pf-tags-area{display:flex;flex-wrap:wrap;gap:4px}
   #pf-clear{background:none;border:1px solid #d1d7db;color:#667781;padding:6px 10px;border-radius:6px;font-size:12px;cursor:pointer;align-self:flex-end}
   #pf-clear:hover{border-color:#ef4444;color:#ef4444}
+  /* Barra inferior do celular — não existe no computador */
+  #mobile-nav, #mobile-plus-menu { display: none; }
   /* READ RECEIPTS */
   .msg-ticks { display:inline-block; margin-left:4px; font-size:13px; vertical-align:middle; }
   .msg-ticks.sent     { color:#667781; }
@@ -787,12 +789,51 @@
   .contact-name { font-size: 17px; }
   .contact-preview-row, .contact-preview { font-size: 14px; }
   .contact-time { font-size: 12px; }
+
+  /* ── Barra inferior: "+" com as ferramentas + Adicionar contato ── */
+  #mobile-nav {
+    display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 55;
+    background: #ffffff; border-top: 1px solid #e9edef;
+    padding: 8px 16px calc(8px + env(safe-area-inset-bottom));
+    align-items: center; justify-content: center; gap: 34px;
+  }
+  #mnav-plus {
+    width: 52px; height: 52px; border-radius: 50%; border: none; cursor: pointer;
+    background: #00a884; color: #fff; font-size: 30px; line-height: 1;
+    box-shadow: 0 3px 10px rgba(0,168,132,.45); flex-shrink: 0;
+  }
+  #mnav-add-contact {
+    background: none; border: none; cursor: pointer; color: #54656f;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    font-size: 11px; font-weight: 600;
+  }
+  #mobile-plus-menu {
+    display: none; position: fixed; left: 12px; right: 12px;
+    bottom: calc(78px + env(safe-area-inset-bottom));
+    background: #ffffff; border: 1px solid #e9edef; border-radius: 14px;
+    box-shadow: 0 8px 28px rgba(0,0,0,.28); padding: 6px; z-index: 56;
+    max-height: 70vh; overflow-y: auto;
+  }
+  #mobile-plus-menu.open { display: block; }
+  .mpm-item { padding: 13px 16px; font-size: 15px; color: #131c20; border-radius: 8px; cursor: pointer; }
+  .mpm-item:active { background: #f0f2f5; }
+  /* Os botões do topo foram para o "+" — some com eles no celular */
+  #btn-pipeline, #btn-templates, #btn-quick-replies, #btn-accounts, #btn-bots,
+  #btn-faq, #btn-tags, #btn-tasks-global, #btn-logout { display: none !important; }
+  /* A lista não pode terminar escondida atrás da barra */
+  #contacts-list { padding-bottom: 84px; }
 }
 
 /* Viewport height fix para iOS Safari (teclado virtual) */
 @supports (-webkit-touch-callout: none) {
   body { height: -webkit-fill-available; }
   #layout { height: -webkit-fill-available; }
+}
+/* Altura DINÂMICA do viewport (100dvh): elimina a faixa vazia que sobrava na
+   parte de baixo do celular (o iOS calculava a tela maior/menor que o real) */
+@supports (height: 100dvh) {
+  body { height: 100dvh; }
+  #layout { height: 100dvh; }
 }
 </style>
 </head>
@@ -1188,6 +1229,26 @@ window.addEventListener('load', initAuth);
   <button id="btn-tags" onclick="openTagManager()">🏷️ Tags</button>
   <button id="btn-tasks-global" onclick="openTasksPage()">✅ Tarefas</button>
   <button id="btn-logout" onclick="logoutCRM()" title="Sair da conta">🚪 Sair</button>
+</div>
+
+<!-- BARRA INFERIOR (celular): "+" reúne as ferramentas; ao lado, Adicionar contato -->
+<div id="mobile-nav">
+  <button id="mnav-plus" onclick="toggleMobilePlus(event)" title="Ferramentas">＋</button>
+  <button id="mnav-add-contact" onclick="closeMobilePlus();openNewLead()" title="Adicionar contato">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/></svg>
+    <span>Adicionar contato</span>
+  </button>
+</div>
+<div id="mobile-plus-menu">
+  <div class="mpm-item" onclick="mnavGo(openPipeline)">📊 Pipeline</div>
+  <div class="mpm-item" onclick="mnavGo(openTemplates)">📋 Modelos</div>
+  <div class="mpm-item" onclick="mnavGo(openQRManager)">⚡ Respostas</div>
+  <div class="mpm-item" onclick="mnavGo(openModal)">📱 Contas</div>
+  <div class="mpm-item" onclick="mnavGo(openBotsList)">🤖 Bots</div>
+  <div class="mpm-item" onclick="mnavGo(openFaqPage)">🧠 IA</div>
+  <div class="mpm-item" onclick="mnavGo(openTagManager)">🏷️ Tags</div>
+  <div class="mpm-item" onclick="mnavGo(openTasksPage)">✅ Tarefas</div>
+  <div class="mpm-item" style="color:#ef4444" onclick="mnavGo(logoutCRM)">🚪 Sair</div>
 </div>
 
 <!-- MODAL RESPOSTAS RÁPIDAS -->
@@ -2648,8 +2709,9 @@ async function selectContact(phone, name, accountId) {
     accountOptions += `<option value="${opt.value}" ${opt.value === currentAccountId ? 'selected' : ''}>${escHtml(label)}</option>`;
   });
 
-  // Mobile: mostra chat e esconde sidebar
+  // Mobile: mostra chat e esconde sidebar (e a barra inferior sai de cena)
   document.getElementById('layout').classList.add('mobile-chat-open');
+  try { _mnavVisible(false); } catch (_) {}
 
   chatArea.innerHTML = `
     <div id="chat-header">
@@ -2695,7 +2757,7 @@ async function selectContact(phone, name, accountId) {
     </div>
     <div id="input-area">
       <div id="input-tools">
-      <button class="btn-template-icon" onclick="openSendTemplate()" title="Enviar modelo">
+      <button class="btn-template-icon" id="btn-composer-tool" onclick="openComposerTool()" title="Modelos / Respostas rápidas">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 8h10M7 12h6M7 16h8"/></svg>
       </button>
       <input type="file" id="file-input" style="display:none"
@@ -2965,6 +3027,7 @@ function lpLoadMedia(phone){
 // Volta para sidebar no mobile
 function goBackToSidebar() {
   document.getElementById('layout').classList.remove('mobile-chat-open');
+  try { _mnavVisible(true); } catch (_) {} // barra inferior volta com a lista
 }
 
 // ── Gesto de voltar: arrastar da borda esquerda para a direita (como no WhatsApp) ──
@@ -3874,7 +3937,19 @@ function positionQRPopup() {
   const rect = inputArea.getBoundingClientRect();
   popup.style.left   = rect.left + 'px';
   popup.style.width  = rect.width + 'px';
-  popup.style.bottom = (window.innerHeight - rect.top) + 'px';
+  // CELULAR: com o teclado aberto, o iOS desloca o viewport visual — sem esse
+  // ajuste o popup ficava escondido atrás do teclado
+  const vvTop = window.visualViewport ? window.visualViewport.offsetTop : 0;
+  popup.style.bottom = (window.innerHeight - (rect.top + vvTop)) + 'px';
+}
+// Reposiciona o popup quando o teclado do celular abre/fecha ou a tela rola
+if (window.visualViewport) {
+  const _qrReposition = () => {
+    const p = document.getElementById('qr-popup');
+    if (p && p.style.display === 'block') positionQRPopup();
+  };
+  window.visualViewport.addEventListener('resize', _qrReposition);
+  window.visualViewport.addEventListener('scroll', _qrReposition);
 }
 
 function showQRPopup(filter) {
@@ -3914,11 +3989,44 @@ function insertQRReply(index) {
   hideQRPopup();
 }
 
-// Detecta "/" no input e mostra popup
+// ── Barra inferior do celular ("+" com as ferramentas) ──
+function toggleMobilePlus(ev) {
+  if (ev) ev.stopPropagation();
+  const m = document.getElementById('mobile-plus-menu');
+  if (m) m.classList.toggle('open');
+}
+function closeMobilePlus() {
+  const m = document.getElementById('mobile-plus-menu');
+  if (m) m.classList.remove('open');
+}
+function mnavGo(fn) { closeMobilePlus(); try { fn(); } catch (_) {} }
+document.addEventListener('click', e => {
+  if (!e.target.closest('#mobile-plus-menu') && !e.target.closest('#mnav-plus')) closeMobilePlus();
+});
+// A barra some quando uma conversa está aberta (o campo de mensagem assume o rodapé)
+function _mnavVisible(show) {
+  const n = document.getElementById('mobile-nav');
+  if (n) n.style.display = show ? '' : 'none';
+  if (!show) closeMobilePlus();
+}
+
+// Computador = modelos aprovados; Celular = respostas rápidas (no lugar do ícone)
+function openComposerTool() {
+  if (window.matchMedia('(max-width: 768px)').matches) {
+    const p = document.getElementById('qr-popup');
+    if (p && p.style.display === 'block') { hideQRPopup(); return; } // 2º toque fecha
+    showQRPopup('');
+  } else {
+    openSendTemplate();
+  }
+}
+
+// Atalho "/" — SÓ no computador (no celular o popup abre pelo ícone acima do campo)
 document.addEventListener('input', function(e) {
   if (e.target.id !== 'msg-input') return;
+  const isMob = window.matchMedia('(max-width: 768px)').matches;
   const val = e.target.value;
-  if (val.startsWith('/')) {
+  if (!isMob && val.startsWith('/')) {
     showQRPopup(val.substring(1));
   } else {
     hideQRPopup();
@@ -3930,7 +4038,7 @@ document.addEventListener('keydown', function(e) {
 });
 
 document.addEventListener('click', function(e) {
-  if (!e.target.closest('#qr-popup') && e.target.id !== 'msg-input') hideQRPopup();
+  if (!e.target.closest('#qr-popup') && e.target.id !== 'msg-input' && !e.target.closest('#btn-composer-tool')) hideQRPopup();
 });
 
 // ── NÃO LIDAS ──
