@@ -1,6 +1,6 @@
 // VETRA Service Worker — PWA
-// v4: renova o cache para trocar o ícone antigo (M) pela logo do VETRA
-const CACHE_NAME = 'vetra-v4';
+// v5: renova o cache para trazer as correções de navegação/telas (força atualização)
+const CACHE_NAME = 'vetra-v5';
 
 // ── NOTIFICAÇÕES PUSH ──
 // IMPORTANTE (iOS): todo push DEVE exibir notificação visível dentro de event.waitUntil,
