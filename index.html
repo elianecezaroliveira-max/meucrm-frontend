@@ -361,7 +361,10 @@
   #chat-account-bar select { background: #e9edef; border: 1px solid #d1d7db; color: #131c20; padding: 5px 10px; border-radius: 6px; font-size: 13px; flex: 1; cursor: pointer; }
   #chat-account-bar select:focus { outline: none; border-color: #00a884; }
   /* PIPELINE KANBAN */
-  #pipeline-view { display: none; flex-direction: column; flex: 1; overflow: hidden; background: #f0f2f5; }
+  /* Pipeline em camada própria ACIMA das outras telas cheias (z-index 560 > 500),
+     assim nunca aparece "por trás" de Bots/IA/Tarefas mesmo que fiquem abertas */
+  #pipeline-view { display: none; flex-direction: column; overflow: hidden; background: #f0f2f5;
+    position: fixed; top: 0; right: 0; bottom: 0; left: 68px; z-index: 560; }
   #pipeline-view.open { display: flex; }
   #pipeline-topbar { background: #f0f2f5; padding: 10px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #e9edef; flex-shrink: 0; }
   #pipeline-topbar h2 { font-size: 16px; font-weight: 700; color: #131c20; flex: 1; }
@@ -482,8 +485,8 @@
   #side-rail { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 68px;
     position: fixed; left: 0; top: 0; bottom: 0; z-index: 700;
     background: #ffffff; border-right: 1px solid #e9edef; padding: 10px 4px; overflow-y: auto; box-sizing: border-box; }
-  /* Todo o conteúdo começa depois do trilho */
-  #topbar, #pipeline-view, #layout { margin-left: 68px; }
+  /* Todo o conteúdo começa depois do trilho (o Pipeline já usa left:68px) */
+  #topbar, #layout { margin-left: 68px; }
   .rail-btn { background: none; border: none; cursor: pointer; color: #54656f; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 10px; font-weight: 600; padding: 8px 2px; border-radius: 8px; width: 60px; }
   .rail-btn:hover { background: #f0f2f5; color: #131c20; }
   .rail-btn .ri { font-size: 19px; }
@@ -843,7 +846,8 @@
 
   /* Celular: sem trilho lateral (as ferramentas ficam no "+" da barra inferior) */
   #side-rail { display: none !important; }
-  #topbar, #pipeline-view, #layout { margin-left: 0 !important; }
+  #topbar, #layout { margin-left: 0 !important; }
+  #pipeline-view { left: 0 !important; }
   /* ── Barra inferior: "+" com as ferramentas + Adicionar contato ── */
   #mobile-nav {
     display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 55;
