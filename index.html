@@ -376,15 +376,22 @@
   .pv-btn.active { color: #1877f2; border-color: #1877f2; background: #eaf3ff; }
   /* Visão em LISTA do pipeline */
   #pipeline-list { display: none; flex: 1; overflow-y: auto; padding: 10px 16px; }
-  .plist-row { display: flex; align-items: center; gap: 12px; background: #fff; border: 1px solid #e9edef; border-radius: 8px; padding: 10px 14px; margin-bottom: 8px; cursor: pointer; }
-  .plist-row:hover { background: #f0f2f5; }
-  .plist-main { min-width: 0; flex: 1; }
-  .plist-name { font-size: 14px; font-weight: 600; color: #131c20; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .plist-phone { font-size: 12px; color: #667781; }
-  .plist-stage { font-size: 11px; font-weight: 700; color: #00a884; background: #e7f7ef; border-radius: 10px; padding: 3px 9px; white-space: nowrap; flex-shrink: 0; }
-  .plist-tags { display: flex; gap: 4px; flex-wrap: wrap; max-width: 36%; }
-  .plist-date { font-size: 11px; color: #667781; flex-shrink: 0; }
-  @media (max-width: 768px) { .plist-tags { display: none; } }
+  /* Grade: [check] Nome | Telefone | Etapa | Tags */
+  .plist-head, .plist-row { display: grid; grid-template-columns: 34px 1.4fr 1fr 130px 1.3fr; align-items: center; gap: 10px; }
+  .plist-head { padding: 8px 14px; font-size: 11px; font-weight: 700; color: #667781; text-transform: uppercase; letter-spacing: .3px; border-bottom: 2px solid #e9edef; position: sticky; top: 0; background: #f0f2f5; z-index: 1; }
+  .plist-row { background: #fff; border: 1px solid #e9edef; border-radius: 8px; padding: 10px 14px; margin-bottom: 8px; }
+  .plist-row:hover { background: #f7f9fa; }
+  .plist-row.sel { background: #eaf3ff; border-color: #1877f2; }
+  .plist-check input { width: 17px; height: 17px; cursor: pointer; }
+  .plist-c-name { font-size: 14px; font-weight: 600; color: #131c20; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+  .plist-c-name:hover { color: #00a884; }
+  .plist-c-phone { font-size: 13px; color: #54656f; }
+  .plist-stage { font-size: 11px; font-weight: 700; color: #00a884; background: #e7f7ef; border-radius: 10px; padding: 3px 9px; white-space: nowrap; }
+  .plist-c-tags { display: flex; gap: 4px; flex-wrap: wrap; min-width: 0; }
+  @media (max-width: 768px) {
+    .plist-head, .plist-row { grid-template-columns: 30px 1.3fr 100px; }
+    .plist-h-phone, .plist-c-phone, .plist-h-tags, .plist-c-tags { display: none; }
+  }
   .kanban-col { background: #f0f2f5; border-radius: 12px; width: 270px; min-width: 270px; display: flex; flex-direction: column; max-height: 100%; }
   .kanban-col-header { padding: 12px 14px 10px; display: flex; align-items: center; gap: 8px; flex-shrink: 0; border-bottom: 2px solid #e9edef; }
   .kanban-col-dot { width: 10px; height: 10px; border-radius: 50%; background: #00a884; flex-shrink: 0; }
@@ -471,8 +478,12 @@
   #pf-clear:hover{border-color:#ef4444;color:#ef4444}
   /* Barra inferior do celular — não existe no computador */
   #mobile-nav, #mobile-plus-menu { display: none; }
-  /* Trilho lateral de ferramentas (computador) */
-  #side-rail { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 68px; flex-shrink: 0; background: #ffffff; border-right: 1px solid #e9edef; padding: 10px 4px; overflow-y: auto; }
+  /* Trilho lateral de ferramentas (computador) — FIXO à esquerda, sempre visível */
+  #side-rail { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 68px;
+    position: fixed; left: 0; top: 0; bottom: 0; z-index: 700;
+    background: #ffffff; border-right: 1px solid #e9edef; padding: 10px 4px; overflow-y: auto; box-sizing: border-box; }
+  /* Todo o conteúdo começa depois do trilho */
+  #topbar, #pipeline-view, #layout { margin-left: 68px; }
   .rail-btn { background: none; border: none; cursor: pointer; color: #54656f; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 10px; font-weight: 600; padding: 8px 2px; border-radius: 8px; width: 60px; }
   .rail-btn:hover { background: #f0f2f5; color: #131c20; }
   .rail-btn .ri { font-size: 19px; }
@@ -613,7 +624,6 @@
 /* Computador: o trilho de ferramentas fica SEMPRE visível, mesmo com uma tela
    cheia aberta — o trilho sobe acima e as telas cheias começam depois dele */
 @media (min-width: 769px) {
-  #side-rail { position: relative; z-index: 700; }
   #bots-page, #bot-editor-page, #tasks-page, #faq-page { left: 68px; }
 }
 /* ── IA / FAQ ── */
@@ -828,6 +838,7 @@
 
   /* Celular: sem trilho lateral (as ferramentas ficam no "+" da barra inferior) */
   #side-rail { display: none !important; }
+  #topbar, #pipeline-view, #layout { margin-left: 0 !important; }
   /* ── Barra inferior: "+" com as ferramentas + Adicionar contato ── */
   #mobile-nav {
     display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 55;
@@ -1358,21 +1369,22 @@ window.addEventListener('load', initAuth);
 </div>
 
 <!-- LAYOUT -->
+<!-- TRILHO LATERAL (computador): ferramentas SEMPRE visíveis, à esquerda de tudo -->
+<div id="side-rail">
+  <button class="rail-btn" onclick="goToChat()" title="Conversas"><span class="ri">💬</span>Chat</button>
+  <button class="rail-btn" onclick="openPipeline()" title="Pipeline"><span class="ri">📊</span>Pipeline</button>
+  <button class="rail-btn" onclick="openTemplates()" title="Modelos"><span class="ri">📋</span>Modelos</button>
+  <button class="rail-btn" onclick="openQRManager()" title="Respostas rápidas"><span class="ri">⚡</span>Respostas</button>
+  <button class="rail-btn" onclick="openModal()" title="Contas de WhatsApp"><span class="ri">📱</span>Contas</button>
+  <button class="rail-btn" onclick="openBotsList()" title="Bots"><span class="ri">🤖</span>Bots</button>
+  <button class="rail-btn" onclick="openFaqPage()" title="IA / FAQ"><span class="ri">🧠</span>IA</button>
+  <button class="rail-btn" onclick="openTagManager()" title="Etiquetas"><span class="ri">🏷️</span>Tags</button>
+  <button class="rail-btn" onclick="openTasksPage()" title="Tarefas"><span class="ri">✅</span>Tarefas</button>
+  <button class="rail-btn" onclick="openConfigModal()" title="Configurações"><span class="ri">⚙️</span>Config.</button>
+  <button class="rail-btn rail-sair" onclick="logoutCRM()" title="Sair da conta"><span class="ri">🚪</span>Sair</button>
+</div>
+
 <div id="layout">
-  <!-- TRILHO LATERAL (computador): ferramentas na vertical, antes das conversas -->
-  <div id="side-rail">
-    <button class="rail-btn" onclick="goToChat()" title="Conversas"><span class="ri">💬</span>Chat</button>
-    <button class="rail-btn" onclick="openPipeline()" title="Pipeline"><span class="ri">📊</span>Pipeline</button>
-    <button class="rail-btn" onclick="openTemplates()" title="Modelos"><span class="ri">📋</span>Modelos</button>
-    <button class="rail-btn" onclick="openQRManager()" title="Respostas rápidas"><span class="ri">⚡</span>Respostas</button>
-    <button class="rail-btn" onclick="openModal()" title="Contas de WhatsApp"><span class="ri">📱</span>Contas</button>
-    <button class="rail-btn" onclick="openBotsList()" title="Bots"><span class="ri">🤖</span>Bots</button>
-    <button class="rail-btn" onclick="openFaqPage()" title="IA / FAQ"><span class="ri">🧠</span>IA</button>
-    <button class="rail-btn" onclick="openTagManager()" title="Etiquetas"><span class="ri">🏷️</span>Tags</button>
-    <button class="rail-btn" onclick="openTasksPage()" title="Tarefas"><span class="ri">✅</span>Tarefas</button>
-    <button class="rail-btn" onclick="openConfigModal()" title="Configurações"><span class="ri">⚙️</span>Config.</button>
-    <button class="rail-btn rail-sair" onclick="logoutCRM()" title="Sair da conta"><span class="ri">🚪</span>Sair</button>
-  </div>
   <!-- SIDEBAR -->
   <div id="sidebar">
     <div id="search-box" style="display:flex;gap:6px;align-items:center">
@@ -5107,17 +5119,41 @@ function renderPipelineList(contacts) {
     ((stPos[a.stage_id] ?? 999) - (stPos[b.stage_id] ?? 999)) ||
     String(b.last_message_at || '').localeCompare(String(a.last_message_at || '')));
   if (!rows.length) { el.innerHTML = '<div style="padding:24px;color:#667781;font-size:14px">Nenhum lead encontrado.</div>'; return; }
-  el.innerHTML = rows.map(c => {
+  const allSel = rows.length > 0 && rows.every(c => selectedLeads.has(c.phone));
+  const header = `<div class="plist-head">
+    <span class="plist-check"><input type="checkbox" ${allSel ? 'checked' : ''} onclick="toggleAllPipelineList(this.checked)" title="Selecionar todos"></span>
+    <span class="plist-h-name">Nome</span>
+    <span class="plist-h-phone">Telefone</span>
+    <span class="plist-h-stage">Etapa</span>
+    <span class="plist-h-tags">Tags</span>
+  </div>`;
+  const body = rows.map(c => {
     const tags = (c.tags || []).slice(0, 3).map((t, i) => `<span class="tag-chip tc${i % 6}" style="font-size:10px;padding:1px 6px">${escHtml(t)}</span>`).join('');
-    const _lDt = c.created_at || c.last_message_at; // data de criação do lead (fixa)
-    const date = _lDt ? new Date(_lDt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '';
-    return `<div class="plist-row" onclick="openLeadChat('${c.phone}','${(c.name || '').replace(/'/g, "\\'")}','${c.account_id || ''}')">
-      <div class="plist-main"><div class="plist-name">${escHtml(c.name || c.phone)}</div><div class="plist-phone">${formatPhone(c.phone)}</div></div>
-      <div class="plist-tags">${tags}</div>
-      <span class="plist-stage">${escHtml(stName[c.stage_id] || 'Sem etapa')}</span>
-      <span class="plist-date">${date}</span>
+    const sel = selectedLeads.has(c.phone);
+    return `<div class="plist-row${sel ? ' sel' : ''}" data-phone="${c.phone}">
+      <span class="plist-check"><input type="checkbox" ${sel ? 'checked' : ''} onclick="event.stopPropagation();togglePipelineListSel('${c.phone}',this.checked)"></span>
+      <span class="plist-c-name" onclick="openLeadChat('${c.phone}','${(c.name || '').replace(/'/g, "\\'")}','${c.account_id || ''}')">${escHtml(c.name || c.phone)}</span>
+      <span class="plist-c-phone">${formatPhone(c.phone)}</span>
+      <span class="plist-c-stage"><span class="plist-stage">${escHtml(stName[c.stage_id] || 'Sem etapa')}</span></span>
+      <span class="plist-c-tags">${tags}</span>
     </div>`;
   }).join('');
+  el.innerHTML = header + body;
+}
+function togglePipelineListSel(phone, on) {
+  if (on) selectedLeads.add(phone); else selectedLeads.delete(phone);
+  updateBulkBar();
+  const row = document.querySelector(`.plist-row[data-phone="${phone}"]`);
+  if (row) row.classList.toggle('sel', on);
+}
+function toggleAllPipelineList(on) {
+  document.querySelectorAll('#pipeline-list .plist-row').forEach(r => {
+    const p = r.dataset.phone; if (!p) return;
+    if (on) selectedLeads.add(p); else selectedLeads.delete(p);
+    r.classList.toggle('sel', on);
+    const cb = r.querySelector('input[type=checkbox]'); if (cb) cb.checked = on;
+  });
+  updateBulkBar();
 }
 
 function renderKanban() {
