@@ -625,6 +625,11 @@
    cheia aberta — o trilho sobe acima e as telas cheias começam depois dele */
 @media (min-width: 769px) {
   #bots-page, #bot-editor-page, #tasks-page, #faq-page { left: 68px; }
+  /* Modais de ferramentas abrem GRANDES (como Pipeline/IA), não em caixinha */
+  #tagmgr-overlay > div, #cfg-overlay > div, #modal, #qr-modal-box, #templates-modal {
+    width: 860px !important; max-width: 92vw !important;
+    height: 86vh !important; max-height: 86vh !important;
+  }
 }
 /* ── IA / FAQ ── */
 #faq-page-topbar { background:#f0f2f5; padding:10px 16px; display:flex; align-items:center; gap:12px; border-bottom:1px solid #e9edef; flex-shrink:0; }
@@ -2122,7 +2127,7 @@ async function deleteAccount(id) {
   await loadAccounts();
 }
 
-function openModal() { document.getElementById('modal-overlay').classList.add('open'); loadAccounts(); }
+function openModal() { _closeAllScreens(); document.getElementById('modal-overlay').classList.add('open'); loadAccounts(); }
 function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
 
 // ── CONTATOS ──
@@ -3990,6 +3995,7 @@ function saveQR() {
 }
 
 function openQRManager() {
+  _closeAllScreens();
   document.getElementById('qr-modal').classList.add('open');
   renderQRManager();
 }
@@ -4157,6 +4163,7 @@ function insertQRReply(index) {
 
 // ── Configurações (Integração / Faturamento / Suporte) ──
 async function openConfigModal() {
+  _closeAllScreens();
   document.getElementById('cfg-overlay').style.display = 'flex';
   const st = document.getElementById('cfg-token-status'); if (st) st.textContent = '';
   try {
@@ -4191,8 +4198,8 @@ function copyIntegrationToken(btn) {
   );
 }
 
-// Botão "Chat" do trilho: fecha qualquer tela cheia e volta para as conversas
-function goToChat() {
+// Fecha TODAS as telas cheias e modais — garante troca limpa entre os botões do trilho
+function _closeAllScreens() {
   try { closePipeline(); } catch (_) {}
   try { closeTasksPage(); } catch (_) {}
   try { closeBotsList(); } catch (_) {}
@@ -4201,8 +4208,12 @@ function goToChat() {
   try { closeTemplates(); } catch (_) {}
   try { closeQRManager(); } catch (_) {}
   try { closeModal(); } catch (_) {}
+  try { closeTagManager(); } catch (_) {}
+  try { closeConfigModal(); } catch (_) {}
   try { closeTaskReminderModal(); } catch (_) {}
 }
+// Botão "Chat" do trilho: fecha tudo e volta para as conversas
+function goToChat() { _closeAllScreens(); }
 
 // ── Barra inferior do celular ("+" com as ferramentas) ──
 function toggleMobilePlus(ev) {
@@ -4668,6 +4679,7 @@ function updateVarLabels(newPreset) {
 }
 
 function openTemplates() {
+  _closeAllScreens();
   document.getElementById('templates-overlay').classList.add('open');
   populateTmplAccounts();
   switchTmplTab('list');
@@ -5059,6 +5071,7 @@ let pipelineContacts = [];
 let dragPhone = null;
 
 function openPipeline() {
+  _closeAllScreens();
   document.getElementById('layout').style.display = 'none';
   const pv = document.getElementById('pipeline-view');
   pv.classList.add('open');
@@ -5642,6 +5655,7 @@ function getNodeHeight(node) {
 
 // ── Bot list ──
 async function openBotsList() {
+  _closeAllScreens();
   document.getElementById('bots-page').style.display = 'flex';
   const area = document.getElementById('bots-list-area');
   area.innerHTML = '<div style="color:#667781;font-size:13px;padding:20px">Carregando...</div>';
@@ -5675,6 +5689,7 @@ let _faqMode = 'text', _faqAiKey = false, _faqAiModel = '';
 function _faqEsc(s){ return (s||'').toString().replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
 async function openFaqPage(){
+  _closeAllScreens();
   document.getElementById('faq-page').style.display = 'flex';
   const area = document.getElementById('faq-list-area');
   area.innerHTML = '<div style="color:#667781;font-size:13px;padding:20px">Carregando...</div>';
@@ -5922,6 +5937,7 @@ async function wpSave(){
 // ═══════════════════════ Gerenciador de etiquetas (tags) ═══════════════════════
 let _tagMgrList = [];
 async function openTagManager(){
+  _closeAllScreens();
   document.getElementById('tagmgr-overlay').style.display = 'flex';
   const el = document.getElementById('tagmgr-list');
   el.innerHTML = '<div style="color:#667781;font-size:13px;padding:16px 0">Carregando...</div>';
@@ -6040,6 +6056,7 @@ function fmtTaskDue(ts){
   return iso.substring(8,10)+'/'+iso.substring(5,7)+' '+iso.substring(11,16);
 }
 async function openTasksPage(){
+  _closeAllScreens();
   document.getElementById('tasks-page').style.display='flex';
   _selTaskPhones.clear();
   const area=document.getElementById('tasks-list-area');
