@@ -220,7 +220,7 @@
   #no-chat { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #667781; gap: 12px; }
   #no-chat svg { width: 64px; height: 64px; opacity: 0.3; }
   /* MODAL CONTAS */
-  #modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center; }
+  #modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center; }
   #modal-overlay.open { display: flex; }
   #modal { background: #f0f2f5; border-radius: 12px; width: 520px; max-width: 95vw; padding: 24px; max-height: 90vh; overflow-y: auto; }
   #modal h2 { font-size: 17px; font-weight: 600; margin-bottom: 20px; color: #131c20; }
@@ -277,7 +277,7 @@
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: #d1d7db; border-radius: 3px; }
   /* TEMPLATES */
-  #templates-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center; }
+  #templates-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center; }
   #templates-overlay.open { display: flex; }
   #templates-modal { background: #f0f2f5; border-radius: 12px; width: 720px; max-width: 96vw; max-height: 92vh; display: flex; flex-direction: column; overflow: hidden; }
   .tmpl-header { padding: 20px 24px 0; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
@@ -5693,42 +5693,39 @@ async function openFaqPage(){
   document.getElementById('faq-page').style.display = 'flex';
   const area = document.getElementById('faq-list-area');
   area.innerHTML = '<div style="color:#667781;font-size:13px;padding:20px">Carregando...</div>';
+  // Cada chamada é independente: se UMA falhar/atrasar, a tela ainda carrega o
+  // resto (usa o padrão do que faltou) em vez de bloquear tudo com erro.
+  const _j = async (url) => { try { const r = await fetch(url); return await r.json(); } catch (_) { return null; } };
   try{
-    const [tRes, dRes, aRes, accRes, fRes, wpeRes, wpaRes, wptRes, wpgRes, aiRes] = await Promise.all([
-      fetch(SERVER_URL + '/settings/faq_enabled'),
-      fetch(SERVER_URL + '/settings/faq_delay_seconds'),
-      fetch(SERVER_URL + '/settings/faq_accounts'),
-      fetch(SERVER_URL + '/accounts'),
-      fetch(SERVER_URL + '/faqs'),
-      fetch(SERVER_URL + '/settings/wrongperson_enabled'),
-      fetch(SERVER_URL + '/settings/wrongperson_answer'),
-      fetch(SERVER_URL + '/settings/wrongperson_tag'),
-      fetch(SERVER_URL + '/settings/wrongperson_triggers'),
-      fetch(SERVER_URL + '/faqs/ai-status')
+    const [t, d, a, accData, fData, wpe, wpa, wpt, wpg, ai] = await Promise.all([
+      _j(SERVER_URL + '/settings/faq_enabled'),
+      _j(SERVER_URL + '/settings/faq_delay_seconds'),
+      _j(SERVER_URL + '/settings/faq_accounts'),
+      _j(SERVER_URL + '/accounts'),
+      _j(SERVER_URL + '/faqs'),
+      _j(SERVER_URL + '/settings/wrongperson_enabled'),
+      _j(SERVER_URL + '/settings/wrongperson_answer'),
+      _j(SERVER_URL + '/settings/wrongperson_tag'),
+      _j(SERVER_URL + '/settings/wrongperson_triggers'),
+      _j(SERVER_URL + '/faqs/ai-status')
     ]);
-    const t = await tRes.json();
     _faqMaster = (t && t.value === 'on');
-    const d = await dRes.json();
     const dNum = parseInt(d && d.value, 10);
     _faqDelay = Number.isFinite(dNum) ? dNum : 25;
     // regra "contato errado" (usa padrões se ainda não configurado)
-    const wpe = await wpeRes.json(); _wpEnabled = (wpe && wpe.value === 'on');
-    const wpa = await wpaRes.json(); _wpAnswer = (wpa && wpa.value) ? wpa.value : WP_DEFAULT_ANSWER;
-    const wpt = await wptRes.json(); _wpTag = (wpt && wpt.value) ? wpt.value : WP_DEFAULT_TAG;
-    const wpg = await wpgRes.json(); _wpTriggers = (wpg && wpg.value) ? wpg.value : WP_DEFAULT_TRIGGERS;
+    _wpEnabled = (wpe && wpe.value === 'on');
+    _wpAnswer = (wpa && wpa.value) ? wpa.value : WP_DEFAULT_ANSWER;
+    _wpTag = (wpt && wpt.value) ? wpt.value : WP_DEFAULT_TAG;
+    _wpTriggers = (wpg && wpg.value) ? wpg.value : WP_DEFAULT_TRIGGERS;
     // status da IA de contexto (Groq)
-    const ai = await aiRes.json();
     _faqMode = (ai && ai.mode === 'ai') ? 'ai' : 'text';
     _faqAiKey = !!(ai && ai.keyConfigured);
     _faqAiModel = (ai && ai.model) || '';
     // contas de WhatsApp e quais têm IA ativa
-    _faqAccounts = await accRes.json();
-    if(!Array.isArray(_faqAccounts)) _faqAccounts = [];
-    const a = await aRes.json();
+    _faqAccounts = Array.isArray(accData) ? accData : [];
     if(a && a.value){ try{ const arr = JSON.parse(a.value); _faqAccSel = Array.isArray(arr) ? arr.map(String) : null; }catch(_){ _faqAccSel = null; } }
     else { _faqAccSel = null; } // null = todas as contas
-    _faqCache = await fRes.json();
-    if(!Array.isArray(_faqCache)) _faqCache = [];
+    _faqCache = Array.isArray(fData) ? fData : [];
     faqRender();
   }catch(e){
     area.innerHTML = '<div style="color:#ef4444;padding:20px">Erro ao carregar. Verifique a conexão com o servidor.</div>';
