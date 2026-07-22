@@ -831,10 +831,12 @@
   #layout { height: -webkit-fill-available; }
 }
 /* Altura DINÂMICA do viewport (100dvh): elimina a faixa vazia que sobrava na
-   parte de baixo do celular (o iOS calculava a tela maior/menor que o real) */
+   parte de baixo do celular. Com o teclado aberto, a variável --appH (medida
+   pelo JS via visualViewport) encaixa o app EXATAMENTE acima do teclado —
+   sem o vão entre a barra de digitação e o teclado. */
 @supports (height: 100dvh) {
-  body { height: 100dvh; }
-  #layout { height: 100dvh; }
+  body { height: var(--appH, 100dvh); }
+  #layout { height: var(--appH, 100dvh); }
 }
 </style>
 </head>
@@ -3944,13 +3946,29 @@ function positionQRPopup() {
   popup.style.bottom = (window.innerHeight - (rect.top + vvTop)) + 'px';
 }
 // Reposiciona o popup quando o teclado do celular abre/fecha ou a tela rola
+// e ENCAIXA o app acima do teclado (remove a faixa vazia que o iOS deixava)
 if (window.visualViewport) {
   const _qrReposition = () => {
     const p = document.getElementById('qr-popup');
     if (p && p.style.display === 'block') positionQRPopup();
   };
-  window.visualViewport.addEventListener('resize', _qrReposition);
-  window.visualViewport.addEventListener('scroll', _qrReposition);
+  const _fitToKeyboard = () => {
+    const vv = window.visualViewport;
+    const diff = window.innerHeight - vv.height;
+    // Teclado aberto (diferença grande e sem zoom): app passa a ocupar só o espaço visível
+    if (diff > 100 && vv.scale === 1) {
+      document.documentElement.style.setProperty('--appH', vv.height + 'px');
+      window.scrollTo(0, 0); // impede o iOS de "empurrar" a página
+      // Mantém a conversa colada no fim ao abrir o teclado
+      const area = document.getElementById('messages-area');
+      if (area && area.scrollHeight - area.scrollTop - area.clientHeight < 160) area.scrollTop = area.scrollHeight;
+    } else {
+      document.documentElement.style.removeProperty('--appH');
+    }
+    _qrReposition();
+  };
+  window.visualViewport.addEventListener('resize', _fitToKeyboard);
+  window.visualViewport.addEventListener('scroll', _fitToKeyboard);
 }
 
 function showQRPopup(filter) {
