@@ -1365,10 +1365,10 @@ window.addEventListener('load', initAuth);
 
 <!-- Menu de opções da mensagem (copiar / reagir / responder / apagar) -->
 <div id="msg-menu" style="display:none;position:fixed;z-index:700;background:#ffffff;border:1px solid #e9edef;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.25);min-width:170px;padding:4px">
+  <div class="cm-item" onclick="msgMenuReply()">↩ Responder</div>
+  <div class="cm-item" onclick="msgMenuReact()">😊 Reagir</div>
   <div class="cm-item" onclick="msgMenuCopy()">📋 Copiar</div>
   <div class="cm-item" id="msg-menu-edit" style="display:none" onclick="msgMenuEdit()">✏️ Editar</div>
-  <div class="cm-item" onclick="msgMenuReact()">😊 Reagir</div>
-  <div class="cm-item" onclick="msgMenuReply()">↩ Responder</div>
   <div class="cm-item" onclick="msgMenuDelete()" style="color:#ef4444">🗑 Apagar</div>
 </div>
 
