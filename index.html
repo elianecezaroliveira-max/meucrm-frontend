@@ -1533,6 +1533,24 @@ window.addEventListener('load', initAuth);
     <label style="font-size:13px;color:#667781;display:flex;align-items:center;gap:6px;cursor:pointer">
       <input type="checkbox" id="tasks-show-done" onchange="renderTasksPage()" /> Mostrar concluídas
     </label>
+    <button class="btn-secondary" onclick="openTaskReminderModal()" title="Configurar lembretes de tarefas em aberto">🔔 Lembretes</button>
+  </div>
+
+  <!-- Configuração do lembrete de tarefas (push a cada 20 min) -->
+  <div id="trem-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:600;align-items:center;justify-content:center" onclick="if(event.target===this)closeTaskReminderModal()">
+    <div style="background:#fff;border-radius:12px;max-width:420px;width:92%;max-height:88vh;overflow-y:auto;padding:18px 20px;box-shadow:0 10px 40px rgba(0,0,0,.35)">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <h3 style="flex:1;margin:0;font-size:16px;color:#131c20">🔔 Lembrete de tarefas</h3>
+        <button onclick="closeTaskReminderModal()" style="background:none;border:none;font-size:20px;color:#667781;cursor:pointer">✕</button>
+      </div>
+      <p style="font-size:12.5px;color:#667781;margin:0 0 12px">Se houver tarefa em aberto, você recebe uma notificação a cada <b>20 minutos</b> — só nos dias e horários abaixo.</p>
+      <label style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;color:#131c20;margin-bottom:12px;cursor:pointer">
+        <input type="checkbox" id="trem-enabled" style="width:18px;height:18px"> Ativar lembretes
+      </label>
+      <div id="trem-days"></div>
+      <button onclick="saveTaskReminder()" style="width:100%;margin-top:14px;background:#00a884;color:#fff;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:700;cursor:pointer">Salvar</button>
+      <div id="trem-status" style="font-size:12px;color:#00a884;text-align:center;height:16px;margin-top:6px"></div>
+    </div>
   </div>
   <div id="tasks-list-area">
     <div style="color:#667781;font-size:13px;padding:20px">Carregando tarefas...</div>
@@ -5800,6 +5818,58 @@ async function openTasksPage(){
   }catch(e){ area.innerHTML='<div style="color:#ef4444;padding:20px">Erro ao carregar tarefas</div>'; }
 }
 function closeTasksPage(){ document.getElementById('tasks-page').style.display='none'; }
+
+// ── Lembrete de tarefas em aberto (push a cada 20 min, janela por dia) ──
+const TREM_DIAS = [ ['1','Segunda'], ['2','Terça'], ['3','Quarta'], ['4','Quinta'], ['5','Sexta'], ['6','Sábado'], ['0','Domingo'] ];
+function _tremDefault() {
+  const days = {};
+  TREM_DIAS.forEach(([n]) => { days[n] = { on: !['0','6'].includes(n), start: '09:00', end: '18:00' }; });
+  return { enabled: true, days };
+}
+async function openTaskReminderModal() {
+  const ov = document.getElementById('trem-overlay');
+  ov.style.display = 'flex';
+  let cfg = null;
+  try { cfg = (await (await fetch(SERVER_URL + '/task-reminder')).json()).value; } catch (_) {}
+  if (!cfg || !cfg.days) cfg = _tremDefault();
+  document.getElementById('trem-enabled').checked = !!cfg.enabled;
+  document.getElementById('trem-days').innerHTML = TREM_DIAS.map(([n, nome]) => {
+    const d = cfg.days[n] || { on: false, start: '09:00', end: '18:00' };
+    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#131c20;width:96px;cursor:pointer;flex-shrink:0">
+        <input type="checkbox" class="trem-day-on" data-day="${n}" ${d.on ? 'checked' : ''}> ${nome}
+      </label>
+      <input type="time" class="pf-input trem-day-start" data-day="${n}" value="${d.start || '09:00'}" style="flex:1">
+      <span style="color:#667781;font-size:12px">até</span>
+      <input type="time" class="pf-input trem-day-end" data-day="${n}" value="${d.end || '18:00'}" style="flex:1">
+    </div>`;
+  }).join('');
+}
+function closeTaskReminderModal() { document.getElementById('trem-overlay').style.display = 'none'; }
+async function saveTaskReminder() {
+  const days = {};
+  document.querySelectorAll('.trem-day-on').forEach(chk => {
+    const n = chk.dataset.day;
+    days[n] = {
+      on: chk.checked,
+      start: document.querySelector(`.trem-day-start[data-day="${n}"]`)?.value || '09:00',
+      end: document.querySelector(`.trem-day-end[data-day="${n}"]`)?.value || '18:00'
+    };
+  });
+  const value = { enabled: document.getElementById('trem-enabled').checked, days };
+  const st = document.getElementById('trem-status');
+  st.textContent = 'Salvando...';
+  try {
+    const r = await fetch(SERVER_URL + '/task-reminder', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value })
+    });
+    const d = await r.json();
+    if (d.error) { st.style.color = '#ef4444'; st.textContent = 'Erro: ' + d.error; return; }
+    st.style.color = '#00a884'; st.textContent = '✓ Salvo!';
+    setTimeout(closeTaskReminderModal, 800);
+  } catch (_) { st.style.color = '#ef4444'; st.textContent = 'Erro ao salvar.'; }
+}
 
 // ── Disparo em massa de bot para os leads SELECIONADOS na lista de tarefas ──
 let _selTaskPhones = new Set();
