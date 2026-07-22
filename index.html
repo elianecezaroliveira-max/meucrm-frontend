@@ -471,6 +471,15 @@
   #pf-clear:hover{border-color:#ef4444;color:#ef4444}
   /* Barra inferior do celular — não existe no computador */
   #mobile-nav, #mobile-plus-menu { display: none; }
+  /* Trilho lateral de ferramentas (computador) */
+  #side-rail { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 68px; flex-shrink: 0; background: #ffffff; border-right: 1px solid #e9edef; padding: 10px 4px; overflow-y: auto; }
+  .rail-btn { background: none; border: none; cursor: pointer; color: #54656f; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 10px; font-weight: 600; padding: 8px 2px; border-radius: 8px; width: 60px; }
+  .rail-btn:hover { background: #f0f2f5; color: #131c20; }
+  .rail-btn .ri { font-size: 19px; }
+  .rail-sair { margin-top: auto; color: #ef4444; }
+  /* Os botões do topo saíram de cena (agora vivem no trilho/menu "+") */
+  #btn-pipeline, #btn-templates, #btn-quick-replies, #btn-accounts, #btn-bots,
+  #btn-faq, #btn-tags, #btn-tasks-global, #btn-logout { display: none !important; }
   /* READ RECEIPTS */
   .msg-ticks { display:inline-block; margin-left:4px; font-size:13px; vertical-align:middle; }
   .msg-ticks.sent     { color:#667781; }
@@ -811,6 +820,8 @@
   .contact-preview-row, .contact-preview { font-size: 14px; }
   .contact-time { font-size: 12px; }
 
+  /* Celular: sem trilho lateral (as ferramentas ficam no "+" da barra inferior) */
+  #side-rail { display: none !important; }
   /* ── Barra inferior: "+" com as ferramentas + Adicionar contato ── */
   #mobile-nav {
     display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 55;
@@ -1341,6 +1352,18 @@ window.addEventListener('load', initAuth);
 
 <!-- LAYOUT -->
 <div id="layout">
+  <!-- TRILHO LATERAL (computador): ferramentas na vertical, antes das conversas -->
+  <div id="side-rail">
+    <button class="rail-btn" onclick="openPipeline()" title="Pipeline"><span class="ri">📊</span>Pipeline</button>
+    <button class="rail-btn" onclick="openTemplates()" title="Modelos"><span class="ri">📋</span>Modelos</button>
+    <button class="rail-btn" onclick="openQRManager()" title="Respostas rápidas"><span class="ri">⚡</span>Respostas</button>
+    <button class="rail-btn" onclick="openModal()" title="Contas de WhatsApp"><span class="ri">📱</span>Contas</button>
+    <button class="rail-btn" onclick="openBotsList()" title="Bots"><span class="ri">🤖</span>Bots</button>
+    <button class="rail-btn" onclick="openFaqPage()" title="IA / FAQ"><span class="ri">🧠</span>IA</button>
+    <button class="rail-btn" onclick="openTagManager()" title="Etiquetas"><span class="ri">🏷️</span>Tags</button>
+    <button class="rail-btn" onclick="openTasksPage()" title="Tarefas"><span class="ri">✅</span>Tarefas</button>
+    <button class="rail-btn rail-sair" onclick="logoutCRM()" title="Sair da conta"><span class="ri">🚪</span>Sair</button>
+  </div>
   <!-- SIDEBAR -->
   <div id="sidebar">
     <div id="search-box" style="display:flex;gap:6px;align-items:center">
