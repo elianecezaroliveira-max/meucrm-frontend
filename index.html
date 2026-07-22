@@ -820,11 +820,6 @@
     background: #00a884; color: #fff; font-size: 30px; line-height: 1;
     box-shadow: 0 3px 10px rgba(0,168,132,.45); flex-shrink: 0;
   }
-  #mnav-add-contact {
-    background: none; border: none; cursor: pointer; color: #54656f;
-    display: flex; flex-direction: column; align-items: center; gap: 2px;
-    font-size: 11px; font-weight: 600;
-  }
   #mobile-plus-menu {
     display: none; position: fixed; left: 12px; right: 12px;
     bottom: calc(78px + env(safe-area-inset-bottom));
@@ -1254,12 +1249,9 @@ window.addEventListener('load', initAuth);
 <!-- BARRA INFERIOR (celular): "+" reúne as ferramentas; ao lado, Adicionar contato -->
 <div id="mobile-nav">
   <button id="mnav-plus" onclick="toggleMobilePlus(event)" title="Ferramentas">＋</button>
-  <button id="mnav-add-contact" onclick="closeMobilePlus();openNewLead()" title="Adicionar contato">
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/></svg>
-    <span>Adicionar contato</span>
-  </button>
 </div>
 <div id="mobile-plus-menu">
+  <div class="mpm-item" onclick="mnavGo(openNewLead)">👤 Adicionar contato</div>
   <div class="mpm-item" onclick="mnavGo(openPipeline)">📊 Pipeline</div>
   <div class="mpm-item" onclick="mnavGo(openTemplates)">📋 Modelos</div>
   <div class="mpm-item" onclick="mnavGo(openQRManager)">⚡ Respostas</div>
