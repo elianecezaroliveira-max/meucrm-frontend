@@ -531,12 +531,14 @@
     font-size:14px; text-decoration:none; opacity:0; transition:opacity .2s;
   }
   div:hover > .media-dl-btn { opacity:1; }
-  /* Link de download para áudio/vídeo/doc */
+  /* Link de download para áudio/vídeo/doc — botãozinho discreto com contorno */
   .media-dl-link {
     font-size:12px; color:#54656f; text-decoration:none;
     display:inline-flex; align-items:center; gap:3px;
+    border:1px solid #c4ccd1; border-radius:14px; padding:3px 10px;
+    background:rgba(255,255,255,.5); transition:all .15s; align-self:flex-start;
   }
-  .media-dl-link:hover { color:#1f9e6e; }
+  .media-dl-link:hover { color:#1f9e6e; border-color:#1f9e6e; background:#fff; }
   /* ── RESPOSTAS RÁPIDAS ── */
   #btn-quick-replies { background: #e9edef; border: none; color: #131c20; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; }
   #btn-quick-replies:hover { background: #d1d7db; }
@@ -3152,12 +3154,13 @@ function renderMessageContent(m) {
       const _extShow = (_ext && _ext.length <= 5) ? _ext.toUpperCase() : 'ARQ';
       const _extColors = { pdf:'#e5252a', doc:'#2b7cd3', docx:'#2b7cd3', xls:'#1e7145', xlsx:'#1e7145', csv:'#1e7145', ppt:'#d24726', pptx:'#d24726', zip:'#f0a500', rar:'#f0a500', txt:'#607d8b', jpg:'#8e44ad', jpeg:'#8e44ad', png:'#8e44ad' };
       const _extCor = _extColors[_ext] || '#607d8b';
-      return quotedHtml + `<div class="media-wrap doc-wrap">
+      return quotedHtml + `<div class="media-wrap doc-wrap" style="cursor:pointer" title="Clique duplo para visualizar"
+        ondblclick="window.open('${proxyUrl}','_blank')">
         <div style="display:flex;align-items:center;gap:10px;min-width:0">
           <span style="background:${_extCor};color:#fff;font-size:10px;font-weight:800;border-radius:6px;padding:9px 7px;min-width:36px;text-align:center;letter-spacing:.4px;flex-shrink:0">${escHtml(_extShow)}</span>
           <span style="word-break:break-all;flex:1;min-width:0">${escHtml(fileName)}</span>
         </div>
-        <a href="${dlUrl}" class="media-dl-link" download>⬇ Baixar arquivo</a>
+        <a href="${dlUrl}" class="media-dl-link" download onclick="event.stopPropagation()">⬇ Baixar arquivo</a>
       </div>`;
     }
   }
