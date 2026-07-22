@@ -610,6 +610,12 @@
 #btn-n8n:hover, #btn-n8n.connected { background:#EA4B71; color:#fff; }
 
 #bots-page, #bot-editor-page, #tasks-page, #faq-page { position:fixed; top:0;left:0;right:0;bottom:0; background:#ffffff; z-index:500; display:none; flex-direction:column; }
+/* Computador: o trilho de ferramentas fica SEMPRE visível, mesmo com uma tela
+   cheia aberta — o trilho sobe acima e as telas cheias começam depois dele */
+@media (min-width: 769px) {
+  #side-rail { position: relative; z-index: 700; }
+  #bots-page, #bot-editor-page, #tasks-page, #faq-page { left: 68px; }
+}
 /* ── IA / FAQ ── */
 #faq-page-topbar { background:#f0f2f5; padding:10px 16px; display:flex; align-items:center; gap:12px; border-bottom:1px solid #e9edef; flex-shrink:0; }
 #faq-page-topbar h2 { font-size:16px;font-weight:700;color:#131c20; }
@@ -1283,6 +1289,7 @@ window.addEventListener('load', initAuth);
   <div class="mpm-item" onclick="mnavGo(openFaqPage)">🧠 IA</div>
   <div class="mpm-item" onclick="mnavGo(openTagManager)">🏷️ Tags</div>
   <div class="mpm-item" onclick="mnavGo(openTasksPage)">✅ Tarefas</div>
+  <div class="mpm-item" onclick="mnavGo(openConfigModal)">⚙️ Configurações</div>
   <div class="mpm-item" style="color:#ef4444" onclick="mnavGo(logoutCRM)">🚪 Sair</div>
 </div>
 
@@ -1315,7 +1322,7 @@ window.addEventListener('load', initAuth);
 <!-- PIPELINE KANBAN -->
 <div id="pipeline-view">
   <div id="pipeline-topbar">
-    <h2>📊 Pipeline de Vendas</h2>
+    <h2>📊 Pipeline de Vendas <span id="pipeline-count" style="font-size:12px;font-weight:600;color:#00a884;background:#e7f7ef;border-radius:12px;padding:3px 10px;margin-left:6px;vertical-align:middle"></span></h2>
     <div id="pview-toggle">
       <button id="pv-kanban" class="pv-btn active" onclick="setPipelineView('kanban')" title="Visão Kanban">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="3" y="3" width="5" height="18" rx="1"/><rect x="10" y="3" width="5" height="12" rx="1"/><rect x="17" y="3" width="5" height="15" rx="1"/></svg>
@@ -1363,6 +1370,7 @@ window.addEventListener('load', initAuth);
     <button class="rail-btn" onclick="openFaqPage()" title="IA / FAQ"><span class="ri">🧠</span>IA</button>
     <button class="rail-btn" onclick="openTagManager()" title="Etiquetas"><span class="ri">🏷️</span>Tags</button>
     <button class="rail-btn" onclick="openTasksPage()" title="Tarefas"><span class="ri">✅</span>Tarefas</button>
+    <button class="rail-btn" onclick="openConfigModal()" title="Configurações"><span class="ri">⚙️</span>Config.</button>
     <button class="rail-btn rail-sair" onclick="logoutCRM()" title="Sair da conta"><span class="ri">🚪</span>Sair</button>
   </div>
   <!-- SIDEBAR -->
@@ -1416,6 +1424,37 @@ window.addEventListener('load', initAuth);
   <div class="cm-item" onclick="closeInfoMenu();openMediaGallery()">🖼️ Fotos e arquivos</div>
   <div class="cm-item" onclick="closeInfoMenu();openTasks()">✅ Tarefas</div>
   <div class="cm-item" onclick="closeInfoMenu();deleteConversation(currentPhone)" style="color:#ef4444">🗑 Apagar conversa</div>
+</div>
+
+<!-- CONFIGURAÇÕES (Integração / Faturamento / Suporte) -->
+<div id="cfg-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:600;align-items:center;justify-content:center" onclick="if(event.target===this)closeConfigModal()">
+  <div style="background:#fff;border-radius:12px;max-width:520px;width:94%;max-height:88vh;overflow-y:auto;padding:18px 20px;box-shadow:0 10px 40px rgba(0,0,0,.35)">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+      <h3 style="flex:1;margin:0;font-size:16px;color:#131c20">⚙️ Configurações</h3>
+      <button onclick="closeConfigModal()" style="background:none;border:none;font-size:20px;color:#667781;cursor:pointer">✕</button>
+    </div>
+
+    <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
+      <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">🔗 Integração</div>
+      <p style="font-size:12px;color:#667781;margin:0 0 10px">Token de longa duração para conectar outras ferramentas (n8n, Zapier, planilhas…). A ferramenta deve enviar o cabeçalho <b>X-Api-Token</b> nas chamadas à URL do seu servidor.</p>
+      <div style="display:flex;gap:6px">
+        <input id="cfg-token" readonly placeholder="Nenhum token gerado ainda" style="flex:1;background:#f0f2f5;border:1px solid #e9edef;border-radius:6px;padding:8px 10px;font-size:12px;color:#131c20;font-family:monospace;min-width:0">
+        <button class="pf-topbtn" onclick="copyIntegrationToken(this)">📋 Copiar</button>
+        <button class="pf-topbtn" onclick="genIntegrationToken()">🔄 Gerar</button>
+      </div>
+      <div id="cfg-token-status" style="font-size:11px;color:#00a884;height:14px;margin-top:4px"></div>
+    </div>
+
+    <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
+      <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">💳 Faturamento</div>
+      <div id="cfg-billing" style="font-size:13px;color:#54656f">Carregando...</div>
+    </div>
+
+    <div style="border:1px solid #e9edef;border-radius:10px;padding:14px">
+      <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">🛟 Suporte</div>
+      <div style="font-size:13px;color:#667781">Em breve.</div>
+    </div>
+  </div>
 </div>
 
 <!-- Menu de opções da mensagem (copiar / reagir / responder / apagar) -->
@@ -4101,6 +4140,42 @@ function insertQRReply(index) {
   hideQRPopup();
 }
 
+// ── Configurações (Integração / Faturamento / Suporte) ──
+async function openConfigModal() {
+  document.getElementById('cfg-overlay').style.display = 'flex';
+  const st = document.getElementById('cfg-token-status'); if (st) st.textContent = '';
+  try {
+    const d = await (await fetch(SERVER_URL + '/integration/token')).json();
+    document.getElementById('cfg-token').value = d.token || '';
+  } catch (_) {}
+  const b = document.getElementById('cfg-billing');
+  try {
+    const d = await (await fetch(SERVER_URL + '/billing')).json();
+    const v = d.value || {};
+    b.innerHTML = `Plano: <b>${escHtml(v.plano || 'VETRA')}</b> &nbsp;·&nbsp; Validade: <b>${escHtml(v.validade || '—')}</b>`;
+  } catch (_) { b.textContent = 'Plano: VETRA'; }
+}
+function closeConfigModal() { document.getElementById('cfg-overlay').style.display = 'none'; }
+async function genIntegrationToken() {
+  if (!confirm('Gerar um NOVO token?\n\nO token anterior deixa de funcionar — ferramentas já conectadas com ele precisarão ser atualizadas.')) return;
+  const st = document.getElementById('cfg-token-status');
+  try {
+    const d = await (await fetch(SERVER_URL + '/integration/token', { method: 'POST' })).json();
+    if (d.error) { st.style.color = '#ef4444'; st.textContent = 'Erro: ' + d.error; return; }
+    document.getElementById('cfg-token').value = d.token || '';
+    st.style.color = '#00a884'; st.textContent = '✓ Novo token gerado';
+    setTimeout(() => { st.textContent = ''; }, 2500);
+  } catch (_) { st.style.color = '#ef4444'; st.textContent = 'Erro ao gerar.'; }
+}
+function copyIntegrationToken(btn) {
+  const v = document.getElementById('cfg-token').value;
+  if (!v) return;
+  navigator.clipboard?.writeText(v).then(
+    () => { const o = btn.textContent; btn.textContent = '✅ Copiado'; setTimeout(() => { btn.textContent = o; }, 1400); },
+    () => prompt('Copie o token:', v)
+  );
+}
+
 // Botão "Chat" do trilho: fecha qualquer tela cheia e volta para as conversas
 function goToChat() {
   try { closePipeline(); } catch (_) {}
@@ -5007,6 +5082,12 @@ function setPipelineView(v) {
   applyPipelineFilter(); // re-renderiza respeitando os filtros ativos
 }
 function renderPipelineWith(contacts) {
+  // Contador de leads (respeita os filtros ativos; mostra o total quando sem filtro)
+  const pc = document.getElementById('pipeline-count');
+  if (pc) {
+    const n = contacts.length, tot = pipelineContacts.length;
+    pc.textContent = n === tot ? `${tot} lead${tot === 1 ? '' : 's'}` : `${n} de ${tot} leads`;
+  }
   const isList = pipelineView === 'list';
   const board = document.getElementById('kanban-board');
   const list  = document.getElementById('pipeline-list');
