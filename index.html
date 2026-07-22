@@ -459,6 +459,8 @@
   /* PIPELINE FILTER */
   #pipeline-filter-btn{background:#e9edef;border:none;color:#667781;padding:7px 12px;border-radius:8px;cursor:pointer;font-size:13px}
   #pipeline-filter-btn:hover,#pipeline-filter-btn.active{color:#00a884}
+  .pf-topbtn{background:#e9edef;border:none;color:#667781;padding:7px 12px;border-radius:8px;cursor:pointer;font-size:13px}
+  .pf-topbtn:hover{color:#00a884}
   #pipeline-filter-panel{background:#f0f2f5;border-bottom:1px solid #e9edef;padding:12px 20px;display:none;flex-shrink:0}
   #pipeline-filter-panel.open{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end}
   #pipeline-filter-panel label{font-size:11px;color:#667781;display:block;margin-bottom:4px}
@@ -837,6 +839,9 @@
   /* A lista não pode terminar escondida atrás da barra */
   #contacts-list { padding-bottom: 84px; }
 
+  /* Pipeline: topo quebra em linhas no celular (botões não ficam cortados) */
+  #pipeline-topbar { flex-wrap: wrap; gap: 6px; }
+  #pipeline-topbar h2 { font-size: 15px; }
   /* Página de Tarefas: opções do topo quebram em linhas (não ficam cortadas) */
   #tasks-page-topbar { flex-wrap: wrap; gap: 8px; padding: 10px 12px; }
   #tasks-page-topbar h2 { font-size: 15px; }
@@ -1308,6 +1313,8 @@ window.addEventListener('load', initAuth);
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
       </button>
     </div>
+    <button class="pf-topbtn" onclick="openNewLead()">➕ Novo Lead</button>
+    <button class="pf-topbtn" onclick="openImport()">📥 Importar</button>
     <button id="pipeline-filter-btn" onclick="togglePipelineFilter()">⚙ Filtrar</button>
     <button id="btn-add-stage" onclick="addStage()">+ Nova coluna</button>
     <button id="btn-close-pipeline" onclick="closePipeline()" title="Fechar">✕</button>
@@ -1336,10 +1343,6 @@ window.addEventListener('load', initAuth);
 <div id="layout">
   <!-- SIDEBAR -->
   <div id="sidebar">
-    <div id="sidebar-actions">
-      <button class="btn-sidebar-action" onclick="openNewLead()">➕ Novo Lead</button>
-      <button class="btn-sidebar-action" onclick="openImport()">📥 Importar</button>
-    </div>
     <div id="search-box" style="display:flex;gap:6px;align-items:center">
       <input type="text" id="search-input" placeholder="🔍 Buscar por nome ou mensagem..." oninput="onSearchInput()" style="flex:1" />
       <button id="filter-toggle" onclick="toggleFilterPanel()" title="Filtros">⚙</button>
