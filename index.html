@@ -835,6 +835,12 @@
   #btn-faq, #btn-tags, #btn-tasks-global, #btn-logout { display: none !important; }
   /* A lista não pode terminar escondida atrás da barra */
   #contacts-list { padding-bottom: 84px; }
+
+  /* Página de Tarefas: opções do topo quebram em linhas (não ficam cortadas) */
+  #tasks-page-topbar { flex-wrap: wrap; gap: 8px; padding: 10px 12px; }
+  #tasks-page-topbar h2 { font-size: 15px; }
+  #tasks-page-topbar .btn-secondary { font-size: 12px; padding: 6px 10px; }
+  #tasks-page-topbar label { font-size: 12px !important; }
 }
 
 /* Viewport height fix para iOS Safari (teclado virtual) */
@@ -5829,6 +5835,8 @@ function _tremDefault() {
 async function openTaskReminderModal() {
   const ov = document.getElementById('trem-overlay');
   ov.style.display = 'flex';
+  const st0 = document.getElementById('trem-status');
+  if (st0) { st0.textContent = ''; st0.style.color = '#00a884'; } // limpa o "Salvo" da vez anterior
   let cfg = null;
   try { cfg = (await (await fetch(SERVER_URL + '/task-reminder')).json()).value; } catch (_) {}
   if (!cfg || !cfg.days) cfg = _tremDefault();
@@ -5867,7 +5875,7 @@ async function saveTaskReminder() {
     const d = await r.json();
     if (d.error) { st.style.color = '#ef4444'; st.textContent = 'Erro: ' + d.error; return; }
     st.style.color = '#00a884'; st.textContent = '✓ Salvo!';
-    setTimeout(closeTaskReminderModal, 800);
+    setTimeout(() => { st.textContent = ''; closeTaskReminderModal(); }, 800);
   } catch (_) { st.style.color = '#ef4444'; st.textContent = 'Erro ao salvar.'; }
 }
 
