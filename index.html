@@ -1354,6 +1354,7 @@ window.addEventListener('load', initAuth);
 <div id="layout">
   <!-- TRILHO LATERAL (computador): ferramentas na vertical, antes das conversas -->
   <div id="side-rail">
+    <button class="rail-btn" onclick="goToChat()" title="Conversas"><span class="ri">💬</span>Chat</button>
     <button class="rail-btn" onclick="openPipeline()" title="Pipeline"><span class="ri">📊</span>Pipeline</button>
     <button class="rail-btn" onclick="openTemplates()" title="Modelos"><span class="ri">📋</span>Modelos</button>
     <button class="rail-btn" onclick="openQRManager()" title="Respostas rápidas"><span class="ri">⚡</span>Respostas</button>
@@ -4098,6 +4099,19 @@ function insertQRReply(index) {
   input.value = r.message.replace(/\{nome\}/gi, contactName);
   input.focus();
   hideQRPopup();
+}
+
+// Botão "Chat" do trilho: fecha qualquer tela cheia e volta para as conversas
+function goToChat() {
+  try { closePipeline(); } catch (_) {}
+  try { closeTasksPage(); } catch (_) {}
+  try { closeBotsList(); } catch (_) {}
+  try { closeBotEditor(); } catch (_) {}
+  try { closeFaqPage(); } catch (_) {}
+  try { closeTemplates(); } catch (_) {}
+  try { closeQRManager(); } catch (_) {}
+  try { closeModal(); } catch (_) {}
+  try { closeTaskReminderModal(); } catch (_) {}
 }
 
 // ── Barra inferior do celular ("+" com as ferramentas) ──
