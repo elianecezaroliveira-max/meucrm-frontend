@@ -477,8 +477,9 @@
   .msg-menu-btn { background:rgba(255,255,255,.9); border:none; cursor:pointer; color:#667781; font-size:13px; padding:1px 8px; border-radius:10px; line-height:1.5; box-shadow:0 1px 3px rgba(0,0,0,.18); }
   .msg-menu-btn:hover { background:#e9edef; color:#131c20; }
   /* Reply preview bar acima do input */
-  #reply-bar { display:none; align-items:center; gap:8px; padding:6px 12px; background:#1d2b36; border-left:3px solid #25d366; width:100%; box-sizing:border-box; }
-  #reply-bar span { flex:1; color:#131c20; font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  /* Prévia da resposta: linha própria ACIMA do campo (o campo fica todo livre) */
+  #reply-bar { display:none; align-items:center; gap:8px; padding:8px 12px; background:#e9edef; border-left:3px solid #00a884; border-radius:8px; width:100%; box-sizing:border-box; }
+  #reply-bar span { flex:1; color:#54656f; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   #reply-bar button { background:none; border:none; color:#667781; cursor:pointer; font-size:18px; line-height:1; padding:0 4px; }
   /* Quoted bubble dentro da mensagem */
   .quoted-bubble { border-left:3px solid #06cf9c; background:rgba(0,0,0,.06); border-radius:4px; padding:4px 8px; margin-bottom:4px; font-size:12px; cursor:pointer; }
@@ -2774,12 +2775,12 @@ async function selectContact(phone, name, accountId) {
       <button id="emoji-btn" onclick="toggleEmojiPicker(event)" title="Emojis">😊</button>
       <div id="emoji-picker-wrap"></div>
       </div>
+      <div id="reply-bar">
+        <span id="reply-preview-text"></span>
+        <button onclick="cancelReply()" title="Cancelar resposta">✕</button>
+      </div>
       <div id="input-row">
       <div id="input-wrap">
-        <div id="reply-bar">
-          <span id="reply-preview-text"></span>
-          <button onclick="cancelReply()" title="Cancelar resposta">✕</button>
-        </div>
         <div id="file-chip">
           <span id="file-chip-icon">📄</span>
           <div id="file-chip-body">
