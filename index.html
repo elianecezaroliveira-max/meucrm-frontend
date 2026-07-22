@@ -2137,6 +2137,7 @@ function closeModal() { document.getElementById('modal-overlay').classList.remov
 // ── CONTATOS ──
 // Ordena: não lidos no topo pela 1ª mensagem não lida (quem espera há mais tempo), lidos por mais recente
 function sortContacts(list) {
+  if (!Array.isArray(list)) return []; // resposta de erro do servidor → não quebra
   const unread = list.filter(c => (c.unread_count || 0) > 0)
     .sort((a, b) => {
       // Usa first_unread_at para não perder prioridade quando o lead manda nova mensagem
@@ -5093,8 +5094,10 @@ async function loadPipeline() {
       fetch(SERVER_URL + '/pipeline/stages'),
       fetch(SERVER_URL + '/contacts')
     ]);
-    pipelineStages = await stagesRes.json();
-    pipelineContacts = await contactsRes.json();
+    const _st = await stagesRes.json();
+    const _ct = await contactsRes.json();
+    pipelineStages = Array.isArray(_st) ? _st : [];
+    pipelineContacts = Array.isArray(_ct) ? _ct : []; // nunca quebra se vier erro
     pipelineContacts.forEach(pc => {
       const ac = allContacts.find(c => c.phone === pc.phone);
       if (ac) pc.tags = ac.tags;
