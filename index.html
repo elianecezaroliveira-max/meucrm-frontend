@@ -1350,6 +1350,9 @@ window.addEventListener('load', initAuth);
   </div>
   <div id="pipeline-filter-panel">
     <div><label>Nome do lead</label><input class="pf-input" id="pf-name" placeholder="Buscar..." oninput="applyPipelineFilter()"></div>
+    <div><label>Etapa do funil</label><select class="pf-input" id="pf-stage" onchange="applyPipelineFilter()"><option value="">Todas as etapas</option></select></div>
+    <div><label>Conta (WhatsApp)</label><select class="pf-input" id="pf-account" onchange="applyPipelineFilter()"><option value="">Todas as contas</option></select></div>
+    <div><label>Tarefas</label><select class="pf-input" id="pf-task" onchange="applyPipelineFilter()"><option value="">Todas</option><option value="open">Com tarefa em aberto</option><option value="overdue">Com tarefa em atraso</option><option value="done">Com tarefa concluída</option><option value="none">Sem tarefas</option></select></div>
     <div><label>Tags</label><input class="pf-input" id="pf-tag-search" placeholder="Pesquisar tag..." oninput="populatePipelineFilterTags()" style="margin-bottom:5px;display:block"><div id="pf-tags-area"></div></div>
     <div><label>Data (de)</label><input type="date" class="pf-input" id="pf-date-from" onchange="applyPipelineFilter()"></div>
     <div><label>Data (até)</label><input type="date" class="pf-input" id="pf-date-to" onchange="applyPipelineFilter()"></div>
@@ -5497,12 +5500,42 @@ async function bulkEditTags() {
 // ── FILTROS DO PIPELINE ──
 let activePipelineFilterTags = new Set();
 
-function togglePipelineFilter() {
+let _pipelineTasksByPhone = null; // cache das tarefas por telefone (filtro por tarefa)
+async function togglePipelineFilter() {
   const panel = document.getElementById('pipeline-filter-panel');
   const btn = document.getElementById('pipeline-filter-btn');
   const open = panel.classList.toggle('open');
   btn.classList.toggle('active', open);
-  if (open) populatePipelineFilterTags();
+  if (open) {
+    populatePipelineFilterTags();
+    // Etapas do funil
+    const stSel = document.getElementById('pf-stage');
+    if (stSel) {
+      const cur = stSel.value;
+      stSel.innerHTML = '<option value="">Todas as etapas</option>' +
+        (pipelineStages || []).map(s => `<option value="${s.id}">${escHtml(s.name)}</option>`).join('') +
+        '<option value="__none__">Sem etapa</option>';
+      stSel.value = cur;
+    }
+    // Contas de WhatsApp (copia do seletor principal)
+    const acSel = document.getElementById('pf-account');
+    const mainSel = document.getElementById('account-select');
+    if (acSel && mainSel) {
+      const cur = acSel.value;
+      acSel.innerHTML = '<option value="">Todas as contas</option>' +
+        Array.from(mainSel.options).filter(o => o.value).map(o => `<option value="${o.value}">${escHtml(o.textContent)}</option>`).join('');
+      acSel.value = cur;
+    }
+    // Tarefas (uma vez por abertura — para os modos aberto/atraso/concluída)
+    try {
+      const tasks = await (await fetch(SERVER_URL + '/tasks')).json();
+      _pipelineTasksByPhone = {};
+      (Array.isArray(tasks) ? tasks : []).forEach(t => {
+        if (!t.phone) return;
+        (_pipelineTasksByPhone[t.phone] = _pipelineTasksByPhone[t.phone] || []).push(t);
+      });
+    } catch (_) { _pipelineTasksByPhone = {}; }
+  }
 }
 
 function populatePipelineFilterTags() {
@@ -5523,10 +5556,30 @@ function togglePFTag(tag) {
 
 function applyPipelineFilter() {
   const name = (document.getElementById('pf-name')?.value||'').toLowerCase();
+  const stage = document.getElementById('pf-stage')?.value||'';
+  const account = document.getElementById('pf-account')?.value||'';
+  const taskMode = document.getElementById('pf-task')?.value||'';
   const dateFrom = document.getElementById('pf-date-from')?.value||'';
   const dateTo = document.getElementById('pf-date-to')?.value||'';
+  const nowIso = new Date().toISOString();
   const filtered = pipelineContacts.filter(c => {
     if (name && !c.name?.toLowerCase().includes(name) && !c.phone?.includes(name)) return false;
+    // Etapa do funil
+    if (stage === '__none__') { if (c.stage_id) return false; }
+    else if (stage && c.stage_id !== stage) return false;
+    // Conta do WhatsApp
+    if (account && String(c.account_id||'') !== account) return false;
+    // Situação das tarefas
+    if (taskMode) {
+      const ts = (_pipelineTasksByPhone && _pipelineTasksByPhone[c.phone]) || [];
+      const abertas = ts.filter(t => !t.done);
+      const atrasadas = abertas.filter(t => t.due_at && t.due_at < nowIso);
+      const concluidas = ts.filter(t => t.done);
+      if (taskMode === 'open'    && abertas.length === 0) return false;
+      if (taskMode === 'overdue' && atrasadas.length === 0) return false;
+      if (taskMode === 'done'    && concluidas.length === 0) return false;
+      if (taskMode === 'none'    && ts.length > 0) return false;
+    }
     if (activePipelineFilterTags.size > 0 && ![...activePipelineFilterTags].every(t=>(c.tags||[]).includes(t))) return false;
     if (dateFrom && c.last_message_at && c.last_message_at < dateFrom) return false;
     if (dateTo && c.last_message_at && c.last_message_at.substring(0,10) > dateTo) return false;
@@ -5537,7 +5590,7 @@ function applyPipelineFilter() {
 
 function clearPipelineFilter() {
   activePipelineFilterTags.clear();
-  ['pf-name','pf-date-from','pf-date-to','pf-tag-search'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  ['pf-name','pf-stage','pf-account','pf-task','pf-date-from','pf-date-to','pf-tag-search'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
   document.getElementById('pipeline-filter-panel')?.classList.remove('open');
   document.getElementById('pipeline-filter-btn')?.classList.remove('active');
   renderKanban();
