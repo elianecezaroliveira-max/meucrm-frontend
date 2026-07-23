@@ -1298,7 +1298,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v16</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v17</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -7258,16 +7258,31 @@ function _botPickAccount(){
   const opt = as ? Array.from(as.options).find(o=>o.value) : null;
   return opt ? opt.value : '';
 }
+// Contas para o nó "Enviar mensagem" — o número escolhido aqui é OBEDECIDO à risca
+async function loadBotMsgAccounts(node){
+  const sel = document.getElementById('cfg-msg-account');
+  if(!sel) return;
+  try{
+    const accs = await (await fetch(SERVER_URL+'/accounts')).json();
+    sel.innerHTML = '<option value="">— escolha o número —</option>' + (Array.isArray(accs)?accs:[]).map(a=>{
+      const tipo = a.type==='evolution' ? 'QR' : 'API';
+      return `<option value="${a.id}" ${node.config.account_id===a.id?'selected':''}>[${tipo}] ${escHtml(a.name)}${a.phone_display?` (${escHtml(a.phone_display)})`:''}</option>`;
+    }).join('');
+  }catch(_){ sel.innerHTML='<option value="">Erro ao carregar contas</option>'; }
+}
 async function loadBotTmplOptions(node){
   const sel = document.getElementById('cfg-tmpl-select');
   if(!sel) return;
   sel.innerHTML = '<option value="">Carregando modelos…</option>';
   try{
-    // Modelos pertencem à WABA de cada número. O bot envia pelo número DO CONTATO,
-    // então mostramos a UNIÃO dos modelos aprovados de TODAS as contas da API oficial
-    // (Evolution/QR não tem modelos). Antes aparecia só o número de uma conta.
     const accs = await (await fetch(SERVER_URL+'/accounts')).json();
-    const apiAccs = (Array.isArray(accs)?accs:[]).filter(a=>a.type!=='evolution');
+    let apiAccs = (Array.isArray(accs)?accs:[]).filter(a=>a.type!=='evolution');
+    // Número escolhido no nó: mostra SÓ os modelos daquele número
+    if (node.config.account_id) {
+      const chosen = (Array.isArray(accs)?accs:[]).find(a=>a.id===node.config.account_id);
+      if (chosen && chosen.type==='evolution') { sel.innerHTML='<option value="">⚠️ Número QR não envia modelos — escolha um número da API</option>'; return; }
+      apiAccs = chosen ? [chosen] : [];
+    }
     if(!apiAccs.length){ sel.innerHTML='<option value="">Nenhuma conta da API disponível</option>'; return; }
     const results = await Promise.all(apiAccs.map(async a=>{
       try{
@@ -7563,6 +7578,11 @@ function renderConfigPanel(node) {
   if (node.type==='message') {
     const mode = node.config.mode || 'custom';
     form.innerHTML = `
+      <label class="bot-cfg-label">📱 Enviar pelo número <span style="color:#ef4444">*</span></label>
+      <select class="bot-cfg-select" id="cfg-msg-account"><option value="">⏳ Carregando contas...</option></select>
+      <div style="font-size:11px;color:${node.config.account_id ? '#667781' : '#ef4444'};margin:4px 0 10px" id="cfg-msg-account-hint">
+        ${node.config.account_id ? 'O bot envia SEMPRE por este número — sem troca automática.' : '⚠️ Escolha o número: sem ele, o envio pode sair por outro número.'}
+      </div>
       <label class="bot-cfg-label">Tipo de mensagem</label>
       <select class="bot-cfg-select" id="cfg-msg-mode">
         <option value="custom" ${mode==='custom'?'selected':''}>Personalizada / rápida (texto)</option>
@@ -7607,6 +7627,13 @@ function renderConfigPanel(node) {
     document.getElementById('cfg-tmpl-lang').addEventListener('input', function(){ updateNodeConfig(node.id,{language:this.value.trim()}); });
     document.getElementById('cfg-tmpl-vars').addEventListener('input', function(){ updateNodeConfig(node.id,{vars:this.value.split('\n').map(s=>s.trim()).filter(Boolean)}); });
     document.getElementById('cfg-tmpl-select').addEventListener('change', function(){ onBotTmplSelect(node, this.value); });
+    document.getElementById('cfg-msg-account').addEventListener('change', function(){
+      updateNodeConfig(node.id, { account_id: this.value || null });
+      const hint = document.getElementById('cfg-msg-account-hint');
+      if (hint) { hint.style.color = this.value ? '#667781' : '#ef4444'; hint.textContent = this.value ? 'O bot envia SEMPRE por este número — sem troca automática.' : '⚠️ Escolha o número: sem ele, o envio pode sair por outro número.'; }
+      loadBotTmplOptions(node); // modelos do número escolhido
+    });
+    loadBotMsgAccounts(node);
     loadBotTmplOptions(node);
     renderTmplButtonsInfo(node);
     return;
