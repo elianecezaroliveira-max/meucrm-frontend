@@ -1,6 +1,6 @@
 // VETRA Service Worker — PWA
 // v5: renova o cache para trazer as correções de navegação/telas (força atualização)
-const CACHE_NAME = 'vetra-v8';
+const CACHE_NAME = 'vetra-v9';
 
 // ── NOTIFICAÇÕES PUSH ──
 // IMPORTANTE (iOS): todo push DEVE exibir notificação visível dentro de event.waitUntil,
