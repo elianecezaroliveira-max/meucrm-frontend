@@ -1301,7 +1301,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v18</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v19</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -7561,35 +7561,38 @@ function selectNode(id) {
   const node = botNodes.find(n=>n.id===id);
   if (node) { renderConfigPanel(node); _floatConfigPanel(id); }
 }
-// Posiciona o painel de edição COLADO ao nó clicado (edição "dentro" do fluxo)
+// Posiciona o painel de edição COLADO ao nó clicado (edição "dentro" do fluxo).
+// Estilos aplicados DIRETO no elemento — imune a qualquer conflito de CSS.
 function _floatConfigPanel(id) {
   const panel = document.getElementById('bot-config-panel');
   const el = document.getElementById('bnode-' + id);
   if (!panel || !el) return;
   panel.classList.add('floating');
-  // Botão ✕ para fechar o cartão
-  if (!document.getElementById('bot-config-close')) {
-    const btn = document.createElement('button');
-    btn.id = 'bot-config-close';
-    btn.textContent = '✕';
-    btn.style.cssText = 'position:absolute;top:6px;right:8px;background:none;border:none;font-size:16px;color:#667781;cursor:pointer;z-index:2';
-    btn.onclick = () => { panel.classList.remove('floating'); selectedNodeId = null; renderBotList(); };
-    panel.appendChild(btn);
-  }
   const r = el.getBoundingClientRect();
   const pw = 310, ph = Math.min(window.innerHeight * 0.72, 560);
   let left = r.right + 12, top = r.top;
   if (left + pw > window.innerWidth - 8) left = Math.max(8, r.left - pw - 12); // não cabe à direita → abre à esquerda
   if (top + ph > window.innerHeight - 8) top = Math.max(8, window.innerHeight - ph - 8);
-  panel.style.left = left + 'px';
-  panel.style.top = top + 'px';
+  panel.style.cssText = `display:flex !important;flex-direction:column;position:fixed;left:${left}px;top:${top}px;` +
+    `width:${pw}px;max-height:${ph}px;overflow-y:auto;background:#ffffff;border:1px solid #e9edef;` +
+    `border-radius:12px;box-shadow:0 12px 34px rgba(0,0,0,.28);z-index:9000;padding:12px 12px 14px`;
+  // Botão ✕ para fechar o cartão
+  if (!document.getElementById('bot-config-close')) {
+    const btn = document.createElement('button');
+    btn.id = 'bot-config-close';
+    btn.textContent = '✕';
+    btn.style.cssText = 'position:sticky;top:0;align-self:flex-end;background:#fff;border:none;font-size:16px;color:#667781;cursor:pointer;z-index:2;padding:0 2px';
+    btn.onclick = () => { panel.classList.remove('floating'); panel.style.cssText = ''; selectedNodeId = null; renderBotList(); };
+    panel.insertBefore(btn, panel.firstChild);
+  }
 }
 
 // ── Config panel ──
 function showConfigPlaceholder() {
   document.getElementById('bot-config-placeholder').style.display='';
   document.getElementById('bot-config-form').style.display='none';
-  document.getElementById('bot-config-panel')?.classList.remove('floating'); // fecha o cartão flutuante
+  const p = document.getElementById('bot-config-panel');
+  if (p) { p.classList.remove('floating'); p.style.cssText = ''; } // fecha o cartão flutuante
 }
 
 function renderConfigPanel(node) {
