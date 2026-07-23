@@ -1319,7 +1319,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v32</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v33</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1790,7 +1790,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v32</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v33</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1844,7 +1844,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 32;
+const APP_VER = 33;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -6857,6 +6857,26 @@ function onCanvasWheel(e) {
 let botZoom = 1, botPanX = 40, botPanY = 40, _botPanInit = false, _botBounds = null;
 const BOT_NW = 190, BOT_NH = 66, BOT_HG = 90, BOT_VG = 26;
 const BOT_SP = 30; // espaçamento vertical entre as saídas de um mesmo nó
+// Tamanho REAL de cada nó medido na tela (nós de mensagem são maiores que os demais)
+const _botNodeSizes = {};
+function _bnW(id){ const t=_botNodeSizes[id]; return (t&&t.w)||BOT_NW; }
+function _bnH(id){ const t=_botNodeSizes[id]; return (t&&t.h)||BOT_NH; }
+// Sobe pelas ligações e descobre de onde este nó HERDA o número:
+// mensagem anterior com número escolhido ou um Round Robin no caminho.
+function _botInheritedAcct(nodeId){
+  const seen=new Set(); let cur=nodeId;
+  while(cur && !seen.has(cur)){
+    seen.add(cur);
+    const e=botEdges.find(x=>x.to_node_id===cur);
+    if(!e) return null;
+    const p=botNodes.find(n=>n.id===e.from_node_id);
+    if(!p) return null;
+    if(p.type==='message' && p.config && p.config.account_id) return {type:'acct', id:p.config.account_id};
+    if(p.type==='round_robin') return {type:'rr'};
+    cur=p.id;
+  }
+  return null;
+}
 
 function botOutSlots(node){
   if (node.type==='end') return [];
@@ -6872,10 +6892,11 @@ function botChildEdge(nodeId, label){
 
 function computeBotLayout(){
   const pos={}, adds=[], loops=[]; let cursorY=0;
-  function place(id, depth, visited){
+  function place(id, x, visited){
     const node=botNodes.find(n=>n.id===id);
     if(!node) return null;
-    const x=depth*(BOT_NW+BOT_HG);
+    const w=_bnW(id), h=_bnH(id); // tamanho REAL do nó (mensagens são grandes)
+    const yMin=cursorY;
     const slots=botOutSlots(node);
     const v2=new Set(visited); v2.add(id);
     const centers=[];
@@ -6883,23 +6904,25 @@ function computeBotLayout(){
       const edge=botChildEdge(id, slot.label);
       if(edge && v2.has(edge.to_node_id)){
         const y=cursorY; cursorY+=BOT_NH+BOT_VG;
-        loops.push({x:x+BOT_NW+BOT_HG, y, fromId:id, label:slot.label, display:slot.display});
+        loops.push({x:x+w+BOT_HG, y, fromId:id, label:slot.label, display:slot.display});
         centers.push(y+BOT_NH/2);
       } else if(edge){
-        const c=place(edge.to_node_id, depth+1, v2);
+        const c=place(edge.to_node_id, x+w+BOT_HG, v2);
         if(c!=null) centers.push(c);
       } else {
         const y=cursorY; cursorY+=BOT_NH+BOT_VG;
-        adds.push({x:x+BOT_NW+BOT_HG, y, fromId:id, label:slot.label, display:slot.display});
+        adds.push({x:x+w+BOT_HG, y, fromId:id, label:slot.label, display:slot.display});
         centers.push(y+BOT_NH/2);
       }
     });
     let y;
-    if(centers.length) y=(centers[0]+centers[centers.length-1])/2 - BOT_NH/2;
-    else { y=cursorY; cursorY+=BOT_NH+BOT_VG; }
+    if(centers.length) y=(centers[0]+centers[centers.length-1])/2 - h/2;
+    else y=cursorY;
+    if(y<yMin) y=yMin; // nunca invade o espaço já ocupado acima
     if(y<0) y=0;
     pos[id]={x,y,node};
-    return y+BOT_NH/2;
+    cursorY=Math.max(cursorY, y+h+BOT_VG); // reserva TODA a altura deste nó
+    return y+h/2;
   }
   const start=botNodes.find(n=>n.type==='start');
   if(start) place(start.id,0,new Set());
@@ -6974,17 +6997,17 @@ function _markBotManual(){ const s=botNodes.find(n=>n.type==='start'); if(s){ s.
 // force=true sobrescreve tudo; senão só preenche os que estão sem posição.
 function seedBotPositions(force){
   const {pos}=computeBotLayout();
-  let maxY=0; Object.values(pos).forEach(p=>{ maxY=Math.max(maxY,p.y+BOT_NH); });
+  let maxY=0; Object.values(pos).forEach(p=>{ maxY=Math.max(maxY,p.y+_bnH(p.node.id)); });
   botNodes.forEach(n=>{
     if(pos[n.id] && (force || n.pos_x==null || n.pos_y==null)){ n.pos_x=Math.round(pos[n.id].x); n.pos_y=Math.round(pos[n.id].y); }
   });
   // Nós órfãos (não alcançáveis a partir do início) ganham um lugar embaixo
   let oy=maxY+40;
-  botNodes.forEach(n=>{ if(!pos[n.id] && (force || n.pos_x==null || n.pos_y==null)){ n.pos_x=0; n.pos_y=oy; oy+=BOT_NH+BOT_VG; } });
+  botNodes.forEach(n=>{ if(!pos[n.id] && (force || n.pos_x==null || n.pos_y==null)){ n.pos_x=0; n.pos_y=oy; oy+=_bnH(n.id)+BOT_VG; } });
 }
 
 // Botão "Organizar": reorganiza tudo no formato de organograma e enquadra
-function organizeBot(){ seedBotPositions(true); _markBotManual(); renderBotList(); setTimeout(botZoomFit, 20); }
+function organizeBot(){ seedBotPositions(true); _markBotManual(); renderBotList(); seedBotPositions(true); renderBotList(); setTimeout(botZoomFit, 20); }
 
 // Redesenha SOMENTE as linhas (usado durante o arraste de um nó, sem recriar os elementos)
 function _redrawBotEdges(){
@@ -6996,10 +7019,14 @@ function _redrawBotEdges(){
     if(node.type==='end' || node.pos_x==null) return;
     const slots=botOutSlots(node), n=slots.length;
     slots.forEach((slot,i)=>{
-      const sx=node.pos_x+BOT_NW, sy=node.pos_y+BOT_NH/2+(i-(n-1)/2)*BOT_SP;
+      const elN=document.querySelector('#bot-nodes-layer [data-node-id="'+node.id+'"]');
+      const wN=elN?elN.offsetWidth:_bnW(node.id), hN=elN?elN.offsetHeight:_bnH(node.id);
+      const sx=node.pos_x+wN; let sy=node.pos_y+hN/2+(i-(n-1)/2)*BOT_SP;
+      const anc=elN?Array.from(elN.querySelectorAll('.bot-slot-anchor')).find(a=>a.dataset.slot===slot.label):null;
+      if(anc) sy=node.pos_y+anc.offsetTop+anc.offsetHeight/2;
       const isFail=slot.label==='__failed__';
       const edge=botChildEdge(node.id, slot.label); const to=edge?byId(edge.to_node_id):null;
-      if(to && to.pos_x!=null) mk(sx,sy,to.pos_x,to.pos_y+BOT_NH/2, isFail?'#ef4444':'#94a3b8', isFail);
+      if(to && to.pos_x!=null) mk(sx,sy,to.pos_x,to.pos_y+Math.min(_bnH(to.id)/2,BOT_NH/2+10), isFail?'#ef4444':'#94a3b8', isFail);
       else mk(sx,sy,sx+BOT_HG,sy, isFail?'#ef4444':'#274d3d', true);
     });
   });
@@ -7030,7 +7057,7 @@ function renderBotList(){
   if(botNodes.some(n=>n.pos_x==null||n.pos_y==null)) seedBotPositions(false);
 
   let maxX=0,maxY=0;
-  botNodes.forEach(n=>{ maxX=Math.max(maxX,(n.pos_x||0)+BOT_NW); maxY=Math.max(maxY,(n.pos_y||0)+BOT_NH); });
+  botNodes.forEach(n=>{ maxX=Math.max(maxX,(n.pos_x||0)+_bnW(n.id)); maxY=Math.max(maxY,(n.pos_y||0)+_bnH(n.id)); });
   svg.setAttribute('width', maxX+400); svg.setAttribute('height', maxY+300);
   _botBounds = { w:maxX+200, h:maxY+120 };
 
@@ -7056,6 +7083,8 @@ function renderBotList(){
 
   // NÓS PRIMEIRO — para medir onde ficam os botões/saídas de cada cartão
   botNodes.forEach(node=> layer.appendChild(botNodeEl(node,node.pos_x,node.pos_y)));
+  // Mede o tamanho REAL de cada nó (o Organizar e as linhas usam isso)
+  botNodes.forEach(n=>{ const _e=layer.querySelector('[data-node-id="'+n.id+'"]'); if(_e) _botNodeSizes[n.id]={w:_e.offsetWidth,h:_e.offsetHeight}; });
 
   // arestas + alças de reconexão + botões "+" (fios nascem na ALTURA de cada botão/saída)
   botNodes.forEach(node=>{
@@ -7433,9 +7462,11 @@ async function loadBotTmplOptions(node){
   try{
     const accs = await (await fetch(SERVER_URL+'/accounts')).json();
     let apiAccs = (Array.isArray(accs)?accs:[]).filter(a=>a.type!=='evolution');
-    // Número escolhido no nó: mostra SÓ os modelos daquele número
-    if (node.config.account_id) {
-      const chosen = (Array.isArray(accs)?accs:[]).find(a=>a.id===node.config.account_id);
+    // Número escolhido no nó (ou herdado do passo anterior): mostra SÓ os modelos dele
+    const _inh = (!node.config.account_id && typeof _botInheritedAcct==='function') ? _botInheritedAcct(node.id) : null;
+    const _eff = node.config.account_id || (_inh && _inh.type==='acct' ? _inh.id : null);
+    if (_eff) {
+      const chosen = (Array.isArray(accs)?accs:[]).find(a=>a.id===_eff);
       if (chosen && chosen.type==='evolution') { sel.innerHTML='<option value="">⚠️ Número QR não envia modelos — escolha um número da API</option>'; return; }
       apiAccs = chosen ? [chosen] : [];
     }
@@ -7849,11 +7880,15 @@ function renderConfigPanel(node) {
 
   if (node.type==='message') {
     const mode = node.config.mode || 'custom';
+    const inh = node.config.account_id ? null : _botInheritedAcct(node.id);
     form.innerHTML = `
-      <label class="bot-cfg-label">📱 Enviar pelo número</label>
-      <select class="bot-cfg-select" id="cfg-msg-account"><option value="">⏳ Carregando contas...</option></select>
-      <div style="font-size:11px;color:#667781;margin:4px 0 10px" id="cfg-msg-account-hint">
-        ${node.config.account_id ? 'Este passo envia SEMPRE por este número — sem troca automática.' : 'Sem número: herda o do passo anterior (ou do Round Robin). Se nenhum passo anterior tiver número, o envio é BLOQUEADO.'}
+      <div id="cfg-msg-inh" style="display:${inh?'flex':'none'};align-items:center;gap:10px;margin:0 0 12px;font-size:12.5px;color:#111b21">
+        <span>📱 ${inh && inh.type==='rr' ? 'Número: definido pelo Round Robin' : 'Número: o mesmo do passo anterior'}</span>
+        <a href="#" onclick="document.getElementById('cfg-msg-inh').style.display='none';document.getElementById('cfg-msg-acct-wrap').style.display='block';return false" style="color:#3d7bfa;font-weight:600;text-decoration:none">trocar</a>
+      </div>
+      <div id="cfg-msg-acct-wrap" style="display:${inh?'none':'block'}">
+        <label class="bot-cfg-label">📱 Enviar pelo número</label>
+        <select class="bot-cfg-select" id="cfg-msg-account" style="margin-bottom:10px"><option value="">⏳ Carregando contas...</option></select>
       </div>
       <label class="bot-cfg-label">Tipo de mensagem</label>
       <select class="bot-cfg-select" id="cfg-msg-mode">
@@ -7868,20 +7903,18 @@ function renderConfigPanel(node) {
           <button type="button" onclick="insertMsgVar('{notas}')" style="background:#e7f7ef;border:1px solid #00a884;color:#00a884;border-radius:6px;padding:3px 10px;font-size:12px;cursor:pointer">+ {notas}</button>
         </div>
         <textarea class="bot-cfg-textarea" id="cfg-msg-text" placeholder="Olá, {nome}! Como posso ajudar?">${escHtml(node.config.text||'')}</textarea>
-        <div style="font-size:11px;color:#667781;margin-top:6px">{nome} = nome do lead · {telefone} = telefone · {notas} = anotações do lead. Também aceita (nome), [nome].</div>
       </div>
       <div id="cfg-msg-template" style="display:${mode==='template'?'block':'none'}">
         <label class="bot-cfg-label" style="margin-top:12px">Escolha um modelo aprovado</label>
         <select class="bot-cfg-select" id="cfg-tmpl-select"><option value="">⏳ Carregando...</option></select>
-        <label class="bot-cfg-label" style="margin-top:10px">Nome do modelo <span style="color:#667781">(ou digite manualmente)</span></label>
+        <label class="bot-cfg-label" style="margin-top:10px">Nome do modelo</label>
         <input class="bot-cfg-input" id="cfg-tmpl-name" placeholder="ex: anac3" value="${escHtml(node.config.template_name||'')}" />
         <label class="bot-cfg-label" style="margin-top:10px">Idioma</label>
         <input class="bot-cfg-input" id="cfg-tmpl-lang" placeholder="pt_BR" value="${escHtml(node.config.language||'pt_BR')}" />
-        <label class="bot-cfg-label" style="margin-top:10px">Valores das variáveis <span style="color:#667781">(um por linha: {{1}}, {{2}}… — pode usar {nome}, {telefone}, {notas})</span></label>
+        <label class="bot-cfg-label" style="margin-top:10px">Valores das variáveis <span style="color:#667781">(um por linha)</span></label>
         <textarea class="bot-cfg-textarea" id="cfg-tmpl-vars" placeholder="{nome}">${escHtml((node.config.vars||[]).join('\n'))}</textarea>
         <div id="cfg-tmpl-preview" style="margin-top:10px"></div>
         <div id="cfg-tmpl-buttons" style="margin-top:8px"></div>
-        <div style="font-size:11px;color:#667781;margin-top:6px">Use modelo aprovado para iniciar conversa com quem ainda não te respondeu.</div>
       </div>`;
     document.getElementById('cfg-msg-mode').addEventListener('change', function(){
       updateNodeConfig(node.id, {mode:this.value});
@@ -7902,8 +7935,6 @@ function renderConfigPanel(node) {
     document.getElementById('cfg-tmpl-select').addEventListener('change', function(){ onBotTmplSelect(node, this.value); });
     document.getElementById('cfg-msg-account').addEventListener('change', function(){
       updateNodeConfig(node.id, { account_id: this.value || null });
-      const hint = document.getElementById('cfg-msg-account-hint');
-      if (hint) { hint.textContent = this.value ? 'Este passo envia SEMPRE por este número — sem troca automática.' : 'Sem número: herda o do passo anterior (ou do Round Robin). Se nenhum passo anterior tiver número, o envio é BLOQUEADO.'; }
       loadBotTmplOptions(node); // modelos do número escolhido
     });
     loadBotMsgAccounts(node);
