@@ -737,6 +737,9 @@
 .bot-port-out { position:relative;top:auto;left:auto;transform:none;flex-shrink:0; }
 
 #bot-config-panel { width:260px;background:#ffffff;border-left:1px solid #e9edef;display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0; }
+/* Edição DENTRO do fluxo: o painel vira um cartão flutuante colado ao nó clicado */
+#bot-config-panel:not(.floating) { display:none; }
+#bot-config-panel.floating { position:fixed; width:310px; max-height:72vh; border:1px solid #e9edef; border-radius:12px; box-shadow:0 12px 34px rgba(0,0,0,.28); z-index:620; padding-top:10px; }
 #bot-config-placeholder { padding:20px;color:#667781;font-size:13px;text-align:center;margin-top:20px; }
 #bot-config-form { padding:14px;flex:1; }
 .bot-cfg-label { font-size:11px;color:#667781;text-transform:uppercase;margin-bottom:4px;margin-top:12px;display:block; }
@@ -1298,7 +1301,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v17</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v18</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -7556,13 +7559,37 @@ function selectNode(id) {
   selectedNodeId = id;
   renderBotList(); // re-renderiza para destacar o passo selecionado
   const node = botNodes.find(n=>n.id===id);
-  if (node) renderConfigPanel(node);
+  if (node) { renderConfigPanel(node); _floatConfigPanel(id); }
+}
+// Posiciona o painel de edição COLADO ao nó clicado (edição "dentro" do fluxo)
+function _floatConfigPanel(id) {
+  const panel = document.getElementById('bot-config-panel');
+  const el = document.getElementById('bnode-' + id);
+  if (!panel || !el) return;
+  panel.classList.add('floating');
+  // Botão ✕ para fechar o cartão
+  if (!document.getElementById('bot-config-close')) {
+    const btn = document.createElement('button');
+    btn.id = 'bot-config-close';
+    btn.textContent = '✕';
+    btn.style.cssText = 'position:absolute;top:6px;right:8px;background:none;border:none;font-size:16px;color:#667781;cursor:pointer;z-index:2';
+    btn.onclick = () => { panel.classList.remove('floating'); selectedNodeId = null; renderBotList(); };
+    panel.appendChild(btn);
+  }
+  const r = el.getBoundingClientRect();
+  const pw = 310, ph = Math.min(window.innerHeight * 0.72, 560);
+  let left = r.right + 12, top = r.top;
+  if (left + pw > window.innerWidth - 8) left = Math.max(8, r.left - pw - 12); // não cabe à direita → abre à esquerda
+  if (top + ph > window.innerHeight - 8) top = Math.max(8, window.innerHeight - ph - 8);
+  panel.style.left = left + 'px';
+  panel.style.top = top + 'px';
 }
 
 // ── Config panel ──
 function showConfigPlaceholder() {
   document.getElementById('bot-config-placeholder').style.display='';
   document.getElementById('bot-config-form').style.display='none';
+  document.getElementById('bot-config-panel')?.classList.remove('floating'); // fecha o cartão flutuante
 }
 
 function renderConfigPanel(node) {
@@ -7578,10 +7605,10 @@ function renderConfigPanel(node) {
   if (node.type==='message') {
     const mode = node.config.mode || 'custom';
     form.innerHTML = `
-      <label class="bot-cfg-label">📱 Enviar pelo número <span style="color:#ef4444">*</span></label>
+      <label class="bot-cfg-label">📱 Enviar pelo número</label>
       <select class="bot-cfg-select" id="cfg-msg-account"><option value="">⏳ Carregando contas...</option></select>
-      <div style="font-size:11px;color:${node.config.account_id ? '#667781' : '#ef4444'};margin:4px 0 10px" id="cfg-msg-account-hint">
-        ${node.config.account_id ? 'O bot envia SEMPRE por este número — sem troca automática.' : '⚠️ Escolha o número: sem ele, o envio pode sair por outro número.'}
+      <div style="font-size:11px;color:#667781;margin:4px 0 10px" id="cfg-msg-account-hint">
+        ${node.config.account_id ? 'Este passo envia SEMPRE por este número — sem troca automática.' : 'Sem número: herda o do passo anterior (ou do Round Robin). Se nenhum passo anterior tiver número, o envio é BLOQUEADO.'}
       </div>
       <label class="bot-cfg-label">Tipo de mensagem</label>
       <select class="bot-cfg-select" id="cfg-msg-mode">
@@ -7630,7 +7657,7 @@ function renderConfigPanel(node) {
     document.getElementById('cfg-msg-account').addEventListener('change', function(){
       updateNodeConfig(node.id, { account_id: this.value || null });
       const hint = document.getElementById('cfg-msg-account-hint');
-      if (hint) { hint.style.color = this.value ? '#667781' : '#ef4444'; hint.textContent = this.value ? 'O bot envia SEMPRE por este número — sem troca automática.' : '⚠️ Escolha o número: sem ele, o envio pode sair por outro número.'; }
+      if (hint) { hint.textContent = this.value ? 'Este passo envia SEMPRE por este número — sem troca automática.' : 'Sem número: herda o do passo anterior (ou do Round Robin). Se nenhum passo anterior tiver número, o envio é BLOQUEADO.'; }
       loadBotTmplOptions(node); // modelos do número escolhido
     });
     loadBotMsgAccounts(node);
