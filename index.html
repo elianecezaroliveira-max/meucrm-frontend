@@ -1277,7 +1277,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v7</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v8</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1737,7 +1737,7 @@ window.addEventListener('load', initAuth);
 <script>
 // ── Detector de erros: mostra na TELA qualquer erro de código (com local exato) ──
 // Assim, em vez de "não funciona", vemos a mensagem real e corrigimos na hora.
-window.addEventListener('error', function (ev) {
+function _showErrToast(msg) {
   try {
     let t = document.getElementById('js-err-toast');
     if (!t) {
@@ -1747,9 +1747,17 @@ window.addEventListener('error', function (ev) {
       t.onclick = () => t.remove();
       document.body.appendChild(t);
     }
-    const onde = (ev.filename || '').split('/').pop() + ':' + (ev.lineno || '?');
-    t.textContent = '⚠️ Erro: ' + (ev.message || 'desconhecido') + ' (' + onde + ') — toque para fechar';
+    t.textContent = '⚠️ ' + msg + ' — toque para fechar';
   } catch (_) {}
+}
+window.addEventListener('error', function (ev) {
+  const onde = (ev.filename || '').split('/').pop() + ':' + (ev.lineno || '?');
+  _showErrToast('Erro: ' + (ev.message || 'desconhecido') + ' (' + onde + ')');
+});
+// Erros em código assíncrono (fetch/await) também aparecem na tela
+window.addEventListener('unhandledrejection', function (ev) {
+  const r = ev.reason;
+  _showErrToast('Erro (async): ' + (r && (r.message || r.toString()) || 'desconhecido'));
 });
 
 let SERVER_URL = '';
@@ -5106,6 +5114,8 @@ function closePipeline() {
 }
 
 async function loadPipeline() {
+  const board = document.getElementById('kanban-board');
+  if (board) board.innerHTML = '<div style="padding:24px;color:#667781;font-size:14px">Carregando leads...</div>';
   try {
     const [stagesRes, contactsRes] = await Promise.all([
       fetch(SERVER_URL + '/pipeline/stages'),
@@ -5113,15 +5123,24 @@ async function loadPipeline() {
     ]);
     const _st = await stagesRes.json();
     const _ct = await contactsRes.json();
+    // Se o servidor devolveu ERRO em vez de lista, mostra o motivo na tela
+    if (!Array.isArray(_ct) && _ct && _ct.error) throw new Error('Servidor: ' + _ct.error);
+    if (!Array.isArray(_st) && _st && _st.error) throw new Error('Servidor (etapas): ' + _st.error);
     pipelineStages = Array.isArray(_st) ? _st : [];
-    pipelineContacts = Array.isArray(_ct) ? _ct : []; // nunca quebra se vier erro
-    pipelineContacts.forEach(pc => {
-      const ac = allContacts.find(c => c.phone === pc.phone);
+    pipelineContacts = Array.isArray(_ct) ? _ct : [];
+    (pipelineContacts || []).forEach(pc => {
+      const ac = (Array.isArray(allContacts) ? allContacts : []).find(c => c.phone === pc.phone);
       if (ac) pc.tags = ac.tags;
     });
     renderKanban();
   } catch(e) {
     console.error('Erro ao carregar pipeline:', e);
+    // Mostra o ERRO REAL na tela (em vez de deixar o quadro vazio sem explicação)
+    if (board) board.innerHTML = `<div style="padding:24px;color:#ef4444;font-size:14px">
+      ⚠️ O Pipeline não conseguiu carregar.<br><br>
+      <b>Motivo técnico:</b> ${escHtml(e.message || String(e))}<br><br>
+      <button onclick="loadPipeline()" style="background:#00a884;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer">🔄 Tentar novamente</button>
+    </div>`;
   }
 }
 
