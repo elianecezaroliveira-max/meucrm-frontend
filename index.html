@@ -1277,7 +1277,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v6</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v7</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1735,6 +1735,23 @@ window.addEventListener('load', initAuth);
 <!-- BOT RUN BANNER (inside chat) injected by JS into #chat-col -->
 
 <script>
+// ── Detector de erros: mostra na TELA qualquer erro de código (com local exato) ──
+// Assim, em vez de "não funciona", vemos a mensagem real e corrigimos na hora.
+window.addEventListener('error', function (ev) {
+  try {
+    let t = document.getElementById('js-err-toast');
+    if (!t) {
+      t = document.createElement('div');
+      t.id = 'js-err-toast';
+      t.style.cssText = 'position:fixed;left:10px;right:10px;bottom:10px;background:#7f1d1d;color:#fff;padding:10px 14px;border-radius:10px;font-size:12px;z-index:99999;box-shadow:0 4px 16px rgba(0,0,0,.4);word-break:break-word';
+      t.onclick = () => t.remove();
+      document.body.appendChild(t);
+    }
+    const onde = (ev.filename || '').split('/').pop() + ':' + (ev.lineno || '?');
+    t.textContent = '⚠️ Erro: ' + (ev.message || 'desconhecido') + ' (' + onde + ') — toque para fechar';
+  } catch (_) {}
+});
+
 let SERVER_URL = '';
 let currentPhone = null;
 let currentName = '';
