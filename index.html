@@ -1319,7 +1319,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v28</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v29</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1790,7 +1790,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v28</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v29</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1841,6 +1841,25 @@ window.addEventListener('unhandledrejection', function (ev) {
   const stack = (r && r.stack) ? ' | ' + String(r.stack).split('\n').slice(0, 2).join(' ').substring(0, 160) : '';
   _showErrToast('Erro (async): ' + (r && (r.message || r.toString()) || 'desconhecido') + stack);
 });
+
+// ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
+// publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
+const APP_VER = 29;
+async function _checkAppUpdate() {
+  try {
+    const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) return;
+    const v = parseInt((await r.text()).trim(), 10);
+    if (Number.isFinite(v) && v > APP_VER) {
+      const ae = document.activeElement;
+      const digitando = ae && (ae.tagName === 'TEXTAREA' || (ae.tagName === 'INPUT' && ae.type !== 'checkbox'));
+      if (!digitando) { location.reload(); return; } // atualiza sozinho
+      try { _showErrToast('🔄 Nova versão publicada — será aplicada quando você parar de digitar'); } catch (_) {}
+    }
+  } catch (_) {}
+}
+setInterval(_checkAppUpdate, 30000);
+setTimeout(_checkAppUpdate, 5000);
 
 let SERVER_URL = '';
 let currentPhone = null;
