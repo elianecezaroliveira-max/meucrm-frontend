@@ -1303,7 +1303,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v22</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v23</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -6704,6 +6704,7 @@ async function openBotEditor(id, isNew=false) {
 }
 
 function closeBotEditor() {
+  try { _closeNodeEditing(false); } catch (_) {} // recolhe edição pendente antes de sair
   document.getElementById('bot-editor-page').style.display = 'none';
   openBotsList();
 }
@@ -6960,8 +6961,18 @@ function _redrawBotEdges(){
 // Render do fluxo usando POSIÇÕES LIVRES (arrastáveis). "Organizar" gera o organograma.
 function renderBotList(){
   // Durante a edição DENTRO do nó, não re-desenha o quadro (destruiria o
-  // formulário no meio da digitação) — tudo é re-desenhado ao fechar a edição
-  if (typeof _editingNodeId !== 'undefined' && _editingNodeId) return;
+  // formulário no meio da digitação). Com AUTORRECUPERAÇÃO: se o estado de
+  // edição ficou "órfão" (ex.: saiu e voltou do editor), recolhe e segue.
+  if (typeof _editingNodeId !== 'undefined' && _editingNodeId) {
+    const _el = document.getElementById('bnode-' + _editingNodeId);
+    const _fm = document.getElementById('bot-config-form');
+    if (_el && _fm && _el.contains(_fm)) return; // edição ativa de verdade — preserva
+    try {
+      const _pn = document.getElementById('bot-config-panel');
+      if (_fm && _pn) { _pn.appendChild(_fm); _fm.style.display = 'none'; }
+    } catch (_) {}
+    _editingNodeId = null; // estado órfão desfeito — re-desenha normalmente
+  }
   const layer=document.getElementById('bot-nodes-layer');
   const svg=document.getElementById('bot-edges-svg');
   if(!layer||!svg) return;
@@ -7626,12 +7637,16 @@ function selectNode(id) {
   const nodeEl = document.getElementById('bnode-' + id);
   const form = document.getElementById('bot-config-form');
   if (!nodeEl || !form) return;
-  _editingNodeId = id;
-  nodeEl.classList.add('editing');
-  nodeEl.appendChild(form); // o formulário passa a viver DENTRO do nó
-  form.style.display = 'block';
-  try { renderConfigPanel(node); }
-  catch (e) { try { _showErrToast('Erro ao montar o editor do passo: ' + (e.message || e)); } catch (_) {} }
+  try {
+    _editingNodeId = id;
+    nodeEl.classList.add('editing');
+    nodeEl.appendChild(form); // o formulário passa a viver DENTRO do nó
+    form.style.display = 'block';
+    renderConfigPanel(node);
+  } catch (e) {
+    try { _showErrToast('Erro ao abrir o editor do passo: ' + (e.message || e)); } catch (_) {}
+    try { _closeNodeEditing(false); } catch (_) {}
+  }
 }
 function _closeNodeEditing(rerender = true) {
   if (!_editingNodeId) return;
