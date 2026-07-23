@@ -1303,7 +1303,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v25</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v26</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1774,7 +1774,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v25</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v26</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -7067,7 +7067,9 @@ function botNodeEl(node,x,y){
     <div style="width:30px;height:30px;border-radius:8px;background:${color};display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">${icon}</div>
     <div style="flex:1;min-width:0">
       <div style="font-size:13px;font-weight:600;color:#131c20">${title}</div>
-      ${summary?`<div style="font-size:11px;color:#667781;margin-top:2px;word-break:break-word;max-height:32px;overflow:hidden">${escHtml(summary)}</div>`:''}
+      ${node.type==='message'
+        ? `<div style="margin-top:6px">${_nodeMsgBubble(node)}</div>`
+        : (summary?`<div style="font-size:11px;color:#667781;margin-top:2px;word-break:break-word;max-height:32px;overflow:hidden">${escHtml(summary)}</div>`:'')}
     </div>
     ${node.type!=='start'?`<button title="Remover" style="background:none;border:none;color:#667781;cursor:pointer;font-size:13px;flex-shrink:0">🗑</button>`:''}`;
   const del=el.querySelector('button');
