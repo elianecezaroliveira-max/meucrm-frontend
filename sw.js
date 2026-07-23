@@ -1,6 +1,6 @@
 // VETRA Service Worker — PWA
 // v5: renova o cache para trazer as correções de navegação/telas (força atualização)
-const CACHE_NAME = 'vetra-v9';
+const CACHE_NAME = 'vetra-v10';
 
 // ── NOTIFICAÇÕES PUSH ──
 // IMPORTANTE (iOS): todo push DEVE exibir notificação visível dentro de event.waitUntil,
@@ -77,15 +77,16 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // Chamadas para o backend (Railway) — sempre vai para rede, nunca cacheia
+  // Chamadas para o backend (Railway/Supabase/Meta) — o service worker NÃO
+  // intercepta: o navegador faz a chamada diretamente. (Interceptar aqui fazia
+  // um service worker travado derrubar TODAS as chamadas com "Failed to fetch".)
   if (
     url.hostname.includes('railway.app') ||
     url.hostname.includes('supabase.co') ||
     url.hostname.includes('graph.facebook.com') ||
     url.pathname.startsWith('/api/')
   ) {
-    event.respondWith(fetch(event.request));
-    return;
+    return; // sem respondWith = requisição segue o caminho normal do navegador
   }
 
   // Navegação (index.html): Network First — garante que atualizações do CRM cheguem
