@@ -1319,7 +1319,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v29</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v30</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1790,7 +1790,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v29</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v30</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1844,7 +1844,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 29;
+const APP_VER = 30;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -7042,11 +7042,14 @@ function renderBotList(){
     if(dash) p.setAttribute('stroke-dasharray','5 4');
     svg.appendChild(p);
   }
-  function slotPill(text,x,y,col){
+  function slotPill(text,x,y,col,naBorda){
     if(!text) return;
     const d=document.createElement('div');
     d.textContent=text;
-    d.style.cssText=`position:absolute;left:${x}px;top:${y-9}px;transform:translateX(-50%);background:#f0f2f5;color:${col||'#00a884'};font-size:10px;font-weight:600;padding:1px 6px;border:1px solid #e9edef;border-radius:8px;white-space:nowrap;pointer-events:none;max-width:120px;overflow:hidden;text-overflow:ellipsis;z-index:2`;
+    // "naBorda" = rótulo colado na borda do cartão (estilo Kommo), sem fundo
+    d.style.cssText = naBorda
+      ? `position:absolute;left:${x}px;top:${y-8}px;color:${col||'#54656f'};font-size:10.5px;font-weight:600;white-space:nowrap;pointer-events:none;max-width:150px;overflow:hidden;text-overflow:ellipsis;z-index:2;background:#f0f2f5;padding:0 5px;border-radius:6px`
+      : `position:absolute;left:${x}px;top:${y-9}px;transform:translateX(-50%);background:#f0f2f5;color:${col||'#00a884'};font-size:10px;font-weight:600;padding:1px 6px;border:1px solid #e9edef;border-radius:8px;white-space:nowrap;pointer-events:none;max-width:120px;overflow:hidden;text-overflow:ellipsis;z-index:2`;
     layer.appendChild(d);
   }
   const byId=id=>botNodes.find(n=>n.id===id);
@@ -7063,7 +7066,7 @@ function renderBotList(){
       if(to){
         const tx=to.pos_x, ty=to.pos_y+BOT_NH/2;
         curve(sx,sy,tx,ty, isFail?'#ef4444':'#94a3b8', isFail);
-        slotPill(slot.display,(sx+tx)/2,(sy+ty)/2, isFail?'#ef4444':'#00a884');
+        slotPill(slot.display, sx+10, sy, isFail?'#ef4444':'#54656f', true); // rótulo na borda do cartão
         // Alça no destino: arraste para religar esta saída a outro nó
         const rh=document.createElement('div');
         rh.title='Arraste para ligar esta saída a outro nó';
@@ -7081,7 +7084,7 @@ function renderBotList(){
       } else {
         const bx=sx+BOT_HG, by=sy;
         curve(sx,sy,bx,by, isFail?'#ef4444':'#274d3d', true);
-        if(slot.display) slotPill(slot.display,(sx+bx)/2,(sy+by)/2, isFail?'#ef4444':'#00a884');
+        if(slot.display) slotPill(slot.display, sx+10, sy, isFail?'#ef4444':'#54656f', true); // rótulo na borda do cartão
         const b=document.createElement('button');
         b.textContent='+'; b.title='Clique para adicionar um passo, ou arraste até um nó para conectar';
         b.style.cssText=`position:absolute;left:${bx}px;top:${by-16}px;width:32px;height:32px;border-radius:50%;background:#e7f7ef;border:1px dashed #00a884;color:#00a884;font-size:18px;cursor:grab;display:flex;align-items:center;justify-content:center;z-index:5`;
@@ -7107,13 +7110,19 @@ function botNodeEl(node,x,y){
   el.dataset.nodeId=node.id;
   el.style.cssText=`position:absolute;left:${x}px;top:${y}px;width:${BOT_NW}px;min-height:${BOT_NH}px;box-sizing:border-box;background:#ffffff;border:2px solid ${node.id===selectedNodeId?'#00a884':'#e9edef'};border-radius:12px;padding:10px 12px;cursor:grab;display:flex;gap:10px;align-items:flex-start;z-index:3`;
   if (node.type==='message') {
-    // Visual estilo Kommo: cabeçalho discreto + balão da mensagem ocupando o cartão
+    // Visual estilo Kommo: nº do passo + canal no cabeçalho, balão ocupando o cartão
+    const idx = botNodes.indexOf(node) + 1;
+    const acc = (_botAccsCache || []).find(a => a.id === (node.config || {}).account_id);
+    const canal = acc
+      ? `<span style="font-size:9.5px;color:#8696a0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px">Canal: <span style="color:#25d366">●</span> ${escHtml(acc.name)}</span>`
+      : '';
     el.style.padding='9px 10px 10px';
     el.innerHTML=`
       <div style="flex:1;min-width:0">
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:7px">
-          <span style="font-size:12px">💬</span>
-          <span style="font-size:10.5px;font-weight:700;color:#8696a0;letter-spacing:.4px;flex:1">ENVIAR MENSAGEM</span>
+          <span style="background:#f0f2f5;border:1px solid #e9edef;border-radius:6px;padding:0 6px;font-size:10px;color:#54656f;font-weight:700;line-height:1.6">${idx}</span>
+          <span style="font-size:10.5px;font-weight:700;color:#8696a0;letter-spacing:.3px;flex:1;white-space:nowrap">Enviar mensagem</span>
+          ${canal}
           <button title="Remover" style="background:none;border:none;color:#c4ccd1;cursor:pointer;font-size:12px;flex-shrink:0;padding:0 2px">🗑</button>
         </div>
         ${_nodeMsgBubble(node)}
@@ -7318,15 +7327,17 @@ function _nodeMsgBubble(node) {
     (cfg.mode === 'template' && cfg.template_name)
       ? `<span style="background:rgba(255,255,255,.22);border-radius:10px;padding:2px 9px;font-size:10.5px;font-weight:700;display:inline-block">🤖 ${escHtml(cfg.template_name)}</span><div style="height:7px"></div>` : ''
   }${escHtml(txt)}${
-    btns.length ? '<div style="margin-top:9px;display:flex;flex-direction:column;gap:6px">' + btns.map(b => `<div style="background:transparent;border:1.5px solid rgba(255,255,255,.85);border-radius:999px;text-align:center;padding:5px 10px;font-size:11.5px;font-weight:600">${escHtml(b)}</div>`).join('') + '</div>' : ''
+    btns.length ? '<div style="margin-top:9px;display:flex;flex-direction:column;gap:6px">' + btns.map(b => `<div style="background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.85);border-radius:999px;text-align:left;padding:5px 12px;font-size:11.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(b)}</div>`).join('') + '</div>' : ''
   }</div>`;
 }
 // Carrega os modelos aprovados UMA vez ao abrir o editor (para as prévias nos nós)
 let _tmplCacheLoaded = false;
+let _botAccsCache = []; // contas (para mostrar o "Canal" no cabeçalho do nó)
 async function _loadAllTmplCache() {
   if (_tmplCacheLoaded) return;
   try {
     const accs = await (await fetch(SERVER_URL + '/accounts')).json();
+    _botAccsCache = Array.isArray(accs) ? accs : [];
     const apiAccs = (Array.isArray(accs) ? accs : []).filter(a => a.type !== 'evolution');
     const results = await Promise.all(apiAccs.map(async a => {
       try { const l = await (await fetch(SERVER_URL + '/templates?account_id=' + a.id)).json(); return Array.isArray(l) ? l.filter(t => t.status === 'APPROVED') : []; }
