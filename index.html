@@ -1301,7 +1301,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v19</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v20</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -7559,14 +7559,26 @@ function selectNode(id) {
   selectedNodeId = id;
   renderBotList(); // re-renderiza para destacar o passo selecionado
   const node = botNodes.find(n=>n.id===id);
-  if (node) { renderConfigPanel(node); _floatConfigPanel(id); }
+  if (!node) return;
+  try { renderConfigPanel(node); }
+  catch (e) { try { _showErrToast('Erro ao montar o editor do passo: ' + (e.message || e)); } catch (_) {} }
+  try { _floatConfigPanel(id); }
+  catch (e) {
+    // GARANTIA: se o cartão colado ao nó falhar, abre CENTRALIZADO na tela
+    const p = document.getElementById('bot-config-panel');
+    if (p) {
+      p.classList.add('floating');
+      p.style.cssText = 'display:flex !important;flex-direction:column;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:320px;max-height:70vh;overflow-y:auto;background:#fff;border:1px solid #e9edef;border-radius:12px;box-shadow:0 12px 34px rgba(0,0,0,.3);z-index:9000;padding:12px';
+    }
+  }
 }
 // Posiciona o painel de edição COLADO ao nó clicado (edição "dentro" do fluxo).
 // Estilos aplicados DIRETO no elemento — imune a qualquer conflito de CSS.
 function _floatConfigPanel(id) {
   const panel = document.getElementById('bot-config-panel');
   const el = document.getElementById('bnode-' + id);
-  if (!panel || !el) return;
+  if (!panel) return;
+  if (!el) throw new Error('nó não encontrado na tela'); // ativa o fallback centralizado
   panel.classList.add('floating');
   const r = el.getBoundingClientRect();
   const pw = 310, ph = Math.min(window.innerHeight * 0.72, 560);
