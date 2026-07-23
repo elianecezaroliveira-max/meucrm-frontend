@@ -629,10 +629,10 @@
 @media (min-width: 769px) {
   #bots-page, #bot-editor-page, #tasks-page, #faq-page { left: 68px; }
   /* TODAS as ferramentas abrem em TELA GRANDE (como o Pipeline), nada de janelinha */
-  #modal-overlay, #templates-overlay, #qr-modal, #tagmgr-overlay, #cfg-overlay {
+  #modal-overlay, #templates-overlay, #qr-modal, #tagmgr-overlay, #cfg-overlay, #auto-overlay {
     z-index: 600 !important; /* acima das páginas (500/560), abaixo do trilho (700) */
   }
-  #tagmgr-overlay > div, #cfg-overlay > div, #modal, #qr-modal-box, #templates-modal {
+  #tagmgr-overlay > div, #cfg-overlay > div, #auto-overlay > div, #modal, #qr-modal-box, #templates-modal {
     width: calc(100vw - 68px) !important; max-width: none !important;
     height: 100vh !important; max-height: 100vh !important;
     border-radius: 0 !important; margin-left: 68px !important;
@@ -1296,7 +1296,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v11</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v12</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1372,6 +1372,7 @@ window.addEventListener('load', initAuth);
     </div>
     <button class="pf-topbtn" onclick="openNewLead()">➕ Novo Lead</button>
     <button class="pf-topbtn" onclick="openImport()">📥 Importar</button>
+    <button class="pf-topbtn" onclick="openAutomationPanel()">⚡ Automação</button>
     <button id="pipeline-filter-btn" onclick="togglePipelineFilter()">⚙ Filtrar</button>
     <button id="btn-add-stage" onclick="addStage()">+ Nova coluna</button>
     <button id="btn-close-pipeline" onclick="closePipeline()" title="Fechar">✕</button>
@@ -1497,6 +1498,20 @@ window.addEventListener('load', initAuth);
       <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">🛟 Suporte</div>
       <div style="font-size:13px;color:#667781">Em breve.</div>
     </div>
+  </div>
+</div>
+
+<!-- AUTOMAÇÃO DO FUNIL (reordenar etapas + bots por etapa) -->
+<div id="auto-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:600;align-items:center;justify-content:center" onclick="if(event.target===this)closeAutomationPanel()">
+  <div style="background:#f0f2f5;border-radius:12px;max-width:1100px;width:96%;max-height:90vh;display:flex;flex-direction:column;overflow:hidden">
+    <div style="display:flex;align-items:center;gap:10px;padding:14px 18px;background:#fff;border-bottom:1px solid #e9edef">
+      <h3 style="flex:1;margin:0;font-size:16px;color:#131c20">⚡ Automação do funil</h3>
+      <button onclick="closeAutomationPanel()" style="background:none;border:none;font-size:20px;color:#667781;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:10px 18px;background:#e7f7ef;border-bottom:1px solid #d1e7dd;font-size:12px;color:#0a5e44">
+      🔒 <b>Seguro:</b> nada é enviado aos clientes aqui. Reordenar etapas e vincular bots apenas grava a configuração — o bot só roda quando um lead <b>for movido</b> para a etapa, daqui em diante.
+    </div>
+    <div id="auto-board" style="flex:1;overflow:auto;display:flex;gap:10px;padding:14px;align-items:flex-start"></div>
   </div>
 </div>
 
@@ -4263,6 +4278,7 @@ function _closeAllScreens() {
   try { closeTagManager(); } catch (_) {}
   try { closeConfigModal(); } catch (_) {}
   try { closeTaskReminderModal(); } catch (_) {}
+  try { const ao = document.getElementById('auto-overlay'); if (ao) ao.style.display = 'none'; } catch (_) {}
 }
 // Botão "Chat" do trilho: fecha tudo e volta para as conversas
 function goToChat() { _closeAllScreens(); }
@@ -5164,6 +5180,96 @@ async function loadPipeline() {
       <button onclick="loadPipeline()" style="background:#00a884;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer">🔄 Tentar novamente</button>
     </div>`;
   }
+}
+
+// ── AUTOMAÇÃO DO FUNIL: reordenar etapas + vincular bots por etapa ──
+// SEGURO: nenhuma ação aqui envia mensagem — só grava configuração.
+let _autoBots = [];
+async function openAutomationPanel() {
+  document.getElementById('auto-overlay').style.display = 'flex';
+  const board = document.getElementById('auto-board');
+  board.innerHTML = '<div style="padding:20px;color:#667781;font-size:13px">Carregando...</div>';
+  try {
+    const [stRes, btRes] = await Promise.all([
+      fetch(SERVER_URL + '/pipeline/stages'),
+      fetch(SERVER_URL + '/bots')
+    ]);
+    const st = await stRes.json(); const bt = await btRes.json();
+    if (Array.isArray(st)) pipelineStages = st;
+    _autoBots = Array.isArray(bt) ? bt : [];
+    renderAutomationBoard();
+  } catch (e) {
+    board.innerHTML = '<div style="padding:20px;color:#ef4444;font-size:13px">Erro ao carregar: ' + escHtml(e.message || '') + '</div>';
+  }
+}
+function closeAutomationPanel() {
+  document.getElementById('auto-overlay').style.display = 'none';
+  try { renderKanban(); } catch (_) {} // reflete a nova ordem das colunas
+}
+function renderAutomationBoard() {
+  const board = document.getElementById('auto-board');
+  const stages = [...(pipelineStages || [])].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+  if (!stages.length) { board.innerHTML = '<div style="padding:20px;color:#667781;font-size:13px">Nenhuma etapa criada ainda — crie colunas no Pipeline primeiro.</div>'; return; }
+  board.innerHTML = stages.map((s, i) => {
+    const linked = _autoBots.filter(b => b.trigger_type === 'stage_enter' && b.trigger_stage_id === s.id);
+    const options = _autoBots
+      .filter(b => !(b.trigger_type === 'stage_enter' && b.trigger_stage_id === s.id))
+      .map(b => `<option value="${b.id}">${escHtml(b.name)}${b.trigger_type === 'stage_enter' ? ' (hoje em outra etapa)' : ''}</option>`).join('');
+    const chips = linked.length ? linked.map(b => `
+      <div style="background:#e7f0ff;border:1px solid #bcd6ff;border-radius:8px;padding:8px 10px;font-size:12px;color:#131c20;display:flex;align-items:flex-start;gap:6px;margin-bottom:6px">
+        <span style="font-size:15px">🤖</span>
+        <div style="flex:1;min-width:0">
+          <div style="color:#667781;font-size:10.5px">Quando o lead for movido para esta etapa</div>
+          <b>Executar bot: ${escHtml(b.name)}</b>${b.active ? '' : ' <span style="color:#ef4444;font-size:11px">(inativo)</span>'}
+        </div>
+        <button onclick="autoUnlinkBot('${b.id}')" title="Desvincular (não envia nada)" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:14px;line-height:1">✕</button>
+      </div>`).join('') : '<div style="font-size:11.5px;color:#8696a0;margin-bottom:6px">Nenhum bot vinculado</div>';
+    return `<div style="min-width:232px;max-width:232px;background:#fff;border:1px solid #e9edef;border-radius:10px;display:flex;flex-direction:column;padding:10px;flex-shrink:0">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+        <button onclick="autoMoveStage('${s.id}',-1)" ${i === 0 ? 'disabled' : ''} title="Mover etapa para a esquerda" style="background:#f0f2f5;border:none;border-radius:6px;cursor:pointer;padding:4px 8px${i === 0 ? ';opacity:.3' : ''}">◀</button>
+        <div style="flex:1;text-align:center;font-weight:700;font-size:13px;color:#131c20;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(s.name)}">${escHtml(s.name)}</div>
+        <button onclick="autoMoveStage('${s.id}',1)" ${i === stages.length - 1 ? 'disabled' : ''} title="Mover etapa para a direita" style="background:#f0f2f5;border:none;border-radius:6px;cursor:pointer;padding:4px 8px${i === stages.length - 1 ? ';opacity:.3' : ''}">▶</button>
+      </div>
+      <div style="border-top:2px solid #74b9ff;margin-bottom:8px"></div>
+      ${chips}
+      <select onchange="if(this.value)autoLinkBot(this.value,'${s.id}')" style="width:100%;background:#f0f2f5;border:1px solid #e9edef;border-radius:6px;padding:6px;font-size:12px;color:#54656f;cursor:pointer">
+        <option value="">＋ Vincular bot...</option>${options}
+      </select>
+    </div>`;
+  }).join('');
+}
+async function autoMoveStage(id, dir) {
+  const stages = [...(pipelineStages || [])].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+  const i = stages.findIndex(s => s.id === id), j = i + dir;
+  if (i < 0 || j < 0 || j >= stages.length) return;
+  const a = stages[i], b = stages[j];
+  const pa = a.position ?? i, pb = b.position ?? j;
+  a.position = pb; b.position = pa;
+  renderAutomationBoard(); // resposta instantânea; salva em seguida
+  try {
+    await Promise.all([
+      fetch(SERVER_URL + '/pipeline/stages/' + a.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ position: a.position }) }),
+      fetch(SERVER_URL + '/pipeline/stages/' + b.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ position: b.position }) })
+    ]);
+  } catch (_) { alert('Erro ao salvar a nova ordem das etapas.'); }
+}
+async function autoLinkBot(botId, stageId) {
+  const b = _autoBots.find(x => x.id === botId);
+  if (b) { b.trigger_type = 'stage_enter'; b.trigger_stage_id = stageId; }
+  renderAutomationBoard();
+  try {
+    const r = await fetch(SERVER_URL + '/bots/' + botId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ trigger_type: 'stage_enter', trigger_stage_id: stageId }) });
+    const d = await r.json();
+    if (d.error) alert('Erro ao vincular: ' + d.error);
+  } catch (_) { alert('Erro ao vincular o bot.'); }
+}
+async function autoUnlinkBot(botId) {
+  const b = _autoBots.find(x => x.id === botId);
+  if (b) { b.trigger_type = 'manual'; b.trigger_stage_id = null; }
+  renderAutomationBoard();
+  try {
+    await fetch(SERVER_URL + '/bots/' + botId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ trigger_type: 'manual', trigger_stage_id: null }) });
+  } catch (_) { alert('Erro ao desvincular o bot.'); }
 }
 
 // ── Visões do Pipeline: Kanban ou Lista (a escolha fica salva) ──
