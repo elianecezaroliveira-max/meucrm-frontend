@@ -1303,7 +1303,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v24</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v25</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1507,6 +1507,17 @@ window.addEventListener('load', initAuth);
       <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">🛟 Suporte</div>
       <div style="font-size:13px;color:#667781">Em breve.</div>
     </div>
+  </div>
+</div>
+
+<!-- EDITOR DO PASSO DO BOT (tela grande — abre ao clicar num nó) -->
+<div id="msged-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9500;align-items:center;justify-content:center" onclick="if(event.target===this)closeMsgEd()">
+  <div style="background:#fff;border-radius:12px;max-width:560px;width:94%;max-height:90vh;overflow-y:auto;padding:16px 18px;box-shadow:0 12px 40px rgba(0,0,0,.35)">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <h3 id="msged-title" style="flex:1;margin:0;font-size:16px;color:#131c20">✏️ Editar passo</h3>
+      <button onclick="closeMsgEd()" style="background:#00a884;border:none;border-radius:8px;font-size:13px;font-weight:700;color:#fff;cursor:pointer;padding:8px 14px">✔ Concluir</button>
+    </div>
+    <div id="msged-form-holder"></div>
   </div>
 </div>
 
@@ -1763,6 +1774,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v25</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -7628,26 +7640,34 @@ function deleteNode(id) {
 // ── EDIÇÃO DENTRO DO NÓ (estilo Kommo): clicar expande o nó com o formulário;
 // clicar fora (ou Esc) recolhe e volta a mostrar a prévia da mensagem ──
 let _editingNodeId = null;
+// ABORDAGEM NOVA (v25): clicar no passo abre um EDITOR EM TELA GRANDE —
+// mesmo mecanismo dos modais que sempre funcionam (Configurações, Lembretes).
 function selectNode(id) {
-  _closeNodeEditing(false); // fecha a edição anterior (se houver)
   selectedNodeId = id;
-  renderBotList(); // re-desenha e destaca o passo
-  const node = botNodes.find(n=>n.id===id);
+  try { renderBotList(); } catch (_) {}
+  const node = botNodes.find(n => n.id === id);
   if (!node) return;
-  const nodeEl = document.getElementById('bnode-' + id);
+  const ov = document.getElementById('msged-overlay');
+  const holder = document.getElementById('msged-form-holder');
   const form = document.getElementById('bot-config-form');
-  if (!nodeEl || !form) return;
-  try {
-    _editingNodeId = id;
-    nodeEl.classList.add('editing');
-    nodeEl.appendChild(form); // o formulário passa a viver DENTRO do nó
-    form.style.display = 'block';
-    renderConfigPanel(node);
-  } catch (e) {
-    try { _showErrToast('Erro ao abrir o editor do passo: ' + (e.message || e)); } catch (_) {}
-    try { _closeNodeEditing(false); } catch (_) {}
-  }
+  if (!ov || !holder || !form) { try { _showErrToast('Editor não encontrado na página (recarregue).'); } catch (_) {} return; }
+  holder.appendChild(form); // o formulário existente é usado dentro do editor grande
+  form.style.display = 'block';
+  const tt = document.getElementById('msged-title');
+  if (tt) tt.textContent = '✏️ ' + ((typeof NODE_LABELS !== 'undefined' && NODE_LABELS[node.type]) || 'Editar passo');
+  ov.style.display = 'flex';
+  try { renderConfigPanel(node); }
+  catch (e) { try { _showErrToast('Erro ao montar o editor: ' + (e.message || e)); } catch (_) {} }
 }
+function closeMsgEd() {
+  const ov = document.getElementById('msged-overlay');
+  if (ov) ov.style.display = 'none';
+  selectedNodeId = null;
+  try { renderBotList(); } catch (_) {} // o nó reflete as alterações
+}
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { const ov = document.getElementById('msged-overlay'); if (ov && ov.style.display === 'flex') closeMsgEd(); }
+});
 function _closeNodeEditing(rerender = true) {
   if (!_editingNodeId) return;
   const form = document.getElementById('bot-config-form');
