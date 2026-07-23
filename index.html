@@ -1296,7 +1296,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v14</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v15</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -2137,10 +2137,32 @@ function renderAccountsModal(accounts) {
         <div class="acc-name">${escHtml(acc.name)}${badge}${stBadge}</div>
         <div class="acc-id">${escHtml(sub)}</div>
       </div>
+      ${isEvo && acc.status !== 'connected' ? `<button class="btn-rename" style="color:#00a884" onclick="reconnectQR('${acc.id}')" title="Reconectar: gera um QR novo para ESTA conta (mantém leads, bots e nome)">🔄 Reconectar</button>` : ''}
       <button class="btn-rename" onclick="renameAccount('${acc.id}')" title="Renomear conta">✏️</button>
       <button class="btn-delete" onclick="deleteAccount('${acc.id}')" title="Remover conta">🗑️</button>
     </div>`;
   }).join('');
+}
+
+// Reconecta uma conta QR desconectada: gera QR novo para a MESMA conta
+// (mantém id, leads, bots vinculados e o nome que você deu)
+async function reconnectQR(accountId) {
+  document.getElementById('qr-idle').style.display = 'none';
+  document.getElementById('qr-loading').style.display = 'block';
+  document.getElementById('qr-display').style.display = 'none';
+  document.getElementById('qr-success').style.display = 'none';
+  document.getElementById('qr-loading')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  try {
+    const r = await fetch(SERVER_URL + '/accounts/' + accountId + '/reconnect-qr', { method: 'POST' });
+    const d = await r.json();
+    if (d.error) { alert('Erro: ' + d.error); resetQR(); return; }
+    _qrInstance = d.instance;
+    document.getElementById('qr-loading').style.display = 'none';
+    document.getElementById('qr-display').style.display = 'block';
+    if (d.qr) showQRImage(d.qr); else retryGetQR(0);
+    startQRPoll(); // ao conectar, o fluxo existente atualiza a conta (nome preservado)
+    document.getElementById('qr-display')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  } catch (_) { alert('Erro ao gerar o QR de reconexão.'); resetQR(); }
 }
 
 // Renomeia a conta (API oficial ou QR Code) — atualiza lista, seletor "Enviar de" e filtros
