@@ -737,9 +737,11 @@
 .bot-port-out { position:relative;top:auto;left:auto;transform:none;flex-shrink:0; }
 
 #bot-config-panel { width:260px;background:#ffffff;border-left:1px solid #e9edef;display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0; }
-/* Edição DENTRO do fluxo: o painel vira um cartão flutuante colado ao nó clicado */
+/* Edição DENTRO do próprio nó (estilo Kommo) */
 #bot-config-panel:not(.floating) { display:none; }
 #bot-config-panel.floating { position:fixed; width:310px; max-height:72vh; border:1px solid #e9edef; border-radius:12px; box-shadow:0 12px 34px rgba(0,0,0,.28); z-index:620; padding-top:10px; }
+.bot-node.editing { width:330px !important; z-index:60; box-shadow:0 10px 30px rgba(0,0,0,.3); }
+.bot-node.editing #bot-config-form { display:block; padding:10px 12px 12px; border-top:1px solid #e9edef; max-height:430px; overflow-y:auto; background:#fff; border-radius:0 0 8px 8px; cursor:default; }
 #bot-config-placeholder { padding:20px;color:#667781;font-size:13px;text-align:center;margin-top:20px; }
 #bot-config-form { padding:14px;flex:1; }
 .bot-cfg-label { font-size:11px;color:#667781;text-transform:uppercase;margin-bottom:4px;margin-top:12px;display:block; }
@@ -1301,7 +1303,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v21</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v22</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -6677,6 +6679,7 @@ async function openBotEditor(id, isNew=false) {
   stageSelect.innerHTML = _botStages.map(s=>`<option value="${s.id}">${escHtml(s.name)}</option>`).join('');
   if (bot.trigger_stage_id) stageSelect.value = bot.trigger_stage_id;
   stageSelect.style.display = 'none'; // etapa do bot agora vive na ⚡ Automação — aqui fica SEMPRE oculto
+  _loadAllTmplCache(); // prévias dos modelos nos nós (carrega uma vez)
 
   // Load flow (tolerante a falha)
   let flow = {};
@@ -6956,6 +6959,9 @@ function _redrawBotEdges(){
 
 // Render do fluxo usando POSIÇÕES LIVRES (arrastáveis). "Organizar" gera o organograma.
 function renderBotList(){
+  // Durante a edição DENTRO do nó, não re-desenha o quadro (destruiria o
+  // formulário no meio da digitação) — tudo é re-desenhado ao fechar a edição
+  if (typeof _editingNodeId !== 'undefined' && _editingNodeId) return;
   const layer=document.getElementById('bot-nodes-layer');
   const svg=document.getElementById('bot-edges-svg');
   if(!layer||!svg) return;
@@ -7151,12 +7157,13 @@ function createNodeEl(node) {
   });
   div.appendChild(header);
 
-  // Body preview
+  // Body preview — nós de MENSAGEM mostram o balão azul com o texto/modelo
   if (!isCircle) {
     const body = document.createElement('div');
     body.className = 'bot-node-body';
     body.id = 'bnode-body-'+node.id;
-    body.textContent = getNodePreview(node);
+    if (node.type === 'message') body.innerHTML = _nodeMsgBubble(node);
+    else body.textContent = getNodePreview(node);
     div.appendChild(body);
   }
 
@@ -7212,6 +7219,40 @@ function createNodeEl(node) {
   });
 
   return div;
+}
+
+// Balão azul (estilo WhatsApp/Kommo) desenhado DENTRO do nó de mensagem
+function _nodeMsgBubble(node) {
+  const cfg = node.config || {};
+  let txt = '', chip = '';
+  if (cfg.mode === 'template') {
+    chip = cfg.template_name ? `<span style="background:rgba(255,255,255,.25);border-radius:6px;padding:1px 7px;font-size:10.5px;font-weight:700">🤖 ${escHtml(cfg.template_name)}</span>` : '';
+    const t = _botTmplCache[(cfg.template_name || '') + '|' + (cfg.language || 'pt_BR')]
+           || Object.values(_botTmplCache).find(x => x.name === cfg.template_name);
+    txt = ((t && (t.components || []).find(c => c.type === 'BODY')) || {}).text || (cfg.template_name ? '' : '(escolha o modelo)');
+  } else {
+    txt = cfg.text || '(sem mensagem)';
+  }
+  const btns = (cfg.mode === 'template' && Array.isArray(cfg.buttons)) ? cfg.buttons : [];
+  return `<div style="background:linear-gradient(135deg,#4e8cff,#3f7ae0);color:#fff;border-radius:10px;padding:9px 11px;font-size:11.5px;line-height:1.4;white-space:pre-wrap;word-break:break-word;max-height:170px;overflow:hidden">${chip}${chip ? '<div style="height:5px"></div>' : ''}${escHtml(txt)}${
+    btns.length ? '<div style="margin-top:7px;display:flex;flex-direction:column;gap:5px">' + btns.map(b => `<div style="background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.55);border-radius:7px;text-align:center;padding:4px;font-size:11px">${escHtml(b)}</div>`).join('') + '</div>' : ''
+  }</div>`;
+}
+// Carrega os modelos aprovados UMA vez ao abrir o editor (para as prévias nos nós)
+let _tmplCacheLoaded = false;
+async function _loadAllTmplCache() {
+  if (_tmplCacheLoaded) return;
+  try {
+    const accs = await (await fetch(SERVER_URL + '/accounts')).json();
+    const apiAccs = (Array.isArray(accs) ? accs : []).filter(a => a.type !== 'evolution');
+    const results = await Promise.all(apiAccs.map(async a => {
+      try { const l = await (await fetch(SERVER_URL + '/templates?account_id=' + a.id)).json(); return Array.isArray(l) ? l.filter(t => t.status === 'APPROVED') : []; }
+      catch (_) { return []; }
+    }));
+    results.flat().forEach(t => { _botTmplCache[t.name + '|' + t.language] = t; });
+    _tmplCacheLoaded = true;
+    if (!_editingNodeId) renderBotList(); // pinta as prévias dos nós
+  } catch (_) {}
 }
 
 function getNodePreview(node) {
@@ -7573,24 +7614,45 @@ function deleteNode(id) {
   renderBotList();
 }
 
+// ── EDIÇÃO DENTRO DO NÓ (estilo Kommo): clicar expande o nó com o formulário;
+// clicar fora (ou Esc) recolhe e volta a mostrar a prévia da mensagem ──
+let _editingNodeId = null;
 function selectNode(id) {
+  _closeNodeEditing(false); // fecha a edição anterior (se houver)
   selectedNodeId = id;
-  renderBotList(); // re-renderiza para destacar o passo selecionado
+  renderBotList(); // re-desenha e destaca o passo
   const node = botNodes.find(n=>n.id===id);
   if (!node) return;
+  const nodeEl = document.getElementById('bnode-' + id);
+  const form = document.getElementById('bot-config-form');
+  if (!nodeEl || !form) return;
+  _editingNodeId = id;
+  nodeEl.classList.add('editing');
+  nodeEl.appendChild(form); // o formulário passa a viver DENTRO do nó
+  form.style.display = 'block';
   try { renderConfigPanel(node); }
   catch (e) { try { _showErrToast('Erro ao montar o editor do passo: ' + (e.message || e)); } catch (_) {} }
-  try { _floatConfigPanel(id); }
-  catch (e) {
-    // GARANTIA: se o cartão colado ao nó falhar, abre CENTRALIZADO na tela
-    const p = document.getElementById('bot-config-panel');
-    if (p) {
-      p.classList.add('floating');
-      p.style.cssText = 'display:flex !important;flex-direction:column;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:320px;max-height:70vh;overflow-y:auto;background:#fff;border:1px solid #e9edef;border-radius:12px;box-shadow:0 12px 34px rgba(0,0,0,.3);z-index:9000;padding:30px 12px 14px';
-      _ensureConfigClose(p);
-    }
-  }
 }
+function _closeNodeEditing(rerender = true) {
+  if (!_editingNodeId) return;
+  const form = document.getElementById('bot-config-form');
+  const panel = document.getElementById('bot-config-panel');
+  if (form && panel) { panel.appendChild(form); form.style.display = 'none'; } // "estaciona" o formulário
+  const el = document.getElementById('bnode-' + _editingNodeId);
+  if (el) el.classList.remove('editing');
+  _editingNodeId = null;
+  selectedNodeId = null;
+  if (rerender) { try { renderBotList(); } catch (_) {} } // prévia do nó reflete as mudanças
+}
+// Clique fora do nó em edição = fecha (clicar noutro nó troca a edição para ele)
+document.addEventListener('mousedown', (e) => {
+  if (!_editingNodeId) return;
+  const el = document.getElementById('bnode-' + _editingNodeId);
+  if (el && el.contains(e.target)) return; // clique dentro do próprio nó em edição
+  const outroNode = e.target.closest && e.target.closest('.bot-node');
+  _closeNodeEditing(!outroNode); // se foi noutro nó, não re-desenha agora (o clique dele abre a edição)
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') _closeNodeEditing(); });
 // Posiciona o painel de edição COLADO ao nó clicado (edição "dentro" do fluxo).
 // Estilos aplicados DIRETO no elemento — imune a qualquer conflito de CSS.
 function _floatConfigPanel(id) {
@@ -7644,10 +7706,11 @@ document.addEventListener('keydown', (e) => {
 
 // ── Config panel ──
 function showConfigPlaceholder() {
+  try { _closeNodeEditing(false); } catch (_) {} // recolhe a edição dentro do nó
   document.getElementById('bot-config-placeholder').style.display='';
   document.getElementById('bot-config-form').style.display='none';
   const p = document.getElementById('bot-config-panel');
-  if (p) { p.classList.remove('floating'); p.style.cssText = ''; } // fecha o cartão flutuante
+  if (p) { p.classList.remove('floating'); p.style.cssText = ''; }
 }
 
 function renderConfigPanel(node) {
