@@ -1296,7 +1296,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v12</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v13</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1735,8 +1735,10 @@ window.addEventListener('load', initAuth);
   <div id="bot-editor-topbar">
     <button class="btn-secondary" onclick="closeBotEditor()">← Bots</button>
     <input id="bot-name-input" type="text" placeholder="Nome do bot..." />
-    <label style="color:#667781;font-size:12px">Gatilho:</label>
-    <select id="bot-trigger-select" onchange="onBotTriggerChange()">
+    <!-- Gatilho de etapa agora é definido na ⚡ Automação do Pipeline.
+         Os campos ficam OCULTOS (o salvar do bot preserva o valor configurado lá). -->
+    <label style="display:none;color:#667781;font-size:12px">Gatilho:</label>
+    <select id="bot-trigger-select" onchange="onBotTriggerChange()" style="display:none">
       <option value="manual">Manual</option>
       <option value="stage_enter">Ao entrar em etapa</option>
     </select>
@@ -5185,73 +5187,167 @@ async function loadPipeline() {
 // ── AUTOMAÇÃO DO FUNIL: reordenar etapas + vincular bots por etapa ──
 // SEGURO: nenhuma ação aqui envia mensagem — só grava configuração.
 let _autoBots = [];
+let _stageActions = {}; // { stageId: [ {type,...}, ... ] }
 async function openAutomationPanel() {
   document.getElementById('auto-overlay').style.display = 'flex';
   const board = document.getElementById('auto-board');
   board.innerHTML = '<div style="padding:20px;color:#667781;font-size:13px">Carregando...</div>';
   try {
-    const [stRes, btRes] = await Promise.all([
+    const [stRes, btRes, saRes] = await Promise.all([
       fetch(SERVER_URL + '/pipeline/stages'),
-      fetch(SERVER_URL + '/bots')
+      fetch(SERVER_URL + '/bots'),
+      fetch(SERVER_URL + '/stage-actions')
     ]);
-    const st = await stRes.json(); const bt = await btRes.json();
+    const st = await stRes.json(); const bt = await btRes.json(); const sa = await saRes.json();
     if (Array.isArray(st)) pipelineStages = st;
     _autoBots = Array.isArray(bt) ? bt : [];
+    _stageActions = (sa && sa.value && typeof sa.value === 'object') ? sa.value : {};
     renderAutomationBoard();
   } catch (e) {
     board.innerHTML = '<div style="padding:20px;color:#ef4444;font-size:13px">Erro ao carregar: ' + escHtml(e.message || '') + '</div>';
   }
 }
+async function _saveStageActions() {
+  try {
+    await fetch(SERVER_URL + '/stage-actions', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ value: _stageActions }) });
+  } catch (_) { alert('Erro ao salvar as ações.'); }
+}
 function closeAutomationPanel() {
   document.getElementById('auto-overlay').style.display = 'none';
   try { renderKanban(); } catch (_) {} // reflete a nova ordem das colunas
+}
+function _actionChip(stageId, idx, a) {
+  const stName = {}; (pipelineStages || []).forEach(s => stName[s.id] = s.name);
+  let icon = '⚙️', desc = '';
+  if (a.type === 'task')          { icon = '📝'; desc = `Criar tarefa: <b>${escHtml(a.title || '')}</b>${a.due_hours ? ' (prazo ' + a.due_hours + 'h)' : ''}`; }
+  if (a.type === 'complete_task') { icon = '✅'; desc = `Concluir tarefas${a.title_filter ? ' com "<b>' + escHtml(a.title_filter) + '</b>"' : ' do lead'}`; }
+  if (a.type === 'tags')          { icon = '🏷️'; desc = `Tags: ${(a.add||[]).map(t=>'+'+escHtml(t)).join(' ')} ${(a.remove||[]).map(t=>'−'+escHtml(t)).join(' ')}`; }
+  if (a.type === 'move_stage')    { icon = '➡️'; desc = `Mover lead para: <b>${escHtml(stName[a.stage_id] || '?')}</b>`; }
+  if (a.type === 'create_lead')   { icon = '👤'; desc = `Criar lead: <b>${escHtml(a.name || a.phone || '')}</b>`; }
+  return `<div style="background:#fff7e6;border:1px solid #ffd591;border-radius:8px;padding:7px 9px;font-size:11.5px;color:#131c20;display:flex;align-items:flex-start;gap:6px;margin-bottom:6px">
+    <span style="font-size:14px">${icon}</span>
+    <div style="flex:1;min-width:0"><div style="color:#8c6d1f;font-size:10px">Quando movido para esta etapa</div>${desc}</div>
+    <button onclick="autoRemoveAction('${stageId}',${idx})" title="Remover ação" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:13px;line-height:1">✕</button>
+  </div>`;
 }
 function renderAutomationBoard() {
   const board = document.getElementById('auto-board');
   const stages = [...(pipelineStages || [])].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
   if (!stages.length) { board.innerHTML = '<div style="padding:20px;color:#667781;font-size:13px">Nenhuma etapa criada ainda — crie colunas no Pipeline primeiro.</div>'; return; }
-  board.innerHTML = stages.map((s, i) => {
+  board.innerHTML = stages.map((s) => {
     const linked = _autoBots.filter(b => b.trigger_type === 'stage_enter' && b.trigger_stage_id === s.id);
-    const options = _autoBots
+    const botOptions = _autoBots
       .filter(b => !(b.trigger_type === 'stage_enter' && b.trigger_stage_id === s.id))
-      .map(b => `<option value="${b.id}">${escHtml(b.name)}${b.trigger_type === 'stage_enter' ? ' (hoje em outra etapa)' : ''}</option>`).join('');
-    const chips = linked.length ? linked.map(b => `
-      <div style="background:#e7f0ff;border:1px solid #bcd6ff;border-radius:8px;padding:8px 10px;font-size:12px;color:#131c20;display:flex;align-items:flex-start;gap:6px;margin-bottom:6px">
-        <span style="font-size:15px">🤖</span>
-        <div style="flex:1;min-width:0">
-          <div style="color:#667781;font-size:10.5px">Quando o lead for movido para esta etapa</div>
-          <b>Executar bot: ${escHtml(b.name)}</b>${b.active ? '' : ' <span style="color:#ef4444;font-size:11px">(inativo)</span>'}
-        </div>
-        <button onclick="autoUnlinkBot('${b.id}')" title="Desvincular (não envia nada)" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:14px;line-height:1">✕</button>
-      </div>`).join('') : '<div style="font-size:11.5px;color:#8696a0;margin-bottom:6px">Nenhum bot vinculado</div>';
-    return `<div style="min-width:232px;max-width:232px;background:#fff;border:1px solid #e9edef;border-radius:10px;display:flex;flex-direction:column;padding:10px;flex-shrink:0">
+      .map(b => `<option value="bot:${b.id}">🤖 Executar bot: ${escHtml(b.name)}</option>`).join('');
+    const moveOptions = stages.filter(x => x.id !== s.id)
+      .map(x => `<option value="move:${x.id}">➡️ Mover lead para: ${escHtml(x.name)}</option>`).join('');
+    const botChips = linked.map(b => `
+      <div style="background:#e7f0ff;border:1px solid #bcd6ff;border-radius:8px;padding:7px 9px;font-size:11.5px;color:#131c20;display:flex;align-items:flex-start;gap:6px;margin-bottom:6px">
+        <span style="font-size:14px">🤖</span>
+        <div style="flex:1;min-width:0"><div style="color:#667781;font-size:10px">Quando movido para esta etapa</div><b>Executar bot: ${escHtml(b.name)}</b>${b.active ? '' : ' <span style="color:#ef4444;font-size:10.5px">(inativo)</span>'}</div>
+        <button onclick="autoUnlinkBot('${b.id}')" title="Desvincular" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:13px;line-height:1">✕</button>
+      </div>`).join('');
+    const actChips = ((_stageActions[s.id]) || []).map((a, idx) => _actionChip(s.id, idx, a)).join('');
+    const vazio = (!linked.length && !((_stageActions[s.id]) || []).length)
+      ? '<div style="font-size:11.5px;color:#8696a0;margin-bottom:6px">Nenhuma automação</div>' : '';
+    return `<div class="auto-col" draggable="true" data-stage-id="${s.id}"
+      style="min-width:236px;max-width:236px;background:#fff;border:1px solid #e9edef;border-radius:10px;display:flex;flex-direction:column;padding:10px;flex-shrink:0;cursor:grab">
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
-        <button onclick="autoMoveStage('${s.id}',-1)" ${i === 0 ? 'disabled' : ''} title="Mover etapa para a esquerda" style="background:#f0f2f5;border:none;border-radius:6px;cursor:pointer;padding:4px 8px${i === 0 ? ';opacity:.3' : ''}">◀</button>
+        <span style="color:#c4ccd1;font-size:13px" title="Arraste para reordenar">⠿</span>
         <div style="flex:1;text-align:center;font-weight:700;font-size:13px;color:#131c20;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(s.name)}">${escHtml(s.name)}</div>
-        <button onclick="autoMoveStage('${s.id}',1)" ${i === stages.length - 1 ? 'disabled' : ''} title="Mover etapa para a direita" style="background:#f0f2f5;border:none;border-radius:6px;cursor:pointer;padding:4px 8px${i === stages.length - 1 ? ';opacity:.3' : ''}">▶</button>
+        <span style="color:#c4ccd1;font-size:13px">⠿</span>
       </div>
       <div style="border-top:2px solid #74b9ff;margin-bottom:8px"></div>
-      ${chips}
-      <select onchange="if(this.value)autoLinkBot(this.value,'${s.id}')" style="width:100%;background:#f0f2f5;border:1px solid #e9edef;border-radius:6px;padding:6px;font-size:12px;color:#54656f;cursor:pointer">
-        <option value="">＋ Vincular bot...</option>${options}
+      ${vazio}${botChips}${actChips}
+      <select onchange="autoAddAction(this,'${s.id}')" style="width:100%;background:#f0f2f5;border:1px solid #e9edef;border-radius:6px;padding:6px;font-size:12px;color:#54656f;cursor:pointer;margin-top:2px">
+        <option value="">＋ Adicionar automação...</option>
+        ${botOptions}
+        <option value="task">📝 Criar tarefa</option>
+        <option value="complete_task">✅ Concluir tarefas do lead</option>
+        <option value="tags">🏷️ Editar tags</option>
+        ${moveOptions}
+        <option value="create_lead">👤 Criar lead</option>
       </select>
     </div>`;
   }).join('');
+  _initAutoDrag();
 }
-async function autoMoveStage(id, dir) {
-  const stages = [...(pipelineStages || [])].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
-  const i = stages.findIndex(s => s.id === id), j = i + dir;
-  if (i < 0 || j < 0 || j >= stages.length) return;
-  const a = stages[i], b = stages[j];
-  const pa = a.position ?? i, pb = b.position ?? j;
-  a.position = pb; b.position = pa;
-  renderAutomationBoard(); // resposta instantânea; salva em seguida
+// Arrastar as COLUNAS com o mouse para reordenar as etapas
+let _dragStageEl = null;
+function _initAutoDrag() {
+  const board = document.getElementById('auto-board');
+  board.querySelectorAll('.auto-col').forEach(col => {
+    col.addEventListener('dragstart', () => { _dragStageEl = col; col.style.opacity = '.4'; });
+    col.addEventListener('dragend', () => { if (_dragStageEl) _dragStageEl.style.opacity = ''; _dragStageEl = null; });
+    col.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      if (!_dragStageEl || _dragStageEl === col) return;
+      const r = col.getBoundingClientRect();
+      const before = e.clientX < r.left + r.width / 2;
+      col.parentNode.insertBefore(_dragStageEl, before ? col : col.nextSibling);
+    });
+    col.addEventListener('drop', (e) => { e.preventDefault(); _saveStageOrder(); });
+  });
+  board.addEventListener('drop', (e) => { e.preventDefault(); _saveStageOrder(); });
+  board.addEventListener('dragover', (e) => e.preventDefault());
+}
+async function _saveStageOrder() {
+  const ids = Array.from(document.querySelectorAll('#auto-board .auto-col')).map(c => c.dataset.stageId);
+  const updates = [];
+  ids.forEach((id, pos) => {
+    const s = (pipelineStages || []).find(x => x.id === id);
+    if (s && s.position !== pos) { s.position = pos; updates.push({ id, pos }); }
+  });
+  if (!updates.length) return;
   try {
-    await Promise.all([
-      fetch(SERVER_URL + '/pipeline/stages/' + a.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ position: a.position }) }),
-      fetch(SERVER_URL + '/pipeline/stages/' + b.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ position: b.position }) })
-    ]);
+    await Promise.all(updates.map(u =>
+      fetch(SERVER_URL + '/pipeline/stages/' + u.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ position: u.pos }) })));
   } catch (_) { alert('Erro ao salvar a nova ordem das etapas.'); }
+}
+// Adiciona uma automação à etapa (as perguntas variam por tipo)
+async function autoAddAction(sel, stageId) {
+  const v = sel.value; sel.value = '';
+  if (!v) return;
+  if (v.startsWith('bot:')) return autoLinkBot(v.slice(4), stageId);
+  let a = null;
+  if (v === 'task') {
+    const title = prompt('Título da tarefa (pode usar {nome}):', 'Fazer follow-up com {nome}');
+    if (title === null || !title.trim()) return;
+    const hrs = prompt('Prazo em horas (vazio = sem prazo):', '24');
+    a = { type: 'task', title: title.trim(), due_hours: hrs && !isNaN(parseFloat(hrs)) ? parseFloat(hrs) : null };
+  } else if (v === 'complete_task') {
+    const f = prompt('Concluir só tarefas cujo título contenha (vazio = todas as tarefas abertas do lead):', '');
+    if (f === null) return;
+    a = { type: 'complete_task', title_filter: (f || '').trim() || null };
+  } else if (v === 'tags') {
+    const add = prompt('Tags para ADICIONAR (separadas por vírgula, vazio = nenhuma):', '');
+    if (add === null) return;
+    const rem = prompt('Tags para REMOVER (separadas por vírgula, vazio = nenhuma):', '');
+    if (rem === null) return;
+    const A = (add || '').split(',').map(t => t.trim()).filter(Boolean);
+    const R = (rem || '').split(',').map(t => t.trim()).filter(Boolean);
+    if (!A.length && !R.length) return;
+    a = { type: 'tags', add: A, remove: R };
+  } else if (v.startsWith('move:')) {
+    a = { type: 'move_stage', stage_id: v.slice(5) };
+  } else if (v === 'create_lead') {
+    const nome = prompt('Nome do novo lead:', '');
+    if (nome === null || !nome.trim()) return;
+    const tel = prompt('Celular do novo lead (com DDD e 55):', '');
+    if (tel === null || !tel.trim()) return;
+    a = { type: 'create_lead', name: nome.trim(), phone: tel.trim(), lead_stage_id: stageId };
+  }
+  if (!a) return;
+  (_stageActions[stageId] = _stageActions[stageId] || []).push(a);
+  renderAutomationBoard();
+  await _saveStageActions();
+}
+async function autoRemoveAction(stageId, idx) {
+  if (!_stageActions[stageId]) return;
+  _stageActions[stageId].splice(idx, 1);
+  if (!_stageActions[stageId].length) delete _stageActions[stageId];
+  renderAutomationBoard();
+  await _saveStageActions();
 }
 async function autoLinkBot(botId, stageId) {
   const b = _autoBots.find(x => x.id === botId);
@@ -6505,8 +6601,8 @@ function closeBotEditor() {
 }
 
 function onBotTriggerChange() {
-  const v = document.getElementById('bot-trigger-select').value;
-  document.getElementById('bot-trigger-stage-select').style.display = v==='stage_enter' ? '' : 'none';
+  // Gatilho agora é configurado na ⚡ Automação — os campos ficam sempre ocultos
+  document.getElementById('bot-trigger-stage-select').style.display = 'none';
 }
 
 async function saveBotFlow() {
