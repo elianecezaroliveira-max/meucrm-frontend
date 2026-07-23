@@ -628,10 +628,14 @@
    cheia aberta — o trilho sobe acima e as telas cheias começam depois dele */
 @media (min-width: 769px) {
   #bots-page, #bot-editor-page, #tasks-page, #faq-page { left: 68px; }
-  /* Modais de ferramentas abrem GRANDES (como Pipeline/IA), não em caixinha */
+  /* TODAS as ferramentas abrem em TELA GRANDE (como o Pipeline), nada de janelinha */
+  #modal-overlay, #templates-overlay, #qr-modal, #tagmgr-overlay, #cfg-overlay {
+    z-index: 600 !important; /* acima das páginas (500/560), abaixo do trilho (700) */
+  }
   #tagmgr-overlay > div, #cfg-overlay > div, #modal, #qr-modal-box, #templates-modal {
-    width: 860px !important; max-width: 92vw !important;
-    height: 86vh !important; max-height: 86vh !important;
+    width: calc(100vw - 68px) !important; max-width: none !important;
+    height: 100vh !important; max-height: 100vh !important;
+    border-radius: 0 !important; margin-left: 68px !important;
   }
 }
 /* ── IA / FAQ ── */
@@ -1292,7 +1296,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v10</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v11</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -4248,8 +4252,10 @@ function copyIntegrationToken(btn) {
 function _closeAllScreens() {
   try { closePipeline(); } catch (_) {}
   try { closeTasksPage(); } catch (_) {}
+  // NÃO usar closeBotEditor() aqui: ele "volta para a lista" (reabre o Bots!).
+  // Esconde o editor diretamente e SÓ DEPOIS fecha a lista de bots.
+  try { const be = document.getElementById('bot-editor-page'); if (be) be.style.display = 'none'; } catch (_) {}
   try { closeBotsList(); } catch (_) {}
-  try { closeBotEditor(); } catch (_) {}
   try { closeFaqPage(); } catch (_) {}
   try { closeTemplates(); } catch (_) {}
   try { closeQRManager(); } catch (_) {}
