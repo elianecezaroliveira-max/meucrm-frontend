@@ -1301,7 +1301,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v20</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v21</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -7325,6 +7325,7 @@ async function loadBotTmplOptions(node){
         }
       }
     }
+    renderTmplPreview(node); // prévia aparece assim que os modelos carregam
   }catch(e){ sel.innerHTML='<option value="">Erro ao carregar modelos</option>'; }
 }
 function onBotTmplSelect(node, key){
@@ -7335,6 +7336,23 @@ function onBotTmplSelect(node, key){
   const langEl=document.getElementById('cfg-tmpl-lang'); if(langEl) langEl.value=t.language;
   updateNodeConfig(node.id, {template_name:t.name, language:t.language, buttons});
   renderConfigPanel(node); // re-renderiza painel (mostra botões) — o canvas já atualiza via updateNodeConfig
+}
+// Prévia do modelo escolhido — balão azul com o texto e os botões (estilo WhatsApp)
+function renderTmplPreview(node){
+  const el = document.getElementById('cfg-tmpl-preview');
+  if (!el) return;
+  const key = (node.config.template_name || '') + '|' + (node.config.language || 'pt_BR');
+  const t = _botTmplCache[key] || Object.values(_botTmplCache).find(x => x.name === node.config.template_name);
+  if (!t) { el.innerHTML = ''; return; }
+  const body = ((t.components || []).find(c => c.type === 'BODY') || {}).text || '';
+  if (!body) { el.innerHTML = ''; return; }
+  const btns = node.config.buttons || [];
+  el.innerHTML = `<div style="font-size:11px;color:#667781;margin-bottom:4px">Prévia da mensagem:</div>
+    <div style="background:linear-gradient(135deg,#4e8cff,#3f7ae0);color:#fff;border-radius:12px;padding:12px 14px;font-size:12.5px;line-height:1.45;white-space:pre-wrap">${escHtml(body)}${
+      btns.length ? '<div style="margin-top:9px;display:flex;flex-direction:column;gap:6px">' +
+        btns.map(b => `<div style="background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.55);border-radius:8px;text-align:center;padding:5px;font-size:12px">${escHtml(b)}</div>`).join('') + '</div>' : ''
+    }</div>
+    <div style="font-size:10.5px;color:#8696a0;margin-top:4px">As variáveis {{1}}, {{2}}… são trocadas pelos valores configurados acima na hora do envio.</div>`;
 }
 function renderTmplButtonsInfo(node){
   const el=document.getElementById('cfg-tmpl-buttons');
@@ -7568,7 +7586,8 @@ function selectNode(id) {
     const p = document.getElementById('bot-config-panel');
     if (p) {
       p.classList.add('floating');
-      p.style.cssText = 'display:flex !important;flex-direction:column;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:320px;max-height:70vh;overflow-y:auto;background:#fff;border:1px solid #e9edef;border-radius:12px;box-shadow:0 12px 34px rgba(0,0,0,.3);z-index:9000;padding:12px';
+      p.style.cssText = 'display:flex !important;flex-direction:column;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:320px;max-height:70vh;overflow-y:auto;background:#fff;border:1px solid #e9edef;border-radius:12px;box-shadow:0 12px 34px rgba(0,0,0,.3);z-index:9000;padding:30px 12px 14px';
+      _ensureConfigClose(p);
     }
   }
 }
@@ -7587,17 +7606,41 @@ function _floatConfigPanel(id) {
   if (top + ph > window.innerHeight - 8) top = Math.max(8, window.innerHeight - ph - 8);
   panel.style.cssText = `display:flex !important;flex-direction:column;position:fixed;left:${left}px;top:${top}px;` +
     `width:${pw}px;max-height:${ph}px;overflow-y:auto;background:#ffffff;border:1px solid #e9edef;` +
-    `border-radius:12px;box-shadow:0 12px 34px rgba(0,0,0,.28);z-index:9000;padding:12px 12px 14px`;
-  // Botão ✕ para fechar o cartão
-  if (!document.getElementById('bot-config-close')) {
-    const btn = document.createElement('button');
+    `border-radius:12px;box-shadow:0 12px 34px rgba(0,0,0,.28);z-index:9000;padding:30px 12px 14px`;
+  _ensureConfigClose(panel);
+}
+// ✕ SEMPRE presente e funcional (em qualquer modo de abertura do cartão)
+function _ensureConfigClose(panel) {
+  let btn = document.getElementById('bot-config-close');
+  if (!btn) {
+    btn = document.createElement('button');
     btn.id = 'bot-config-close';
     btn.textContent = '✕';
-    btn.style.cssText = 'position:sticky;top:0;align-self:flex-end;background:#fff;border:none;font-size:16px;color:#667781;cursor:pointer;z-index:2;padding:0 2px';
-    btn.onclick = () => { panel.classList.remove('floating'); panel.style.cssText = ''; selectedNodeId = null; renderBotList(); };
-    panel.insertBefore(btn, panel.firstChild);
+    btn.onclick = _closeConfigPanel;
+    panel.appendChild(btn);
   }
+  btn.style.cssText = 'position:absolute;top:7px;right:9px;background:#f0f2f5;border:none;border-radius:6px;font-size:14px;color:#54656f;cursor:pointer;z-index:5;padding:3px 9px;line-height:1.3';
 }
+function _closeConfigPanel() {
+  const p = document.getElementById('bot-config-panel');
+  if (p) { p.classList.remove('floating'); p.style.cssText = ''; }
+  selectedNodeId = null;
+  try { renderBotList(); } catch (_) {}
+}
+// Fecha o cartão ao clicar FORA dele (clicar noutro nó troca o cartão) e com Esc
+document.addEventListener('mousedown', (e) => {
+  const p = document.getElementById('bot-config-panel');
+  if (!p || !p.classList.contains('floating')) return;
+  if (p.contains(e.target)) return;
+  if (e.target.closest && e.target.closest('.bot-node')) return;
+  _closeConfigPanel();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    const p = document.getElementById('bot-config-panel');
+    if (p && p.classList.contains('floating')) _closeConfigPanel();
+  }
+});
 
 // ── Config panel ──
 function showConfigPlaceholder() {
@@ -7649,6 +7692,7 @@ function renderConfigPanel(node) {
         <input class="bot-cfg-input" id="cfg-tmpl-lang" placeholder="pt_BR" value="${escHtml(node.config.language||'pt_BR')}" />
         <label class="bot-cfg-label" style="margin-top:10px">Valores das variáveis <span style="color:#667781">(um por linha: {{1}}, {{2}}… — pode usar {nome}, {telefone}, {notas})</span></label>
         <textarea class="bot-cfg-textarea" id="cfg-tmpl-vars" placeholder="{nome}">${escHtml((node.config.vars||[]).join('\n'))}</textarea>
+        <div id="cfg-tmpl-preview" style="margin-top:10px"></div>
         <div id="cfg-tmpl-buttons" style="margin-top:8px"></div>
         <div style="font-size:11px;color:#667781;margin-top:6px">Use modelo aprovado para iniciar conversa com quem ainda não te respondeu.</div>
       </div>`;
@@ -7678,6 +7722,7 @@ function renderConfigPanel(node) {
     loadBotMsgAccounts(node);
     loadBotTmplOptions(node);
     renderTmplButtonsInfo(node);
+    renderTmplPreview(node);
     return;
   }
 
