@@ -953,24 +953,39 @@ async function initAuth(){
   if(!AUTH_CONFIG.enabled) return;            // desligado = app funciona como hoje
   if(!window.supabase){ console.warn('supabase-js não carregou'); return; }
   _supaAuth = window.supabase.createClient(AUTH_CONFIG.url, AUTH_CONFIG.anonKey);
-  // Anexa o token do usuário logado em toda chamada ao backend (multi-tenant)
+  // Anexa o token do usuário logado em toda chamada ao backend (multi-tenant).
+  // IMPORTANTE: o token fica em CACHE (60s) — chamar getSession() a cada fetch
+  // causava recursão interna no supabase-js com chamadas simultâneas
+  // ("Maximum call stack size exceeded") e derrubava todas as requisições.
   const _origFetch = window.fetch.bind(window);
+  let _tokCache = { tok: null, ts: 0 };
+  async function _getTok(){
+    if (_tokCache.tok && Date.now() - _tokCache.ts < 60000) return _tokCache.tok;
+    try{
+      const { data:{ session } } = await _supaAuth.auth.getSession();
+      _tokCache = { tok: session?.access_token || null, ts: Date.now() };
+    }catch(_){ _tokCache = { tok: _tokCache.tok, ts: Date.now() }; }
+    return _tokCache.tok;
+  }
   window.fetch = async function(input, init){
     init = init || {};
     try{
       const u = (typeof input==='string') ? input : (input && input.url) || '';
       const base = (typeof SERVER_URL!=='undefined') ? SERVER_URL : '';
       if(_supaAuth && base && u.indexOf(base)===0){
-        const { data:{ session } } = await _supaAuth.auth.getSession();
-        const tok = session?.access_token;
+        const tok = await _getTok();
         if(tok) init.headers = Object.assign({}, init.headers, { Authorization:'Bearer '+tok });
       }
     }catch(_){}
     return _origFetch(input, init);
   };
   const { data:{ session } } = await _supaAuth.auth.getSession();
+  if (session?.access_token) _tokCache = { tok: session.access_token, ts: Date.now() };
   await _gate(session);
-  _supaAuth.auth.onAuthStateChange((_evt, sess)=>{ _gate(sess); });
+  _supaAuth.auth.onAuthStateChange((_evt, sess)=>{
+    _tokCache = { tok: sess?.access_token || null, ts: sess ? Date.now() : 0 }; // renova o cache no login/refresh
+    _gate(sess);
+  });
 }
 window.addEventListener('load', initAuth);
 </script>
@@ -1277,7 +1292,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v8</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v9</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1757,7 +1772,8 @@ window.addEventListener('error', function (ev) {
 // Erros em código assíncrono (fetch/await) também aparecem na tela
 window.addEventListener('unhandledrejection', function (ev) {
   const r = ev.reason;
-  _showErrToast('Erro (async): ' + (r && (r.message || r.toString()) || 'desconhecido'));
+  const stack = (r && r.stack) ? ' | ' + String(r.stack).split('\n').slice(0, 2).join(' ').substring(0, 160) : '';
+  _showErrToast('Erro (async): ' + (r && (r.message || r.toString()) || 'desconhecido') + stack);
 });
 
 let SERVER_URL = '';
