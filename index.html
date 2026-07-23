@@ -1319,7 +1319,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v34</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v35</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1790,7 +1790,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v34</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v35</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1844,7 +1844,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 34;
+const APP_VER = 35;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -6861,21 +6861,33 @@ const BOT_SP = 30; // espaçamento vertical entre as saídas de um mesmo nó
 const _botNodeSizes = {};
 function _bnW(id){ const t=_botNodeSizes[id]; return (t&&t.w)||BOT_NW; }
 function _bnH(id){ const t=_botNodeSizes[id]; return (t&&t.h)||BOT_NH; }
-// Sobe pelas ligações e descobre de onde este nó HERDA o número:
-// mensagem anterior com número escolhido ou um Round Robin no caminho.
+// Sobe pelas ligações (TODOS os caminhos) e descobre de onde este nó HERDA o número:
+// mensagens anteriores com número escolhido e/ou os números das opções do Round Robin.
+// Retorna { type:'acct'|'rr', ids:[contas possíveis] } ou null se nada herdar.
 function _botInheritedAcct(nodeId){
-  const seen=new Set(); let cur=nodeId;
-  while(cur && !seen.has(cur)){
-    seen.add(cur);
-    const e=botEdges.find(x=>x.to_node_id===cur);
-    if(!e) return null;
-    const p=botNodes.find(n=>n.id===e.from_node_id);
-    if(!p) return null;
-    if(p.type==='message' && p.config && p.config.account_id) return {type:'acct', id:p.config.account_id};
-    if(p.type==='round_robin') return {type:'rr'};
-    cur=p.id;
+  const ids=new Set(); let viaRR=false, achou=false;
+  const seen=new Set(); const fila=[nodeId];
+  while(fila.length){
+    const cur=fila.shift();
+    if(seen.has(cur)) continue; seen.add(cur);
+    botEdges.filter(x=>x.to_node_id===cur).forEach(e=>{
+      const p=botNodes.find(n=>n.id===e.from_node_id);
+      if(!p) return;
+      if(p.type==='message' && p.config && p.config.account_id){ achou=true; ids.add(p.config.account_id); return; }
+      if(p.type==='round_robin'){
+        achou=true; viaRR=true;
+        const i=parseInt(e.label,10);
+        const br=((p.config||{}).branches)||[];
+        const b=isNaN(i)?null:br[i];
+        if(b && b.account_id) ids.add(b.account_id);
+        else br.forEach(x=>{ if(x && x.account_id) ids.add(x.account_id); });
+        return;
+      }
+      fila.push(p.id);
+    });
   }
-  return null;
+  if(!achou) return null;
+  return { type: viaRR ? 'rr' : 'acct', ids: Array.from(ids) };
 }
 
 function botOutSlots(node){
@@ -7467,13 +7479,13 @@ async function loadBotTmplOptions(node){
   try{
     const accs = await (await fetch(SERVER_URL+'/accounts')).json();
     let apiAccs = (Array.isArray(accs)?accs:[]).filter(a=>a.type!=='evolution');
-    // Número escolhido no nó (ou herdado do passo anterior): mostra SÓ os modelos dele
+    // Número escolhido no nó (ou herdado dos passos anteriores/Round Robin): SÓ os modelos deles
     const _inh = (!node.config.account_id && typeof _botInheritedAcct==='function') ? _botInheritedAcct(node.id) : null;
-    const _eff = node.config.account_id || (_inh && _inh.type==='acct' ? _inh.id : null);
-    if (_eff) {
-      const chosen = (Array.isArray(accs)?accs:[]).find(a=>a.id===_eff);
-      if (chosen && chosen.type==='evolution') { sel.innerHTML='<option value="">⚠️ Número QR não envia modelos — escolha um número da API</option>'; return; }
-      apiAccs = chosen ? [chosen] : [];
+    const _ids = node.config.account_id ? [node.config.account_id] : (_inh && _inh.ids && _inh.ids.length ? _inh.ids : null);
+    if (_ids) {
+      const chos = (Array.isArray(accs)?accs:[]).filter(a=>_ids.includes(a.id));
+      if (chos.length && chos.every(a=>a.type==='evolution')) { sel.innerHTML='<option value="">⚠️ Número QR não envia modelos — escolha um número da API</option>'; return; }
+      apiAccs = chos.filter(a=>a.type!=='evolution');
     }
     if(!apiAccs.length){ sel.innerHTML='<option value="">Nenhuma conta da API disponível</option>'; return; }
     const results = await Promise.all(apiAccs.map(async a=>{
