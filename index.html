@@ -1319,7 +1319,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v35</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v36</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1790,7 +1790,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v35</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v36</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1844,7 +1844,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 35;
+const APP_VER = 36;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -7755,15 +7755,14 @@ function startManualConnect(fromNodeId, portLabel){
 }
 function addStep(fromNodeId, portLabel, type){
   closeStepMenu();
-  const src = botNodes.find(n=>n.id===fromNodeId);
-  const childCount = botEdges.filter(e=>e.from_node_id===fromNodeId).length;
-  const baseX = (src? src.pos_x : 300) + childCount*60;
-  const baseY = (src? src.pos_y + getNodeHeight(src) + 60 : 300);
-  const node = { id:_botGenId(), type, label:'', config:botDefaultConfig(type), pos_x:Math.round(baseX), pos_y:Math.round(baseY) };
+  const node = { id:_botGenId(), type, label:'', config:botDefaultConfig(type), pos_x:null, pos_y:null };
   botNodes.push(node);
   botEdges = botEdges.filter(e=>!(e.from_node_id===fromNodeId && e.label===(portLabel||'')));
   botEdges.push({ id:_botGenId(), bot_id:botEditorId, from_node_id:fromNodeId, to_node_id:node.id, label:portLabel||'' });
-  renderBotList();
+  // O nó já NASCE organizado: mesmo arranjo do botão Organizar (2 passadas para medir os tamanhos)
+  seedBotPositions(true); _markBotManual(); renderBotList();
+  seedBotPositions(true); renderBotList();
+  setTimeout(botZoomFit, 20);
   selectNode(node.id);
 }
 
