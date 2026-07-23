@@ -1319,7 +1319,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v27</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v28</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1790,7 +1790,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v27</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v28</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -7051,6 +7051,14 @@ function renderBotList(){
         rh.style.cssText=`position:absolute;left:${tx-7}px;top:${ty-7}px;width:14px;height:14px;border-radius:50%;background:#fff;border:2px solid #00a884;cursor:grab;z-index:6`;
         rh.addEventListener('mousedown',(e)=>beginPortDrag(e, node.id, slot.label, sx, sy));
         layer.appendChild(rh);
+        // ✕ no meio da linha: DESPRENDE a ligação (os dois passos continuam no fluxo)
+        const ux=(sx+tx)/2, uy=(sy+ty)/2;
+        const unl=document.createElement('button');
+        unl.textContent='✕';
+        unl.title='Desprender esta ligação (não apaga nenhum passo)';
+        unl.style.cssText=`position:absolute;left:${ux-9}px;top:${uy+10}px;width:18px;height:18px;border-radius:50%;background:#fff;border:1px solid #ef4444;color:#ef4444;font-size:10px;line-height:1;cursor:pointer;z-index:6;display:flex;align-items:center;justify-content:center;padding:0`;
+        unl.addEventListener('click',(e)=>{ e.stopPropagation(); botEdges=botEdges.filter(x=>x!==edge); renderBotList(); });
+        layer.appendChild(unl);
       } else {
         const bx=sx+BOT_HG, by=sy;
         curve(sx,sy,bx,by, isFail?'#ef4444':'#274d3d', true);
@@ -7079,15 +7087,27 @@ function botNodeEl(node,x,y){
   const el=document.createElement('div');
   el.dataset.nodeId=node.id;
   el.style.cssText=`position:absolute;left:${x}px;top:${y}px;width:${BOT_NW}px;min-height:${BOT_NH}px;box-sizing:border-box;background:#ffffff;border:2px solid ${node.id===selectedNodeId?'#00a884':'#e9edef'};border-radius:12px;padding:10px 12px;cursor:grab;display:flex;gap:10px;align-items:flex-start;z-index:3`;
-  el.innerHTML=`
-    <div style="width:30px;height:30px;border-radius:8px;background:${color};display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">${icon}</div>
-    <div style="flex:1;min-width:0">
-      <div style="font-size:13px;font-weight:600;color:#131c20">${title}</div>
-      ${node.type==='message'
-        ? `<div style="margin-top:6px">${_nodeMsgBubble(node)}</div>`
-        : (summary?`<div style="font-size:11px;color:#667781;margin-top:2px;word-break:break-word;max-height:32px;overflow:hidden">${escHtml(summary)}</div>`:'')}
-    </div>
-    ${node.type!=='start'?`<button title="Remover" style="background:none;border:none;color:#667781;cursor:pointer;font-size:13px;flex-shrink:0">🗑</button>`:''}`;
+  if (node.type==='message') {
+    // Visual estilo Kommo: cabeçalho discreto + balão da mensagem ocupando o cartão
+    el.style.padding='9px 10px 10px';
+    el.innerHTML=`
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:7px">
+          <span style="font-size:12px">💬</span>
+          <span style="font-size:10.5px;font-weight:700;color:#8696a0;letter-spacing:.4px;flex:1">ENVIAR MENSAGEM</span>
+          <button title="Remover" style="background:none;border:none;color:#c4ccd1;cursor:pointer;font-size:12px;flex-shrink:0;padding:0 2px">🗑</button>
+        </div>
+        ${_nodeMsgBubble(node)}
+      </div>`;
+  } else {
+    el.innerHTML=`
+      <div style="width:30px;height:30px;border-radius:8px;background:${color};display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0">${icon}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;color:#131c20">${title}</div>
+        ${summary?`<div style="font-size:11px;color:#667781;margin-top:2px;word-break:break-word;max-height:32px;overflow:hidden">${escHtml(summary)}</div>`:''}
+      </div>
+      ${node.type!=='start'?`<button title="Remover" style="background:none;border:none;color:#667781;cursor:pointer;font-size:13px;flex-shrink:0">🗑</button>`:''}`;
+  }
   const del=el.querySelector('button');
   if(del) del.addEventListener('click',(e)=>{e.stopPropagation(); if(confirm('Remover este passo?')) deleteNode(node.id);});
   // Arraste do nó (estilo n8n) — mover livremente; clique simples seleciona / conclui conexão
@@ -7275,8 +7295,11 @@ function _nodeMsgBubble(node) {
     txt = cfg.text || '(sem mensagem)';
   }
   const btns = (cfg.mode === 'template' && Array.isArray(cfg.buttons)) ? cfg.buttons : [];
-  return `<div style="background:linear-gradient(135deg,#4e8cff,#3f7ae0);color:#fff;border-radius:10px;padding:9px 11px;font-size:11.5px;line-height:1.4;white-space:pre-wrap;word-break:break-word;max-height:170px;overflow:hidden">${chip}${chip ? '<div style="height:5px"></div>' : ''}${escHtml(txt)}${
-    btns.length ? '<div style="margin-top:7px;display:flex;flex-direction:column;gap:5px">' + btns.map(b => `<div style="background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.55);border-radius:7px;text-align:center;padding:4px;font-size:11px">${escHtml(b)}</div>`).join('') + '</div>' : ''
+  return `<div style="background:#3d7bfa;color:#fff;border-radius:14px;padding:12px 13px;font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-word;max-height:190px;overflow:hidden;box-shadow:0 2px 8px rgba(61,123,250,.35)">${
+    (cfg.mode === 'template' && cfg.template_name)
+      ? `<span style="background:rgba(255,255,255,.22);border-radius:10px;padding:2px 9px;font-size:10.5px;font-weight:700;display:inline-block">🤖 ${escHtml(cfg.template_name)}</span><div style="height:7px"></div>` : ''
+  }${escHtml(txt)}${
+    btns.length ? '<div style="margin-top:9px;display:flex;flex-direction:column;gap:6px">' + btns.map(b => `<div style="background:transparent;border:1.5px solid rgba(255,255,255,.85);border-radius:999px;text-align:center;padding:5px 10px;font-size:11.5px;font-weight:600">${escHtml(b)}</div>`).join('') + '</div>' : ''
   }</div>`;
 }
 // Carrega os modelos aprovados UMA vez ao abrir o editor (para as prévias nos nós)
