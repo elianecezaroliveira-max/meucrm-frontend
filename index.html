@@ -1319,7 +1319,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v33</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v34</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1790,7 +1790,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v33</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v34</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1844,7 +1844,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 33;
+const APP_VER = 34;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -7453,6 +7453,11 @@ async function loadBotMsgAccounts(node){
       const tipo = a.type==='evolution' ? 'QR' : 'API';
       return `<option value="${a.id}" ${node.config.account_id===a.id?'selected':''}>[${tipo}] ${escHtml(a.name)}${a.phone_display?` (${escHtml(a.phone_display)})`:''}</option>`;
     }).join('');
+    const nm=document.getElementById('cfg-msg-acct-name');
+    if(nm && node.config.account_id){
+      const a=(Array.isArray(accs)?accs:[]).find(x=>x.id===node.config.account_id);
+      if(a) nm.textContent = a.name + (a.phone_display?` (${a.phone_display})`:'');
+    }
   }catch(_){ sel.innerHTML='<option value="">Erro ao carregar contas</option>'; }
 }
 async function loadBotTmplOptions(node){
@@ -7527,16 +7532,16 @@ function renderTmplPreview(node){
   if (!el) return;
   const key = (node.config.template_name || '') + '|' + (node.config.language || 'pt_BR');
   const t = _botTmplCache[key] || Object.values(_botTmplCache).find(x => x.name === node.config.template_name);
-  if (!t) { el.innerHTML = ''; return; }
+  const vw = document.getElementById('cfg-tmpl-vars-wrap');
+  if (!t) { el.innerHTML = ''; if(vw) vw.style.display='none'; return; }
   const body = ((t.components || []).find(c => c.type === 'BODY') || {}).text || '';
+  if(vw) vw.style.display = body.includes('{{') ? 'block' : 'none';
   if (!body) { el.innerHTML = ''; return; }
   const btns = node.config.buttons || [];
-  el.innerHTML = `<div style="font-size:11px;color:#667781;margin-bottom:4px">Prévia da mensagem:</div>
-    <div style="background:linear-gradient(135deg,#4e8cff,#3f7ae0);color:#fff;border-radius:12px;padding:12px 14px;font-size:12.5px;line-height:1.45;white-space:pre-wrap">${escHtml(body)}${
+  el.innerHTML = `<div style="background:linear-gradient(135deg,#4e8cff,#3f7ae0);color:#fff;border-radius:12px;padding:12px 14px;font-size:12.5px;line-height:1.45;white-space:pre-wrap">${escHtml(body)}${
       btns.length ? '<div style="margin-top:9px;display:flex;flex-direction:column;gap:6px">' +
         btns.map(b => `<div style="background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.55);border-radius:8px;text-align:center;padding:5px;font-size:12px">${escHtml(b)}</div>`).join('') + '</div>' : ''
-    }</div>
-    <div style="font-size:10.5px;color:#8696a0;margin-top:4px">As variáveis {{1}}, {{2}}… são trocadas pelos valores configurados acima na hora do envio.</div>`;
+    }</div>`;
 }
 function renderTmplButtonsInfo(node){
   const el=document.getElementById('cfg-tmpl-buttons');
@@ -7880,13 +7885,18 @@ function renderConfigPanel(node) {
 
   if (node.type==='message') {
     const mode = node.config.mode || 'custom';
-    const inh = node.config.account_id ? null : _botInheritedAcct(node.id);
+    const inh = _botInheritedAcct(node.id);
+    const own = node.config.account_id || null;
+    const hasNum = !!(own || inh);
+    const numTxt = own ? 'Número: <span id="cfg-msg-acct-name">definido neste passo</span>'
+                 : (inh && inh.type==='rr') ? 'Número: definido pelo Round Robin'
+                 : 'Número: o mesmo do passo anterior';
     form.innerHTML = `
-      <div id="cfg-msg-inh" style="display:${inh?'flex':'none'};align-items:center;gap:10px;margin:0 0 12px;font-size:12.5px;color:#111b21">
-        <span>📱 ${inh && inh.type==='rr' ? 'Número: definido pelo Round Robin' : 'Número: o mesmo do passo anterior'}</span>
+      <div id="cfg-msg-inh" style="display:${hasNum?'flex':'none'};align-items:center;gap:10px;margin:0 0 12px;font-size:12.5px;color:#111b21">
+        <span>📱 ${numTxt}</span>
         <a href="#" onclick="document.getElementById('cfg-msg-inh').style.display='none';document.getElementById('cfg-msg-acct-wrap').style.display='block';return false" style="color:#3d7bfa;font-weight:600;text-decoration:none">trocar</a>
       </div>
-      <div id="cfg-msg-acct-wrap" style="display:${inh?'none':'block'}">
+      <div id="cfg-msg-acct-wrap" style="display:${hasNum?'none':'block'}">
         <label class="bot-cfg-label">📱 Enviar pelo número</label>
         <select class="bot-cfg-select" id="cfg-msg-account" style="margin-bottom:10px"><option value="">⏳ Carregando contas...</option></select>
       </div>
@@ -7905,16 +7915,13 @@ function renderConfigPanel(node) {
         <textarea class="bot-cfg-textarea" id="cfg-msg-text" placeholder="Olá, {nome}! Como posso ajudar?">${escHtml(node.config.text||'')}</textarea>
       </div>
       <div id="cfg-msg-template" style="display:${mode==='template'?'block':'none'}">
-        <label class="bot-cfg-label" style="margin-top:12px">Escolha um modelo aprovado</label>
+        <label class="bot-cfg-label" style="margin-top:12px">Modelo</label>
         <select class="bot-cfg-select" id="cfg-tmpl-select"><option value="">⏳ Carregando...</option></select>
-        <label class="bot-cfg-label" style="margin-top:10px">Nome do modelo</label>
-        <input class="bot-cfg-input" id="cfg-tmpl-name" placeholder="ex: anac3" value="${escHtml(node.config.template_name||'')}" />
-        <label class="bot-cfg-label" style="margin-top:10px">Idioma</label>
-        <input class="bot-cfg-input" id="cfg-tmpl-lang" placeholder="pt_BR" value="${escHtml(node.config.language||'pt_BR')}" />
-        <label class="bot-cfg-label" style="margin-top:10px">Valores das variáveis <span style="color:#667781">(um por linha)</span></label>
-        <textarea class="bot-cfg-textarea" id="cfg-tmpl-vars" placeholder="{nome}">${escHtml((node.config.vars||[]).join('\n'))}</textarea>
+        <div id="cfg-tmpl-vars-wrap" style="display:none">
+          <label class="bot-cfg-label" style="margin-top:10px">Variáveis</label>
+          <textarea class="bot-cfg-textarea" id="cfg-tmpl-vars" placeholder="{nome}">${escHtml((node.config.vars||[]).join('\n'))}</textarea>
+        </div>
         <div id="cfg-tmpl-preview" style="margin-top:10px"></div>
-        <div id="cfg-tmpl-buttons" style="margin-top:8px"></div>
       </div>`;
     document.getElementById('cfg-msg-mode').addEventListener('change', function(){
       updateNodeConfig(node.id, {mode:this.value});
@@ -7929,8 +7936,6 @@ function renderConfigPanel(node) {
       ta.focus(); ta.selectionStart=ta.selectionEnd=s+v.length;
       updateNodeConfig(node.id,{text:ta.value});
     };
-    document.getElementById('cfg-tmpl-name').addEventListener('input', function(){ updateNodeConfig(node.id,{template_name:this.value.trim()}); });
-    document.getElementById('cfg-tmpl-lang').addEventListener('input', function(){ updateNodeConfig(node.id,{language:this.value.trim()}); });
     document.getElementById('cfg-tmpl-vars').addEventListener('input', function(){ updateNodeConfig(node.id,{vars:this.value.split('\n').map(s=>s.trim()).filter(Boolean)}); });
     document.getElementById('cfg-tmpl-select').addEventListener('change', function(){ onBotTmplSelect(node, this.value); });
     document.getElementById('cfg-msg-account').addEventListener('change', function(){
@@ -7939,7 +7944,6 @@ function renderConfigPanel(node) {
     });
     loadBotMsgAccounts(node);
     loadBotTmplOptions(node);
-    renderTmplButtonsInfo(node);
     renderTmplPreview(node);
     return;
   }
