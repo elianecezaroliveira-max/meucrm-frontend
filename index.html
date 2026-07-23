@@ -1296,7 +1296,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v13</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v14</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -5259,15 +5259,16 @@ function renderAutomationBoard() {
       </div>
       <div style="border-top:2px solid #74b9ff;margin-bottom:8px"></div>
       ${vazio}${botChips}${actChips}
-      <select onchange="autoAddAction(this,'${s.id}')" style="width:100%;background:#f0f2f5;border:1px solid #e9edef;border-radius:6px;padding:6px;font-size:12px;color:#54656f;cursor:pointer;margin-top:2px">
+      <select onchange="autoPickCategory(this,'${s.id}')" style="width:100%;background:#f0f2f5;border:1px solid #e9edef;border-radius:6px;padding:6px;font-size:12px;color:#54656f;cursor:pointer;margin-top:2px">
         <option value="">＋ Adicionar automação...</option>
-        ${botOptions}
+        <option value="bot">🤖 Executar bot…</option>
         <option value="task">📝 Criar tarefa</option>
         <option value="complete_task">✅ Concluir tarefas do lead</option>
         <option value="tags">🏷️ Editar tags</option>
-        ${moveOptions}
+        <option value="move">➡️ Mover lead para…</option>
         <option value="create_lead">👤 Criar lead</option>
       </select>
+      <div id="auto-sub-${s.id}"></div>
     </div>`;
   }).join('');
   _initAutoDrag();
@@ -5304,11 +5305,39 @@ async function _saveStageOrder() {
       fetch(SERVER_URL + '/pipeline/stages/' + u.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ position: u.pos }) })));
   } catch (_) { alert('Erro ao salvar a nova ordem das etapas.'); }
 }
-// Adiciona uma automação à etapa (as perguntas variam por tipo)
+// Passo 1: escolhe a CATEGORIA; os detalhes só aparecem depois
+function autoPickCategory(sel, stageId) {
+  const v = sel.value; sel.value = '';
+  const sub = document.getElementById('auto-sub-' + stageId);
+  if (sub) sub.innerHTML = '';
+  if (!v) return;
+  if (v === 'bot') {
+    const opts = _autoBots
+      .filter(b => !(b.trigger_type === 'stage_enter' && b.trigger_stage_id === stageId))
+      .map(b => `<option value="bot:${b.id}">${escHtml(b.name)}${b.trigger_type === 'stage_enter' ? ' (hoje em outra etapa)' : ''}</option>`).join('');
+    if (!opts) { alert('Nenhum bot disponível para vincular.'); return; }
+    if (sub) sub.innerHTML = `<select onchange="autoAddAction(this,'${stageId}')" style="width:100%;background:#e7f0ff;border:1px solid #bcd6ff;border-radius:6px;padding:6px;font-size:12px;color:#131c20;cursor:pointer;margin-top:6px">
+      <option value="">Escolha o bot...</option>${opts}</select>`;
+    return;
+  }
+  if (v === 'move') {
+    const stages = [...(pipelineStages || [])].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+    const opts = stages.filter(x => x.id !== stageId)
+      .map(x => `<option value="move:${x.id}">${escHtml(x.name)}</option>`).join('');
+    if (sub) sub.innerHTML = `<select onchange="autoAddAction(this,'${stageId}')" style="width:100%;background:#e7f0ff;border:1px solid #bcd6ff;border-radius:6px;padding:6px;font-size:12px;color:#131c20;cursor:pointer;margin-top:6px">
+      <option value="">Mover para qual etapa?</option>${opts}</select>`;
+    return;
+  }
+  autoAddActionByType(v, stageId); // tarefa/tags/criar lead: perguntas diretas
+}
+// Passo 2 (bot/mover): opção específica escolhida no sub-menu
 async function autoAddAction(sel, stageId) {
   const v = sel.value; sel.value = '';
   if (!v) return;
   if (v.startsWith('bot:')) return autoLinkBot(v.slice(4), stageId);
+  return autoAddActionByType(v, stageId);
+}
+async function autoAddActionByType(v, stageId) {
   let a = null;
   if (v === 'task') {
     const title = prompt('Título da tarefa (pode usar {nome}):', 'Fazer follow-up com {nome}');
@@ -6571,7 +6600,7 @@ async function openBotEditor(id, isNew=false) {
   const stageSelect = document.getElementById('bot-trigger-stage-select');
   stageSelect.innerHTML = _botStages.map(s=>`<option value="${s.id}">${escHtml(s.name)}</option>`).join('');
   if (bot.trigger_stage_id) stageSelect.value = bot.trigger_stage_id;
-  stageSelect.style.display = bot.trigger_type==='stage_enter' ? '' : 'none';
+  stageSelect.style.display = 'none'; // etapa do bot agora vive na ⚡ Automação — aqui fica SEMPRE oculto
 
   // Load flow (tolerante a falha)
   let flow = {};
