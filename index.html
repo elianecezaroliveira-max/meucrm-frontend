@@ -1376,7 +1376,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v82</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v83</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1881,7 +1881,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v82</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v83</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1935,7 +1935,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 82;
+const APP_VER = 83;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3968,22 +3968,25 @@ function _ensurePresenceWatch() {
   if (!window.visualViewport) return;
   const mob = () => window.matchMedia('(max-width: 768px)').matches;
   let raf = null;
-  function fit() {
-    if (!mob()) { document.body.style.height = ''; document.body.style.top = ''; return; }
+  // Altura do app = área visível (teclado aberto → app termina na borda do teclado)
+  function fitH() {
+    if (!mob()) { document.body.style.height = ''; return; }
     if (raf) cancelAnimationFrame(raf);
     raf = requestAnimationFrame(() => {
-      const vv = window.visualViewport;
-      document.body.style.height = vv.height + 'px';
-      document.body.style.top = vv.offsetTop + 'px';
-      window.scrollTo(0, 0);
-      // Mantém a conversa no fim quando o teclado abre (se você já estava no fim)
+      document.body.style.height = window.visualViewport.height + 'px';
       const a = document.getElementById('messages-area');
       if (a && !window._userTouching && a.scrollHeight - a.scrollTop - a.clientHeight < 160) a.scrollTop = a.scrollHeight;
     });
   }
-  window.visualViewport.addEventListener('resize', fit);
-  window.visualViewport.addEventListener('scroll', fit);
-  fit();
+  // TRAVA: a página nunca sai do 0,0 — qualquer empurrão do iOS é anulado NO MESMO instante
+  function pin() {
+    if (!mob()) return;
+    if (window.scrollY || window.scrollX) window.scrollTo(0, 0);
+  }
+  window.visualViewport.addEventListener('resize', () => { fitH(); pin(); });
+  window.visualViewport.addEventListener('scroll', pin);
+  window.addEventListener('scroll', pin, { passive: true });
+  fitH();
 })();
 
 // A tela NUNCA vai contra o seu dedo: rastreia toque e rolagem manual para cima
@@ -4737,7 +4740,7 @@ async function sendMessage() {
   const savedMessage = message; // guarda antes de limpar
   input.value = '';
   autoGrowMsgInput(input); // campo volta à altura normal
-  input.focus(); // teclado do celular continua aberto para a próxima mensagem
+  if (document.activeElement !== input) input.focus(); // só foca se realmente perdeu o foco (re-focar dava o tranco na tela)
   // Sem delay: a bolha aparece imediatamente; o servidor confirma em seguida
   const reply = replyingTo; cancelReply();
   const tempEl = appendPendingBubble(savedMessage);
