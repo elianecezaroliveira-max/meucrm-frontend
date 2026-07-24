@@ -1321,7 +1321,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v38</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v40</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1792,7 +1792,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v38</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v40</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1846,7 +1846,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 38;
+const APP_VER = 40;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2460,6 +2460,27 @@ function formatContactTime(isoStr) {
   return `${dDay.substring(8, 10)}/${dDay.substring(5, 7)}`;
 }
 
+// Prévia estilo WhatsApp: ícone cinza + "Foto"/"Vídeo"/duração do áudio/nome do arquivo
+function waPreviewHtml(p){
+  if (!p) return null;
+  const IC = d => `<svg viewBox="0 0 24 24" style="width:15px;height:15px;vertical-align:-3px;margin-right:4px;fill:#8696a0;flex-shrink:0">${d}</svg>`;
+  const cam = IC('<path d="M12 9.5a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM20 6h-2.6l-1.1-1.6c-.37-.55-1-.9-1.66-.9H9.36c-.66 0-1.29.35-1.66.9L6.6 6H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zm-8 11a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z"/>');
+  const vid = IC('<path d="M17 10.5V7a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3.5l4 4v-11l-4 4z"/>');
+  const mic = IC('<path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z"/>');
+  const doc = IC('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>');
+  const stk = IC('<path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-3.5 6A1.5 1.5 0 1 1 7 9.5 1.5 1.5 0 0 1 8.5 8zm7 0A1.5 1.5 0 1 1 14 9.5 1.5 1.5 0 0 1 15.5 8zM12 18a6 6 0 0 1-5.2-3h10.4A6 6 0 0 1 12 18z"/>');
+  let m;
+  if ((m = p.match(/^🎤 Mensagem de voz(?: \((.+)\))?/))) return mic + escHtml(m[1] || 'Áudio');
+  if ((m = p.match(/^\[Imagem: (.+)\]/)))                 return cam + escHtml(m[1]);
+  if (/^\[Imagem/.test(p))                                return cam + 'Foto';
+  if ((m = p.match(/^\[Vídeo: (.+)\]/)))                  return vid + escHtml(m[1]);
+  if (/^\[Vídeo/.test(p))                                 return vid + 'Vídeo';
+  if ((m = p.match(/^\[Documento: (.+)\]/)))              return doc + escHtml(m[1]);
+  if (/^\[Documento/.test(p))                             return doc + 'Documento';
+  if (/^\[Figurinha\]/.test(p))                           return stk + 'Figurinha';
+  return null; // não é mídia: mostra o texto normal
+}
+
 function renderContacts(contacts) {
   const list = document.getElementById('contacts-list');
   if (!contacts.length) {
@@ -2474,10 +2495,20 @@ function renderContacts(contacts) {
     const hasUnread = unread > 0 ? ' has-unread' : '';
     const timeStr = formatContactTime(c.last_message_at);
     const preview = c.last_message_preview || c.phone;
+    const mediaPrev = waPreviewHtml(preview);
+    const shownPrev = (mediaPrev !== null) ? mediaPrev : preview;
     const isOut = c.last_message_direction === 'outbound';
+    // Tiques de confirmação na prévia (igual WhatsApp): ✓ enviada, ✓✓ entregue, ✓✓ azul lida
+    const stTick = {
+      read:      '<span class="msg-ticks read" style="margin:0 4px 0 0">✓✓</span>',
+      delivered: '<span class="msg-ticks delivered" style="margin:0 4px 0 0">✓✓</span>',
+      sent:      '<span class="msg-ticks sent" style="margin:0 4px 0 0">✓</span>',
+      pending:   '<span class="msg-ticks pending" style="margin:0 4px 0 0">🕐</span>',
+      failed:    '<span style="margin:0 4px 0 0">⚠️</span>'
+    }[c.last_message_status] || '';
     const previewHtml = isOut
-      ? `<span style="color:#667781">Você: </span>${preview}`
-      : preview;
+      ? (stTick ? stTick + shownPrev : `<span style="color:#667781">Você: </span>${shownPrev}`)
+      : shownPrev;
     const isFav = !!c.favorite;
     return `<div class="contact-swipe-wrap" data-phone="${c.phone}">
       <div class="swipe-action read">📖<span>Lida</span></div>
