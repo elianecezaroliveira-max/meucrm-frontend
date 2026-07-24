@@ -517,6 +517,7 @@
   .msg-ticks.sent     { color:#667781; }
   .msg-ticks.delivered{ color:#667781; }
   .msg-ticks.read     { color:#53bdeb; }
+  .cs-hit { outline: 2.5px solid #f7c948; border-radius: 10px; }
   .msg-ticks.failed   { color:#ef4444; font-size:11px; }
   .msg-ticks.pending  { color:#8696a0; font-size:11px; }
   /* Ações de mensagem (reply + delete) */
@@ -1321,7 +1322,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v41</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v42</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1567,6 +1568,7 @@ window.addEventListener('load', initAuth);
   <div class="cm-item" onclick="msgMenuReact()">😊 Reagir</div>
   <div class="cm-item" onclick="msgMenuCopy()">📋 Copiar</div>
   <div class="cm-item" id="msg-menu-edit" style="display:none" onclick="msgMenuEdit()">✏️ Editar</div>
+  <div class="cm-item" id="msg-menu-revoke" style="display:none;color:#ef4444" onclick="msgMenuRevoke()">🚫 Apagar para todos</div>
   <div class="cm-item" onclick="msgMenuDelete()" style="color:#ef4444">🗑 Apagar</div>
 </div>
 
@@ -1792,7 +1794,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v41</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v42</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1846,7 +1848,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 41;
+const APP_VER = 42;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2290,6 +2292,10 @@ function closeModal() { document.getElementById('modal-overlay').classList.remov
 // Ordena: não lidos no topo pela 1ª mensagem não lida (quem espera há mais tempo), lidos por mais recente
 function sortContacts(list) {
   if (!Array.isArray(list)) return []; // resposta de erro do servidor → não quebra
+  // Conversas FIXADAS sempre no topo (📌), como no WhatsApp
+  const pinned = list.filter(c => c.pinned)
+    .sort((a, b) => new Date(b.last_message_at) - new Date(a.last_message_at));
+  list = list.filter(c => !c.pinned);
   const unread = list.filter(c => (c.unread_count || 0) > 0)
     .sort((a, b) => {
       // Usa first_unread_at para não perder prioridade quando o lead manda nova mensagem
@@ -2299,7 +2305,7 @@ function sortContacts(list) {
     });
   const read = list.filter(c => !(c.unread_count || 0))
     .sort((a, b) => new Date(b.last_message_at) - new Date(a.last_message_at));
-  return [...unread, ...read];
+  return [...pinned, ...unread, ...read];
 }
 
 async function loadContacts(render = true) {
@@ -2517,7 +2523,7 @@ function renderContacts(contacts) {
       <div class="contact-avatar">${(c.name||'?')[0].toUpperCase()}${c.avatar ? `<img src="${SERVER_URL}/avatar/${encodeURIComponent(String(c.avatar).split('/').pop())}" loading="lazy" alt="" onerror="this.remove()">` : ''}</div>
       <div class="contact-info">
         <div class="contact-row-top">
-          <div class="contact-name">${c.name||c.phone}${isFav?'<span class="fav-star">★</span>':''}</div>
+          <div class="contact-name">${c.name||c.phone}${c.pinned?'<span style="font-size:11px;margin-left:3px">📌</span>':''}${isFav?'<span class="fav-star">★</span>':''}</div>
           <div class="contact-time">${timeStr}</div>
         </div>
         <div class="contact-preview-row">
@@ -2849,6 +2855,29 @@ function _updateMsgMenuItems(id) {
     }
   } catch (_) {}
   item.style.display = show ? '' : 'none';
+  const rev = document.getElementById('msg-menu-revoke');
+  if (rev) {
+    let showR = false;
+    try {
+      const el2 = document.querySelector(`#messages-area .msg[data-msg-id="${(window.CSS && CSS.escape) ? CSS.escape(String(id)) : String(id)}"]`);
+      if (el2 && el2.dataset.msgDir === 'outbound' && el2.dataset.msgWamid) {
+        const acc2 = (window._accountsById || {})[currentAccountId];
+        showR = !!(acc2 && (acc2.type === 'evolution' || acc2.evolution_instance));
+      }
+    } catch (_) {}
+    rev.style.display = showR ? '' : 'none';
+  }
+}
+function msgMenuRevoke() {
+  const id = _msgMenuId; closeMsgMenu(); if (!id) return;
+  const el = document.querySelector(`#messages-area .msg[data-msg-id="${(window.CSS && CSS.escape) ? CSS.escape(String(id)) : String(id)}"]`);
+  const wamid = el && el.dataset.msgWamid;
+  if (!wamid) return alert('Esta mensagem não tem ID do WhatsApp.');
+  if (!confirm('Apagar esta mensagem PARA TODOS? Ela some também no celular do cliente.')) return;
+  fetch(SERVER_URL + '/message-revoke', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ phone: currentPhone, wamid, account_id: currentAccountId || null }) })
+    .then(r => r.json()).then(d => { if (d.error) return alert('Erro: ' + d.error); loadMessages(currentPhone, false); })
+    .catch(() => alert('Erro ao apagar para todos.'));
 }
 function msgMenuEdit() {
   const id = _msgMenuId; closeMsgMenu(); if (!id) return;
@@ -2961,6 +2990,7 @@ function openContactMenu(ev, phone) {
   menu.innerHTML =
     `<div class="cm-item" onclick="markContactRead('${phone}');closeContactMenu()">✓ Marcar como lida</div>` +
     `<div class="cm-item" onclick="toggleFavorite('${phone}');closeContactMenu()">${c && c.favorite ? '★ Remover dos favoritos' : '⭐ Favoritar conversa'}</div>` +
+    `<div class="cm-item" onclick="togglePin('${phone}');closeContactMenu()">${c && c.pinned ? '📌 Desafixar do topo' : '📌 Fixar no topo'}</div>` +
     `<div class="cm-item" style="color:#ef4444" onclick="closeContactMenu();deleteConversation('${phone}')">🗑 Apagar conversa</div>`;
   menu.style.display = 'block';
   menu.style.left = Math.min(ev.clientX, window.innerWidth - 210) + 'px';
@@ -3056,9 +3086,14 @@ async function selectContact(phone, name, accountId) {
       </button>
       <div class="info">
         <div class="name"><span id="chat-name-text">${name || phone}</span></div>
+        <div class="phone" id="chat-presence" style="display:none;color:#00a884"></div>
       </div>
-      <button id="btn-lead-panel" title="Mostrar/ocultar detalhes do lead" onclick="toggleLeadPanel()"
+      <button id="btn-chat-search" title="Pesquisar na conversa" onclick="toggleChatSearch()"
         style="background:none;border:none;color:#667781;cursor:pointer;padding:6px;border-radius:50%;margin-left:auto;flex-shrink:0;display:flex;align-items:center;justify-content:center">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
+      </button>
+      <button id="btn-lead-panel" title="Mostrar/ocultar detalhes do lead" onclick="toggleLeadPanel()"
+        style="background:none;border:none;color:#667781;cursor:pointer;padding:6px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
         </svg>
@@ -3097,9 +3132,15 @@ async function selectContact(phone, name, accountId) {
       <input type="file" id="file-input" style="display:none"
         accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip"
         onchange="if(this.files&&this.files[0])handleFileSelect(this.files[0]);this.value='';" />
-      <label for="file-input" id="attach-btn" title="Enviar arquivo" style="cursor:pointer">
+      <label id="attach-btn" title="Anexar" onclick="toggleAttachMenu(event)" style="cursor:pointer">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
       </label>
+      <div id="attach-menu" style="display:none;position:absolute;bottom:calc(100% + 6px);left:44px;background:#fff;border:1px solid #e9edef;border-radius:10px;padding:6px;min-width:200px;z-index:120;box-shadow:0 4px 14px rgba(0,0,0,.25)">
+        <div class="cm-item" onclick="closeAttachMenu();document.getElementById('file-input').click()">📄 Arquivo / foto / vídeo</div>
+        <div class="cm-item" onclick="closeAttachMenu();sendLocationUI()">📍 Localização</div>
+        <div class="cm-item" onclick="closeAttachMenu();sendContactUI()">👤 Contato</div>
+        <div class="cm-item" id="attach-poll-item" onclick="closeAttachMenu();sendPollUI()">📊 Enquete</div>
+      </div>
       <button id="btn-start-bot" title="Iniciar bot" onclick="openBotLauncher()" style="background:none;border:none;color:#667781;cursor:pointer;padding:6px;border-radius:50%;transition:background 0.2s;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px">🤖</button>
       <div id="bot-launcher-menu" style="display:none;position:absolute;bottom:calc(100% + 6px);left:12px;background:#ffffff;border:1px solid #e9edef;border-radius:8px;padding:8px;min-width:200px;z-index:100;box-shadow:0 4px 12px rgba(0,0,0,0.4)">
         <div style="font-size:11px;color:#667781;padding:4px 8px;text-transform:uppercase">Iniciar bot</div>
@@ -3403,6 +3444,149 @@ function goBackToSidebar() {
   document.addEventListener('touchcancel', finish);
 })();
 
+// ── 🔍 Pesquisar dentro da conversa ──
+let _csHits = [], _csIdx = -1;
+function toggleChatSearch() {
+  let bar = document.getElementById('chat-search-bar');
+  if (!bar) {
+    const hd = document.getElementById('chat-header'); if (!hd) return;
+    hd.insertAdjacentHTML('afterend',
+      `<div id="chat-search-bar" style="display:flex;align-items:center;gap:8px;background:#f0f2f5;border-bottom:1px solid #e9edef;padding:8px 14px">
+        <input id="chat-search-input" placeholder="Pesquisar na conversa" style="flex:1;background:#fff;border:1px solid #e9edef;border-radius:8px;padding:8px 12px;font-size:14px;outline:none;font-family:inherit;min-width:0"
+          oninput="chatSearchRun()" onkeydown="if(event.key==='Enter'){event.preventDefault();chatSearchNav(event.shiftKey?-1:1)}else if(event.key==='Escape'){toggleChatSearch()}">
+        <span id="chat-search-count" style="font-size:12px;color:#667781;white-space:nowrap"></span>
+        <button onclick="chatSearchNav(-1)" style="background:none;border:none;cursor:pointer;color:#667781;font-size:14px;padding:4px" title="Anterior">▲</button>
+        <button onclick="chatSearchNav(1)" style="background:none;border:none;cursor:pointer;color:#667781;font-size:14px;padding:4px" title="Próxima">▼</button>
+        <button onclick="toggleChatSearch()" style="background:none;border:none;cursor:pointer;color:#667781;font-size:15px;padding:4px" title="Fechar">✕</button>
+      </div>`);
+    document.getElementById('chat-search-input').focus();
+    return;
+  }
+  if (bar.style.display !== 'none') { bar.style.display = 'none'; _csClear(); }
+  else { bar.style.display = 'flex'; const i = document.getElementById('chat-search-input'); if (i) { i.value = ''; i.focus(); } _csClear(); }
+}
+function _csClear() {
+  document.querySelectorAll('.cs-hit').forEach(e => e.classList.remove('cs-hit'));
+  _csHits = []; _csIdx = -1;
+  const c = document.getElementById('chat-search-count'); if (c) c.textContent = '';
+}
+function chatSearchRun() {
+  _csClear();
+  const q = (document.getElementById('chat-search-input')?.value || '').trim().toLowerCase();
+  if (q.length < 2) return;
+  _csHits = Array.from(document.querySelectorAll('#messages-area .msg')).filter(el => (el.innerText || '').toLowerCase().includes(q));
+  const c = document.getElementById('chat-search-count');
+  if (c) c.textContent = _csHits.length ? _csHits.length + ' resultado(s)' : 'nada encontrado';
+  if (_csHits.length) { _csIdx = _csHits.length - 1; _csFocus(); }
+}
+function _csFocus() {
+  document.querySelectorAll('.cs-hit').forEach(e => e.classList.remove('cs-hit'));
+  const el = _csHits[_csIdx]; if (!el) return;
+  el.classList.add('cs-hit');
+  el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  const c = document.getElementById('chat-search-count'); if (c) c.textContent = (_csIdx + 1) + ' de ' + _csHits.length;
+}
+function chatSearchNav(dir) { if (!_csHits.length) return; _csIdx = (_csIdx + dir + _csHits.length) % _csHits.length; _csFocus(); }
+
+// ── 📌 Fixar conversa no topo ──
+async function togglePin(phone) {
+  const c = allContacts.find(x => x.phone === phone);
+  const nv = !(c && c.pinned);
+  if (c) c.pinned = nv;
+  renderContacts(sortContacts(allContacts));
+  try {
+    await fetch(SERVER_URL + '/contacts/' + encodeURIComponent(phone) + '/pin', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pinned: nv }) });
+  } catch (_) {}
+  loadContacts();
+}
+
+// ── 📎 Menu do clipe (arquivo / localização / contato / enquete) ──
+function toggleAttachMenu(ev) {
+  if (ev) { ev.preventDefault(); ev.stopPropagation(); }
+  const m = document.getElementById('attach-menu'); if (!m) return;
+  const acc = (window._accountsById || {})[currentAccountId];
+  const isQr = !!(acc && (acc.type === 'evolution' || acc.evolution_instance));
+  const pi = document.getElementById('attach-poll-item'); if (pi) pi.style.display = isQr ? '' : 'none';
+  m.style.display = m.style.display === 'none' ? 'block' : 'none';
+}
+function closeAttachMenu() { const m = document.getElementById('attach-menu'); if (m) m.style.display = 'none'; }
+document.addEventListener('click', e => { if (!e.target.closest('#attach-menu') && !e.target.closest('#attach-btn')) closeAttachMenu(); });
+function _parseLatLng(txt) {
+  if (!txt) return null;
+  const m = txt.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || txt.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/) || txt.match(/^\s*(-?\d+[.,]\d+)\s*,\s*(-?\d+[.,]\d+)\s*$/);
+  if (!m) return null;
+  return { lat: parseFloat(m[1].replace(',', '.')), lng: parseFloat(m[2].replace(',', '.')) };
+}
+async function sendLocationUI() {
+  if (!currentPhone) return;
+  const txt = prompt('Cole o link do Google Maps ou digite latitude,longitude:'); if (txt === null) return;
+  const ll = _parseLatLng(txt.trim());
+  if (!ll) return alert('Não entendi. Exemplos:\n-23.5505,-46.6333\nou um link do Maps com as coordenadas.');
+  const nome = prompt('Nome do lugar (opcional):') || '';
+  try {
+    const r = await fetch(SERVER_URL + '/send-location', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to: currentPhone, account_id: currentAccountId || null, lat: ll.lat, lng: ll.lng, name: nome.trim() || null }) });
+    const d = await r.json(); if (d.error) return alert('Erro: ' + d.error);
+    loadMessages(currentPhone, true);
+  } catch (_) { alert('Erro ao enviar localização.'); }
+}
+async function sendContactUI() {
+  if (!currentPhone) return;
+  const nome = prompt('Nome do contato:'); if (!nome) return;
+  const fone = prompt('Telefone (com DDD e país, ex: 5515999991234):'); if (!fone) return;
+  try {
+    const r = await fetch(SERVER_URL + '/send-contact', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to: currentPhone, account_id: currentAccountId || null, cname: nome.trim(), cphone: fone.trim() }) });
+    const d = await r.json(); if (d.error) return alert('Erro: ' + d.error);
+    loadMessages(currentPhone, true);
+  } catch (_) { alert('Erro ao enviar contato.'); }
+}
+async function sendPollUI() {
+  if (!currentPhone) return;
+  const q = prompt('Pergunta da enquete:'); if (!q) return;
+  const ops = prompt('Opções separadas por vírgula (mínimo 2):'); if (!ops) return;
+  const options = ops.split(',').map(s => s.trim()).filter(Boolean);
+  if (options.length < 2) return alert('Informe pelo menos 2 opções.');
+  try {
+    const r = await fetch(SERVER_URL + '/send-poll', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to: currentPhone, account_id: currentAccountId || null, question: q.trim(), options }) });
+    const d = await r.json(); if (d.error) return alert('Erro: ' + d.error);
+    loadMessages(currentPhone, true);
+  } catch (_) { alert('Erro ao enviar enquete.'); }
+}
+
+// ── 🟢 Online / visto por último (números QR) ──
+let _presTimer = null, _presPhone = null;
+function _ensurePresenceWatch() {
+  if (_presPhone === currentPhone && _presTimer) return;
+  _presPhone = currentPhone;
+  if (_presTimer) { clearInterval(_presTimer); _presTimer = null; }
+  const upd = async () => {
+    try {
+      const el = document.getElementById('chat-presence'); if (!el || !currentPhone) return;
+      const acc = (window._accountsById || {})[currentAccountId];
+      const isQr = !!(acc && (acc.type === 'evolution' || acc.evolution_instance));
+      if (!isQr) { el.style.display = 'none'; return; }
+      const r = await fetch(SERVER_URL + '/presence?phone=' + encodeURIComponent(currentPhone) + '&account_id=' + encodeURIComponent(currentAccountId));
+      const d = await r.json();
+      let t = '';
+      if (d.state === 'composing') t = 'digitando…';
+      else if (d.state === 'recording') t = 'gravando áudio…';
+      else if (d.state === 'available') t = 'online';
+      else if (d.lastSeen) {
+        const dt = new Date(d.lastSeen), hoje = new Date();
+        const hm = dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        t = 'visto por último ' + (dt.toDateString() === hoje.toDateString() ? 'hoje às ' + hm : 'em ' + dt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' às ' + hm);
+      }
+      if (t) { el.textContent = t; el.style.display = 'block'; el.style.color = (t === 'online' || t.endsWith('…')) ? '#00a884' : '#667781'; }
+      else el.style.display = 'none';
+    } catch (_) {}
+  };
+  upd();
+  _presTimer = setInterval(upd, 10000);
+}
+
 // Cache de conteúdo de mensagens para o reply
 const _msgData = {};
 
@@ -3494,6 +3678,11 @@ function renderMessageContent(m) {
       </div>`;
     }
   }
+  if (m.type === 'location') {
+    const uMatch = safeContent.match(/https?:\/\/\S+/);
+    const title = safeContent.split('\n')[0];
+    if (uMatch) return quotedHtml + `<span class="msg-text">${escHtml(title)}</span><div style="margin-top:6px"><a href="${uMatch[0]}" target="_blank" rel="noopener" style="display:inline-block;background:rgba(2,126,181,.08);border:1.5px solid rgba(2,126,181,.4);border-radius:999px;padding:5px 14px;font-size:13px;color:#027eb5;text-decoration:none">🗺 Abrir no mapa</a></div>`;
+  }
   return quotedHtml + `<span class="msg-text">${escHtml(safeContent)}</span>`;
 }
 
@@ -3520,6 +3709,7 @@ function msgDayKey(dateStr) {
 let _lastMsgsSig = ''; // assinatura da última renderização — evita re-render desnecessário
 async function loadMessages(phone, scroll = true) {
   try {
+    _ensurePresenceWatch();
     const res = await fetch(SERVER_URL + '/messages/' + phone);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const msgs = await res.json();
