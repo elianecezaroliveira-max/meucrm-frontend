@@ -1376,7 +1376,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v84</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v86</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1881,7 +1881,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v84</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v86</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1935,7 +1935,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 84;
+const APP_VER = 86;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3019,7 +3019,7 @@ async function sendVoiceBlob(blob, durationSecs) {
     const d = document.createElement('div');
     d.className = 'msg outbound';
     d.innerHTML = '🎤 <em style="font-size:13px;opacity:.8">Enviando áudio...</em>';
-    area.appendChild(d); window._lastPushTs = Date.now(); area.scrollTo({ top: area.scrollHeight, behavior: 'smooth' });
+    area.appendChild(d); area.scrollTop = area.scrollHeight;
   }
   try {
     const res = await fetch(SERVER_URL + '/send-media', {
@@ -3363,13 +3363,13 @@ async function toggleFavorite(phone) {
 (function initContactSwipe() {
   const list = document.getElementById('contacts-list');
   if (!list) return;
-  let startX = 0, startY = 0, item = null, dx = 0, swiping = false, quietTs = 0, startScroll = 0;
+  let startX = 0, startY = 0, item = null, dx = 0, swiping = false, quietTs = 0, startScroll = 0, touchT0 = 0;
   const cancelSwipe = () => { if (item) { item.style.transition = ''; item.style.transform = ''; } item = null; swiping = false; };
   list.addEventListener('touchstart', e => {
     // Lista ainda deslizando (inércia)? Este toque é para PARAR/continuar a rolagem — não é swipe
     if (Date.now() - quietTs < 250) { item = null; return; }
     const wrap = e.target.closest('.contact-swipe-wrap'); if (!wrap) return;
-    item = wrap.querySelector('.contact-item'); dx = 0; swiping = false;
+    item = wrap.querySelector('.contact-item'); dx = 0; swiping = false; touchT0 = Date.now();
     startX = e.touches[0].clientX; startY = e.touches[0].clientY;
     startScroll = list.scrollTop;
     if (item) item.style.transition = 'none';
@@ -3385,7 +3385,8 @@ async function toggleFavorite(phone) {
     // REGRA ABSOLUTA: a lista rolou (mais de 3px) = é rolagem, nunca swipe — mesmo já engatado
     if (Math.abs(list.scrollTop - startScroll) > 3) { cancelSwipe(); return; }
     if (!swiping && Date.now() - quietTs < 250) { cancelSwipe(); return; }
-    if (!swiping && Math.abs(dx) > 26 && Math.abs(dx) > Math.abs(dy) * 3) swiping = true;
+    // Rápido demais = arremesso de rolagem, nunca swipe (swipe de verdade é um arrasto deliberado)
+    if (!swiping && Math.abs(dx) > 26 && Math.abs(dx) > Math.abs(dy) * 3 && Date.now() - touchT0 >= 110) swiping = true;
     if (swiping) item.style.transform = `translateX(${Math.max(-100, Math.min(100, dx))}px)`;
   }, { passive: true });
   list.addEventListener('scroll', () => { // a lista rolou = não era swipe (NUNCA, nem engatado)
@@ -3996,6 +3997,7 @@ function _ensurePresenceWatch() {
 // A tela NUNCA vai contra o seu dedo: rastreia toque e rolagem manual para cima
 document.addEventListener('touchstart', e => { if (e.target.closest('#messages-area')) window._userTouching = true; }, { passive: true, capture: true });
 document.addEventListener('touchend', () => { setTimeout(() => { window._userTouching = false; }, 400); }, { passive: true });
+document.addEventListener('wheel', e => { if (e.target.closest && e.target.closest('#messages-area')) window._lastWheelTs = Date.now(); }, { passive: true });
 
 // ▾ Botão flutuante de DESCER até a última mensagem (com contador de novas)
 (function () {
@@ -4020,8 +4022,10 @@ document.addEventListener('touchend', () => { setTimeout(() => { window._userTou
   document.addEventListener('scroll', e => {
     if (!e.target || e.target.id !== 'messages-area') return;
     const area = e.target; const b = btn();
-    // Rolou para CIMA manualmente? Guarda a hora — nada de puxar de volta por uns segundos
-    if (area.scrollTop < (window._prevMsgScroll || 0) - 4) window._scrollUpTs = Date.now();
+    // Rolou para CIMA DE PROPÓSITO (dedo ou roda do mouse)? Só isso conta.
+    // Rolagens do próprio app NÃO contam — eram elas que travavam a tela fora do lugar.
+    const _intent = window._userTouching || Date.now() - (window._lastWheelTs || 0) < 250;
+    if (_intent && area.scrollTop < (window._prevMsgScroll || 0) - 4) window._scrollUpTs = Date.now();
     window._prevMsgScroll = area.scrollTop;
     const longe = area.scrollHeight - area.scrollTop - area.clientHeight > 350;
     b.style.display = longe ? 'flex' : 'none';
@@ -4485,12 +4489,10 @@ async function loadMessages(phone, scroll = true) {
       Array.from(area.children).forEach((el, i) => { if (parts[i]) el._html = parts[i].html; });
     }
 
-    // NUNCA contra o dedo: só acompanha o fim se você não está tocando nem subiu há pouco
+    // NUNCA contra o dedo: só acompanha o fim se você não subiu DE PROPÓSITO
     const _maoLivre = !window._userTouching && Date.now() - (window._scrollUpTs || 0) > 2500;
     if (scroll || (nearBottom && _maoLivre)) {
-      // Se o envio ACABOU de deslizar a tela, não desliza de novo (evita o tremor duplo)
-      if (!scroll && nearBottom && Date.now() - (window._lastPushTs || 0) > 700) area.scrollTo({ top: area.scrollHeight, behavior: 'smooth' });
-      else area.scrollTop = area.scrollHeight;
+      area.scrollTop = area.scrollHeight; // direto no fim, determinístico
       hideNewMsgPill();
     } else {
       if (!samePrefix) area.scrollTop = prevTop; // no incremental a posição nem chega a mudar
@@ -4726,8 +4728,7 @@ function appendPendingBubble(text) {
   el.dataset.key = 'temp-' + Date.now();
   el.innerHTML = `<span class="msg-text">${escHtml(text)}</span><div class="time">${_brtTime(Date.now())}<span class="msg-ticks pending" title="Enviando…">🕐</span></div>`;
   area.appendChild(el);
-  window._lastPushTs = Date.now();
-  area.scrollTo({ top: area.scrollHeight, behavior: 'smooth' }); // empurrãozinho suave
+  area.scrollTop = area.scrollHeight; // direto no fim — nada de animação disputando com o render
   return el;
 }
 
@@ -4774,6 +4775,11 @@ async function sendMessage() {
     try { const tk = tempEl && tempEl.querySelector('.msg-ticks'); if (tk) { tk.textContent = '✓'; tk.className = 'msg-ticks sent'; tk.title = ''; } } catch (_) {}
     await loadMessages(currentPhone, false);
     if (tempEl && tempEl.parentElement) tempEl.remove();
+    // Garantia final: o envio SEMPRE termina com a conversa no fim (salvo você ter subido de propósito)
+    if (Date.now() - (window._scrollUpTs || 0) > 2500) {
+      const _a = document.getElementById('messages-area');
+      if (_a) _a.scrollTop = _a.scrollHeight;
+    }
   } catch(e) {
     if (tempEl) tempEl.remove();
     input.value = savedMessage; // restaura mensagem se erro de rede
@@ -5145,8 +5151,7 @@ async function _sendOneFile(file, caption, semRecarga) {
       div.innerHTML = `${icon} <em style="font-size:13px;opacity:.8">${escHtml(file.name)}</em><div class="time">${horaAgora}</div>`;
     }
     area.appendChild(div);
-    window._lastPushTs = Date.now();
-    area.scrollTo({ top: area.scrollHeight, behavior: 'smooth' }); // empurrãozinho suave
+    area.scrollTop = area.scrollHeight;
   }
   try {
     const res = await fetch(SERVER_URL + '/send-media', {
