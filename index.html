@@ -1378,7 +1378,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v94</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v95</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1883,7 +1883,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v94</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v95</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1937,7 +1937,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 94;
+const APP_VER = 95;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2559,6 +2559,11 @@ function formatContactTime(isoStr) {
   return `${dDay.substring(8, 10)}/${dDay.substring(5, 7)}`;
 }
 
+// Relógio e tiques no TRAÇO do WhatsApp (SVG fino, não emoji)
+const TICK_CLOCK = '<svg viewBox="0 0 16 16" width="12" height="12" style="vertical-align:-1.5px"><circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8 4.6V8l2.3 1.5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
+const TICK_ONE = '<svg viewBox="0 0 16 11" width="15" height="11" style="vertical-align:-1px"><path d="M1.5 5.8l3.2 3.2L11 1.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const TICK_TWO = '<svg viewBox="0 0 20 11" width="17" height="11" style="vertical-align:-1px"><path d="M1.5 5.8l3.2 3.2L11 1.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 5.8l3.2 3.2L16.5 1.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
 // Prévia estilo WhatsApp: ícone cinza + "Foto"/"Vídeo"/duração do áudio/nome do arquivo
 function waPreviewHtml(p){
   if (!p) return null;
@@ -2607,10 +2612,10 @@ function renderContacts(contacts) {
     const isOut = c.last_message_direction === 'outbound';
     // Tiques de confirmação na prévia (igual WhatsApp): ✓ enviada, ✓✓ entregue, ✓✓ azul lida
     const stTick = {
-      read:      '<span class="msg-ticks read" style="margin:0 4px 0 0">✓✓</span>',
-      delivered: '<span class="msg-ticks delivered" style="margin:0 4px 0 0">✓✓</span>',
-      sent:      '<span class="msg-ticks sent" style="margin:0 4px 0 0">✓</span>',
-      pending:   '<span class="msg-ticks pending" style="margin:0 4px 0 0">🕐</span>',
+      read:      '<span class="msg-ticks read" style="margin:0 4px 0 0">' + TICK_TWO + '</span>',
+      delivered: '<span class="msg-ticks delivered" style="margin:0 4px 0 0">' + TICK_TWO + '</span>',
+      sent:      '<span class="msg-ticks sent" style="margin:0 4px 0 0">' + TICK_ONE + '</span>',
+      pending:   '<span class="msg-ticks pending" style="margin:0 4px 0 0">' + TICK_CLOCK + '</span>',
       failed:    '<span style="margin:0 4px 0 0">⚠️</span>'
     }[c.last_message_status] || '';
     const previewHtml = isOut
@@ -3195,9 +3200,9 @@ function msgMenuInfo() {
   box.innerHTML = `<div style="background:#fff;border-radius:14px;padding:18px 20px;min-width:250px;max-width:320px;box-shadow:0 8px 30px rgba(0,0,0,.35)">
     <b style="font-size:14px">Dados da mensagem</b>
     <div style="margin-top:12px;font-size:13.5px;line-height:2.1">
-      <div><span class="msg-ticks sent" style="margin:0 6px 0 0">✓</span>Enviada · ${f(m.timestamp) || '—'}</div>
-      <div><span class="msg-ticks delivered" style="margin:0 6px 0 0">✓✓</span>Entregue · ${linEnt}</div>
-      <div><span class="msg-ticks read" style="margin:0 6px 0 0">✓✓</span>Lida · ${linLida}</div>
+      <div><span class="msg-ticks sent" style="margin:0 6px 0 0">${TICK_ONE}</span>Enviada · ${f(m.timestamp) || '—'}</div>
+      <div><span class="msg-ticks delivered" style="margin:0 6px 0 0">${TICK_TWO}</span>Entregue · ${linEnt}</div>
+      <div><span class="msg-ticks read" style="margin:0 6px 0 0">${TICK_TWO}</span>Lida · ${linLida}</div>
     </div>
     <div style="text-align:right;margin-top:10px"><button onclick="document.getElementById('msg-info-box').remove()" style="background:#00a884;color:#fff;border:none;border-radius:8px;padding:7px 18px;cursor:pointer;font-family:inherit;font-size:13px">OK</button></div>
   </div>`;
@@ -4436,11 +4441,11 @@ async function loadMessages(phone, scroll = true) {
 
         let ticks = '';
         if (m.direction === 'outbound') {
-          if (m.status === 'read')           ticks = '<span class="msg-ticks read">✓✓</span>';
-          else if (m.status === 'delivered') ticks = '<span class="msg-ticks delivered">✓✓</span>';
+          if (m.status === 'read')           ticks = '<span class="msg-ticks read">' + TICK_TWO + '</span>';
+          else if (m.status === 'delivered') ticks = '<span class="msg-ticks delivered">' + TICK_TWO + '</span>';
           else if (m.status === 'failed')    ticks = `<span class="msg-ticks failed" style="cursor:pointer" title="${escHtml(m.error_info||'Falha no envio sem motivo registrado (mensagem anterior à atualização). Reenvie para ver o detalhe da Meta.')}" onclick="alert('❌ Falha no envio:\\n\\n'+this.title)">⚠️</span>`;
-          else if (m.status === 'pending')   ticks = '<span class="msg-ticks pending" title="Enviando… aguardando confirmação do WhatsApp">🕐</span>';
-          else                               ticks = '<span class="msg-ticks sent">✓</span>';
+          else if (m.status === 'pending')   ticks = '<span class="msg-ticks pending" title="Enviando… aguardando confirmação do WhatsApp">' + TICK_CLOCK + '</span>';
+          else                               ticks = '<span class="msg-ticks sent">' + TICK_ONE + '</span>';
         }
 
         // Horário UTC-3 — usa parseUTC() para garantir que o timestamp seja tratado como UTC
@@ -4473,7 +4478,7 @@ async function loadMessages(phone, scroll = true) {
             return `<span style="position:relative;display:block"><img src="${u}" loading="lazy" onclick="window.open('${u}','_blank')" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;display:block;cursor:pointer;background:rgba(0,0,0,.06)">${extra}</span>`;
           }).join('');
           const tk = (ult.direction === 'outbound')
-            ? (ult.status === 'read' ? '<span class="msg-ticks read">✓✓</span>' : ult.status === 'delivered' ? '<span class="msg-ticks delivered">✓✓</span>' : '<span class="msg-ticks sent">✓</span>') : '';
+            ? (ult.status === 'read' ? '<span class="msg-ticks read">' + TICK_TWO + '</span>' : ult.status === 'delivered' ? '<span class="msg-ticks delivered">' + TICK_TWO + '</span>' : '<span class="msg-ticks sent">' + TICK_ONE + '</span>') : '';
           const grpA = _prevDir === safeDir; _prevDir = safeDir;
           parts.push({ key: 'alb-' + safeId, html: `<div class="msg ${safeDir}${grpA ? ' grp' : ''}" style="position:relative" data-key="alb-${safeId}" data-msg-id="${safeId}" data-msg-dir="${safeDir}">
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;width:236px;max-width:100%">${tiles}</div>
@@ -4764,7 +4769,7 @@ function appendPendingBubble(text) {
   el.className = 'msg outbound' + (_grpP ? ' grp' : '');
   el.style.position = 'relative';
   el.dataset.key = 'temp-' + Date.now();
-  el.innerHTML = `<span class="msg-text">${waFormat(text)}</span><div class="time">${_brtTime(Date.now())}<span class="msg-ticks pending" title="Enviando…">🕐</span></div>`;
+  el.innerHTML = `<span class="msg-text">${waFormat(text)}</span><div class="time">${_brtTime(Date.now())}<span class="msg-ticks pending" title="Enviando…">${TICK_CLOCK}</span></div>`;
   area.appendChild(el);
   area.scrollTop = area.scrollHeight; // direto no fim — nada de animação disputando com o render
   return el;
@@ -4811,7 +4816,7 @@ async function sendMessage() {
     }
     markAsRead(currentPhone);
     // O relógio vira ✓ NA HORA; a recarga troca pela definitiva no mesmo quadro (sem piscar)
-    try { const tk = tempEl && tempEl.querySelector('.msg-ticks'); if (tk) { tk.textContent = '✓'; tk.className = 'msg-ticks sent'; tk.title = ''; } } catch (_) {}
+    try { const tk = tempEl && tempEl.querySelector('.msg-ticks'); if (tk) { tk.innerHTML = TICK_ONE; tk.className = 'msg-ticks sent'; tk.title = ''; } } catch (_) {}
     await loadMessages(currentPhone, false);
     if (tempEl && tempEl.parentElement) tempEl.remove();
     // Garantia final: o envio SEMPRE termina com a conversa no fim (salvo você ter subido de propósito)
@@ -5181,10 +5186,10 @@ async function _sendOneFile(file, caption, semRecarga) {
     if (file.type.startsWith('image/')) {
       // A foto aparece NA HORA (prévia local) enquanto o envio acontece por trás
       const uLocal = URL.createObjectURL(file);
-      div.innerHTML = `<img src="${uLocal}" style="max-width:230px;max-height:280px;border-radius:8px;display:block">${caption ? `<div class="media-caption">${escHtml(caption)}</div>` : ''}<div class="time">${horaAgora} <span class="msg-ticks pending">🕐</span></div>`;
+      div.innerHTML = `<img src="${uLocal}" style="max-width:230px;max-height:280px;border-radius:8px;display:block">${caption ? `<div class="media-caption">${escHtml(caption)}</div>` : ''}<div class="time">${horaAgora} <span class="msg-ticks pending">${TICK_CLOCK}</span></div>`;
     } else if (file.type.startsWith('video/')) {
       const uLocal = URL.createObjectURL(file);
-      div.innerHTML = `<video src="${uLocal}" muted playsinline style="max-width:230px;max-height:280px;border-radius:8px;display:block"></video>${caption ? `<div class="media-caption">${escHtml(caption)}</div>` : ''}<div class="time">${horaAgora} <span class="msg-ticks pending">🕐</span></div>`;
+      div.innerHTML = `<video src="${uLocal}" muted playsinline style="max-width:230px;max-height:280px;border-radius:8px;display:block"></video>${caption ? `<div class="media-caption">${escHtml(caption)}</div>` : ''}<div class="time">${horaAgora} <span class="msg-ticks pending">${TICK_CLOCK}</span></div>`;
     } else {
       const icon = file.type.startsWith('audio/') ? '🎵' : '📄';
       div.innerHTML = `${icon} <em style="font-size:13px;opacity:.8">${escHtml(file.name)}</em><div class="time">${horaAgora}</div>`;
