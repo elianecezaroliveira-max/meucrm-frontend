@@ -1322,7 +1322,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v50</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v51</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1381,6 +1381,10 @@ window.addEventListener('load', initAuth);
   <div id="qr-popup-header">
     <span>⚡ Respostas rápidas</span>
     <span style="font-size:10px">ESC para fechar</span>
+  </div>
+  <div style="padding:6px 8px 2px">
+    <input id="qr-popup-search" placeholder="🔍 Digite para achar…" oninput="showQRPopup(this.value, true)"
+      style="width:100%;box-sizing:border-box;background:#f0f2f5;border:1px solid #e9edef;border-radius:8px;padding:8px 12px;font-size:14px;outline:none;font-family:inherit">
   </div>
   <div id="qr-popup-list"></div>
 </div>
@@ -1798,7 +1802,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v50</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v51</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1852,7 +1856,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 50;
+const APP_VER = 51;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4514,18 +4518,27 @@ function renderQRManager() {
       </div>`;
     return;
   }
-  body.innerHTML = quickReplies.map((r, i) => `
+  const order = quickReplies.map((r, i) => ({ r, i })).sort((a, b) => (b.r.pinned ? 1 : 0) - (a.r.pinned ? 1 : 0));
+  body.innerHTML = order.map(({ r, i }) => `
     <div class="qr-manage-item">
       <div class="qr-manage-info">
-        <div class="qr-manage-name">/${r.title}</div>
+        <div class="qr-manage-name">${r.pinned ? '📌 ' : ''}/${r.title}</div>
         <div class="qr-manage-text">${r.message}</div>
       </div>
       <div class="qr-manage-btns">
+        <button class="qr-manage-btn" onclick="togglePinQR(${i})" title="${r.pinned ? 'Desafixar' : 'Fixar no topo'}" style="${r.pinned ? 'color:#00a884' : ''}">📌</button>
         <button class="qr-manage-btn" onclick="editQR(${i})">✏️</button>
         <button class="qr-manage-btn del" onclick="deleteQR(${i})">🗑️</button>
       </div>
     </div>
   `).join('');
+}
+
+function togglePinQR(i) {
+  if (!quickReplies[i]) return;
+  quickReplies[i].pinned = !quickReplies[i].pinned;
+  saveQR();
+  renderQRManager();
 }
 
 function showQRForm(index) {
@@ -4623,15 +4636,23 @@ if (window.visualViewport) {
   window.visualViewport.addEventListener('scroll', _fitToKeyboard);
 }
 
-function showQRPopup(filter) {
+function showQRPopup(filter, fromSearch) {
   const popup = document.getElementById('qr-popup');
   const list  = document.getElementById('qr-popup-list');
-  const filtered = quickReplies.filter(r =>
+  const si = document.getElementById('qr-popup-search');
+  if (si && !fromSearch) si.value = filter || '';
+  // Fixadas (📌) sempre primeiro — as que você mais usa ficam no topo
+  const ordered = [...quickReplies].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
+  const filtered = ordered.filter(r =>
     !filter ||
     r.title.toLowerCase().includes(filter.toLowerCase()) ||
     r.message.toLowerCase().includes(filter.toLowerCase())
   );
   if (!filtered.length) {
+    if (fromSearch) { // digitou algo sem resultado: mantém aberto para corrigir
+      list.innerHTML = '<div style="padding:12px 14px;font-size:13px;color:#667781">Nenhuma resposta com esse texto.</div>';
+      return;
+    }
     if (!quickReplies.length && !filter) {
       list.innerHTML = '<div style="padding:12px 14px;font-size:13px;color:#667781">Nenhuma resposta rápida ainda.<br>Crie no menu <b>⚡ Respostas</b>.</div>';
       positionQRPopup(); popup.style.display = 'block';
@@ -4645,7 +4666,7 @@ function showQRPopup(filter) {
     const preview = r.message.replace(/\{nome\}/gi, contactName || '{nome}');
     const short   = preview.length > 90 ? preview.substring(0, 90) + '…' : preview;
     return `<div class="qr-item" onclick="insertQRReply(${quickReplies.indexOf(r)})">
-      <div class="qr-item-title">/${r.title}</div>
+      <div class="qr-item-title">${r.pinned ? '📌 ' : ''}/${r.title}</div>
       <div class="qr-item-preview">${short}</div>
     </div>`;
   }).join('');
