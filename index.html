@@ -1322,7 +1322,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v44</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v47</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1490,6 +1490,8 @@ window.addEventListener('load', initAuth);
 <div id="info-menu" style="display:none;position:fixed;z-index:700;background:#ffffff;border:1px solid #e9edef;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.25);min-width:230px;padding:4px">
   <div id="info-menu-phone" style="padding:8px 14px 6px;font-size:13px;color:#667781;border-bottom:1px solid #e9edef;margin-bottom:4px"></div>
   <div class="cm-item" onclick="menuCopyPhone(this)">📋 Copiar número (sem o 55)</div>
+  <div class="cm-item" id="info-menu-pin" onclick="closeInfoMenu();togglePin(currentPhone)">📌 Fixar no topo</div>
+  <div class="cm-item" id="info-menu-fav" onclick="closeInfoMenu();toggleFavorite(currentPhone)">⭐ Favoritar conversa</div>
   <div class="cm-item" onclick="closeInfoMenu();editLeadName()">✏️ Editar nome</div>
   <div class="cm-item" onclick="closeInfoMenu();openTagSheet()">🏷️ Etiquetas</div>
   <div class="cm-item" onclick="closeInfoMenu();toggleNotes()">📝 Anotações do lead</div>
@@ -1794,7 +1796,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v44</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v47</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1848,7 +1850,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 44;
+const APP_VER = 47;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2606,6 +2608,13 @@ function openInfoMenu(ev) {
   if (!menu) return;
   const ph = document.getElementById('info-menu-phone');
   if (ph) ph.textContent = '📞 ' + (currentPhone || '');
+  try {
+    const c = allContacts.find(x => x.phone === currentPhone);
+    const pi = document.getElementById('info-menu-pin');
+    if (pi) pi.textContent = (c && c.pinned) ? '📌 Desafixar do topo' : '📌 Fixar no topo';
+    const fi = document.getElementById('info-menu-fav');
+    if (fi) fi.textContent = (c && c.favorite) ? '★ Remover dos favoritos' : '⭐ Favoritar conversa';
+  } catch (_) {}
   const r = ev.currentTarget.getBoundingClientRect();
   menu.style.display = 'block';
   menu.style.left = Math.max(8, Math.min(r.right - 230, window.innerWidth - 240)) + 'px';
@@ -3707,10 +3716,34 @@ function renderMessageContent(m) {
     const lines = safeContent.split('\n');
     const q = (lines[0] || '').replace(/^📊\s*/, '');
     const opts = lines.slice(1).map(l => l.replace(/^▫️\s*/, '').trim()).filter(Boolean);
-    return quotedHtml + `<div style="min-width:210px;max-width:270px">
-      <div style="display:flex;gap:8px;align-items:flex-start;font-weight:600;font-size:13.5px;margin-bottom:4px"><span style="font-size:16px">📊</span><span>${escHtml(q)}</span></div>
-      <div style="font-size:11px;color:#667781;margin-bottom:6px">Selecione uma opção</div>
-      ${opts.map(o => `<div style="display:flex;align-items:center;gap:9px;padding:8px 2px;border-top:1px solid rgba(0,0,0,.07);font-size:13.5px"><span style="width:17px;height:17px;border:2px solid #8696a0;border-radius:50%;flex-shrink:0"></span><span>${escHtml(o)}</span></div>`).join('')}
+    // Voto do cliente (1 por conversa): marca a opção escolhida em verde, como no WhatsApp
+    let votadas = [];
+    try {
+      const mts = parseUTC(m.timestamp);
+      (currentMessages || []).forEach(x => {
+        if (x.direction !== 'inbound' || !x.content) return;
+        if (parseUTC(x.timestamp) < mts) return;
+        const mv = String(x.content).match(/^🗳 Votou na enquete "(.+?)": (.+)$/);
+        const mr = String(x.content).match(/^🗳 Removeu o voto da enquete "(.+?)"$/);
+        if (mv && mv[1] === q) votadas = mv[2].split(', ');
+        else if (mr && mr[1] === q) votadas = [];
+      });
+    } catch (_) {}
+    const totalVotos = votadas.length ? 1 : 0;
+    return quotedHtml + `<div style="min-width:230px;max-width:280px">
+      <div style="font-weight:600;font-size:14px;line-height:1.35">${escHtml(q)}</div>
+      <div style="font-size:11.5px;color:#667781;margin:3px 0 12px">Selecione uma opção</div>
+      ${opts.map(o => { const on = votadas.includes(o); return `<div style="margin-bottom:13px">
+        <div style="display:flex;align-items:center;gap:10px">
+          ${on
+            ? '<span style="width:18px;height:18px;border-radius:50%;background:#00a884;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">✓</span>'
+            : '<span style="width:18px;height:18px;border:2.2px solid #8696a0;border-radius:50%;flex-shrink:0;box-sizing:border-box"></span>'}
+          <span style="font-size:13.5px;flex:1;line-height:1.3">${escHtml(o)}</span>
+          <span style="font-size:11.5px;color:#667781">${on ? 1 : 0}</span>
+        </div>
+        <div style="height:4px;background:rgba(134,150,160,.22);border-radius:99px;margin:6px 0 0 28px;overflow:hidden">${on ? '<div style="height:100%;width:100%;background:#00a884;border-radius:99px"></div>' : ''}</div>
+      </div>`; }).join('')}
+      <div style="border-top:1px solid rgba(0,0,0,.08);padding-top:8px;text-align:center;font-size:13px;color:#027eb5;font-weight:500">${totalVotos ? 'Ver votos' : 'Aguardando votos'}</div>
     </div>`;
   }
   return quotedHtml + `<span class="msg-text">${escHtml(safeContent)}</span>`;
@@ -4409,14 +4442,36 @@ async function sendFile() {
 let quickReplies = JSON.parse(localStorage.getItem('meucrm_quick_replies') || '[]');
 let qrEditIndex = null;
 
+// Respostas rápidas COMPARTILHADAS: a lista mora no SERVIDOR (mesma em todos os
+// aparelhos e números). O navegador guarda só um cache para abrir rápido.
+let _qrSynced = false;
+async function _syncQuickReplies(force) {
+  if (_qrSynced && !force) return;
+  try {
+    const r = await fetch(SERVER_URL + '/quick-replies');
+    const arr = await r.json();
+    if (Array.isArray(arr) && arr.length) {
+      quickReplies = arr;
+      localStorage.setItem('meucrm_quick_replies', JSON.stringify(arr));
+    } else if (Array.isArray(arr) && !arr.length && quickReplies.length) {
+      // Servidor ainda vazio e este aparelho tem respostas → sobe (migração automática)
+      await fetch(SERVER_URL + '/quick-replies', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(quickReplies) });
+    }
+    _qrSynced = true;
+  } catch (_) {}
+}
+setTimeout(() => _syncQuickReplies(), 2500);
+
 function saveQR() {
   localStorage.setItem('meucrm_quick_replies', JSON.stringify(quickReplies));
+  fetch(SERVER_URL + '/quick-replies', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(quickReplies) }).catch(() => {});
 }
 
 function openQRManager() {
   _closeAllScreens();
   document.getElementById('qr-modal').classList.add('open');
   renderQRManager();
+  _syncQuickReplies().then(() => { const m = document.getElementById('qr-modal'); if (m && m.classList.contains('open')) renderQRManager(); });
 }
 
 function closeQRManager() {
@@ -4551,7 +4606,15 @@ function showQRPopup(filter) {
     r.title.toLowerCase().includes(filter.toLowerCase()) ||
     r.message.toLowerCase().includes(filter.toLowerCase())
   );
-  if (!filtered.length) { hideQRPopup(); return; }
+  if (!filtered.length) {
+    if (!quickReplies.length && !filter) {
+      list.innerHTML = '<div style="padding:12px 14px;font-size:13px;color:#667781">Nenhuma resposta rápida ainda.<br>Crie no menu <b>⚡ Respostas</b>.</div>';
+      positionQRPopup(); popup.style.display = 'block';
+      _syncQuickReplies().then(() => { if (quickReplies.length && popup.style.display === 'block') showQRPopup(filter); });
+      return;
+    }
+    hideQRPopup(); return;
+  }
   const contactName = allContacts.find(c => c.phone === currentPhone)?.name || '';
   list.innerHTML = filtered.map((r, i) => {
     const preview = r.message.replace(/\{nome\}/gi, contactName || '{nome}');
