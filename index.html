@@ -825,7 +825,7 @@
   body.mobile-chat-open #chat-header { padding-top: calc(8px + env(safe-area-inset-top)); }
   /* Rodapé colado na barra de gesto (sem borda sobrando) */
   @supports (padding: env(safe-area-inset-top)) {
-    #input-area { padding-bottom: calc(2px + env(safe-area-inset-bottom)) !important; }
+    #input-area { padding-bottom: env(safe-area-inset-bottom) !important; padding-top: 5px; }
   }
 
   /* Botão voltar aparece no mobile */
@@ -881,8 +881,8 @@
   /* Tag manager oculto no mobile para economizar espaço */
   #tag-manager { display: none; }
 
-  /* Contato item: mesmas medidas do WhatsApp (linha ~76px) */
-  .contact-item { padding: 12px 15px 12px 13px; }
+  /* Contato item: nome no alto da linha (~76px) */
+  .contact-item { padding: 7px 15px 12px 13px; }
 
   /* Lista de conversas nas medidas do WhatsApp do iPhone */
   .contact-name { font-size: 17px; }
@@ -1343,7 +1343,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v61</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v62</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1558,7 +1558,8 @@ window.addEventListener('load', initAuth);
 
     <div style="border:1px solid #e9edef;border-radius:10px;padding:14px">
       <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">🛟 Suporte</div>
-      <div style="font-size:13px;color:#667781">Em breve.</div>
+      <button onclick="testPushNow()" style="background:#00a884;color:#fff;border:none;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">🔔 Testar notificações</button>
+      <div id="push-test-result" style="font-size:12.5px;color:#667781;margin-top:8px;line-height:1.5"></div>
     </div>
   </div>
 </div>
@@ -1847,7 +1848,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v61</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v62</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1901,7 +1902,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 61;
+const APP_VER = 62;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4921,6 +4922,37 @@ async function openNotices() {
   } catch (_) { el.innerHTML = '<div style="color:#ef4444">Erro ao carregar os avisos.</div>'; }
 }
 function closeNotices() { document.getElementById('not-overlay').style.display = 'none'; }
+
+// Teste de notificação PONTA A PONTA: registra a inscrição e pede ao servidor
+// para disparar uma notificação real — mostrando onde quebra, se quebrar.
+async function testPushNow() {
+  const out = document.getElementById('push-test-result');
+  const say = t => { if (out) out.textContent = t; };
+  try {
+    if (!('Notification' in window) || !('PushManager' in window))
+      return say('❌ Este navegador não suporta notificações. No iPhone: o VETRA precisa estar INSTALADO na tela de início (Compartilhar → Adicionar à Tela de Início) e aberto por lá.');
+    if (Notification.permission === 'denied')
+      return say('❌ Permissão NEGADA no aparelho. Ative em Ajustes → Notificações → VETRA.');
+    if (Notification.permission !== 'granted') {
+      say('⏳ Pedindo permissão…');
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') return say('❌ Permissão não concedida.');
+    }
+    say('⏳ 1/2 Registrando a inscrição deste aparelho…');
+    const r1 = await _pushRegister(false);
+    if (!r1.ok) return say('❌ Falha ao registrar: ' + r1.error);
+    say('⏳ 2/2 Servidor disparando o teste…');
+    const r = await fetch(SERVER_URL + '/push/test', { method: 'POST' });
+    const d = await r.json().catch(() => ({}));
+    if (d.error) return say('❌ Servidor: ' + d.error);
+    const ok = (d.results || []).filter(x => x.ok).length;
+    const bad = (d.results || []).filter(x => !x.ok);
+    let t = `Aparelhos inscritos nesta conta: ${d.minhas_inscricoes}. Enviadas com sucesso: ${ok}.`;
+    if (!d.minhas_inscricoes) t += ' ⚠️ NENHUM aparelho inscrito — a inscrição não chegou ao servidor.';
+    if (bad.length) t += ' Falhas: ' + bad.map(b => (b.status || '?') + ' ' + (b.msg || '')).join(' | ');
+    say((ok ? '✅ ' : '⚠️ ') + t + (ok ? ' A notificação deve ter aparecido AGORA no(s) aparelho(s).' : ''));
+  } catch (e) { say('❌ ' + (e.message || e)); }
+}
 
 // ── Configurações (Integração / Faturamento / Suporte) ──
 async function openConfigModal() {
