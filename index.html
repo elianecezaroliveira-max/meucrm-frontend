@@ -1322,7 +1322,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v43</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v44</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1794,7 +1794,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v43</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v44</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1848,7 +1848,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 43;
+const APP_VER = 44;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2477,9 +2477,7 @@ function waPreviewHtml(p){
   const stk = IC('<path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-3.5 6A1.5 1.5 0 1 1 7 9.5 1.5 1.5 0 0 1 8.5 8zm7 0A1.5 1.5 0 1 1 14 9.5 1.5 1.5 0 0 1 15.5 8zM12 18a6 6 0 0 1-5.2-3h10.4A6 6 0 0 1 12 18z"/>');
   let m;
   if ((m = p.match(/^🎤 Mensagem de voz(?: \((.+)\))?/))) return mic + escHtml(m[1] || 'Áudio');
-  if ((m = p.match(/^\[Imagem: (.+)\]/)))                 return cam + escHtml(m[1]);
   if (/^\[Imagem/.test(p))                                return cam + 'Foto';
-  if ((m = p.match(/^\[Vídeo: (.+)\]/)))                  return vid + escHtml(m[1]);
   if (/^\[Vídeo/.test(p))                                 return vid + 'Vídeo';
   if ((m = p.match(/^\[Documento: (.+)\]/)))              return doc + escHtml(m[1]);
   if (/^\[Documento/.test(p))                             return doc + 'Documento';
