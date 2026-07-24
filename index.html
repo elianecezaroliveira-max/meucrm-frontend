@@ -550,6 +550,8 @@
   .voice-player { display:flex; align-items:center; gap:8px; padding:2px 0; min-width:200px; }
   .vp-btn { width:36px; height:36px; border-radius:50%; background:#25d366; border:none; cursor:pointer; color:#fff; font-size:15px; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:background .15s; }
   .vp-btn:disabled { opacity:.55; cursor:default; }
+  .vp-spin { display:inline-block; width:15px; height:15px; border:2.5px solid rgba(255,255,255,.35); border-top-color:#fff; border-radius:50%; animation:vpspin .7s linear infinite; }
+  @keyframes vpspin { to { transform:rotate(360deg); } }
   .msg.outbound .vp-btn { background:#1f9e6e; }
   .vp-bars { display:flex; gap:2px; align-items:center; flex:1; height:22px; overflow:hidden; cursor:pointer; }
   .vp-bars i { display:block; width:3px; border-radius:2px; background:#c4ccd1; flex-shrink:0; transition:background .1s; }
@@ -1319,7 +1321,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v37</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v38</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1790,7 +1792,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v37</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v38</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1844,7 +1846,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 37;
+const APP_VER = 38;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3428,7 +3430,8 @@ function renderMessageContent(m) {
           <button class="vp-speed" onclick="voiceSpeed('${aid}')" title="Velocidade">1x</button>
           <audio preload="none" data-url="${proxyUrl}"
             onloadedmetadata="voiceMeta('${aid}')" ontimeupdate="voiceTime('${aid}')"
-            onplay="voiceUI('${aid}',true)" onpause="voiceUI('${aid}',false)" onended="voiceEnded('${aid}')"></audio>
+            onplay="voiceUI('${aid}',true)" onpause="voiceUI('${aid}',false)" onended="voiceEnded('${aid}')"
+            onwaiting="voiceLoading('${aid}',true)" onplaying="voiceLoading('${aid}',false)" onstalled="voiceLoading('${aid}',true)"></audio>
         </div>
       </div>`;
 
@@ -3644,8 +3647,18 @@ function voiceToggle(id){
 }
 function voiceUI(id, playing){
   const w = _vpEl(id); if (!w) return;
-  const btn = w.querySelector('.vp-btn'); if (btn) btn.innerHTML = playing ? '⏸' : '▶';
+  const a = _vpAudio(id);
+  const btn = w.querySelector('.vp-btn');
+  // Se mandou tocar mas o áudio ainda está baixando, mostra "carregando" no lugar do play
+  if (btn) btn.innerHTML = playing ? ((a && a.readyState < 3) ? '<span class="vp-spin"></span>' : '⏸') : '▶';
   if (playing) _curAudioId = id;
+}
+function voiceLoading(id, loading){
+  const w = _vpEl(id); if (!w) return;
+  const a = _vpAudio(id); if (!a) return;
+  const btn = w.querySelector('.vp-btn'); if (!btn) return;
+  if (loading && !a.paused) btn.innerHTML = '<span class="vp-spin"></span>';
+  else if (!a.paused) btn.innerHTML = '⏸';
 }
 function voiceTime(id){
   const a = _vpAudio(id), w = _vpEl(id); if (!a || !w) return;
