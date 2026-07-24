@@ -162,7 +162,7 @@
   @media (max-width: 768px) { #lead-panel { display: none !important; } #btn-lead-panel { display: none !important; } }
   /* Computador: o menu ℹ️ é redundante (o painel de detalhes do lead já tem tudo) — só aparece no celular */
   @media (min-width: 769px) { #btn-info { display: none !important; } }
-  #messages-area { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 0; transition: background 0.2s; background-color: #efeae2; background-image: radial-gradient(rgba(0,0,0,0.028) 1px, transparent 1px); background-size: 22px 22px; }
+  #messages-area { flex: 1; overflow-y: auto; overflow-anchor: none; padding: 16px; display: flex; flex-direction: column; gap: 0; transition: background 0.2s; background-color: #efeae2; background-image: radial-gradient(rgba(0,0,0,0.028) 1px, transparent 1px); background-size: 22px 22px; }
   .msg { margin-top: 4px; }
   .day-divider { margin: 8px 0 4px; }
   /* Bolhas AGRUPADAS: mensagens seguidas do mesmo lado se juntam (igual WhatsApp) */
@@ -520,6 +520,7 @@
   #btn-pipeline, #btn-templates, #btn-quick-replies, #btn-accounts, #btn-bots,
   #btn-faq, #btn-tags, #btn-tasks-global, #btn-logout { display: none !important; }
   /* READ RECEIPTS */
+  .msg-image { min-height: 120px; background: rgba(0,0,0,.05); }
   .msg-ticks { display:inline-block; margin-left:4px; font-size:13px; vertical-align:middle; }
   .msg-ticks.sent     { color:#667781; }
   .msg-ticks.delivered{ color:#667781; }
@@ -1350,7 +1351,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v70</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v71</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1855,7 +1856,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v70</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v71</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1909,7 +1910,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 70;
+const APP_VER = 71;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2844,18 +2845,20 @@ async function startVoiceRec() {
     }, 1000);
     // Forma de onda AO VIVO (barrinhas acompanham sua voz, igual WhatsApp)
     const wv = document.getElementById('rec-wave'); if (wv) wv.innerHTML = '';
+    window._recWavePeak = 0.06; // normalização dinâmica: se ajusta ao volume da sua voz
     window._recWaveTimer = setInterval(() => {
       const w = document.getElementById('rec-wave'); if (!w) return;
       const last = _recBufs[_recBufs.length - 1];
-      let amp = 0;
+      let rms = 0;
       if (last && last.length) {
-        let sm = 0, n = 0; const step = Math.max(1, Math.floor(last.length / 40));
-        for (let i = 0; i < last.length; i += step) { sm += Math.abs(last[i]); n++; }
-        amp = n ? sm / n : 0;
+        let sq = 0, n = 0; const step = Math.max(1, Math.floor(last.length / 60));
+        for (let i = 0; i < last.length; i += step) { sq += last[i] * last[i]; n++; }
+        rms = n ? Math.sqrt(sq / n) : 0;
       }
-      const h = Math.max(3, Math.min(24, Math.round(amp * 220)));
+      window._recWavePeak = Math.max(window._recWavePeak * 0.995, rms, 0.03);
+      const h = Math.max(3, Math.round(24 * Math.min(1, rms / window._recWavePeak)));
       const bar = document.createElement('i');
-      bar.style.cssText = 'display:block;width:2.5px;border-radius:2px;background:#8696a0;flex-shrink:0;height:' + h + 'px';
+      bar.style.cssText = 'display:block;width:2.5px;border-radius:2px;background:#8696a0;flex-shrink:0;height:' + h + 'px;transition:height .1s';
       w.appendChild(bar);
       while (w.children.length > 64) w.removeChild(w.firstChild);
     }, 120);
@@ -2982,7 +2985,7 @@ async function sendVoiceBlob(blob, durationSecs) {
     const d = document.createElement('div');
     d.className = 'msg outbound';
     d.innerHTML = '🎤 <em style="font-size:13px;opacity:.8">Enviando áudio...</em>';
-    area.appendChild(d); area.scrollTop = area.scrollHeight;
+    area.appendChild(d); area.scrollTo({ top: area.scrollHeight, behavior: 'smooth' });
   }
   try {
     const res = await fetch(SERVER_URL + '/send-media', {
@@ -3252,8 +3255,11 @@ function openMsgMenuAt(id, x, y, anchorEl) {
   try { window.getSelection()?.removeAllRanges(); } catch (_) {}
   _updateMsgMenuItems(id);
   menu.style.display = 'block';
+  menu.style.maxHeight = (window.innerHeight - 16) + 'px';
+  menu.style.overflowY = 'auto';
+  const mhL = menu.offsetHeight; // altura REAL → nunca corta embaixo
   menu.style.left = Math.max(8, Math.min(x - 60, window.innerWidth - 185)) + 'px';
-  menu.style.top  = Math.min(y + 10, window.innerHeight - 210) + 'px';
+  menu.style.top  = Math.max(8, Math.min(y + 10, window.innerHeight - mhL - 8)) + 'px';
 }
 (function initMsgLongPress() {
   let timer = null, sx = 0, sy = 0;
@@ -4251,8 +4257,27 @@ async function loadMessages(phone, scroll = true) {
     let _prevDir = null; // agrupamento de bolhas (mesmo lado em sequência)
     const parts = [];
 
+    // ÁLBUM: fotos em sequência (mesmo lado, até 90s de intervalo) viram UMA grade
+    const _albumSkip = new Set(), _albumStart = {};
+    for (let ai = 0; ai < msgs.length; ai++) {
+      const a = msgs[ai];
+      if (a.type !== 'image' || !a.media_id || _albumSkip.has(a.id)) continue;
+      const grupo = [a];
+      for (let aj = ai + 1; aj < msgs.length; aj++) {
+        const b = msgs[aj];
+        if (b.type !== 'image' || !b.media_id || b.direction !== a.direction) break;
+        if (parseUTC(b.timestamp) - parseUTC(grupo[grupo.length - 1].timestamp) > 90000) break;
+        grupo.push(b);
+      }
+      if (grupo.length >= 3) {
+        _albumStart[a.id] = grupo;
+        grupo.slice(1).forEach(x => _albumSkip.add(x.id));
+      }
+    }
+
     for (const m of msgs) {
       try {
+        if (_albumSkip.has(m.id)) continue; // faz parte de um álbum já desenhado
         // Divisor de dia
         const dayKey = msgDayKey(m.timestamp);
         if (dayKey !== lastDay) {
@@ -4292,6 +4317,28 @@ async function loadMessages(phone, scroll = true) {
           ? `<span class="msg-reaction" style="position:absolute;bottom:-11px;${reactSide};background:#e9edef;border:1px solid #ffffff;border-radius:11px;padding:0 5px;font-size:13px;line-height:20px;box-shadow:0 1px 3px rgba(0,0,0,.5);z-index:2">${escHtml(m.reaction)}</span>`
           : '';
 
+        // ÁLBUM: desenha a grade única no lugar das fotos individuais
+        if (_albumStart[m.id]) {
+          const grupo = _albumStart[m.id];
+          const ult = grupo[grupo.length - 1];
+          const acctA = encodeURIComponent(currentAccountId || '');
+          const vis = grupo.slice(0, 4);
+          const sobra = grupo.length - 4;
+          const tiles = vis.map((g, gi) => {
+            const mp = g.media_mime_type ? `&mime=${encodeURIComponent(g.media_mime_type)}` : '';
+            const u = `${SERVER_URL}/media-proxy/${encodeURIComponent(g.media_id)}?account_id=${acctA}${mp}`;
+            const extra = (gi === 3 && sobra > 0) ? `<span style="position:absolute;inset:0;background:rgba(11,20,26,.55);color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:600;border-radius:6px">+${sobra}</span>` : '';
+            return `<span style="position:relative;display:block"><img src="${u}" loading="lazy" onload="_keepBottom()" onclick="window.open('${u}','_blank')" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;display:block;cursor:pointer;background:rgba(0,0,0,.06)">${extra}</span>`;
+          }).join('');
+          const tk = (ult.direction === 'outbound')
+            ? (ult.status === 'read' ? '<span class="msg-ticks read">✓✓</span>' : ult.status === 'delivered' ? '<span class="msg-ticks delivered">✓✓</span>' : '<span class="msg-ticks sent">✓</span>') : '';
+          const grpA = _prevDir === safeDir; _prevDir = safeDir;
+          parts.push({ key: 'alb-' + safeId, html: `<div class="msg ${safeDir}${grpA ? ' grp' : ''}" style="position:relative" data-key="alb-${safeId}" data-msg-id="${safeId}" data-msg-dir="${safeDir}">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;width:236px;max-width:100%">${tiles}</div>
+            <div class="time">${_brtTime(parseUTC(ult.timestamp))}${tk}</div>
+          </div>` });
+          continue;
+        }
         const _grp = _prevDir === safeDir; _prevDir = safeDir;
         parts.push({ key: 'm-' + safeId, html: `<div class="msg ${safeDir}${_grp ? ' grp' : ''}" style="position:relative${m.reaction?';margin-bottom:14px':''}"
           data-key="m-${safeId}" data-msg-id="${safeId}" data-msg-content="${dataCont}" data-msg-dir="${safeDir}" data-msg-wamid="${safeWamid}" data-msg-ts="${escHtml(String(m.timestamp || ''))}" data-msg-type="${escHtml(String(m.type || 'text'))}">
@@ -4329,7 +4376,8 @@ async function loadMessages(phone, scroll = true) {
     }
 
     if (scroll || nearBottom) {
-      area.scrollTop = area.scrollHeight; // no fim → acompanha novas mensagens
+      if (!scroll && nearBottom) area.scrollTo({ top: area.scrollHeight, behavior: 'smooth' }); // empurrãozinho suave
+      else area.scrollTop = area.scrollHeight; // abertura da conversa: posiciona direto
       hideNewMsgPill();
     } else {
       if (!samePrefix) area.scrollTop = prevTop; // no incremental a posição nem chega a mudar
@@ -4565,7 +4613,7 @@ function appendPendingBubble(text) {
   el.dataset.key = 'temp-' + Date.now();
   el.innerHTML = `<span class="msg-text">${escHtml(text)}</span><div class="time">${_brtTime(Date.now())}<span class="msg-ticks pending" title="Enviando…">🕐</span></div>`;
   area.appendChild(el);
-  area.scrollTop = area.scrollHeight;
+  area.scrollTo({ top: area.scrollHeight, behavior: 'smooth' }); // empurrãozinho suave
   return el;
 }
 
@@ -4980,7 +5028,7 @@ async function _sendOneFile(file, caption, semRecarga) {
       div.innerHTML = `${icon} <em style="font-size:13px;opacity:.8">${escHtml(file.name)}</em><div class="time">${horaAgora}</div>`;
     }
     area.appendChild(div);
-    area.scrollTop = area.scrollHeight;
+    area.scrollTo({ top: area.scrollHeight, behavior: 'smooth' }); // empurrãozinho suave
   }
   try {
     const res = await fetch(SERVER_URL + '/send-media', {
