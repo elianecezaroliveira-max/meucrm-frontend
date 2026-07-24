@@ -32,27 +32,25 @@
      antigo e registra o novo SEM cache de página — o site SEMPRE mostra a versão
      recém-publicada, sem nenhum passo manual. Push continua funcionando. -->
 <script>
-  // A inscrição de push SÓ pode ser criada DEPOIS desta limpeza (senão morre junto
-  // com o SW removido — era por isso que as notificações paravam de chegar!)
+  // SW ESTÁVEL: registra /sw.js UMA vez e deixa o navegador atualizá-lo quando o
+  // arquivo mudar (no-store). NÃO desregistra a cada abertura — desregistrar era o
+  // que MATAVA a inscrição de push (por isso as notificações paravam de chegar).
   window._swReady = (async () => {
     try {
       if (!('serviceWorker' in navigator)) return;
-      // 1) Remove TODOS os service workers antigos
+      // Remove só registros ANTIGOS (das versões com ?f=data) — o estável fica
       const regs = await navigator.serviceWorker.getRegistrations();
-      const haviaControlador = !!navigator.serviceWorker.controller;
-      await Promise.all(regs.map(r => r.unregister().catch(() => {})));
-      // 2) Apaga TODOS os caches antigos
+      for (const r of regs) {
+        const u = (r.active && r.active.scriptURL) || (r.waiting && r.waiting.scriptURL) || (r.installing && r.installing.scriptURL) || '';
+        if (u.includes('sw.js?')) { try { await r.unregister(); } catch (_) {} }
+      }
+      // Apaga caches antigos (não temos cache de página — só limpeza de versões velhas)
       if (window.caches) {
         try { const ks = await caches.keys(); await Promise.all(ks.map(k => caches.delete(k))); } catch (_) {}
       }
-      // 3) Registra o SW novo (só push, sem cache), sempre buscando o arquivo fresco
-      await navigator.serviceWorker.register('/sw.js?f=' + Date.now(), { updateViaCache: 'none' })
-        .catch(err => console.warn('SW erro:', err));
-      // 4) Se um SW antigo estava controlando esta página, recarrega UMA vez para livrá-la
-      if (haviaControlador && !sessionStorage.getItem('swReset')) {
-        sessionStorage.setItem('swReset', '1');
-        location.reload();
-      }
+      const reg = await navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' });
+      try { await reg.update(); } catch (_) {}
+      return reg;
     } catch (_) {}
   })();
 </script>
@@ -883,7 +881,7 @@
   .contact-preview-row, .contact-preview { font-size: 15px; }
   .contact-time { font-size: 13px; }
   .contact-avatar { width: 52px; height: 52px; font-size: 20px; }
-  .contact-item { align-items: center; }
+  .contact-item { align-items: flex-start; min-height: 76px; }
   /* Prévia com ATÉ 2 linhas (igual WhatsApp do iPhone) */
   .contact-preview-row { white-space: normal; }
   .contact-preview-text { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.32; }
@@ -1337,7 +1335,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v59</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v60</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1841,7 +1839,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v59</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v60</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1895,7 +1893,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 59;
+const APP_VER = 60;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2539,21 +2537,6 @@ function setListFilterSel(f) {
   _listFilter = f || 'all';
   renderContacts(sortContacts(allContacts));
 }
-// "digitando…" na LISTA (números QR): consulta leve a cada 6s
-let _typingMap = {};
-setInterval(async () => {
-  try {
-    const hasQr = Object.values(window._accountsById || {}).some(a => a.type === 'evolution' || a.evolution_instance);
-    if (!hasQr || typeof SERVER_URL === 'undefined') return;
-    const r = await fetch(SERVER_URL + '/typing-list');
-    const d = await r.json();
-    if (JSON.stringify(d) !== JSON.stringify(_typingMap)) {
-      _typingMap = d || {};
-      if (Array.isArray(allContacts) && allContacts.length) renderContacts(sortContacts(allContacts));
-    }
-  } catch (_) {}
-}, 6000);
-
 function renderContacts(contacts) {
   const list = document.getElementById('contacts-list');
   if (_listFilter !== 'all') {
@@ -2582,11 +2565,9 @@ function renderContacts(contacts) {
       pending:   '<span class="msg-ticks pending" style="margin:0 4px 0 0">🕐</span>',
       failed:    '<span style="margin:0 4px 0 0">⚠️</span>'
     }[c.last_message_status] || '';
-    let previewHtml = isOut
+    const previewHtml = isOut
       ? (stTick ? stTick + shownPrev : `<span style="color:#667781">Você: </span>${shownPrev}`)
       : shownPrev;
-    // Cliente digitando AGORA: prévia verde, igual ao WhatsApp
-    if (_typingMap[c.phone]) previewHtml = `<span style="color:#00a884">${_typingMap[c.phone] === 'recording' ? 'gravando áudio…' : 'digitando…'}</span>`;
     const isFav = !!c.favorite;
     return `<div class="contact-swipe-wrap" data-phone="${c.phone}">
       <div class="swipe-action read">📖<span>Lida</span></div>
