@@ -962,6 +962,30 @@
 </style>
 </head>
 <body>
+<!-- Tela de abertura: logo VETRA enquanto as conversas carregam -->
+<div id="splash" style="position:fixed;inset:0;background:#ffffff;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px">
+  <img src="/icons/icon-192.png" alt="VETRA" style="width:96px;height:96px;border-radius:24px;box-shadow:0 8px 28px rgba(0,0,0,.14);animation:splashPulse 1.6s ease-in-out infinite">
+  <div style="font-size:23px;font-weight:700;color:#111b21;letter-spacing:.5px">VETRA</div>
+  <div style="display:flex;gap:6px;margin-top:2px">
+    <i class="sp-dot" style="animation-delay:0s"></i><i class="sp-dot" style="animation-delay:.18s"></i><i class="sp-dot" style="animation-delay:.36s"></i>
+  </div>
+</div>
+<style>
+  @keyframes splashPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+  .sp-dot { width:8px;height:8px;border-radius:50%;background:#00a884;display:block;animation:spDot 1s ease-in-out infinite; }
+  @keyframes spDot { 0%,100% { opacity:.25; transform: translateY(0); } 50% { opacity:1; transform: translateY(-4px); } }
+</style>
+<script>
+  // some sozinha quando as conversas chegam; 6s é o teto de segurança
+  window.hideSplash = function () {
+    const sp = document.getElementById('splash');
+    if (!sp) return;
+    sp.style.transition = 'opacity .3s';
+    sp.style.opacity = '0';
+    setTimeout(() => { try { sp.remove(); } catch (_) {} }, 320);
+  };
+  setTimeout(() => window.hideSplash(), 6000);
+</script>
 
 <!-- ===== TELA DE LOGIN (Google via Supabase Auth) ===== -->
 <div id="login-overlay" style="display:none;position:fixed;inset:0;z-index:99999;background:#f0f2f5;flex-direction:column;align-items:center;justify-content:center;gap:18px;font-family:system-ui,-apple-system,'Segoe UI',sans-serif">
@@ -1352,7 +1376,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v74</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v75</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1857,7 +1881,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v74</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v75</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1911,7 +1935,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 74;
+const APP_VER = 75;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2378,7 +2402,9 @@ async function loadContacts(render = true) {
     if (accountId) url += '&account_id=' + accountId;
     const res = await fetch(url);
     allContacts = sortContacts(await res.json());
+    window._contactsLoaded = true;
     if (render) { renderContacts(allContacts); populateFilterOptions(); }
+    window.hideSplash && window.hideSplash();
   } catch(e) {}
 }
 
@@ -2561,7 +2587,9 @@ function renderContacts(contacts) {
     contacts = contacts.filter(c => _listFilter === 'unread' ? (c.unread_count || 0) > 0 : !!c.favorite);
   }
   if (!contacts.length) {
-    list.innerHTML = '<div id="empty-contacts">Nenhuma conversa ainda.<br>Envie uma mensagem pelo WhatsApp para o número de teste.</div>';
+    list.innerHTML = window._contactsLoaded
+      ? '<div id="empty-contacts">Nenhuma conversa ainda.<br>Envie uma mensagem pelo WhatsApp para o número de teste.</div>'
+      : ''; // ainda carregando: a tela de abertura cobre
     return;
   }
   list.innerHTML = contacts.map(c => {
