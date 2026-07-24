@@ -1378,7 +1378,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v92</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v93</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1883,7 +1883,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v92</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v93</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1937,7 +1937,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 92;
+const APP_VER = 93;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4756,10 +4756,14 @@ function appendPendingBubble(text) {
   const area = document.getElementById('messages-area');
   if (!area) return null;
   const el = document.createElement('div');
-  el.className = 'msg outbound';
+  // IDÊNTICO ao balão definitivo: mesmo agrupamento (grp), mesma formatação de
+  // texto e mesma linha de horário — só o relógio 🕐 muda para ✓/✓✓ depois.
+  const _ult = area.lastElementChild;
+  const _grpP = !!(_ult && _ult.classList && _ult.classList.contains('msg') && _ult.classList.contains('outbound'));
+  el.className = 'msg outbound' + (_grpP ? ' grp' : '');
   el.style.position = 'relative';
   el.dataset.key = 'temp-' + Date.now();
-  el.innerHTML = `<span class="msg-text">${escHtml(text)}</span><div class="time">${_brtTime(Date.now())}<span class="msg-ticks pending" title="Enviando…">🕐</span></div>`;
+  el.innerHTML = `<span class="msg-text">${waFormat(text)}</span><div class="time">${_brtTime(Date.now())}<span class="msg-ticks pending" title="Enviando…">🕐</span></div>`;
   area.appendChild(el);
   area.scrollTop = area.scrollHeight; // direto no fim — nada de animação disputando com o render
   return el;
