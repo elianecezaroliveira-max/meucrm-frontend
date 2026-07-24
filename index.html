@@ -1378,7 +1378,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v90</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v91</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1883,7 +1883,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v90</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v91</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1937,7 +1937,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 90;
+const APP_VER = 91;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4084,8 +4084,21 @@ document.addEventListener('wheel', e => { if (e.target.closest && e.target.close
 })();
 
 // Quando uma mídia termina de carregar e muda a altura, mantém a conversa no fim
-function _keepBottom() {
+function _keepBottom(el) {
   const a = document.getElementById('messages-area'); if (!a) return;
+  // Mídia carregou ACIMA do ponto que você está lendo → compensa o crescimento
+  // na rolagem: o que está na sua tela NÃO SE MEXE nem um pixel.
+  try {
+    if (el && el.getBoundingClientRect) {
+      const r = el.getBoundingClientRect(), ar = a.getBoundingClientRect();
+      if (r.bottom < ar.top + 10) {
+        const rsv = (el.tagName === 'VIDEO') ? 160 : 120; // altura que já estava reservada
+        const grow = el.offsetHeight - rsv;
+        if (grow > 0) a.scrollTop += grow;
+        return;
+      }
+    }
+  } catch (_) {}
   if (window._userTouching) return; // dedo na tela = a tela é SUA
   if (Date.now() - (window._scrollUpTs || 0) < 2500) return; // subiu há pouco = respeita
   // Acabou de ABRIR a conversa: cada foto/vídeo que carrega recola no fim
@@ -4169,7 +4182,7 @@ function renderMessageContent(m) {
       return quotedHtml + `<div class="media-wrap">
         <div style="position:relative;display:inline-block">
           <img src="${proxyUrl}" class="msg-image" alt="Imagem" loading="lazy"
-            onload="_keepBottom()" onclick="window.open('${proxyUrl}','_blank')"
+            onload="_keepBottom(this)" onclick="window.open('${proxyUrl}','_blank')"
             onerror="this.parentElement.innerHTML='<span style=opacity:.6>[Imagem não disponível]</span>'" />
           <a href="${dlUrl}" class="media-dl-btn" title="Baixar imagem" download>⬇</a>
         </div>
@@ -4202,7 +4215,7 @@ function renderMessageContent(m) {
       const dlUrl = `${proxyUrl}&download=1&filename=${encodeURIComponent('video.mp4')}`;
       return quotedHtml + `<div class="media-wrap">
         <video controls preload="metadata" playsinline src="${proxyUrl}"
-          onloadedmetadata="_keepBottom()" style="max-width:280px;border-radius:8px;display:block;min-height:160px;background:#0b141a"></video>
+          onloadedmetadata="_keepBottom(this)" style="max-width:280px;border-radius:8px;display:block;min-height:160px;background:#0b141a"></video>
         <a href="${dlUrl}" class="media-dl-link" title="Baixar vídeo" download>⬇ Baixar vídeo</a>
         ${caption}
       </div>`;
@@ -4452,7 +4465,7 @@ async function loadMessages(phone, scroll = true) {
             const mp = g.media_mime_type ? `&mime=${encodeURIComponent(g.media_mime_type)}` : '';
             const u = `${SERVER_URL}/media-proxy/${encodeURIComponent(g.media_id)}?account_id=${acctA}${mp}`;
             const extra = (gi === 3 && sobra > 0) ? `<span style="position:absolute;inset:0;background:rgba(11,20,26,.55);color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:600;border-radius:6px">+${sobra}</span>` : '';
-            return `<span style="position:relative;display:block"><img src="${u}" loading="lazy" onload="_keepBottom()" onclick="window.open('${u}','_blank')" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;display:block;cursor:pointer;background:rgba(0,0,0,.06)">${extra}</span>`;
+            return `<span style="position:relative;display:block"><img src="${u}" loading="lazy" onclick="window.open('${u}','_blank')" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;display:block;cursor:pointer;background:rgba(0,0,0,.06)">${extra}</span>`;
           }).join('');
           const tk = (ult.direction === 'outbound')
             ? (ult.status === 'read' ? '<span class="msg-ticks read">✓✓</span>' : ult.status === 'delivered' ? '<span class="msg-ticks delivered">✓✓</span>' : '<span class="msg-ticks sent">✓</span>') : '';
