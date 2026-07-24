@@ -1350,7 +1350,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v67</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v69</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1855,7 +1855,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v67</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v69</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1909,7 +1909,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 67;
+const APP_VER = 69;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2881,31 +2881,69 @@ function _showRecReview() {
     const ia = document.getElementById('input-area');
     if (!ia) { sendVoiceBlob(_recPending.blob, _recPending.secs); _recPending = null; return; }
     ia.insertAdjacentHTML('afterbegin', `<div id="rec-review" style="display:flex;align-items:center;gap:10px;padding:4px 2px">
-      <button onclick="_recReviewDiscard()" title="Descartar" style="background:none;border:none;font-size:20px;cursor:pointer;color:#ef4444">🗑</button>
-      <audio id="rec-review-audio" controls style="flex:1;height:38px;min-width:0"></audio>
-      <button onclick="_recReviewSend()" title="Enviar" style="width:44px;height:44px;border-radius:50%;background:#00a884;color:#fff;border:none;font-size:17px;cursor:pointer;flex-shrink:0">➤</button>
+      <button onclick="_recReviewDiscard()" title="Descartar" style="background:none;border:none;font-size:21px;cursor:pointer;color:#54656f;flex-shrink:0">🗑</button>
+      <div style="flex:1;display:flex;align-items:center;gap:10px;background:#e9edef;border-radius:24px;padding:8px 14px;min-width:0">
+        <button id="rr-play" onclick="_recReviewToggle()" style="background:none;border:none;color:#54656f;cursor:pointer;font-size:17px;padding:0;flex-shrink:0">▶</button>
+        <div onclick="_recReviewSeek(event)" style="flex:1;height:5px;background:#c6cdd2;border-radius:99px;cursor:pointer;position:relative;min-width:0">
+          <div id="rr-fill" style="height:100%;width:0%;background:#00a884;border-radius:99px"></div>
+        </div>
+        <span id="rr-time" style="font-size:13px;color:#54656f;font-variant-numeric:tabular-nums;flex-shrink:0">0:00</span>
+        <audio id="rec-review-audio" style="display:none"
+          ontimeupdate="_recReviewTick()" onended="_recReviewEnded()" onplay="document.getElementById('rr-play').textContent='⏸'" onpause="document.getElementById('rr-play').textContent='▶'"></audio>
+      </div>
+      <button onclick="_recReviewSend()" title="Enviar" style="width:46px;height:46px;border-radius:50%;background:#00a884;color:#fff;border:none;font-size:17px;cursor:pointer;flex-shrink:0;box-shadow:0 1px 4px rgba(0,0,0,.2)">➤</button>
     </div>`);
     rv = document.getElementById('rec-review');
   }
   rv.style.display = 'flex';
   const au = document.getElementById('rec-review-audio');
-  if (au) au.src = URL.createObjectURL(_recPending.blob);
+  if (au) { au.src = URL.createObjectURL(_recPending.blob); au.currentTime = 0; }
+  const fl = document.getElementById('rr-fill'); if (fl) fl.style.width = '0%';
+  const tm = document.getElementById('rr-time'); if (tm) tm.textContent = _fmtVoice(_recPending.secs);
+  const pl = document.getElementById('rr-play'); if (pl) pl.textContent = '▶';
   const wrap = document.getElementById('input-wrap'); if (wrap) wrap.style.display = 'none';
   const mic = document.getElementById('mic-btn'); if (mic) mic.style.display = 'none';
   const send = document.getElementById('send-btn'); if (send) send.style.display = 'none';
+}
+function _recReviewToggle() {
+  const au = document.getElementById('rec-review-audio'); if (!au) return;
+  if (au.paused) au.play().catch(() => {}); else au.pause();
+}
+function _recReviewTick() {
+  const au = document.getElementById('rec-review-audio'); if (!au) return;
+  const dur = (isFinite(au.duration) && au.duration > 0) ? au.duration : (_recPending ? _recPending.secs : 0);
+  const fl = document.getElementById('rr-fill'); if (fl && dur) fl.style.width = (au.currentTime / dur * 100) + '%';
+  const tm = document.getElementById('rr-time'); if (tm) tm.textContent = _fmtVoice(au.currentTime);
+}
+function _recReviewEnded() {
+  const fl = document.getElementById('rr-fill'); if (fl) fl.style.width = '100%';
+  const pl = document.getElementById('rr-play'); if (pl) pl.textContent = '▶';
+  const tm = document.getElementById('rr-time'); if (tm && _recPending) tm.textContent = _fmtVoice(_recPending.secs);
+}
+function _recReviewSeek(ev) {
+  const au = document.getElementById('rec-review-audio'); if (!au) return;
+  const bar = ev.currentTarget, r = bar.getBoundingClientRect();
+  const frac = Math.min(1, Math.max(0, (ev.clientX - r.left) / r.width));
+  const dur = (isFinite(au.duration) && au.duration > 0) ? au.duration : (_recPending ? _recPending.secs : 0);
+  if (dur) { au.currentTime = frac * dur; _recReviewTick(); }
 }
 function _recReviewHide() {
   const rv = document.getElementById('rec-review'); if (rv) rv.style.display = 'none';
   const wrap = document.getElementById('input-wrap'); if (wrap) wrap.style.display = '';
   updateSendMicButtons();
 }
-function _recReviewDiscard() { _recPending = null; _recReviewHide(); }
+function _recReviewDiscard() {
+  const au = document.getElementById('rec-review-audio'); if (au) au.pause();
+  _recPending = null; _recReviewHide();
+}
 function _recReviewSend() {
+  const au = document.getElementById('rec-review-audio'); if (au) au.pause();
   const pnd = _recPending; _recPending = null; _recReviewHide();
   if (pnd) sendVoiceBlob(pnd.blob, pnd.secs);
 }
 async function sendVoiceBlob(blob, durationSecs) {
   if (!currentPhone) return;
+  _clearUnreadMark();
   const base64 = await new Promise(res => {
     const r = new FileReader();
     r.onload = e => res(String(e.target.result).split(',')[1]);
@@ -2943,8 +2981,11 @@ function openMsgMenu(ev, id) {
   _updateMsgMenuItems(id);
   const r = ev.currentTarget.getBoundingClientRect();
   menu.style.display = 'block';
+  menu.style.maxHeight = (window.innerHeight - 16) + 'px';
+  menu.style.overflowY = 'auto';
+  const mh = menu.offsetHeight; // altura REAL do menu → nunca sai da tela
   menu.style.left = Math.max(8, Math.min(r.left - 80, window.innerWidth - 185)) + 'px';
-  menu.style.top  = Math.min(r.bottom + 4, window.innerHeight - 190) + 'px';
+  menu.style.top  = Math.max(8, Math.min(r.bottom + 4, window.innerHeight - mh - 8)) + 'px';
 }
 function closeMsgMenu() {
   const m = document.getElementById('msg-menu');
@@ -3891,6 +3932,12 @@ function _ensurePresenceWatch() {
   document.addEventListener('touchcancel', fim);
 })();
 
+// Quando uma mídia termina de carregar e muda a altura, mantém a conversa no fim
+function _keepBottom() {
+  const a = document.getElementById('messages-area'); if (!a) return;
+  if (a.scrollHeight - a.scrollTop - a.clientHeight < 420) a.scrollTop = a.scrollHeight;
+}
+
 // Formatação do WhatsApp: links clicáveis + *negrito*, _itálico_, ~riscado~
 function waFormat(raw) {
   const t = escHtml(raw == null ? '' : String(raw));
@@ -3962,7 +4009,7 @@ function renderMessageContent(m) {
       return quotedHtml + `<div class="media-wrap">
         <div style="position:relative;display:inline-block">
           <img src="${proxyUrl}" class="msg-image" alt="Imagem" loading="lazy"
-            onclick="window.open('${proxyUrl}','_blank')"
+            onload="_keepBottom()" onclick="window.open('${proxyUrl}','_blank')"
             onerror="this.parentElement.innerHTML='<span style=opacity:.6>[Imagem não disponível]</span>'" />
           <a href="${dlUrl}" class="media-dl-btn" title="Baixar imagem" download>⬇</a>
         </div>
@@ -3995,7 +4042,7 @@ function renderMessageContent(m) {
       const dlUrl = `${proxyUrl}&download=1&filename=${encodeURIComponent('video.mp4')}`;
       return quotedHtml + `<div class="media-wrap">
         <video controls preload="metadata" playsinline src="${proxyUrl}"
-          style="max-width:280px;border-radius:8px;display:block"></video>
+          onloadedmetadata="_keepBottom()" style="max-width:280px;border-radius:8px;display:block;min-height:160px;background:#0b141a"></video>
         <a href="${dlUrl}" class="media-dl-link" title="Baixar vídeo" download>⬇ Baixar vídeo</a>
         ${caption}
       </div>`;
@@ -4492,7 +4539,11 @@ function appendPendingBubble(text) {
   return el;
 }
 
+function _clearUnreadMark() {
+  if (window._unreadMark) { window._unreadMark = null; _lastMsgsSig = ''; }
+}
 async function sendMessage() {
+  _clearUnreadMark(); // você respondeu → a divisória de não lidas some na hora
   // Se há arquivo pendente, envia o arquivo (com ou sem legenda)
   if (selectedFile) { await sendFile(); return; }
   const input = document.getElementById('msg-input');
@@ -4728,15 +4779,23 @@ function closeMediaPreview() {
   _previewList = [];
 }
 async function confirmMediaSend() {
+  _clearUnreadMark();
   if (!_previewList.length) { closeMediaPreview(); return; }
   const cp = document.getElementById('mp-caption');
   const caption = (cp && cp.value.trim()) || '';
   const lista = _previewList.slice();
   closeMediaPreview();
-  // UM clique envia TODAS, em ordem; a legenda vai na última foto
+  // UM clique envia TODAS, em ordem; a legenda vai na última foto.
+  // (a lista só recarrega UMA vez no final — envio bem mais rápido)
+  const previas = [];
   for (let i = 0; i < lista.length; i++) {
-    await _sendOneFile(lista[i], i === lista.length - 1 ? caption : '');
+    const pv = await _sendOneFile(lista[i], i === lista.length - 1 ? caption : '', true);
+    if (pv) previas.push(pv);
   }
+  markAsRead(currentPhone);
+  previas.forEach(d => { try { d.remove(); } catch (_) {} }); // prévias locais saem, as reais entram
+  _lastMsgsSig = '';
+  await loadMessages(currentPhone);
 }
 function removeFile() {
   selectedFile = null;
@@ -4863,7 +4922,7 @@ async function sendFile() {
   await _sendOneFile(file, caption);
 }
 
-async function _sendOneFile(file, caption) {
+async function _sendOneFile(file, caption, semRecarga) {
   if (!file || !currentPhone) return;
   // Lê como base64
   const base64 = await new Promise((resolve) => {
@@ -4873,8 +4932,10 @@ async function _sendOneFile(file, caption) {
   });
   // Exibe mensagem otimista na tela
   const area = document.getElementById('messages-area');
+  let optDiv = null;
   if (area) {
     const div = document.createElement('div');
+    optDiv = div;
     div.className = 'msg outbound';
     const horaAgora = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     if (file.type.startsWith('image/')) {
@@ -4906,9 +4967,13 @@ async function _sendOneFile(file, caption) {
     });
     const data = await res.json();
     if (!data.success) throw new Error(data.error || 'Erro ao enviar');
+    if (semRecarga) return optDiv; // no lote: devolve a prévia local para remoção no final
     markAsRead(currentPhone);
+    if (optDiv) { optDiv.remove(); optDiv = null; } // remove a prévia local (a real entra agora — sem duplicar)
+    _lastMsgsSig = '';
     await loadMessages(currentPhone);
   } catch(err) {
+    if (optDiv) optDiv.remove();
     alert('Erro ao enviar arquivo: ' + err.message);
   }
 }
