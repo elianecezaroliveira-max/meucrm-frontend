@@ -121,7 +121,8 @@
     .contact-item:hover .contact-menu-btn { display: block; }
   }
   .cm-item { padding: 9px 14px; font-size: 14px; cursor: pointer; border-radius: 6px; white-space: nowrap; }
-  .cm-item:hover { background: #f0f2f5; }
+  @media (hover: hover) { .cm-item:hover { background: #f0f2f5; } } /* só no mouse — no toque nada fica pré-selecionado */
+  .cm-item:active { background: #f0f2f5; }
   .contact-item.has-unread .contact-name { font-weight: 700; color: #131c20; }
   .contact-item.has-unread .contact-preview { color: #9de0c7; }
   /* Prévia da mensagem */
@@ -1351,7 +1352,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v71</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v72</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1856,7 +1857,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v71</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v72</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1910,7 +1911,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 71;
+const APP_VER = 72;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2855,8 +2856,10 @@ async function startVoiceRec() {
         for (let i = 0; i < last.length; i += step) { sq += last[i] * last[i]; n++; }
         rms = n ? Math.sqrt(sq / n) : 0;
       }
-      window._recWavePeak = Math.max(window._recWavePeak * 0.995, rms, 0.03);
-      const h = Math.max(3, Math.round(24 * Math.min(1, rms / window._recWavePeak)));
+      // Portão de silêncio: abaixo do ruído ambiente a barrinha fica no mínimo
+      window._recWavePeak = Math.max(window._recWavePeak * 0.999, rms, 0.05);
+      const _gate = 0.022;
+      const h = rms < _gate ? 3 : Math.max(4, Math.round(24 * Math.min(1, (rms - _gate) / (window._recWavePeak - _gate + 0.001))));
       const bar = document.createElement('i');
       bar.style.cssText = 'display:block;width:2.5px;border-radius:2px;background:#8696a0;flex-shrink:0;height:' + h + 'px;transition:height .1s';
       w.appendChild(bar);
@@ -3366,6 +3369,14 @@ async function selectContact(phone, name, accountId) {
       ? { ts: parseUTC(_cUn.first_unread_at), count: _cUn.unread_count } : null;
   } catch (_) { window._unreadMark = null; }
   if (Date.now() - (window._lastSwipeTs || 0) < 450) return; // clique fantasma pós-swipe
+  // Limpa a conversa anterior IMEDIATAMENTE (nada de ver o chat antigo por segundos)
+  if (currentPhone !== phone) {
+    const _ma = document.getElementById('messages-area');
+    if (_ma) _ma.innerHTML = '';
+    currentMessages = [];
+    _lastMsgsSig = '';
+    const _pb = document.getElementById('pinned-banner'); if (_pb) _pb.style.display = 'none';
+  }
   currentPhone = phone;
   currentName = name || phone;
   currentAccountId = accountId || document.getElementById('account-select').value || '';
@@ -3490,7 +3501,7 @@ async function selectContact(phone, name, accountId) {
         </div>
       </div>
       <button id="mic-btn" onclick="startVoiceRec()" title="Gravar áudio" style="background:none;border:none;font-size:20px;cursor:pointer;color:#667781;padding:6px;flex-shrink:0">🎤</button>
-      <button id="send-btn" onclick="sendMessage()" style="display:none">
+      <button id="send-btn" onclick="sendMessage()" onmousedown="event.preventDefault()" ontouchend="event.preventDefault();sendMessage()" style="display:none">
         <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
       </button>
       </div>
@@ -4630,6 +4641,7 @@ async function sendMessage() {
   const savedMessage = message; // guarda antes de limpar
   input.value = '';
   autoGrowMsgInput(input); // campo volta à altura normal
+  input.focus(); // teclado do celular continua aberto para a próxima mensagem
   // Sem delay: a bolha aparece imediatamente; o servidor confirma em seguida
   const reply = replyingTo; cancelReply();
   const tempEl = appendPendingBubble(savedMessage);
