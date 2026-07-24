@@ -91,14 +91,14 @@
   #search-box input { width: 100%; background: #f0f2f5; border: none; color: #131c20; padding: 9px 14px; border-radius: 8px; font-size: 14px; }
   #search-box input::placeholder { color: #667781; }
   #contacts-list { flex: 1; overflow-y: auto; }
-  .contact-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #f0f2f5; transition: background 0.15s; }
+  .contact-item { display: flex; align-items: center; gap: 15px; padding: 11px 15px 11px 13px; cursor: pointer; border-bottom: 1px solid #f0f2f5; transition: background 0.15s; }
   .contact-item:hover { background: #f0f2f5; }
   .contact-item.active { background: #e9edef; }
-  .contact-avatar { width: 46px; height: 46px; border-radius: 50%; background: #e9edef; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 600; color: #00a884; flex-shrink: 0; position: relative; overflow: hidden; }
+  .contact-avatar { width: 49px; height: 49px; border-radius: 50%; background: #e9edef; display: flex; align-items: center; justify-content: center; font-size: 19px; font-weight: 600; color: #00a884; flex-shrink: 0; position: relative; overflow: hidden; }
   .contact-avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   .contact-info { flex: 1; min-width: 0; }
-  .contact-name { font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .contact-preview { font-size: 13px; color: #667781; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .contact-name { font-size: 17px; font-weight: 600; color: #111b21; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .contact-preview { font-size: 14px; color: #667781; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
   /* BADGE NÃO LIDAS */
   .unread-badge { background: #00a884; color: #fff; border-radius: 50%; min-width: 20px; height: 20px; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; padding: 0 5px; flex-shrink: 0; box-shadow: 0 1px 4px rgba(0,168,132,.4); }
   .contact-item.has-unread { background: #e7f7ef !important; border-left: 4px solid #00a884 !important; }
@@ -125,9 +125,9 @@
   .contact-item.has-unread .contact-name { font-weight: 700; color: #131c20; }
   .contact-item.has-unread .contact-preview { color: #9de0c7; }
   /* Prévia da mensagem */
-  .contact-preview-row { display: flex; align-items: center; gap: 4px; font-size: 13px; color: #667781; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .contact-preview-row { display: flex; align-items: center; gap: 4px; font-size: 14px; color: #667781; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .contact-preview-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
-  .contact-time { font-size: 11px; color: #667781; white-space: nowrap; margin-left: auto; flex-shrink: 0; }
+  .contact-time { font-size: 12px; color: #667781; white-space: nowrap; margin-left: auto; flex-shrink: 0; }
   .contact-row-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
   /* botão marcar como lida no chat */
   #btn-mark-read { background: none; border: none; color: #667781; cursor: pointer; padding: 6px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: background .2s, color .2s; title: "Marcar como lida"; }
@@ -866,8 +866,8 @@
   /* Tag manager oculto no mobile para economizar espaço */
   #tag-manager { display: none; }
 
-  /* Contato item: touch target maior */
-  .contact-item { padding: 14px 16px; }
+  /* Contato item: mesmas medidas do WhatsApp */
+  .contact-item { padding: 11px 15px 11px 13px; }
 
   /* Lista de conversas com letra maior (tamanho do WhatsApp) */
   .contact-name { font-size: 17px; }
@@ -1322,7 +1322,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v51</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v53</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1802,7 +1802,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v51</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v53</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1856,7 +1856,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 51;
+const APP_VER = 53;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
