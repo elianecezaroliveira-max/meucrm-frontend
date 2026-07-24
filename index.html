@@ -109,8 +109,8 @@
   .swipe-action { position: absolute; top: 0; bottom: 0; width: 92px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #fff; font-size: 11px; font-weight: 600; z-index: 0; }
   .swipe-action.read { left: 0; background: #4a76d0; }
   .swipe-action.fav  { right: 0; background: #f0b400; }
-  .contact-swipe-wrap > .contact-item.is-fav { background: #ffffff; }
-  .contact-swipe-wrap > .contact-item.is-fav:hover { background: #f0f2f5; }
+  .contact-swipe-wrap > .contact-item.is-fav { background: #fdf6e3; }
+  .contact-swipe-wrap > .contact-item.is-fav:hover { background: #f8eed2; }
   .fav-star { color: #f0b400; font-size: 13px; margin-left: 5px; flex-shrink: 0; }
   /* Menu "⋯" do item da conversa (aparece ao passar o mouse — computador) */
   .contact-menu-btn { display: none; position: absolute; right: 10px; bottom: 8px; z-index: 2;
@@ -1339,7 +1339,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v57</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v58</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1842,7 +1842,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v57</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v58</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1896,7 +1896,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 57;
+const APP_VER = 58;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
