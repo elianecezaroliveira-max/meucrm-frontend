@@ -1376,7 +1376,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v77</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v79</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1881,7 +1881,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v77</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v79</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1935,7 +1935,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 77;
+const APP_VER = 79;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2599,7 +2599,7 @@ function renderContacts(contacts) {
     const badge = unread > 0 ? `<div class="unread-badge">${unread > 99 ? '99+' : unread}</div>` : '';
     const hasUnread = unread > 0 ? ' has-unread' : '';
     const timeStr = formatContactTime(c.last_message_at);
-    const preview = c.last_message_preview || c.phone;
+    const preview = String(c.last_message_preview || c.phone).replace(/\s+/g, ' ').trim();
     const mediaPrev = waPreviewHtml(preview);
     const shownPrev = (mediaPrev !== null) ? mediaPrev : preview;
     const isOut = c.last_message_direction === 'outbound';
@@ -4070,8 +4070,10 @@ async function _fillLinkPreviews() {
 const _msgData = {};
 
 function renderMessageContent(m) {
-  // Guarda conteúdo para uso no reply
-  const safeContent = m.content == null ? '' : String(m.content);
+  // Guarda conteúdo para uso no reply.
+  // .replace no final: mensagens com BOTÕES vêm com quebras de linha sobrando,
+  // que viravam a faixa branca vazia no rodapé da bolha — cortadas aqui.
+  const safeContent = (m.content == null ? '' : String(m.content)).replace(/\s+$/, '');
   _msgData[m.id] = { content: safeContent, direction: m.direction };
 
   // Quoted bubble (resposta a mensagem anterior)
@@ -4694,7 +4696,18 @@ async function sendMessage() {
   input.value = '';
   autoGrowMsgInput(input); // campo volta à altura normal
   input.focus(); // teclado do celular continua aberto para a próxima mensagem
-  setTimeout(() => window.scrollTo(0, 0), 60); // iOS: desfaz o deslocamento da página (campo não fica cortado)
+  // iOS: alinha o RODAPÉ INTEIRO (Enviar de, clipe, bots, campo) logo acima do teclado
+  setTimeout(() => {
+    try {
+      const ia = document.getElementById('input-area');
+      if (ia && window.visualViewport) {
+        const r = ia.getBoundingClientRect();
+        const vv = window.visualViewport;
+        const diff = r.bottom - (vv.height + vv.offsetTop);
+        if (Math.abs(diff) > 2) window.scrollBy(0, diff);
+      }
+    } catch (_) {}
+  }, 80);
   // Sem delay: a bolha aparece imediatamente; o servidor confirma em seguida
   const reply = replyingTo; cancelReply();
   const tempEl = appendPendingBubble(savedMessage);
