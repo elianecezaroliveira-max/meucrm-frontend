@@ -64,7 +64,7 @@
       padding-right: calc(16px + env(safe-area-inset-right)) !important;
     }
     #input-area { padding-bottom: calc(10px + env(safe-area-inset-bottom)) !important; }
-    #contacts-list { padding-bottom: env(safe-area-inset-bottom); }
+    #contacts-list { padding-bottom: 0; }
     /* Páginas em tela cheia (bots, tarefas, editor) também respeitam a câmera */
     #bots-page, #bot-editor-page, #tasks-page {
       padding-top: env(safe-area-inset-top);
@@ -1352,7 +1352,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v72</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v73</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1857,7 +1857,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v72</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v73</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1911,7 +1911,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 72;
+const APP_VER = 73;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3755,8 +3755,8 @@ function goBackToSidebar() {
     const t = e.touches[0];
     dx = t.clientX - sx;
     const dy = t.clientY - sy;
-    // Só "engata" com movimento claramente horizontal para a direita
-    if (!horiz && dx > 22 && Math.abs(dx) > Math.abs(dy) * 1.6) {
+    // Engata FÁCIL: basta o movimento ir mais para o lado do que para baixo
+    if (!horiz && dx > 14 && Math.abs(dx) > Math.abs(dy)) {
       horiz = true;
       chat.style.transition = 'none';
     }
@@ -3766,7 +3766,7 @@ function goBackToSidebar() {
     if (!active || !chat) return;
     chat.style.transition = ''; // devolve a animação suave ao CSS
     chat.style.transform = '';
-    if (horiz && dx > Math.min(110, (window.innerWidth || 360) * 0.3)) goBackToSidebar();
+    if (horiz && dx > Math.min(80, (window.innerWidth || 360) * 0.22)) goBackToSidebar();
     active = false; chat = null; dx = 0;
   };
   document.addEventListener('touchend', finish);
@@ -3966,14 +3966,18 @@ function _ensurePresenceWatch() {
       if (Math.abs(dy) > 14 && Math.abs(dy) > Math.abs(dx)) { mEl.style.transition = ''; mEl = null; return; }
       if (dx > 12 && Math.abs(dx) > Math.abs(dy)) horiz = true;
     }
-    if (horiz) mEl.style.transform = 'translateX(' + Math.min(dx, 74) + 'px)';
+    if (horiz) mEl.style.transform = 'translateX(' + Math.min(dx, 150) + 'px)';
   }, { passive: true });
   const fim = () => {
     if (!mEl) return;
     const el = mEl; mEl = null;
     el.style.transition = 'transform .18s ease';
     el.style.transform = '';
-    if (horiz && dx > 52) { const id = el.dataset.msgId; if (id) startReply(id); }
+    if (horiz && dx > Math.min(130, (window.innerWidth || 360) * 0.36)) {
+      // arrasto LONGO mesmo em cima da bolha = VOLTAR para a lista
+      window._lastSwipeTs = Date.now();
+      try { goBackToSidebar(); } catch (_) {}
+    } else if (horiz && dx > 52) { const id = el.dataset.msgId; if (id) startReply(id); }
   };
   document.addEventListener('touchend', fim);
   document.addEventListener('touchcancel', fim);
