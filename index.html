@@ -109,8 +109,8 @@
   .swipe-action { position: absolute; top: 0; bottom: 0; width: 92px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #fff; font-size: 11px; font-weight: 600; z-index: 0; }
   .swipe-action.read { left: 0; background: #4a76d0; }
   .swipe-action.fav  { right: 0; background: #f0b400; }
-  .contact-swipe-wrap > .contact-item.is-fav { background: #fdf6e3; }
-  .contact-swipe-wrap > .contact-item.is-fav:hover { background: #f8eed2; }
+  .contact-swipe-wrap > .contact-item.is-fav { background: #ffffff; }
+  .contact-swipe-wrap > .contact-item.is-fav:hover { background: #f0f2f5; }
   .fav-star { color: #f0b400; font-size: 13px; margin-left: 5px; flex-shrink: 0; }
   /* Menu "⋯" do item da conversa (aparece ao passar o mouse — computador) */
   .contact-menu-btn { display: none; position: absolute; right: 10px; bottom: 8px; z-index: 2;
@@ -161,7 +161,13 @@
   @media (max-width: 768px) { #lead-panel { display: none !important; } #btn-lead-panel { display: none !important; } }
   /* Computador: o menu ℹ️ é redundante (o painel de detalhes do lead já tem tudo) — só aparece no celular */
   @media (min-width: 769px) { #btn-info { display: none !important; } }
-  #messages-area { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 4px; transition: background 0.2s; background-color: #efeae2; background-image: radial-gradient(rgba(0,0,0,0.028) 1px, transparent 1px); background-size: 22px 22px; }
+  #messages-area { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 0; transition: background 0.2s; background-color: #efeae2; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cg fill='none' stroke='%23000' stroke-opacity='.05' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='40' cy='45' r='11'/%3E%3Cpath d='M105 30c-6 0-10 5-10 10 0 8 10 12 10 16 0-4 10-8 10-16 0-5-4-10-10-10z'/%3E%3Cpath d='M180 40q10-14 20 0t20 0'/%3E%3Cpath d='M262 28l4 9 9 1-7 7 2 9-8-5-8 5 2-9-7-7 9-1z'/%3E%3Cpath d='M30 130q7-9 14 0 7-9 14 0'/%3E%3Cpath d='M105 120v22m0-22l12-4v20' /%3E%3Ccircle cx='103' cy='144' r='4'/%3E%3Ccircle cx='115' cy='139' r='4'/%3E%3Cpath d='M185 115a14 14 0 1 0 14 18'/%3E%3Cpath d='M255 115c12 0 20 8 20 17s-8 15-20 15-20-6-20-15 8-17 20-17zm-6 36l-4 8 12-6'/%3E%3Cpath d='M28 215h24m-24 8h16m-16 8h20'/%3E%3Cpath d='M100 208l22 10-22 10v-20z'/%3E%3Ccircle cx='195' cy='222' r='12'/%3E%3Cpath d='M190 222l4 4 7-8'/%3E%3Cpath d='M250 210c8-8 22-2 22 8 0 8-8 12-11 18-3-6-11-10-11-18z'/%3E%3C/g%3E%3C/svg%3E"); background-size: 300px 300px; }
+  .msg { margin-top: 4px; }
+  .day-divider { margin: 8px 0 4px; }
+  /* Bolhas AGRUPADAS: mensagens seguidas do mesmo lado se juntam (igual WhatsApp) */
+  .msg.grp { margin-top: 1.5px; }
+  .msg.inbound.grp { border-top-left-radius: 8px; }
+  .msg.outbound.grp { border-top-right-radius: 8px; }
   #messages-area.drag-over { background: rgba(0,168,132,0.08); outline: 2px dashed #00a884; outline-offset: -6px; }
   .msg { max-width: 65%; padding: 8px 12px; border-radius: 8px; font-size: 14px; line-height: 1.4; position: relative; word-wrap: break-word; color: #131c20; }
   .msg.inbound { background: #ffffff; align-self: flex-start; border-top-left-radius: 0; box-shadow: 0 1px 1px rgba(0,0,0,.08); }
@@ -518,6 +524,10 @@
   .msg-ticks.delivered{ color:#667781; }
   .msg-ticks.read     { color:#53bdeb; }
   .cs-hit { outline: 2.5px solid #f7c948; border-radius: 10px; }
+  #list-filters { display: flex; gap: 8px; padding: 4px 12px 8px; }
+  .lf-chip { background: #f0f2f5; border: none; border-radius: 999px; padding: 6px 14px; font-size: 13px; color: #54656f; cursor: pointer; font-family: inherit; }
+  .lf-chip.active { background: #e7f7ef; color: #00a884; font-weight: 600; }
+  .msg.selected { outline: 2.5px solid #00a884; }
   .msg-ticks.failed   { color:#ef4444; font-size:11px; }
   .msg-ticks.pending  { color:#8696a0; font-size:11px; }
   /* Ações de mensagem (reply + delete) */
@@ -874,8 +884,12 @@
   .contact-preview-row, .contact-preview { font-size: 15px; }
   .contact-time { font-size: 13px; }
   .contact-avatar { width: 52px; height: 52px; font-size: 20px; }
-  .contact-item { border-bottom: none; }
+  .contact-item { border-bottom: none; align-items: center; }
   .contact-info { align-self: stretch; display: flex; flex-direction: column; justify-content: center; box-shadow: inset 0 -1px 0 #f0f2f5; }
+  /* Prévia com ATÉ 2 linhas (igual WhatsApp do iPhone) */
+  .contact-preview-row { white-space: normal; }
+  .contact-preview-text { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.32; }
+  .contact-preview-text svg { vertical-align: -3px; }
 
   /* Celular: sem trilho lateral (as ferramentas ficam no "+" da barra inferior) */
   #side-rail { display: none !important; }
@@ -1325,7 +1339,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v54</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v57</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1474,6 +1488,11 @@ window.addEventListener('load', initAuth);
       <input type="date" id="filter-date-to" onchange="applyFilters()">
       <button id="filter-clear" onclick="clearFilters()">✕ Limpar filtros</button>
     </div>
+    <div id="list-filters">
+      <button class="lf-chip active" onclick="setListFilter('all',this)">Todas</button>
+      <button class="lf-chip" onclick="setListFilter('unread',this)">Não lidas</button>
+      <button class="lf-chip" onclick="setListFilter('fav',this)">Favoritas</button>
+    </div>
     <div id="contacts-list">
       <div id="empty-contacts">Nenhuma conversa ainda.<br>Envie uma mensagem pelo WhatsApp para o número de teste.</div>
     </div>
@@ -1499,6 +1518,7 @@ window.addEventListener('load', initAuth);
   <div class="cm-item" onclick="menuCopyPhone(this)">📋 Copiar número (sem o 55)</div>
   <div class="cm-item" id="info-menu-pin" onclick="closeInfoMenu();togglePin(currentPhone)">📌 Fixar no topo</div>
   <div class="cm-item" id="info-menu-fav" onclick="closeInfoMenu();toggleFavorite(currentPhone)">⭐ Favoritar conversa</div>
+  <div class="cm-item" id="info-menu-mute" onclick="closeInfoMenu();toggleMute(currentPhone)">🔇 Silenciar conversa</div>
   <div class="cm-item" onclick="closeInfoMenu();editLeadName()">✏️ Editar nome</div>
   <div class="cm-item" onclick="closeInfoMenu();openTagSheet()">🏷️ Etiquetas</div>
   <div class="cm-item" onclick="closeInfoMenu();toggleNotes()">📝 Anotações do lead</div>
@@ -1572,12 +1592,29 @@ window.addEventListener('load', initAuth);
 </div>
 
 <!-- Menu de opções da mensagem (copiar / reagir / responder / apagar) -->
+<!-- Prévia de foto/vídeo com legenda antes de enviar (igual WhatsApp) -->
+<div id="media-preview-overlay" style="display:none;position:fixed;inset:0;background:rgba(11,20,26,.88);z-index:900;align-items:center;justify-content:center;padding:16px">
+  <div style="max-width:min(94vw,500px);width:100%;background:#fff;border-radius:14px;overflow:hidden;display:flex;flex-direction:column;max-height:92vh">
+    <div style="padding:10px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e9edef">
+      <b style="font-size:14px" id="mp-title">Enviar foto</b>
+      <span onclick="closeMediaPreview()" style="cursor:pointer;color:#667781;font-size:18px;padding:2px 6px">✕</span>
+    </div>
+    <div id="mp-holder" style="flex:1;min-height:120px;display:flex;align-items:center;justify-content:center;background:#0b141a;overflow:hidden"></div>
+    <div style="display:flex;gap:8px;padding:10px 12px;align-items:center">
+      <input id="mp-caption" placeholder="Adicione uma legenda…" onkeydown="if(event.key==='Enter'){event.preventDefault();confirmMediaSend()}"
+        style="flex:1;background:#f0f2f5;border:1px solid #e9edef;border-radius:999px;padding:11px 15px;font-size:14px;outline:none;font-family:inherit;min-width:0">
+      <button onclick="confirmMediaSend()" title="Enviar" style="width:46px;height:46px;border-radius:50%;background:#00a884;color:#fff;border:none;font-size:18px;cursor:pointer;flex-shrink:0">➤</button>
+    </div>
+  </div>
+</div>
+
 <div id="msg-menu" style="display:none;position:fixed;z-index:700;background:#ffffff;border:1px solid #e9edef;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.25);min-width:170px;padding:4px">
   <div class="cm-item" onclick="msgMenuReply()">↩ Responder</div>
   <div class="cm-item" onclick="msgMenuReact()">😊 Reagir</div>
   <div class="cm-item" onclick="msgMenuCopy()">📋 Copiar</div>
   <div class="cm-item" id="msg-menu-pinmsg" onclick="msgMenuPinMsg()">📌 Fixar</div>
   <div class="cm-item" id="msg-menu-starmsg" onclick="msgMenuStarMsg()">⭐ Favoritar</div>
+  <div class="cm-item" onclick="msgMenuSelect()">☑️ Selecionar</div>
   <div class="cm-item" id="msg-menu-edit" style="display:none" onclick="msgMenuEdit()">✏️ Editar</div>
   <div class="cm-item" id="msg-menu-revoke" style="display:none;color:#ef4444" onclick="msgMenuRevoke()">🚫 Apagar para todos</div>
   <div class="cm-item" onclick="msgMenuDelete()" style="color:#ef4444">🗑 Apagar</div>
@@ -1805,7 +1842,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v54</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v57</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1859,7 +1896,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 54;
+const APP_VER = 57;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2496,8 +2533,32 @@ function waPreviewHtml(p){
   return null; // não é mídia: mostra o texto normal
 }
 
+let _listFilter = 'all';
+function setListFilter(f, btn) {
+  _listFilter = f;
+  document.querySelectorAll('.lf-chip').forEach(b => b.classList.toggle('active', b === btn));
+  renderContacts(sortContacts(allContacts));
+}
+// "digitando…" na LISTA (números QR): consulta leve a cada 6s
+let _typingMap = {};
+setInterval(async () => {
+  try {
+    const hasQr = Object.values(window._accountsById || {}).some(a => a.type === 'evolution' || a.evolution_instance);
+    if (!hasQr || typeof SERVER_URL === 'undefined') return;
+    const r = await fetch(SERVER_URL + '/typing-list');
+    const d = await r.json();
+    if (JSON.stringify(d) !== JSON.stringify(_typingMap)) {
+      _typingMap = d || {};
+      if (Array.isArray(allContacts) && allContacts.length) renderContacts(sortContacts(allContacts));
+    }
+  } catch (_) {}
+}, 6000);
+
 function renderContacts(contacts) {
   const list = document.getElementById('contacts-list');
+  if (_listFilter !== 'all') {
+    contacts = contacts.filter(c => _listFilter === 'unread' ? (c.unread_count || 0) > 0 : !!c.favorite);
+  }
   if (!contacts.length) {
     list.innerHTML = '<div id="empty-contacts">Nenhuma conversa ainda.<br>Envie uma mensagem pelo WhatsApp para o número de teste.</div>';
     return;
@@ -2521,9 +2582,11 @@ function renderContacts(contacts) {
       pending:   '<span class="msg-ticks pending" style="margin:0 4px 0 0">🕐</span>',
       failed:    '<span style="margin:0 4px 0 0">⚠️</span>'
     }[c.last_message_status] || '';
-    const previewHtml = isOut
+    let previewHtml = isOut
       ? (stTick ? stTick + shownPrev : `<span style="color:#667781">Você: </span>${shownPrev}`)
       : shownPrev;
+    // Cliente digitando AGORA: prévia verde, igual ao WhatsApp
+    if (_typingMap[c.phone]) previewHtml = `<span style="color:#00a884">${_typingMap[c.phone] === 'recording' ? 'gravando áudio…' : 'digitando…'}</span>`;
     const isFav = !!c.favorite;
     return `<div class="contact-swipe-wrap" data-phone="${c.phone}">
       <div class="swipe-action read">📖<span>Lida</span></div>
@@ -2532,7 +2595,7 @@ function renderContacts(contacts) {
       <div class="contact-avatar">${(c.name||'?')[0].toUpperCase()}${c.avatar ? `<img src="${SERVER_URL}/avatar/${encodeURIComponent(String(c.avatar).split('/').pop())}" loading="lazy" alt="" onerror="this.remove()">` : ''}</div>
       <div class="contact-info">
         <div class="contact-row-top">
-          <div class="contact-name">${c.name||c.phone}${c.pinned?'<span style="font-size:11px;margin-left:3px">📌</span>':''}${isFav?'<span class="fav-star">★</span>':''}</div>
+          <div class="contact-name">${c.name||c.phone}${c.pinned?'<span style="font-size:11px;margin-left:3px">📌</span>':''}${c.muted?'<span style="font-size:12px;margin-left:3px;opacity:.6">🔇</span>':''}${isFav?'<span class="fav-star">★</span>':''}</div>
           <div class="contact-time">${timeStr}</div>
         </div>
         <div class="contact-preview-row">
@@ -2623,6 +2686,8 @@ function openInfoMenu(ev) {
     if (pi) pi.textContent = (c && c.pinned) ? '📌 Desafixar do topo' : '📌 Fixar no topo';
     const fi = document.getElementById('info-menu-fav');
     if (fi) fi.textContent = (c && c.favorite) ? '★ Remover dos favoritos' : '⭐ Favoritar conversa';
+    const mu = document.getElementById('info-menu-mute');
+    if (mu) mu.textContent = (c && c.muted) ? '🔔 Reativar notificações' : '🔇 Silenciar conversa';
   } catch (_) {}
   const r = ev.currentTarget.getBoundingClientRect();
   menu.style.display = 'block';
@@ -2902,12 +2967,75 @@ function _msgToggleFlag(id, field, path) {
 function msgMenuPinMsg()  { const id = _msgMenuId; closeMsgMenu(); if (id) _msgToggleFlag(id, 'pinned',  '/pin'); }
 function msgMenuStarMsg() { const id = _msgMenuId; closeMsgMenu(); if (id) _msgToggleFlag(id, 'starred', '/star'); }
 function _gotoPinnedMsg() {
-  const id = window._pinnedMsgId; if (!id) return;
-  const el = document.querySelector(`#messages-area .msg[data-msg-id="${(window.CSS && CSS.escape) ? CSS.escape(String(id)) : String(id)}"]`);
-  if (!el) return;
-  el.scrollIntoView({ block: 'center', behavior: 'smooth' });
-  el.classList.add('cs-hit'); setTimeout(() => el.classList.remove('cs-hit'), 1800);
+  const list = window._pinnedList || []; if (!list.length) return;
+  const cur = list[window._pinIdx || 0]; if (!cur) return;
+  const el = document.querySelector(`#messages-area .msg[data-msg-id="${(window.CSS && CSS.escape) ? CSS.escape(String(cur.id)) : String(cur.id)}"]`);
+  if (el) {
+    el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    el.classList.add('cs-hit'); setTimeout(() => el.classList.remove('cs-hit'), 1800);
+  }
+  // passa para a PRÓXIMA fixada (cicla), como no WhatsApp
+  window._pinIdx = ((window._pinIdx || 0) - 1 + list.length) % list.length;
+  const nxt = list[window._pinIdx];
+  const pt = document.getElementById('pinned-banner-text'); if (pt && nxt) pt.textContent = nxt.txt;
+  const pc = document.getElementById('pinned-banner-count'); if (pc) pc.textContent = list.length > 1 ? (window._pinIdx + 1) + ' de ' + list.length : '';
 }
+// ── ☑️ Seleção múltipla de mensagens ──
+let _selMode = false; const _selIds = new Set();
+function msgMenuSelect() { const id = _msgMenuId; closeMsgMenu(); if (id) enterSelMode(id); }
+function enterSelMode(firstId) {
+  _selMode = true; _selIds.clear();
+  let bar = document.getElementById('sel-bar');
+  if (!bar) {
+    const hd = document.getElementById('chat-header');
+    if (hd) hd.insertAdjacentHTML('afterend',
+      `<div id="sel-bar" style="display:flex;align-items:center;gap:12px;background:#00a884;color:#fff;padding:10px 14px;font-size:14px">
+        <span onclick="exitSelMode()" style="cursor:pointer;font-size:17px">✕</span>
+        <b id="sel-count" style="flex:1">0 selecionada(s)</b>
+        <span onclick="selCopy()" style="cursor:pointer" title="Copiar">📋 Copiar</span>
+        <span onclick="selDelete()" style="cursor:pointer" title="Apagar do CRM">🗑 Apagar</span>
+      </div>`);
+    bar = document.getElementById('sel-bar');
+  }
+  if (bar) bar.style.display = 'flex';
+  if (firstId) _toggleSel(String(firstId));
+}
+function exitSelMode() {
+  _selMode = false; _selIds.clear();
+  const bar = document.getElementById('sel-bar'); if (bar) bar.style.display = 'none';
+  document.querySelectorAll('#messages-area .msg.selected').forEach(e => e.classList.remove('selected'));
+}
+function _toggleSel(id) {
+  const el = document.querySelector(`#messages-area .msg[data-msg-id="${(window.CSS && CSS.escape) ? CSS.escape(id) : id}"]`);
+  if (!el) return;
+  if (_selIds.has(id)) { _selIds.delete(id); el.classList.remove('selected'); }
+  else { _selIds.add(id); el.classList.add('selected'); }
+  const c = document.getElementById('sel-count'); if (c) c.textContent = _selIds.size + ' selecionada(s)';
+  if (!_selIds.size) exitSelMode();
+}
+document.addEventListener('click', function (e) {
+  if (!_selMode) return;
+  const el = e.target.closest('#messages-area .msg');
+  if (!el) return;
+  e.stopPropagation(); e.preventDefault();
+  _toggleSel(el.dataset.msgId);
+}, true);
+function _selOrdered() {
+  return Array.from(document.querySelectorAll('#messages-area .msg.selected')).map(el => el.dataset.msgId);
+}
+function selCopy() {
+  const txt = _selOrdered().map(id => (_msgData[id] && _msgData[id].content) || '').filter(Boolean).join('\n');
+  if (!txt) return;
+  (navigator.clipboard && navigator.clipboard.writeText) ? navigator.clipboard.writeText(txt) : prompt('Copie:', txt);
+  exitSelMode();
+}
+async function selDelete() {
+  const ids = _selOrdered(); if (!ids.length) return;
+  if (!confirm('Apagar ' + ids.length + ' mensagem(ns) do CRM?')) return;
+  for (const id of ids) { try { await fetch(`${SERVER_URL}/messages/id/${id}`, { method: 'DELETE' }); } catch (_) {} }
+  exitSelMode(); _lastMsgsSig = ''; loadMessages(currentPhone, false);
+}
+
 function msgMenuRevoke() {
   const id = _msgMenuId; closeMsgMenu(); if (!id) return;
   const el = document.querySelector(`#messages-area .msg[data-msg-id="${(window.CSS && CSS.escape) ? CSS.escape(String(id)) : String(id)}"]`);
@@ -3027,10 +3155,14 @@ function openContactMenu(ev, phone) {
   const c = allContacts.find(x => x.phone === phone);
   const menu = document.getElementById('contact-menu');
   if (!menu) return;
+  const temNaoLida = c && (c.unread_count || 0) > 0;
   menu.innerHTML =
-    `<div class="cm-item" onclick="markContactRead('${phone}');closeContactMenu()">✓ Marcar como lida</div>` +
+    (temNaoLida
+      ? `<div class="cm-item" onclick="markContactRead('${phone}');closeContactMenu()">✓ Marcar como lida</div>`
+      : `<div class="cm-item" onclick="markContactUnread('${phone}');closeContactMenu()">🔵 Marcar como não lida</div>`) +
     `<div class="cm-item" onclick="toggleFavorite('${phone}');closeContactMenu()">${c && c.favorite ? '★ Remover dos favoritos' : '⭐ Favoritar conversa'}</div>` +
     `<div class="cm-item" onclick="togglePin('${phone}');closeContactMenu()">${c && c.pinned ? '📌 Desafixar do topo' : '📌 Fixar no topo'}</div>` +
+    `<div class="cm-item" onclick="toggleMute('${phone}');closeContactMenu()">${c && c.muted ? '🔔 Reativar notificações' : '🔇 Silenciar conversa'}</div>` +
     `<div class="cm-item" style="color:#ef4444" onclick="closeContactMenu();deleteConversation('${phone}')">🗑 Apagar conversa</div>`;
   menu.style.display = 'block';
   menu.style.left = Math.min(ev.clientX, window.innerWidth - 210) + 'px';
@@ -3540,6 +3672,27 @@ async function togglePin(phone) {
   loadContacts();
 }
 
+// ── 🔇 Silenciar / 🔵 Não lida ──
+async function toggleMute(phone) {
+  const c = allContacts.find(x => x.phone === phone);
+  const nv = !(c && c.muted);
+  if (c) c.muted = nv;
+  renderContacts(sortContacts(allContacts));
+  try {
+    const r = await fetch(SERVER_URL + '/contacts/' + encodeURIComponent(phone) + '/mute', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ muted: nv }) });
+    const d = await r.json(); if (d.error) alert('Rode no Supabase: alter table contacts add column if not exists muted boolean default false;');
+  } catch (_) {}
+  loadContacts();
+}
+async function markContactUnread(phone) {
+  const c = allContacts.find(x => x.phone === phone);
+  if (c) { c.unread_count = 1; c.first_unread_at = new Date().toISOString(); }
+  renderContacts(sortContacts(allContacts));
+  try { await fetch(SERVER_URL + '/contacts/' + encodeURIComponent(phone) + '/unread', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: '{}' }); } catch (_) {}
+  loadContacts();
+}
+
 // ── 📎 Menu do clipe (arquivo / localização / contato / enquete) ──
 function toggleAttachMenu(ev) {
   if (ev) { ev.preventDefault(); ev.stopPropagation(); }
@@ -3816,24 +3969,26 @@ async function loadMessages(phone, scroll = true) {
     }
     _lastMsgsSig = sig;
 
-    // 📌 Faixa da mensagem fixada (clica → vai até a mensagem)
+    // 📌 Faixa das mensagens fixadas (várias: clica → vai até uma e passa para a próxima)
     try {
       const pins = msgs.filter(x => x.pinned);
-      const pin = pins.length ? pins[pins.length - 1] : null;
       let pb = document.getElementById('pinned-banner');
-      if (pin) {
-        window._pinnedMsgId = pin.id;
-        const prevTxt = String(pin.content || 'Mensagem fixada').replace(/\s+/g, ' ').slice(0, 70);
+      if (pins.length) {
+        window._pinnedList = pins.map(x => ({ id: x.id, txt: String(x.content || 'Mensagem fixada').replace(/\s+/g, ' ').slice(0, 70) }));
+        if (typeof window._pinIdx !== 'number' || window._pinIdx >= pins.length) window._pinIdx = pins.length - 1;
         if (!pb) {
-          area.insertAdjacentHTML('beforebegin', `<div id="pinned-banner" onclick="_gotoPinnedMsg()" style="background:#fff;border-bottom:1px solid #e9edef;padding:8px 14px;display:flex;gap:9px;align-items:center;cursor:pointer;font-size:12.5px;color:#111b21"><span style="flex-shrink:0">📌</span><span id="pinned-banner-text" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span></div>`);
+          area.insertAdjacentHTML('beforebegin', `<div id="pinned-banner" onclick="_gotoPinnedMsg()" style="background:#fff;border-bottom:1px solid #e9edef;padding:8px 14px;display:flex;gap:9px;align-items:center;cursor:pointer;font-size:12.5px;color:#111b21"><span style="flex-shrink:0">📌</span><span id="pinned-banner-text" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1"></span><span id="pinned-banner-count" style="font-size:11px;color:#667781;flex-shrink:0"></span></div>`);
           pb = document.getElementById('pinned-banner');
         }
-        const pt = document.getElementById('pinned-banner-text'); if (pt) pt.textContent = prevTxt;
+        const cur = window._pinnedList[window._pinIdx];
+        const pt = document.getElementById('pinned-banner-text'); if (pt) pt.textContent = cur.txt;
+        const pc = document.getElementById('pinned-banner-count'); if (pc) pc.textContent = pins.length > 1 ? (window._pinIdx + 1) + ' de ' + pins.length : '';
         pb.style.display = 'flex';
       } else if (pb) pb.style.display = 'none';
     } catch (_) {}
 
     let lastDay = null;
+    let _prevDir = null; // agrupamento de bolhas (mesmo lado em sequência)
     const parts = [];
 
     for (const m of msgs) {
@@ -3842,6 +3997,7 @@ async function loadMessages(phone, scroll = true) {
         const dayKey = msgDayKey(m.timestamp);
         if (dayKey !== lastDay) {
           lastDay = dayKey;
+          _prevDir = null; // novo dia: recomeça o agrupamento
           parts.push({ key: 'day-' + dayKey, html: `<div class="day-divider" data-key="day-${dayKey}"><span>${formatDayLabel(m.timestamp)}</span></div>` });
         }
 
@@ -3870,7 +4026,8 @@ async function loadMessages(phone, scroll = true) {
           ? `<span class="msg-reaction" style="position:absolute;bottom:-11px;${reactSide};background:#e9edef;border:1px solid #ffffff;border-radius:11px;padding:0 5px;font-size:13px;line-height:20px;box-shadow:0 1px 3px rgba(0,0,0,.5);z-index:2">${escHtml(m.reaction)}</span>`
           : '';
 
-        parts.push({ key: 'm-' + safeId, html: `<div class="msg ${safeDir}" style="position:relative${m.reaction?';margin-bottom:14px':''}"
+        const _grp = _prevDir === safeDir; _prevDir = safeDir;
+        parts.push({ key: 'm-' + safeId, html: `<div class="msg ${safeDir}${_grp ? ' grp' : ''}" style="position:relative${m.reaction?';margin-bottom:14px':''}"
           data-key="m-${safeId}" data-msg-id="${safeId}" data-msg-content="${dataCont}" data-msg-dir="${safeDir}" data-msg-wamid="${safeWamid}" data-msg-ts="${escHtml(String(m.timestamp || ''))}" data-msg-type="${escHtml(String(m.type || 'text'))}">
           <div class="msg-actions">
             <button class="msg-menu-btn" title="Opções da mensagem" onclick="openMsgMenu(event,'${safeId}')">⌄</button>
@@ -4288,11 +4445,31 @@ document.addEventListener('paste', (e) => {
 // ── ARQUIVO / ANEXO ──
 let selectedFile = null;
 
+let _previewFile = null, _mediaCaption = '';
 function handleFileSelect(file) {
   if (!file) return;
   if (file.size > 16 * 1024 * 1024) {
     alert('Arquivo muito grande. O limite é 16 MB.');
     return;
+  }
+  // Foto/vídeo: mostra a PRÉVIA com campo de legenda antes de enviar (igual WhatsApp)
+  if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
+    _previewFile = file;
+    const ov = document.getElementById('media-preview-overlay');
+    const hd = document.getElementById('mp-holder');
+    const tt = document.getElementById('mp-title');
+    const cp = document.getElementById('mp-caption');
+    if (ov && hd) {
+      const url = URL.createObjectURL(file);
+      hd.innerHTML = file.type.startsWith('image/')
+        ? `<img src="${url}" style="max-width:100%;max-height:56vh;object-fit:contain">`
+        : `<video src="${url}" controls playsinline style="max-width:100%;max-height:56vh"></video>`;
+      if (tt) tt.textContent = file.type.startsWith('image/') ? 'Enviar foto' : 'Enviar vídeo';
+      if (cp) cp.value = '';
+      ov.style.display = 'flex';
+      setTimeout(() => { if (cp) cp.focus(); }, 60);
+      return;
+    }
   }
   selectedFile = file;
   // Ícone por tipo
@@ -4312,6 +4489,20 @@ function handleFileSelect(file) {
   msgInput.style.display = 'none';
 }
 
+function closeMediaPreview() {
+  const ov = document.getElementById('media-preview-overlay');
+  if (ov) ov.style.display = 'none';
+  const hd = document.getElementById('mp-holder'); if (hd) hd.innerHTML = '';
+  _previewFile = null;
+}
+function confirmMediaSend() {
+  if (!_previewFile) { closeMediaPreview(); return; }
+  const cp = document.getElementById('mp-caption');
+  _mediaCaption = (cp && cp.value.trim()) || '';
+  selectedFile = _previewFile;
+  closeMediaPreview();
+  sendFile();
+}
 function removeFile() {
   selectedFile = null;
   const chip = document.getElementById('file-chip');
@@ -4432,6 +4623,7 @@ async function deleteTask(id) {
 async function sendFile() {
   if (!selectedFile || !currentPhone) return;
   const file = selectedFile;
+  const caption = _mediaCaption || ''; _mediaCaption = '';
   removeFile();
   // Lê como base64
   const base64 = await new Promise((resolve) => {
@@ -4456,6 +4648,7 @@ async function sendFile() {
       body: JSON.stringify({
         to: currentPhone,
         account_id: currentAccountId || null,
+        caption: caption || undefined,
         fileBase64: base64,
         fileName: file.name,
         mimeType: file.type || 'application/octet-stream'
