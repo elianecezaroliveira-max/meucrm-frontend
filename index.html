@@ -1343,7 +1343,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v63</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v64</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1848,7 +1848,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v63</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v64</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1902,7 +1902,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 63;
+const APP_VER = 64;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3294,12 +3294,15 @@ async function selectContact(phone, name, accountId) {
       </button>
       <input type="file" id="file-input" style="display:none"
         accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip"
+        multiple onchange="if(this.files&&this.files.length)handleFilesSelect(this.files);this.value='';" />
+      <input type="file" id="camera-input" accept="image/*" capture="environment" style="display:none"
         onchange="if(this.files&&this.files[0])handleFileSelect(this.files[0]);this.value='';" />
       <label id="attach-btn" title="Anexar" onclick="toggleAttachMenu(event)" style="cursor:pointer">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
       </label>
       <div id="attach-menu" style="display:none;position:absolute;bottom:calc(100% + 6px);left:44px;background:#fff;border:1px solid #e9edef;border-radius:10px;padding:6px;min-width:200px;z-index:120;box-shadow:0 4px 14px rgba(0,0,0,.25)">
         <div class="cm-item" onclick="closeAttachMenu();document.getElementById('file-input').click()">📄 Arquivo / foto / vídeo</div>
+        <div class="cm-item" onclick="closeAttachMenu();document.getElementById('camera-input').click()">📷 Tirar foto</div>
         <div class="cm-item" onclick="closeAttachMenu();sendLocationUI()">📍 Localização</div>
         <div class="cm-item" onclick="closeAttachMenu();sendContactUI()">👤 Contato</div>
       </div>
@@ -3578,7 +3581,7 @@ function goBackToSidebar() {
     // Funciona de qualquer ponto da conversa (a borda é reservada pelo iOS),
     // exceto sobre player, vídeo, cabeçalho e barra de digitação
     if (!e.target.closest('#chat-area')) return;
-    if (e.target.closest('video, .voice-player, #input-area, #chat-header, #notes-panel')) return;
+    if (e.target.closest('video, .voice-player, #input-area, #chat-header, #notes-panel, .msg')) return;
     const t = e.touches[0];
     chat = document.getElementById('chat-area');
     if (!chat) return;
@@ -3754,6 +3757,72 @@ function _ensurePresenceWatch() {
   _presTimer = setInterval(upd, 10000);
 }
 
+// ↩️ Deslizar a BOLHA para a direita = responder (igual WhatsApp)
+(function () {
+  let mEl = null, sx = 0, sy = 0, dx = 0, horiz = false;
+  document.addEventListener('touchstart', e => {
+    const el = e.target.closest('#messages-area .msg');
+    if (!el || (typeof _selMode !== 'undefined' && _selMode)) return;
+    mEl = el; sx = e.touches[0].clientX; sy = e.touches[0].clientY; dx = 0; horiz = false;
+    el.style.transition = 'none';
+  }, { passive: true });
+  document.addEventListener('touchmove', e => {
+    if (!mEl) return;
+    dx = e.touches[0].clientX - sx;
+    const dy = e.touches[0].clientY - sy;
+    if (!horiz) {
+      if (Math.abs(dy) > 14 && Math.abs(dy) > Math.abs(dx)) { mEl.style.transition = ''; mEl = null; return; }
+      if (dx > 12 && Math.abs(dx) > Math.abs(dy)) horiz = true;
+    }
+    if (horiz) mEl.style.transform = 'translateX(' + Math.min(dx, 74) + 'px)';
+  }, { passive: true });
+  const fim = () => {
+    if (!mEl) return;
+    const el = mEl; mEl = null;
+    el.style.transition = 'transform .18s ease';
+    el.style.transform = '';
+    if (horiz && dx > 52) { const id = el.dataset.msgId; if (id) startReply(id); }
+  };
+  document.addEventListener('touchend', fim);
+  document.addEventListener('touchcancel', fim);
+})();
+
+// Formatação do WhatsApp: links clicáveis + *negrito*, _itálico_, ~riscado~
+function waFormat(raw) {
+  const t = escHtml(raw == null ? '' : String(raw));
+  const parts = t.split(/((?:https?:\/\/|www\.)[^\s<]+)/g);
+  return parts.map((seg, i) => {
+    if (i % 2 === 1) {
+      const href = seg.startsWith('http') ? seg : 'https://' + seg;
+      return `<a href="${href}" target="_blank" rel="noopener" style="color:#027eb5;text-decoration:underline;word-break:break-all">${seg}</a>`;
+    }
+    return seg
+      .replace(/\*([^*\n]+)\*/g, '<b>$1</b>')
+      .replace(/(^|[\s(])_([^_\n]+)_(?=$|[\s).,!?])/gm, '$1<i>$2</i>')
+      .replace(/~([^~\n]+)~/g, '<s>$1</s>');
+  }).join('');
+}
+
+// 🔗 Prévia de link (cartão com título/imagem) — preenchida depois do render
+const _lpCache = {};
+async function _fillLinkPreviews() {
+  document.querySelectorAll('#messages-area .link-prev:not(.done)').forEach(async el => {
+    el.classList.add('done');
+    const u = el.dataset.url; if (!u) { el.remove(); return; }
+    let d = _lpCache[u];
+    if (!d) {
+      try { d = await (await fetch(SERVER_URL + '/link-preview?url=' + encodeURIComponent(u))).json(); } catch (_) { d = {}; }
+      _lpCache[u] = d || {};
+    }
+    if (!d || (!d.title && !d.image)) { el.remove(); return; }
+    el.innerHTML = `<a href="${u}" target="_blank" rel="noopener" style="display:flex;gap:9px;text-decoration:none;color:inherit;background:rgba(0,0,0,.055);border-radius:8px;padding:8px;margin-bottom:5px;align-items:center;max-width:300px">
+      ${d.image ? `<img src="${d.image}" style="width:52px;height:52px;object-fit:cover;border-radius:6px;flex-shrink:0" onerror="this.remove()">` : ''}
+      <span style="min-width:0"><span style="display:block;font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(d.title || d.site || '')}</span>
+      ${d.desc ? `<span style="display:block;font-size:11.5px;color:#54656f;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(d.desc)}</span>` : ''}
+      ${d.site ? `<span style="display:block;font-size:11px;color:#8696a0">${escHtml(d.site)}</span>` : ''}</span></a>`;
+  });
+}
+
 // Cache de conteúdo de mensagens para o reply
 const _msgData = {};
 
@@ -3784,7 +3853,7 @@ function renderMessageContent(m) {
       </div>`;
 
     } else if (m.type === 'image') {
-      const caption = m.content && !m.content.startsWith('[Imagem') ? `<div class="media-caption">${escHtml(m.content)}</div>` : '';
+      const caption = m.content && !m.content.startsWith('[Imagem') ? `<div class="media-caption">${waFormat(m.content)}</div>` : '';
       const dlUrl = `${proxyUrl}&download=1&filename=${encodeURIComponent('imagem.jpg')}`;
       return quotedHtml + `<div class="media-wrap">
         <div style="position:relative;display:inline-block">
@@ -3818,7 +3887,7 @@ function renderMessageContent(m) {
       </div>`;
 
     } else if (m.type === 'video') {
-      const caption = m.content && !m.content.startsWith('[Vídeo') ? `<div class="media-caption">${escHtml(m.content)}</div>` : '';
+      const caption = m.content && !m.content.startsWith('[Vídeo') ? `<div class="media-caption">${waFormat(m.content)}</div>` : '';
       const dlUrl = `${proxyUrl}&download=1&filename=${encodeURIComponent('video.mp4')}`;
       return quotedHtml + `<div class="media-wrap">
         <video controls preload="metadata" playsinline src="${proxyUrl}"
@@ -3906,7 +3975,9 @@ function renderMessageContent(m) {
       <div style="border-top:1px solid rgba(0,0,0,.08);padding-top:8px;text-align:center;font-size:13px;color:#027eb5;font-weight:500">${totalVotos ? 'Ver votos' : 'Aguardando votos'}</div>
     </div>`;
   }
-  return quotedHtml + `<span class="msg-text">${escHtml(safeContent)}</span>`;
+  const _urlM = (m.type === 'text' || !m.type) ? safeContent.match(/(?:https?:\/\/|www\.)[^\s<]+/) : null;
+  const _lpHtml = _urlM ? `<div class="link-prev" data-url="${escHtml(_urlM[0].startsWith('http') ? _urlM[0] : 'https://' + _urlM[0])}"></div>` : '';
+  return quotedHtml + _lpHtml + `<span class="msg-text">${waFormat(safeContent)}</span>`;
 }
 
 function formatDayLabel(dateStr) {
@@ -3960,6 +4031,7 @@ async function loadMessages(phone, scroll = true) {
       if (mediaPlaying || inFullscreen) return;
     }
     _lastMsgsSig = sig;
+    setTimeout(_fillLinkPreviews, 60); // cartões de link entram após o render
 
     // 📌 Faixa das mensagens fixadas (várias: clica → vai até uma e passa para a próxima)
     try {
@@ -4437,7 +4509,30 @@ document.addEventListener('paste', (e) => {
 // ── ARQUIVO / ANEXO ──
 let selectedFile = null;
 
-let _previewFile = null, _mediaCaption = '';
+let _previewFile = null, _mediaCaption = '', _mediaQueue = [];
+// Vários arquivos de uma vez: fotos/vídeos entram numa fila com prévia um a um
+function handleFilesSelect(files) {
+  const arr = Array.from(files || []);
+  if (!arr.length) return;
+  if (arr.length === 1) { handleFileSelect(arr[0]); return; }
+  const media = arr.filter(f => f.type.startsWith('image/') || f.type.startsWith('video/'));
+  const resto = arr.filter(f => !media.includes(f));
+  if (!media.length) { handleFileSelect(arr[0]); return; }
+  if (resto.length) alert('O envio múltiplo vale para fotos e vídeos — os outros arquivos, envie um por vez.');
+  _mediaQueue = media.slice(1);
+  handleFileSelect(media[0]);
+}
+// 📋 Colar print (Ctrl+V) direto no chat
+document.addEventListener('paste', e => {
+  if (!currentPhone) return;
+  const items = (e.clipboardData && e.clipboardData.items) || [];
+  for (const it of items) {
+    if (it.type && it.type.startsWith('image/')) {
+      const f = it.getAsFile();
+      if (f) { e.preventDefault(); handleFileSelect(new File([f], 'print-' + Date.now() + '.png', { type: f.type })); return; }
+    }
+  }
+});
 function handleFileSelect(file) {
   if (!file) return;
   if (file.size > 16 * 1024 * 1024) {
@@ -4456,7 +4551,7 @@ function handleFileSelect(file) {
       hd.innerHTML = file.type.startsWith('image/')
         ? `<img src="${url}" style="max-width:100%;max-height:56vh;object-fit:contain">`
         : `<video src="${url}" controls playsinline style="max-width:100%;max-height:56vh"></video>`;
-      if (tt) tt.textContent = file.type.startsWith('image/') ? 'Enviar foto' : 'Enviar vídeo';
+      if (tt) tt.textContent = (file.type.startsWith('image/') ? 'Enviar foto' : 'Enviar vídeo') + (_mediaQueue.length ? ` — mais ${_mediaQueue.length} na fila` : '');
       if (cp) cp.value = '';
       ov.style.display = 'flex';
       setTimeout(() => { if (cp) cp.focus(); }, 60);
@@ -4481,19 +4576,22 @@ function handleFileSelect(file) {
   msgInput.style.display = 'none';
 }
 
-function closeMediaPreview() {
+function closeMediaPreview(manterFila) {
   const ov = document.getElementById('media-preview-overlay');
   if (ov) ov.style.display = 'none';
   const hd = document.getElementById('mp-holder'); if (hd) hd.innerHTML = '';
   _previewFile = null;
+  if (!manterFila) _mediaQueue = []; // ✕ cancela também o resto da fila
 }
 function confirmMediaSend() {
   if (!_previewFile) { closeMediaPreview(); return; }
   const cp = document.getElementById('mp-caption');
   _mediaCaption = (cp && cp.value.trim()) || '';
   selectedFile = _previewFile;
-  closeMediaPreview();
+  closeMediaPreview(true);
   sendFile();
+  // próxima foto da fila (se houver)
+  if (_mediaQueue.length) { const prox = _mediaQueue.shift(); setTimeout(() => handleFileSelect(prox), 300); }
 }
 function removeFile() {
   selectedFile = null;
