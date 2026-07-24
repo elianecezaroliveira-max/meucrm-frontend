@@ -866,13 +866,16 @@
   /* Tag manager oculto no mobile para economizar espaço */
   #tag-manager { display: none; }
 
-  /* Contato item: mesmas medidas do WhatsApp */
-  .contact-item { padding: 11px 15px 11px 13px; }
+  /* Contato item: mesmas medidas do WhatsApp (linha ~76px) */
+  .contact-item { padding: 12px 15px 12px 13px; }
 
-  /* Lista de conversas com letra maior (tamanho do WhatsApp) */
+  /* Lista de conversas nas medidas do WhatsApp do iPhone */
   .contact-name { font-size: 17px; }
-  .contact-preview-row, .contact-preview { font-size: 14px; }
-  .contact-time { font-size: 12px; }
+  .contact-preview-row, .contact-preview { font-size: 15px; }
+  .contact-time { font-size: 13px; }
+  .contact-avatar { width: 52px; height: 52px; font-size: 20px; }
+  .contact-item { border-bottom: none; }
+  .contact-info { align-self: stretch; display: flex; flex-direction: column; justify-content: center; box-shadow: inset 0 -1px 0 #f0f2f5; }
 
   /* Celular: sem trilho lateral (as ferramentas ficam no "+" da barra inferior) */
   #side-rail { display: none !important; }
@@ -1322,7 +1325,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v53</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v54</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1802,7 +1805,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v53</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v54</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1856,7 +1859,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 53;
+const APP_VER = 54;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
