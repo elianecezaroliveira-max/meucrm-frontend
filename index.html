@@ -1322,7 +1322,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v42</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v43</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1794,7 +1794,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v42</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v43</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1848,7 +1848,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 42;
+const APP_VER = 43;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3680,8 +3680,40 @@ function renderMessageContent(m) {
   }
   if (m.type === 'location') {
     const uMatch = safeContent.match(/https?:\/\/\S+/);
-    const title = safeContent.split('\n')[0];
-    if (uMatch) return quotedHtml + `<span class="msg-text">${escHtml(title)}</span><div style="margin-top:6px"><a href="${uMatch[0]}" target="_blank" rel="noopener" style="display:inline-block;background:rgba(2,126,181,.08);border:1.5px solid rgba(2,126,181,.4);border-radius:999px;padding:5px 14px;font-size:13px;color:#027eb5;text-decoration:none">🗺 Abrir no mapa</a></div>`;
+    const title = (safeContent.split('\n')[0] || '').replace(/^📍\s*/, '');
+    return quotedHtml + `<a href="${uMatch ? uMatch[0] : '#'}" target="_blank" rel="noopener" style="display:block;text-decoration:none;color:inherit;min-width:210px;max-width:260px">
+      <div style="background:linear-gradient(160deg,#b7dfb0,#8ec487);border-radius:10px;height:96px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden">
+        <div style="position:absolute;inset:0;background-image:radial-gradient(circle at 30% 40%, rgba(255,255,255,.35) 2px, transparent 2.5px),radial-gradient(circle at 70% 65%, rgba(255,255,255,.3) 2px, transparent 2.5px);background-size:46px 46px"></div>
+        <span style="font-size:38px;filter:drop-shadow(0 2px 2px rgba(0,0,0,.25))">📍</span>
+      </div>
+      <div style="font-weight:600;font-size:13.5px;margin-top:7px">${escHtml(title || 'Localização')}</div>
+      <div style="font-size:12.5px;color:#027eb5;margin-top:2px">Abrir no mapa</div>
+    </a>`;
+  }
+  if (m.type === 'contact') {
+    const lines = safeContent.split('\n');
+    const nm = (lines[0] || '').replace(/^👤\s*/, '') || 'Contato';
+    const tel = (lines[1] || '').trim();
+    return quotedHtml + `<div style="min-width:200px;max-width:260px">
+      <div style="display:flex;align-items:center;gap:11px">
+        <div style="width:42px;height:42px;border-radius:50%;background:#00a884;color:#fff;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:600;flex-shrink:0">${escHtml(nm[0].toUpperCase())}</div>
+        <div style="min-width:0">
+          <div style="font-weight:600;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(nm)}</div>
+          ${tel ? `<div style="font-size:12.5px;color:#667781">${escHtml(tel)}</div>` : ''}
+        </div>
+      </div>
+      ${tel ? `<div style="border-top:1px solid rgba(0,0,0,.08);margin-top:9px;padding-top:7px;text-align:center"><span onclick="navigator.clipboard&&navigator.clipboard.writeText('${escHtml(tel)}');this.textContent='✓ Copiado'" style="font-size:12.5px;color:#027eb5;cursor:pointer;font-weight:600">📋 Copiar número</span></div>` : ''}
+    </div>`;
+  }
+  if (m.type === 'poll') {
+    const lines = safeContent.split('\n');
+    const q = (lines[0] || '').replace(/^📊\s*/, '');
+    const opts = lines.slice(1).map(l => l.replace(/^▫️\s*/, '').trim()).filter(Boolean);
+    return quotedHtml + `<div style="min-width:210px;max-width:270px">
+      <div style="display:flex;gap:8px;align-items:flex-start;font-weight:600;font-size:13.5px;margin-bottom:4px"><span style="font-size:16px">📊</span><span>${escHtml(q)}</span></div>
+      <div style="font-size:11px;color:#667781;margin-bottom:6px">Selecione uma opção</div>
+      ${opts.map(o => `<div style="display:flex;align-items:center;gap:9px;padding:8px 2px;border-top:1px solid rgba(0,0,0,.07);font-size:13.5px"><span style="width:17px;height:17px;border:2px solid #8696a0;border-radius:50%;flex-shrink:0"></span><span>${escHtml(o)}</span></div>`).join('')}
+    </div>`;
   }
   return quotedHtml + `<span class="msg-text">${escHtml(safeContent)}</span>`;
 }
