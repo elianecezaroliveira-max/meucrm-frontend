@@ -1352,7 +1352,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v73</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v74</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1857,7 +1857,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v73</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v74</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1911,7 +1911,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 73;
+const APP_VER = 74;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2846,7 +2846,7 @@ async function startVoiceRec() {
     }, 1000);
     // Forma de onda AO VIVO (barrinhas acompanham sua voz, igual WhatsApp)
     const wv = document.getElementById('rec-wave'); if (wv) wv.innerHTML = '';
-    window._recWavePeak = 0.06; // normalização dinâmica: se ajusta ao volume da sua voz
+    window._recWavePeak = 0; window._recNoise = null; // calibra do zero a cada gravação
     window._recWaveTimer = setInterval(() => {
       const w = document.getElementById('rec-wave'); if (!w) return;
       const last = _recBufs[_recBufs.length - 1];
@@ -2856,10 +2856,13 @@ async function startVoiceRec() {
         for (let i = 0; i < last.length; i += step) { sq += last[i] * last[i]; n++; }
         rms = n ? Math.sqrt(sq / n) : 0;
       }
-      // Portão de silêncio: abaixo do ruído ambiente a barrinha fica no mínimo
-      window._recWavePeak = Math.max(window._recWavePeak * 0.999, rms, 0.05);
-      const _gate = 0.022;
-      const h = rms < _gate ? 3 : Math.max(4, Math.round(24 * Math.min(1, (rms - _gate) / (window._recWavePeak - _gate + 0.001))));
+      // Calibração automática: aprende o ruído do ambiente e o volume da SUA voz
+      if (window._recNoise == null) window._recNoise = Math.max(rms, 0.002);
+      if (rms < window._recNoise * 1.5) window._recNoise = window._recNoise * 0.9 + rms * 0.1;
+      window._recWavePeak = Math.max((window._recWavePeak || 0) * 0.997, rms);
+      const base = window._recNoise * 1.4;
+      const top = Math.max(window._recWavePeak, base * 2.5);
+      const h = rms <= base ? 3 : Math.max(5, Math.round(4 + 20 * Math.min(1, (rms - base) / (top - base))));
       const bar = document.createElement('i');
       bar.style.cssText = 'display:block;width:2.5px;border-radius:2px;background:#8696a0;flex-shrink:0;height:' + h + 'px;transition:height .1s';
       w.appendChild(bar);
@@ -3966,18 +3969,14 @@ function _ensurePresenceWatch() {
       if (Math.abs(dy) > 14 && Math.abs(dy) > Math.abs(dx)) { mEl.style.transition = ''; mEl = null; return; }
       if (dx > 12 && Math.abs(dx) > Math.abs(dy)) horiz = true;
     }
-    if (horiz) mEl.style.transform = 'translateX(' + Math.min(dx, 150) + 'px)';
+    if (horiz) mEl.style.transform = 'translateX(' + Math.min(dx, 74) + 'px)';
   }, { passive: true });
   const fim = () => {
     if (!mEl) return;
     const el = mEl; mEl = null;
     el.style.transition = 'transform .18s ease';
     el.style.transform = '';
-    if (horiz && dx > Math.min(130, (window.innerWidth || 360) * 0.36)) {
-      // arrasto LONGO mesmo em cima da bolha = VOLTAR para a lista
-      window._lastSwipeTs = Date.now();
-      try { goBackToSidebar(); } catch (_) {}
-    } else if (horiz && dx > 52) { const id = el.dataset.msgId; if (id) startReply(id); }
+    if (horiz && dx > 52) { const id = el.dataset.msgId; if (id) startReply(id); } // bolha = responder, sempre
   };
   document.addEventListener('touchend', fim);
   document.addEventListener('touchcancel', fim);
@@ -4377,6 +4376,11 @@ async function loadMessages(phone, scroll = true) {
     // Atualização INCREMENTAL: mexe só no que mudou — nada de recriar a conversa
     // inteira (que recarregava fotos/áudios e fazia a tela subir/descer sozinha)
     const _mkEl = html => { const t = document.createElement('div'); t.innerHTML = html; const el = t.firstElementChild; el._html = html; return el; };
+    // Bolhas temporárias já confirmadas saem AGORA (a real entra no mesmo quadro)
+    area.querySelectorAll('[data-key^="temp-"]').forEach(t => {
+      const txt = (t.querySelector('.msg-text') || {}).textContent || '';
+      if (txt && msgs.some(x => x.direction === 'outbound' && String(x.content) === txt)) t.remove();
+    });
     const kids = Array.from(area.children);
     const samePrefix = kids.length > 0 && kids.length <= parts.length &&
       kids.every((el, i) => el.dataset && el.dataset.key === parts[i].key);
@@ -4671,7 +4675,9 @@ async function sendMessage() {
       return;
     }
     markAsRead(currentPhone);
-    await loadMessages(currentPhone); // substitui a bolha temporária pela definitiva
+    // O relógio vira ✓ NA HORA; a recarga troca pela definitiva no mesmo quadro (sem piscar)
+    try { const tk = tempEl && tempEl.querySelector('.msg-ticks'); if (tk) { tk.textContent = '✓'; tk.className = 'msg-ticks sent'; tk.title = ''; } } catch (_) {}
+    await loadMessages(currentPhone, false);
     if (tempEl && tempEl.parentElement) tempEl.remove();
   } catch(e) {
     if (tempEl) tempEl.remove();
