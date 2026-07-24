@@ -1349,7 +1349,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v65</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v66</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1564,8 +1564,7 @@ window.addEventListener('load', initAuth);
 
     <div style="border:1px solid #e9edef;border-radius:10px;padding:14px">
       <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">🛟 Suporte</div>
-      <button onclick="testPushNow()" style="background:#00a884;color:#fff;border:none;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">🔔 Testar notificações</button>
-      <div id="push-test-result" style="font-size:12.5px;color:#667781;margin-top:8px;line-height:1.5"></div>
+      <div style="font-size:13px;color:#667781">Em breve.</div>
     </div>
   </div>
 </div>
@@ -1854,7 +1853,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v65</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v66</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1908,7 +1907,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 65;
+const APP_VER = 66;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4515,19 +4514,49 @@ document.addEventListener('paste', (e) => {
 // ── ARQUIVO / ANEXO ──
 let selectedFile = null;
 
-let _previewFile = null, _mediaCaption = '', _mediaQueue = [];
-// Vários arquivos de uma vez: fotos/vídeos entram numa fila com prévia um a um
+let _previewFile = null, _mediaCaption = '', _previewList = [];
+// Vários arquivos: UMA prévia com todas as fotos, ✕ para excluir e UM botão de enviar
 function handleFilesSelect(files) {
   const arr = Array.from(files || []);
   if (!arr.length) return;
-  if (arr.length === 1) { handleFileSelect(arr[0]); return; }
   const media = arr.filter(f => f.type.startsWith('image/') || f.type.startsWith('video/'));
   const resto = arr.filter(f => !media.includes(f));
   if (!media.length) { handleFileSelect(arr[0]); return; }
   if (resto.length) alert('O envio múltiplo vale para fotos e vídeos — os outros arquivos, envie um por vez.');
-  _mediaQueue = media.slice(1);
-  handleFileSelect(media[0]);
+  _previewList = media;
+  _renderMediaPreview();
 }
+function _renderMediaPreview() {
+  const ov = document.getElementById('media-preview-overlay');
+  const hd = document.getElementById('mp-holder');
+  const tt = document.getElementById('mp-title');
+  const cp = document.getElementById('mp-caption');
+  if (!ov || !hd) return;
+  if (!_previewList.length) { closeMediaPreview(); return; }
+  if (tt) tt.textContent = _previewList.length === 1
+    ? (_previewList[0].type.startsWith('image/') ? 'Enviar foto' : 'Enviar vídeo')
+    : `Enviar ${_previewList.length} arquivos`;
+  if (_previewList.length === 1) {
+    const f = _previewList[0]; const url = URL.createObjectURL(f);
+    hd.innerHTML = f.type.startsWith('image/')
+      ? `<img src="${url}" style="max-width:100%;max-height:56vh;object-fit:contain">`
+      : `<video src="${url}" controls playsinline style="max-width:100%;max-height:56vh"></video>`;
+  } else {
+    hd.innerHTML = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px;max-height:56vh;overflow-y:auto;width:100%;box-sizing:border-box">` +
+      _previewList.map((f, i) => {
+        const url = URL.createObjectURL(f);
+        const thumb = f.type.startsWith('image/')
+          ? `<img src="${url}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;display:block">`
+          : `<video src="${url}" muted style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;display:block"></video>`;
+        return `<div style="position:relative">${thumb}
+          <span onclick="_rmPreview(${i})" title="Remover" style="position:absolute;top:4px;right:4px;background:rgba(11,20,26,.75);color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer">✕</span>
+          ${f.type.startsWith('video/') ? '<span style="position:absolute;bottom:6px;left:6px;font-size:14px">🎬</span>' : ''}</div>`;
+      }).join('') + `</div>`;
+  }
+  if (cp && ov.style.display !== 'flex') cp.value = '';
+  ov.style.display = 'flex';
+}
+function _rmPreview(i) { _previewList.splice(i, 1); _renderMediaPreview(); }
 // 📋 Colar print (Ctrl+V) direto no chat
 document.addEventListener('paste', e => {
   if (!currentPhone) return;
@@ -4547,22 +4576,11 @@ function handleFileSelect(file) {
   }
   // Foto/vídeo: mostra a PRÉVIA com campo de legenda antes de enviar (igual WhatsApp)
   if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
-    _previewFile = file;
-    const ov = document.getElementById('media-preview-overlay');
-    const hd = document.getElementById('mp-holder');
-    const tt = document.getElementById('mp-title');
+    _previewList = [file];
+    _renderMediaPreview();
     const cp = document.getElementById('mp-caption');
-    if (ov && hd) {
-      const url = URL.createObjectURL(file);
-      hd.innerHTML = file.type.startsWith('image/')
-        ? `<img src="${url}" style="max-width:100%;max-height:56vh;object-fit:contain">`
-        : `<video src="${url}" controls playsinline style="max-width:100%;max-height:56vh"></video>`;
-      if (tt) tt.textContent = (file.type.startsWith('image/') ? 'Enviar foto' : 'Enviar vídeo') + (_mediaQueue.length ? ` — mais ${_mediaQueue.length} na fila` : '');
-      if (cp) cp.value = '';
-      ov.style.display = 'flex';
-      setTimeout(() => { if (cp) cp.focus(); }, 60);
-      return;
-    }
+    setTimeout(() => { if (cp) cp.focus(); }, 60);
+    return;
   }
   selectedFile = file;
   // Ícone por tipo
@@ -4582,22 +4600,23 @@ function handleFileSelect(file) {
   msgInput.style.display = 'none';
 }
 
-function closeMediaPreview(manterFila) {
+function closeMediaPreview() {
   const ov = document.getElementById('media-preview-overlay');
   if (ov) ov.style.display = 'none';
   const hd = document.getElementById('mp-holder'); if (hd) hd.innerHTML = '';
   _previewFile = null;
-  if (!manterFila) _mediaQueue = []; // ✕ cancela também o resto da fila
+  _previewList = [];
 }
-function confirmMediaSend() {
-  if (!_previewFile) { closeMediaPreview(); return; }
+async function confirmMediaSend() {
+  if (!_previewList.length) { closeMediaPreview(); return; }
   const cp = document.getElementById('mp-caption');
-  _mediaCaption = (cp && cp.value.trim()) || '';
-  selectedFile = _previewFile;
-  closeMediaPreview(true);
-  sendFile();
-  // próxima foto da fila (se houver)
-  if (_mediaQueue.length) { const prox = _mediaQueue.shift(); setTimeout(() => handleFileSelect(prox), 300); }
+  const caption = (cp && cp.value.trim()) || '';
+  const lista = _previewList.slice();
+  closeMediaPreview();
+  // UM clique envia TODAS, em ordem; a legenda vai na última foto
+  for (let i = 0; i < lista.length; i++) {
+    await _sendOneFile(lista[i], i === lista.length - 1 ? caption : '');
+  }
 }
 function removeFile() {
   selectedFile = null;
@@ -4721,6 +4740,11 @@ async function sendFile() {
   const file = selectedFile;
   const caption = _mediaCaption || ''; _mediaCaption = '';
   removeFile();
+  await _sendOneFile(file, caption);
+}
+
+async function _sendOneFile(file, caption) {
+  if (!file || !currentPhone) return;
   // Lê como base64
   const base64 = await new Promise((resolve) => {
     const reader = new FileReader();
@@ -5026,37 +5050,6 @@ async function openNotices() {
   } catch (_) { el.innerHTML = '<div style="color:#ef4444">Erro ao carregar os avisos.</div>'; }
 }
 function closeNotices() { document.getElementById('not-overlay').style.display = 'none'; }
-
-// Teste de notificação PONTA A PONTA: registra a inscrição e pede ao servidor
-// para disparar uma notificação real — mostrando onde quebra, se quebrar.
-async function testPushNow() {
-  const out = document.getElementById('push-test-result');
-  const say = t => { if (out) out.textContent = t; };
-  try {
-    if (!('Notification' in window) || !('PushManager' in window))
-      return say('❌ Este navegador não suporta notificações. No iPhone: o VETRA precisa estar INSTALADO na tela de início (Compartilhar → Adicionar à Tela de Início) e aberto por lá.');
-    if (Notification.permission === 'denied')
-      return say('❌ Permissão NEGADA no aparelho. Ative em Ajustes → Notificações → VETRA.');
-    if (Notification.permission !== 'granted') {
-      say('⏳ Pedindo permissão…');
-      const perm = await Notification.requestPermission();
-      if (perm !== 'granted') return say('❌ Permissão não concedida.');
-    }
-    say('⏳ 1/2 Registrando a inscrição deste aparelho…');
-    const r1 = await _pushRegister(false);
-    if (!r1.ok) return say('❌ Falha ao registrar: ' + r1.error);
-    say('⏳ 2/2 Servidor disparando o teste…');
-    const r = await fetch(SERVER_URL + '/push/test', { method: 'POST' });
-    const d = await r.json().catch(() => ({}));
-    if (d.error) return say('❌ Servidor: ' + d.error);
-    const ok = (d.results || []).filter(x => x.ok).length;
-    const bad = (d.results || []).filter(x => !x.ok);
-    let t = `Aparelhos inscritos nesta conta: ${d.minhas_inscricoes}. Enviadas com sucesso: ${ok}.`;
-    if (!d.minhas_inscricoes) t += ' ⚠️ NENHUM aparelho inscrito — a inscrição não chegou ao servidor.';
-    if (bad.length) t += ' Falhas: ' + bad.map(b => (b.status || '?') + ' ' + (b.msg || '')).join(' | ');
-    say((ok ? '✅ ' : '⚠️ ') + t + (ok ? ' A notificação deve ter aparecido AGORA no(s) aparelho(s).' : ''));
-  } catch (e) { say('❌ ' + (e.message || e)); }
-}
 
 // ── Configurações (Integração / Faturamento / Suporte) ──
 async function openConfigModal() {
