@@ -1376,7 +1376,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v83</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v84</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1881,7 +1881,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v83</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v84</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1935,7 +1935,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 83;
+const APP_VER = 84;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3363,13 +3363,15 @@ async function toggleFavorite(phone) {
 (function initContactSwipe() {
   const list = document.getElementById('contacts-list');
   if (!list) return;
-  let startX = 0, startY = 0, item = null, dx = 0, swiping = false, quietTs = 0;
+  let startX = 0, startY = 0, item = null, dx = 0, swiping = false, quietTs = 0, startScroll = 0;
+  const cancelSwipe = () => { if (item) { item.style.transition = ''; item.style.transform = ''; } item = null; swiping = false; };
   list.addEventListener('touchstart', e => {
     // Lista ainda deslizando (inércia)? Este toque é para PARAR/continuar a rolagem — não é swipe
     if (Date.now() - quietTs < 250) { item = null; return; }
     const wrap = e.target.closest('.contact-swipe-wrap'); if (!wrap) return;
     item = wrap.querySelector('.contact-item'); dx = 0; swiping = false;
     startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+    startScroll = list.scrollTop;
     if (item) item.style.transition = 'none';
   }, { passive: true });
   list.addEventListener('touchmove', e => {
@@ -3380,13 +3382,15 @@ async function toggleFavorite(phone) {
     if (!swiping && Math.abs(dy) > 8) {
       item.style.transition = ''; item.style.transform = ''; item = null; return;
     }
-    if (!swiping && Date.now() - quietTs < 250) { item.style.transition = ''; item.style.transform = ''; item = null; return; }
+    // REGRA ABSOLUTA: a lista rolou (mais de 3px) = é rolagem, nunca swipe — mesmo já engatado
+    if (Math.abs(list.scrollTop - startScroll) > 3) { cancelSwipe(); return; }
+    if (!swiping && Date.now() - quietTs < 250) { cancelSwipe(); return; }
     if (!swiping && Math.abs(dx) > 26 && Math.abs(dx) > Math.abs(dy) * 3) swiping = true;
     if (swiping) item.style.transform = `translateX(${Math.max(-100, Math.min(100, dx))}px)`;
   }, { passive: true });
-  list.addEventListener('scroll', () => { // a lista rolou = não era swipe
+  list.addEventListener('scroll', () => { // a lista rolou = não era swipe (NUNCA, nem engatado)
     quietTs = Date.now(); // marca a lista como "em movimento"
-    if (item && !swiping) { item.style.transition = ''; item.style.transform = ''; item = null; }
+    if (item && Math.abs(list.scrollTop - startScroll) > 3) cancelSwipe();
   }, { passive: true });
   list.addEventListener('touchend', () => {
     if (!item) return;
