@@ -1322,7 +1322,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v48</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v50</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1569,6 +1569,8 @@ window.addEventListener('load', initAuth);
   <div class="cm-item" onclick="msgMenuReply()">↩ Responder</div>
   <div class="cm-item" onclick="msgMenuReact()">😊 Reagir</div>
   <div class="cm-item" onclick="msgMenuCopy()">📋 Copiar</div>
+  <div class="cm-item" id="msg-menu-pinmsg" onclick="msgMenuPinMsg()">📌 Fixar</div>
+  <div class="cm-item" id="msg-menu-starmsg" onclick="msgMenuStarMsg()">⭐ Favoritar</div>
   <div class="cm-item" id="msg-menu-edit" style="display:none" onclick="msgMenuEdit()">✏️ Editar</div>
   <div class="cm-item" id="msg-menu-revoke" style="display:none;color:#ef4444" onclick="msgMenuRevoke()">🚫 Apagar para todos</div>
   <div class="cm-item" onclick="msgMenuDelete()" style="color:#ef4444">🗑 Apagar</div>
@@ -1796,7 +1798,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v48</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v50</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1850,7 +1852,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 48;
+const APP_VER = 50;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2862,6 +2864,13 @@ function _updateMsgMenuItems(id) {
     }
   } catch (_) {}
   item.style.display = show ? '' : 'none';
+  try {
+    const mm = (currentMessages || []).find(x => String(x.id) === String(id));
+    const pi = document.getElementById('msg-menu-pinmsg');
+    if (pi) pi.textContent = (mm && mm.pinned) ? '📌 Desafixar' : '📌 Fixar';
+    const si = document.getElementById('msg-menu-starmsg');
+    if (si) si.textContent = (mm && mm.starred) ? '★ Desfavoritar' : '⭐ Favoritar';
+  } catch (_) {}
   const rev = document.getElementById('msg-menu-revoke');
   if (rev) {
     let showR = false;
@@ -2874,6 +2883,23 @@ function _updateMsgMenuItems(id) {
     } catch (_) {}
     rev.style.display = showR ? '' : 'none';
   }
+}
+function _msgToggleFlag(id, field, path) {
+  const mm = (currentMessages || []).find(x => String(x.id) === String(id)); if (!mm) return;
+  const nv = !mm[field]; mm[field] = nv;
+  fetch(SERVER_URL + '/messages/' + encodeURIComponent(id) + path, { method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(field === 'starred' ? { starred: nv } : { pinned: nv }) })
+    .then(r => r.json()).then(d => { if (d.error) alert('Rode no Supabase: alter table messages add column if not exists ' + field + ' boolean default false;'); }).catch(() => {});
+  _lastMsgsSig = ''; loadMessages(currentPhone, false);
+}
+function msgMenuPinMsg()  { const id = _msgMenuId; closeMsgMenu(); if (id) _msgToggleFlag(id, 'pinned',  '/pin'); }
+function msgMenuStarMsg() { const id = _msgMenuId; closeMsgMenu(); if (id) _msgToggleFlag(id, 'starred', '/star'); }
+function _gotoPinnedMsg() {
+  const id = window._pinnedMsgId; if (!id) return;
+  const el = document.querySelector(`#messages-area .msg[data-msg-id="${(window.CSS && CSS.escape) ? CSS.escape(String(id)) : String(id)}"]`);
+  if (!el) return;
+  el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  el.classList.add('cs-hit'); setTimeout(() => el.classList.remove('cs-hit'), 1800);
 }
 function msgMenuRevoke() {
   const id = _msgMenuId; closeMsgMenu(); if (!id) return;
@@ -3146,7 +3172,6 @@ async function selectContact(phone, name, accountId) {
         <div class="cm-item" onclick="closeAttachMenu();document.getElementById('file-input').click()">📄 Arquivo / foto / vídeo</div>
         <div class="cm-item" onclick="closeAttachMenu();sendLocationUI()">📍 Localização</div>
         <div class="cm-item" onclick="closeAttachMenu();sendContactUI()">👤 Contato</div>
-        <div class="cm-item" id="attach-poll-item" onclick="closeAttachMenu();sendPollUI()">📊 Enquete</div>
       </div>
       <button id="btn-start-bot" title="Iniciar bot" onclick="openBotLauncher()" style="background:none;border:none;color:#667781;cursor:pointer;padding:6px;border-radius:50%;transition:background 0.2s;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px">🤖</button>
       <div id="bot-launcher-menu" style="display:none;position:absolute;bottom:calc(100% + 6px);left:12px;background:#ffffff;border:1px solid #e9edef;border-radius:8px;padding:8px;min-width:200px;z-index:100;box-shadow:0 4px 12px rgba(0,0,0,0.4)">
@@ -3512,9 +3537,6 @@ async function togglePin(phone) {
 function toggleAttachMenu(ev) {
   if (ev) { ev.preventDefault(); ev.stopPropagation(); }
   const m = document.getElementById('attach-menu'); if (!m) return;
-  const acc = (window._accountsById || {})[currentAccountId];
-  const isQr = !!(acc && (acc.type === 'evolution' || acc.evolution_instance));
-  const pi = document.getElementById('attach-poll-item'); if (pi) pi.style.display = isQr ? '' : 'none';
   m.style.display = m.style.display === 'none' ? 'block' : 'none';
 }
 function closeAttachMenu() { const m = document.getElementById('attach-menu'); if (m) m.style.display = 'none'; }
@@ -3549,20 +3571,6 @@ async function sendContactUI() {
     loadMessages(currentPhone, true);
   } catch (_) { alert('Erro ao enviar contato.'); }
 }
-async function sendPollUI() {
-  if (!currentPhone) return;
-  const q = prompt('Pergunta da enquete:'); if (!q) return;
-  const ops = prompt('Opções separadas por vírgula (mínimo 2):'); if (!ops) return;
-  const options = ops.split(',').map(s => s.trim()).filter(Boolean);
-  if (options.length < 2) return alert('Informe pelo menos 2 opções.');
-  try {
-    const r = await fetch(SERVER_URL + '/send-poll', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ to: currentPhone, account_id: currentAccountId || null, question: q.trim(), options }) });
-    const d = await r.json(); if (d.error) return alert('Erro: ' + d.error);
-    loadMessages(currentPhone, true);
-  } catch (_) { alert('Erro ao enviar enquete.'); }
-}
-
 // ── 🟢 Online / visto por último (números QR) ──
 let _presTimer = null, _presPhone = null;
 function _ensurePresenceWatch() {
@@ -3789,7 +3797,7 @@ async function loadMessages(phone, scroll = true) {
     // carregamento dos vídeos e fecha a tela cheia. Só re-renderiza se algo mudou
     // e se nenhuma mídia estiver tocando ou em tela cheia.
     const sig = phone + '::' + msgs.map(m =>
-      `${m.id}|${m.status || ''}|${m.reaction || ''}|${m.error_info ? 1 : 0}|${(m.content || '').length}.${String(m.content || '').slice(0, 16)}`).join(';');
+      `${m.id}|${m.status || ''}|${m.reaction || ''}|${m.error_info ? 1 : 0}|${m.starred ? 1 : 0}${m.pinned ? 1 : 0}|${(m.content || '').length}.${String(m.content || '').slice(0, 16)}`).join(';');
     if (!scroll) {
       if (sig === _lastMsgsSig) return; // nada mudou — não mexe no DOM
       const mediaEls = area.querySelectorAll('video, audio');
@@ -3800,6 +3808,23 @@ async function loadMessages(phone, scroll = true) {
       if (mediaPlaying || inFullscreen) return;
     }
     _lastMsgsSig = sig;
+
+    // 📌 Faixa da mensagem fixada (clica → vai até a mensagem)
+    try {
+      const pins = msgs.filter(x => x.pinned);
+      const pin = pins.length ? pins[pins.length - 1] : null;
+      let pb = document.getElementById('pinned-banner');
+      if (pin) {
+        window._pinnedMsgId = pin.id;
+        const prevTxt = String(pin.content || 'Mensagem fixada').replace(/\s+/g, ' ').slice(0, 70);
+        if (!pb) {
+          area.insertAdjacentHTML('beforebegin', `<div id="pinned-banner" onclick="_gotoPinnedMsg()" style="background:#fff;border-bottom:1px solid #e9edef;padding:8px 14px;display:flex;gap:9px;align-items:center;cursor:pointer;font-size:12.5px;color:#111b21"><span style="flex-shrink:0">📌</span><span id="pinned-banner-text" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span></div>`);
+          pb = document.getElementById('pinned-banner');
+        }
+        const pt = document.getElementById('pinned-banner-text'); if (pt) pt.textContent = prevTxt;
+        pb.style.display = 'flex';
+      } else if (pb) pb.style.display = 'none';
+    } catch (_) {}
 
     let lastDay = null;
     const parts = [];
@@ -3844,7 +3869,7 @@ async function loadMessages(phone, scroll = true) {
             <button class="msg-menu-btn" title="Opções da mensagem" onclick="openMsgMenu(event,'${safeId}')">⌄</button>
           </div>
           ${msgContent}
-          <div class="time">${timeStr}${ticks}</div>
+          <div class="time">${m.starred ? '<span style="font-size:10px;margin-right:3px;opacity:.75">★</span>' : ''}${timeStr}${ticks}</div>
           ${reactBadge}
         </div>` });
       } catch(msgErr) {
