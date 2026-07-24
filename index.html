@@ -1350,7 +1350,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v69</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v70</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1855,7 +1855,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v69</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v70</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1909,7 +1909,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 69;
+const APP_VER = 70;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2842,6 +2842,23 @@ async function startVoiceRec() {
       if (el) el.textContent = Math.floor(_recSecs / 60) + ':' + String(_recSecs % 60).padStart(2, '0');
       if (_recSecs >= REC_MAX_SECS) stopVoiceRec(false); // envia ao atingir o limite
     }, 1000);
+    // Forma de onda AO VIVO (barrinhas acompanham sua voz, igual WhatsApp)
+    const wv = document.getElementById('rec-wave'); if (wv) wv.innerHTML = '';
+    window._recWaveTimer = setInterval(() => {
+      const w = document.getElementById('rec-wave'); if (!w) return;
+      const last = _recBufs[_recBufs.length - 1];
+      let amp = 0;
+      if (last && last.length) {
+        let sm = 0, n = 0; const step = Math.max(1, Math.floor(last.length / 40));
+        for (let i = 0; i < last.length; i += step) { sm += Math.abs(last[i]); n++; }
+        amp = n ? sm / n : 0;
+      }
+      const h = Math.max(3, Math.min(24, Math.round(amp * 220)));
+      const bar = document.createElement('i');
+      bar.style.cssText = 'display:block;width:2.5px;border-radius:2px;background:#8696a0;flex-shrink:0;height:' + h + 'px';
+      w.appendChild(bar);
+      while (w.children.length > 64) w.removeChild(w.firstChild);
+    }, 120);
   } catch (e) {
     alert('Não consegui acessar o microfone.\nVerifique a permissão do microfone para o app.\n(' + e.message + ')');
   }
@@ -2849,6 +2866,7 @@ async function startVoiceRec() {
 
 function _recTeardown() {
   clearInterval(_recTimer); _recTimer = null;
+  clearInterval(window._recWaveTimer); window._recWaveTimer = null;
   try { _recProc && _recProc.disconnect(); } catch (_) {}
   try { _recSrc  && _recSrc.disconnect();  } catch (_) {}
   try { _recGain && _recGain.disconnect(); } catch (_) {}
@@ -2860,19 +2878,27 @@ function _recTeardown() {
 }
 
 let _recPending = null; // áudio gravado aguardando revisão
-function stopVoiceRec(cancel) {
-  if (!_recCtx && !_recBufs.length) { _recUI(false); return; }
+function _recFinish(cancel) {
+  if (!_recCtx && !_recBufs.length) { _recUI(false); return null; }
   const bufs = _recBufs, rate = _recRate;
   _recBufs = [];
   _recTeardown();
   _recUI(false);
   notifyTyping('paused'); // some o "gravando áudio…" no cliente
-  if (cancel) return;
+  if (cancel) return null;
   const total = bufs.reduce((s, c) => s + c.length, 0);
-  if (total < rate * 0.4) return; // menos de meio segundo: descarta
-  // OUVIR ANTES DE ENVIAR: mostra o player de revisão (🗑 descarta / ➤ envia)
-  _recPending = { blob: _encodeWav(bufs, rate), secs: Math.round(total / rate) };
-  _showRecReview();
+  if (total < rate * 0.4) return null; // menos de meio segundo: descarta
+  return { blob: _encodeWav(bufs, rate), secs: Math.round(total / rate) };
+}
+// ➤ durante a gravação: ENVIA direto (igual WhatsApp)
+function stopVoiceRec(cancel) {
+  const pnd = _recFinish(cancel);
+  if (pnd) sendVoiceBlob(pnd.blob, pnd.secs);
+}
+// ⏸ durante a gravação: para e abre a REVISÃO para ouvir antes de enviar
+function _recPauseToReview() {
+  const pnd = _recFinish(false);
+  if (pnd) { _recPending = pnd; _showRecReview(); }
 }
 function _showRecReview() {
   if (!_recPending) return;
@@ -3446,12 +3472,16 @@ async function selectContact(phone, name, accountId) {
         </div>
         <textarea id="msg-input" placeholder="Mensagem" rows="1" onkeydown="handleKey(event)" oninput="updateSendMicButtons();notifyTypingThrottled();autoGrowMsgInput(this)"></textarea>
       </div>
-      <div id="rec-bar" style="display:none;flex:1;align-items:center;gap:10px;background:#e9edef;border-radius:24px;padding:8px 14px;min-width:0">
-        <span style="color:#ef4444;font-size:14px">●</span>
-        <span id="rec-time" style="font-size:14px;color:#131c20;font-variant-numeric:tabular-nums">0:00</span>
-        <span style="flex:1"></span>
-        <button onclick="stopVoiceRec(true)" style="background:none;border:none;color:#667781;cursor:pointer;font-size:13px;font-weight:600">Cancelar</button>
-        <button onclick="stopVoiceRec(false)" style="background:#00a884;border:none;color:#fff;cursor:pointer;font-size:13px;font-weight:700;border-radius:16px;padding:6px 14px">Enviar ➤</button>
+      <div id="rec-bar" style="display:none;flex:1;flex-direction:column;gap:10px;min-width:0;padding:2px 2px 4px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span id="rec-time" style="font-size:16px;color:#131c20;font-variant-numeric:tabular-nums">0:00</span>
+          <div id="rec-wave" style="flex:1;display:flex;align-items:center;gap:2px;height:26px;justify-content:flex-end;overflow:hidden"></div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <button onclick="stopVoiceRec(true)" title="Descartar" style="background:none;border:none;font-size:23px;cursor:pointer;color:#54656f;padding:2px 6px">🗑</button>
+          <button onclick="_recPauseToReview()" title="Pausar e ouvir" style="width:48px;height:48px;border-radius:50%;border:2.5px solid #ef4444;background:none;color:#ef4444;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center">⏸</button>
+          <button onclick="stopVoiceRec(false)" title="Enviar" style="width:48px;height:48px;border-radius:50%;background:#00a884;border:none;color:#fff;font-size:17px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.25)">➤</button>
+        </div>
       </div>
       <button id="mic-btn" onclick="startVoiceRec()" title="Gravar áudio" style="background:none;border:none;font-size:20px;cursor:pointer;color:#667781;padding:6px;flex-shrink:0">🎤</button>
       <button id="send-btn" onclick="sendMessage()" style="display:none">
