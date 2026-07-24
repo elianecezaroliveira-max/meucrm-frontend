@@ -820,6 +820,14 @@
   #layout.mobile-chat-open #sidebar { transform: translateX(-100%); }
   #layout.mobile-chat-open #chat-area { transform: translateX(0); }
 
+  /* Chat aberto: TELA INTEIRA — some a barra "VETRA" e o cabeçalho respeita a câmera */
+  body.mobile-chat-open #topbar { display: none; }
+  body.mobile-chat-open #chat-header { padding-top: calc(8px + env(safe-area-inset-top)); }
+  /* Rodapé colado na barra de gesto (sem borda sobrando) */
+  @supports (padding: env(safe-area-inset-top)) {
+    #input-area { padding-bottom: calc(2px + env(safe-area-inset-bottom)) !important; }
+  }
+
   /* Botão voltar aparece no mobile */
   #btn-back-mobile { display: flex !important; }
 
@@ -1335,7 +1343,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v60</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v61</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1839,7 +1847,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v60</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v61</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1893,7 +1901,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 60;
+const APP_VER = 61;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3228,6 +3236,7 @@ async function selectContact(phone, name, accountId) {
 
   // Mobile: mostra chat e esconde sidebar (e a barra inferior sai de cena)
   document.getElementById('layout').classList.add('mobile-chat-open');
+  document.body.classList.add('mobile-chat-open');
   try { _mnavVisible(false); } catch (_) {}
 
   chatArea.innerHTML = `
@@ -3554,6 +3563,7 @@ function lpLoadMedia(phone){
 // Volta para sidebar no mobile
 function goBackToSidebar() {
   document.getElementById('layout').classList.remove('mobile-chat-open');
+  document.body.classList.remove('mobile-chat-open');
   try { _mnavVisible(true); } catch (_) {} // barra inferior volta com a lista
 }
 
@@ -6440,6 +6450,7 @@ async function deleteConversation(phone) {
       <span style="font-size:13px">Suas mensagens do WhatsApp aparecerão aqui</span>
     </div>`;
       document.getElementById('layout')?.classList.remove('mobile-chat-open'); // celular: volta para a lista
+      document.body.classList.remove('mobile-chat-open');
       const lp = document.getElementById('lead-panel');
       if (lp) { lp.classList.add('lp-hidden'); lp.innerHTML = ''; }
     }
