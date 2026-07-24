@@ -1376,7 +1376,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v75</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v76</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1881,7 +1881,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v75</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v76</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1935,7 +1935,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 75;
+const APP_VER = 76;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2892,10 +2892,10 @@ async function startVoiceRec() {
       const top = Math.max(window._recWavePeak, base * 2.5);
       const h = rms <= base ? 3 : Math.max(5, Math.round(4 + 20 * Math.min(1, (rms - base) / (top - base))));
       const bar = document.createElement('i');
-      bar.style.cssText = 'display:block;width:2.5px;border-radius:2px;background:#8696a0;flex-shrink:0;height:' + h + 'px;transition:height .1s';
+      bar.style.cssText = 'display:block;width:2.5px;border-radius:2px;background:#8696a0;flex-shrink:0;height:' + h + 'px';
       w.appendChild(bar);
-      while (w.children.length > 64) w.removeChild(w.firstChild);
-    }, 120);
+      while (w.children.length > 72) w.removeChild(w.firstChild);
+    }, 70);
   } catch (e) {
     alert('Não consegui acessar o microfone.\nVerifique a permissão do microfone para o app.\n(' + e.message + ')');
   }
@@ -3019,7 +3019,7 @@ async function sendVoiceBlob(blob, durationSecs) {
     const d = document.createElement('div');
     d.className = 'msg outbound';
     d.innerHTML = '🎤 <em style="font-size:13px;opacity:.8">Enviando áudio...</em>';
-    area.appendChild(d); area.scrollTo({ top: area.scrollHeight, behavior: 'smooth' });
+    area.appendChild(d); window._lastPushTs = Date.now(); area.scrollTo({ top: area.scrollHeight, behavior: 'smooth' });
   }
   try {
     const res = await fetch(SERVER_URL + '/send-media', {
@@ -4423,8 +4423,9 @@ async function loadMessages(phone, scroll = true) {
     }
 
     if (scroll || nearBottom) {
-      if (!scroll && nearBottom) area.scrollTo({ top: area.scrollHeight, behavior: 'smooth' }); // empurrãozinho suave
-      else area.scrollTop = area.scrollHeight; // abertura da conversa: posiciona direto
+      // Se o envio ACABOU de deslizar a tela, não desliza de novo (evita o tremor duplo)
+      if (!scroll && nearBottom && Date.now() - (window._lastPushTs || 0) > 700) area.scrollTo({ top: area.scrollHeight, behavior: 'smooth' });
+      else area.scrollTop = area.scrollHeight;
       hideNewMsgPill();
     } else {
       if (!samePrefix) area.scrollTop = prevTop; // no incremental a posição nem chega a mudar
@@ -4660,6 +4661,7 @@ function appendPendingBubble(text) {
   el.dataset.key = 'temp-' + Date.now();
   el.innerHTML = `<span class="msg-text">${escHtml(text)}</span><div class="time">${_brtTime(Date.now())}<span class="msg-ticks pending" title="Enviando…">🕐</span></div>`;
   area.appendChild(el);
+  window._lastPushTs = Date.now();
   area.scrollTo({ top: area.scrollHeight, behavior: 'smooth' }); // empurrãozinho suave
   return el;
 }
@@ -4678,6 +4680,7 @@ async function sendMessage() {
   input.value = '';
   autoGrowMsgInput(input); // campo volta à altura normal
   input.focus(); // teclado do celular continua aberto para a próxima mensagem
+  setTimeout(() => window.scrollTo(0, 0), 60); // iOS: desfaz o deslocamento da página (campo não fica cortado)
   // Sem delay: a bolha aparece imediatamente; o servidor confirma em seguida
   const reply = replyingTo; cancelReply();
   const tempEl = appendPendingBubble(savedMessage);
@@ -5078,6 +5081,7 @@ async function _sendOneFile(file, caption, semRecarga) {
       div.innerHTML = `${icon} <em style="font-size:13px;opacity:.8">${escHtml(file.name)}</em><div class="time">${horaAgora}</div>`;
     }
     area.appendChild(div);
+    window._lastPushTs = Date.now();
     area.scrollTo({ top: area.scrollHeight, behavior: 'smooth' }); // empurrãozinho suave
   }
   try {
