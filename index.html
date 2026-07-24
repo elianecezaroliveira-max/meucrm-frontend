@@ -1378,7 +1378,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v95</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v96</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1883,7 +1883,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v95</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v96</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1937,7 +1937,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 95;
+const APP_VER = 96;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3805,9 +3805,10 @@ function goBackToSidebar() {
     if (!layout || !layout.classList.contains('mobile-chat-open')) return;
     // Funciona de qualquer ponto da conversa (a borda é reservada pelo iOS),
     // exceto sobre player, vídeo, cabeçalho e barra de digitação
-    if (!e.target.closest('#chat-area')) return;
-    if (e.target.closest('video, .voice-player, #input-area, #chat-header, #notes-panel, .msg')) return;
     const t = e.touches[0];
+    if (t.clientX > 26) return; // igual WhatsApp: fechar SÓ arrastando da BORDA esquerda
+    if (!e.target.closest('#chat-area')) return;
+    if (e.target.closest('#input-area')) return;
     chat = document.getElementById('chat-area');
     if (!chat) return;
     active = true; horiz = false; sx = t.clientX; sy = t.clientY; dx = 0;
@@ -3828,7 +3829,7 @@ function goBackToSidebar() {
     if (!active || !chat) return;
     chat.style.transition = ''; // devolve a animação suave ao CSS
     chat.style.transform = '';
-    if (horiz && dx > Math.min(80, (window.innerWidth || 360) * 0.22)) goBackToSidebar();
+    if (horiz && dx > Math.min(70, (window.innerWidth || 360) * 0.2)) goBackToSidebar();
     active = false; chat = null; dx = 0;
   };
   document.addEventListener('touchend', finish);
@@ -4059,6 +4060,7 @@ document.addEventListener('wheel', e => { if (e.target.closest && e.target.close
   document.addEventListener('touchstart', e => {
     const el = e.target.closest('#messages-area .msg');
     if (!el || (typeof _selMode !== 'undefined' && _selMode)) return;
+    if (e.touches[0].clientX <= 28) return; // a borda esquerda pertence ao gesto de FECHAR
     mEl = el; sx = e.touches[0].clientX; sy = e.touches[0].clientY; dx = 0; horiz = false; t0 = Date.now();
     el.style.transition = 'none';
   }, { passive: true });
@@ -4078,16 +4080,8 @@ document.addEventListener('wheel', e => { if (e.target.closest && e.target.close
     el.style.transition = 'transform .18s ease';
     el.style.transform = '';
     if (!horiz) return;
-    const dt = Math.max(1, Date.now() - t0);
-    const vel = dx / dt; // px por milissegundo
-    const larg = window.innerWidth || 360;
-    // PASSADA rápida ou bem longa = FECHAR a conversa; arrasto calmo e curto = responder
-    if (dx > larg * 0.45 || (dx > 90 && vel > 0.55)) {
-      window._lastSwipeTs = Date.now();
-      try { goBackToSidebar(); } catch (_) {}
-    } else if (dx > 52 && vel <= 0.55) {
-      const id = el.dataset.msgId; if (id) startReply(id);
-    }
+    // Bolha = RESPONDER, sempre (fechar é só pela borda esquerda, como no WhatsApp)
+    if (dx > 52) { const id = el.dataset.msgId; if (id) startReply(id); }
   };
   document.addEventListener('touchend', fim);
   document.addEventListener('touchcancel', fim);
