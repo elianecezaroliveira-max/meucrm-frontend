@@ -878,21 +878,21 @@
   #side-rail { display: none !important; }
   #topbar, #layout { margin-left: 0 !important; }
   #pipeline-view { left: 0 !important; }
-  /* ── Barra inferior: "+" com as ferramentas + Adicionar contato ── */
+  /* ── Botão "+" FLUTUANTE (estilo WhatsApp): a lista passa por baixo dele ── */
   #mobile-nav {
-    display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 55;
-    background: #ffffff; border-top: 1px solid #e9edef;
-    padding: 8px 16px calc(8px + env(safe-area-inset-bottom));
-    align-items: center; justify-content: center; gap: 34px;
+    display: block; position: fixed; left: auto; right: 16px;
+    bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 55;
+    background: none; border: none; padding: 0;
   }
   #mnav-plus {
-    width: 52px; height: 52px; border-radius: 50%; border: none; cursor: pointer;
+    width: 56px; height: 56px; border-radius: 16px; border: none; cursor: pointer;
     background: #00a884; color: #fff; font-size: 30px; line-height: 1;
-    box-shadow: 0 3px 10px rgba(0,168,132,.45); flex-shrink: 0;
+    box-shadow: 0 4px 14px rgba(0,0,0,.3); flex-shrink: 0;
   }
+  #mnav-plus:active { transform: scale(.94); }
   #mobile-plus-menu {
-    display: none; position: fixed; left: 12px; right: 12px;
-    bottom: calc(78px + env(safe-area-inset-bottom));
+    display: none; position: fixed; left: auto; right: 16px; min-width: 240px;
+    bottom: calc(84px + env(safe-area-inset-bottom));
     background: #ffffff; border: 1px solid #e9edef; border-radius: 14px;
     box-shadow: 0 8px 28px rgba(0,0,0,.28); padding: 6px; z-index: 56;
     max-height: 70vh; overflow-y: auto;
@@ -1322,7 +1322,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v47</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v48</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1796,7 +1796,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v47</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v48</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1850,7 +1850,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 47;
+const APP_VER = 48;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
