@@ -1376,7 +1376,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v80</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v81</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1881,7 +1881,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v80</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v81</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1935,7 +1935,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 80;
+const APP_VER = 81;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3958,6 +3958,30 @@ function _ensurePresenceWatch() {
   _presTimer = setInterval(upd, 10000);
 }
 
+// 📐 O app se ajusta à área VISÍVEL: com o teclado aberto, o corpo encolhe até a
+// borda do teclado — o campo de mensagem e as ferramentas ficam SEMPRE à vista.
+(function () {
+  if (!window.visualViewport) return;
+  const mob = () => window.matchMedia('(max-width: 768px)').matches;
+  let raf = null;
+  function fit() {
+    if (!mob()) { document.body.style.height = ''; document.body.style.top = ''; return; }
+    if (raf) cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(() => {
+      const vv = window.visualViewport;
+      document.body.style.height = vv.height + 'px';
+      document.body.style.top = vv.offsetTop + 'px';
+      window.scrollTo(0, 0);
+      // Mantém a conversa no fim quando o teclado abre (se você já estava no fim)
+      const a = document.getElementById('messages-area');
+      if (a && !window._userTouching && a.scrollHeight - a.scrollTop - a.clientHeight < 160) a.scrollTop = a.scrollHeight;
+    });
+  }
+  window.visualViewport.addEventListener('resize', fit);
+  window.visualViewport.addEventListener('scroll', fit);
+  fit();
+})();
+
 // A tela NUNCA vai contra o seu dedo: rastreia toque e rolagem manual para cima
 document.addEventListener('touchstart', e => { if (e.target.closest('#messages-area')) window._userTouching = true; }, { passive: true, capture: true });
 document.addEventListener('touchend', () => { setTimeout(() => { window._userTouching = false; }, 400); }, { passive: true });
@@ -4710,18 +4734,6 @@ async function sendMessage() {
   input.value = '';
   autoGrowMsgInput(input); // campo volta à altura normal
   input.focus(); // teclado do celular continua aberto para a próxima mensagem
-  // iOS: alinha o RODAPÉ INTEIRO (Enviar de, clipe, bots, campo) logo acima do teclado
-  setTimeout(() => {
-    try {
-      const ia = document.getElementById('input-area');
-      if (ia && window.visualViewport) {
-        const r = ia.getBoundingClientRect();
-        const vv = window.visualViewport;
-        const diff = r.bottom - (vv.height + vv.offsetTop);
-        if (Math.abs(diff) > 2) window.scrollBy(0, diff);
-      }
-    } catch (_) {}
-  }, 80);
   // Sem delay: a bolha aparece imediatamente; o servidor confirma em seguida
   const reply = replyingTo; cancelReply();
   const tempEl = appendPendingBubble(savedMessage);
