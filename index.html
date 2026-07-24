@@ -137,6 +137,7 @@
   /* CHAT */
   #chat-area { flex: 1; display: flex; flex-direction: column; background: #f0f2f5; position: relative; }
   #chat-header { background: #f0f2f5; padding: 12px 16px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #e9edef; min-height: 60px; }
+  #chat-area { position: relative; }
   #chat-header .avatar { width: 40px; height: 40px; border-radius: 50%; background: #e9edef; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 600; color: #00a884; flex-shrink: 0; }
   /* Nome do lead SEMPRE no centro exato do cabeçalho, independente dos botões */
   #chat-header { position: relative; }
@@ -1349,7 +1350,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v66</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v67</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1626,6 +1627,7 @@ window.addEventListener('load', initAuth);
   <div class="cm-item" id="msg-menu-pinmsg" onclick="msgMenuPinMsg()">📌 Fixar</div>
   <div class="cm-item" id="msg-menu-starmsg" onclick="msgMenuStarMsg()">⭐ Favoritar</div>
   <div class="cm-item" onclick="msgMenuSelect()">☑️ Selecionar</div>
+  <div class="cm-item" id="msg-menu-info" style="display:none" onclick="msgMenuInfo()">ℹ️ Dados da mensagem</div>
   <div class="cm-item" id="msg-menu-edit" style="display:none" onclick="msgMenuEdit()">✏️ Editar</div>
   <div class="cm-item" id="msg-menu-revoke" style="display:none;color:#ef4444" onclick="msgMenuRevoke()">🚫 Apagar para todos</div>
   <div class="cm-item" onclick="msgMenuDelete()" style="color:#ef4444">🗑 Apagar</div>
@@ -1853,7 +1855,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v66</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v67</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1907,7 +1909,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 66;
+const APP_VER = 67;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2857,6 +2859,7 @@ function _recTeardown() {
   if (window._recPausedPoll) { window._recPausedPoll = false; try { startPolling(); } catch (_) {} }
 }
 
+let _recPending = null; // áudio gravado aguardando revisão
 function stopVoiceRec(cancel) {
   if (!_recCtx && !_recBufs.length) { _recUI(false); return; }
   const bufs = _recBufs, rate = _recRate;
@@ -2867,7 +2870,39 @@ function stopVoiceRec(cancel) {
   if (cancel) return;
   const total = bufs.reduce((s, c) => s + c.length, 0);
   if (total < rate * 0.4) return; // menos de meio segundo: descarta
-  sendVoiceBlob(_encodeWav(bufs, rate), Math.round(total / rate));
+  // OUVIR ANTES DE ENVIAR: mostra o player de revisão (🗑 descarta / ➤ envia)
+  _recPending = { blob: _encodeWav(bufs, rate), secs: Math.round(total / rate) };
+  _showRecReview();
+}
+function _showRecReview() {
+  if (!_recPending) return;
+  let rv = document.getElementById('rec-review');
+  if (!rv) {
+    const ia = document.getElementById('input-area');
+    if (!ia) { sendVoiceBlob(_recPending.blob, _recPending.secs); _recPending = null; return; }
+    ia.insertAdjacentHTML('afterbegin', `<div id="rec-review" style="display:flex;align-items:center;gap:10px;padding:4px 2px">
+      <button onclick="_recReviewDiscard()" title="Descartar" style="background:none;border:none;font-size:20px;cursor:pointer;color:#ef4444">🗑</button>
+      <audio id="rec-review-audio" controls style="flex:1;height:38px;min-width:0"></audio>
+      <button onclick="_recReviewSend()" title="Enviar" style="width:44px;height:44px;border-radius:50%;background:#00a884;color:#fff;border:none;font-size:17px;cursor:pointer;flex-shrink:0">➤</button>
+    </div>`);
+    rv = document.getElementById('rec-review');
+  }
+  rv.style.display = 'flex';
+  const au = document.getElementById('rec-review-audio');
+  if (au) au.src = URL.createObjectURL(_recPending.blob);
+  const wrap = document.getElementById('input-wrap'); if (wrap) wrap.style.display = 'none';
+  const mic = document.getElementById('mic-btn'); if (mic) mic.style.display = 'none';
+  const send = document.getElementById('send-btn'); if (send) send.style.display = 'none';
+}
+function _recReviewHide() {
+  const rv = document.getElementById('rec-review'); if (rv) rv.style.display = 'none';
+  const wrap = document.getElementById('input-wrap'); if (wrap) wrap.style.display = '';
+  updateSendMicButtons();
+}
+function _recReviewDiscard() { _recPending = null; _recReviewHide(); }
+function _recReviewSend() {
+  const pnd = _recPending; _recPending = null; _recReviewHide();
+  if (pnd) sendVoiceBlob(pnd.blob, pnd.secs);
 }
 async function sendVoiceBlob(blob, durationSecs) {
   if (!currentPhone) return;
@@ -2937,6 +2972,13 @@ function _updateMsgMenuItems(id) {
     if (pi) pi.textContent = (mm && mm.pinned) ? '📌 Desafixar' : '📌 Fixar';
     const si = document.getElementById('msg-menu-starmsg');
     if (si) si.textContent = (mm && mm.starred) ? '★ Desfavoritar' : '⭐ Favoritar';
+  } catch (_) {}
+  try {
+    const inf = document.getElementById('msg-menu-info');
+    if (inf) {
+      const elI = document.querySelector(`#messages-area .msg[data-msg-id="${(window.CSS && CSS.escape) ? CSS.escape(String(id)) : String(id)}"]`);
+      inf.style.display = (elI && elI.dataset.msgDir === 'outbound') ? '' : 'none';
+    }
   } catch (_) {}
   const rev = document.getElementById('msg-menu-revoke');
   if (rev) {
@@ -3031,6 +3073,28 @@ async function selDelete() {
   exitSelMode(); _lastMsgsSig = ''; loadMessages(currentPhone, false);
 }
 
+function msgMenuInfo() {
+  const id = _msgMenuId; closeMsgMenu(); if (!id) return;
+  const m = (currentMessages || []).find(x => String(x.id) === String(id)); if (!m) return;
+  const f = t => t ? new Date(parseUTC(t)).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : null;
+  const rk = { pending: 0, sent: 1, delivered: 2, read: 3 }[m.status] ?? 1;
+  const linEnt = f(m.delivered_at) || (rk >= 2 ? 'sim' : '—');
+  const linLida = f(m.read_at) || (rk >= 3 ? 'sim' : '—');
+  const box = document.createElement('div');
+  box.id = 'msg-info-box';
+  box.style.cssText = 'position:fixed;inset:0;background:rgba(11,20,26,.5);z-index:950;display:flex;align-items:center;justify-content:center;padding:20px';
+  box.innerHTML = `<div style="background:#fff;border-radius:14px;padding:18px 20px;min-width:250px;max-width:320px;box-shadow:0 8px 30px rgba(0,0,0,.35)">
+    <b style="font-size:14px">Dados da mensagem</b>
+    <div style="margin-top:12px;font-size:13.5px;line-height:2.1">
+      <div><span class="msg-ticks sent" style="margin:0 6px 0 0">✓</span>Enviada · ${f(m.timestamp) || '—'}</div>
+      <div><span class="msg-ticks delivered" style="margin:0 6px 0 0">✓✓</span>Entregue · ${linEnt}</div>
+      <div><span class="msg-ticks read" style="margin:0 6px 0 0">✓✓</span>Lida · ${linLida}</div>
+    </div>
+    <div style="text-align:right;margin-top:10px"><button onclick="document.getElementById('msg-info-box').remove()" style="background:#00a884;color:#fff;border:none;border-radius:8px;padding:7px 18px;cursor:pointer;font-family:inherit;font-size:13px">OK</button></div>
+  </div>`;
+  box.onclick = e => { if (e.target === box) box.remove(); };
+  document.body.appendChild(box);
+}
 function msgMenuRevoke() {
   const id = _msgMenuId; closeMsgMenu(); if (!id) return;
   const el = document.querySelector(`#messages-area .msg[data-msg-id="${(window.CSS && CSS.escape) ? CSS.escape(String(id)) : String(id)}"]`);
@@ -3222,6 +3286,12 @@ async function toggleFavorite(phone) {
 
 // ── CHAT ──
 async function selectContact(phone, name, accountId) {
+  // Marca onde começam as NÃO LIDAS (divisória igual WhatsApp)
+  try {
+    const _cUn = (allContacts || []).find(x => x.phone === phone);
+    window._unreadMark = (_cUn && (_cUn.unread_count || 0) > 0 && _cUn.first_unread_at)
+      ? { ts: parseUTC(_cUn.first_unread_at), count: _cUn.unread_count } : null;
+  } catch (_) { window._unreadMark = null; }
   if (Date.now() - (window._lastSwipeTs || 0) < 450) return; // clique fantasma pós-swipe
   currentPhone = phone;
   currentName = name || phone;
@@ -3762,6 +3832,35 @@ function _ensurePresenceWatch() {
   _presTimer = setInterval(upd, 10000);
 }
 
+// ▾ Botão flutuante de DESCER até a última mensagem (com contador de novas)
+(function () {
+  let novas = 0;
+  function btn() {
+    let b = document.getElementById('scroll-down-btn');
+    if (b) return b;
+    const ca = document.getElementById('chat-area') || document.body;
+    ca.insertAdjacentHTML('beforeend', `<div id="scroll-down-btn" onclick="_scrollChatBottom()" style="display:none;position:absolute;right:14px;bottom:92px;width:42px;height:42px;border-radius:50%;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.28);z-index:60;cursor:pointer;align-items:center;justify-content:center;color:#54656f;font-size:19px">▾<span id="sdb-badge" style="display:none;position:absolute;top:-6px;right:-3px;background:#00a884;color:#fff;border-radius:999px;font-size:11px;min-width:18px;height:18px;line-height:18px;text-align:center;padding:0 4px;font-weight:600"></span></div>`);
+    return document.getElementById('scroll-down-btn');
+  }
+  window._sdbNotifyNew = function (n) {
+    novas += n;
+    const bd = document.getElementById('sdb-badge');
+    if (bd && novas > 0) { bd.style.display = 'block'; bd.textContent = novas; }
+  };
+  window._scrollChatBottom = function () {
+    const area = document.getElementById('messages-area'); if (!area) return;
+    area.scrollTo({ top: area.scrollHeight, behavior: 'smooth' });
+    novas = 0; const bd = document.getElementById('sdb-badge'); if (bd) bd.style.display = 'none';
+  };
+  document.addEventListener('scroll', e => {
+    if (!e.target || e.target.id !== 'messages-area') return;
+    const area = e.target; const b = btn();
+    const longe = area.scrollHeight - area.scrollTop - area.clientHeight > 350;
+    b.style.display = longe ? 'flex' : 'none';
+    if (!longe) { novas = 0; const bd = document.getElementById('sdb-badge'); if (bd) bd.style.display = 'none'; }
+  }, true);
+})();
+
 // ↩️ Deslizar a BOLHA para a direita = responder (igual WhatsApp)
 (function () {
   let mEl = null, sx = 0, sy = 0, dx = 0, horiz = false;
@@ -4025,7 +4124,7 @@ async function loadMessages(phone, scroll = true) {
     // carregamento dos vídeos e fecha a tela cheia. Só re-renderiza se algo mudou
     // e se nenhuma mídia estiver tocando ou em tela cheia.
     const sig = phone + '::' + msgs.map(m =>
-      `${m.id}|${m.status || ''}|${m.reaction || ''}|${m.error_info ? 1 : 0}|${m.starred ? 1 : 0}${m.pinned ? 1 : 0}|${(m.content || '').length}.${String(m.content || '').slice(0, 16)}`).join(';');
+      `${m.id}|${m.status || ''}|${m.reaction || ''}|${m.error_info ? 1 : 0}|${m.starred ? 1 : 0}${m.pinned ? 1 : 0}${m.edited ? 1 : 0}|${(m.content || '').length}.${String(m.content || '').slice(0, 16)}`).join(';');
     if (!scroll) {
       if (sig === _lastMsgsSig) return; // nada mudou — não mexe no DOM
       const mediaEls = area.querySelectorAll('video, audio');
@@ -4035,8 +4134,23 @@ async function loadMessages(phone, scroll = true) {
       // para renderizar assim que a reprodução terminar)
       if (mediaPlaying || inFullscreen) return;
     }
+    // Botão de descer: conta mensagens novas enquanto você está rolada para cima
+    const _nearBottom = area.scrollHeight - area.scrollTop - area.clientHeight < 120;
+    if (window._msgCountPhone !== phone) { window._msgCountPhone = phone; window._lastMsgCountChat = msgs.length; }
+    else {
+      const _diff = msgs.length - (window._lastMsgCountChat || 0);
+      if (_diff > 0 && !_nearBottom && typeof _sdbNotifyNew === 'function') _sdbNotifyNew(_diff);
+      window._lastMsgCountChat = msgs.length;
+    }
     _lastMsgsSig = sig;
     setTimeout(_fillLinkPreviews, 60); // cartões de link entram após o render
+    setTimeout(() => { // abre a conversa já na divisória de não lidas
+      if (window._unreadMark && !window._unreadMark.scrolled && window._unreadMark.msgId) {
+        window._unreadMark.scrolled = true;
+        const dv = document.querySelector('#messages-area [data-key="unread-div"]');
+        if (dv) dv.scrollIntoView({ block: 'center' });
+      }
+    }, 120);
 
     // 📌 Faixa das mensagens fixadas (várias: clica → vai até uma e passa para a próxima)
     try {
@@ -4068,6 +4182,12 @@ async function loadMessages(phone, scroll = true) {
           lastDay = dayKey;
           _prevDir = null; // novo dia: recomeça o agrupamento
           parts.push({ key: 'day-' + dayKey, html: `<div class="day-divider" data-key="day-${dayKey}"><span>${formatDayLabel(m.timestamp)}</span></div>` });
+        }
+        // Divisória "N MENSAGENS NÃO LIDAS" (fixa na mesma mensagem até trocar de conversa)
+        const um = window._unreadMark;
+        if (um && (um.msgId ? String(m.id) === String(um.msgId) : (m.direction === 'inbound' && parseUTC(m.timestamp) >= um.ts))) {
+          um.msgId = m.id; _prevDir = null;
+          parts.push({ key: 'unread-div', html: `<div class="day-divider" data-key="unread-div"><span style="color:#00a884;font-weight:700">${um.count} ${um.count > 1 ? 'MENSAGENS NÃO LIDAS' : 'MENSAGEM NÃO LIDA'}</span></div>` });
         }
 
         let ticks = '';
@@ -4102,7 +4222,7 @@ async function loadMessages(phone, scroll = true) {
             <button class="msg-menu-btn" title="Opções da mensagem" onclick="openMsgMenu(event,'${safeId}')">⌄</button>
           </div>
           ${msgContent}
-          <div class="time">${m.starred ? '<span style="font-size:10px;margin-right:3px;opacity:.75">★</span>' : ''}${timeStr}${ticks}</div>
+          <div class="time">${m.edited ? '<span style="font-size:10.5px;color:#8696a0;margin-right:4px">editada</span>' : ''}${m.starred ? '<span style="font-size:10px;margin-right:3px;opacity:.75">★</span>' : ''}${timeStr}${ticks}</div>
           ${reactBadge}
         </div>` });
       } catch(msgErr) {
