@@ -1377,7 +1377,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v87</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v88</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1882,7 +1882,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v87</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v88</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1936,7 +1936,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 87;
+const APP_VER = 88;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4084,6 +4084,11 @@ function _keepBottom() {
   const a = document.getElementById('messages-area'); if (!a) return;
   if (window._userTouching) return; // dedo na tela = a tela é SUA
   if (Date.now() - (window._scrollUpTs || 0) < 2500) return; // subiu há pouco = respeita
+  // Acabou de ABRIR a conversa: cada foto/vídeo que carrega recola no fim
+  // (sem isso, as mídias crescendo empurravam o fim para baixo e você ficava para trás)
+  if (Date.now() - (window._openPinTs || 0) < 2500 && !(window._unreadMark && window._unreadMark.msgId)) {
+    a.scrollTop = a.scrollHeight; return;
+  }
   if (a.scrollHeight - a.scrollTop - a.clientHeight < 80) a.scrollTop = a.scrollHeight;
 }
 
@@ -4498,6 +4503,7 @@ async function loadMessages(phone, scroll = true) {
     // NUNCA contra o dedo: só acompanha o fim se você não subiu DE PROPÓSITO
     const _maoLivre = !window._userTouching && Date.now() - (window._scrollUpTs || 0) > 2500;
     if (scroll || (nearBottom && _maoLivre)) {
+      if (scroll) window._openPinTs = Date.now(); // janela de abertura: fica colado no fim enquanto as mídias carregam
       area.scrollTop = area.scrollHeight; // direto no fim, determinístico
       hideNewMsgPill();
     } else {
