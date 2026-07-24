@@ -106,7 +106,8 @@
   /* Swipe nas conversas (celular): direita = lida, esquerda = favorita */
   .contact-swipe-wrap { position: relative; overflow: hidden; }
   .contact-swipe-wrap > .contact-item { position: relative; z-index: 1; background: #ffffff; touch-action: pan-y; will-change: transform; }
-  .swipe-action { position: absolute; top: 0; bottom: 0; width: 92px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #fff; font-size: 11px; font-weight: 600; z-index: 0; }
+  .swipe-action { position: absolute; top: 0; bottom: 0; width: 92px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #fff; font-size: 11px; font-weight: 600; z-index: 0; visibility: hidden; }
+  .contact-swipe-wrap.swiping .swipe-action { visibility: visible; }
   .swipe-action.read { left: 0; background: #4a76d0; }
   .swipe-action.fav  { right: 0; background: #f0b400; }
   .contact-swipe-wrap > .contact-item.is-fav { background: #fdf6e3; }
@@ -1376,7 +1377,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v86</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v87</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1881,7 +1882,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v86</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v87</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1935,7 +1936,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 86;
+const APP_VER = 87;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3364,7 +3365,7 @@ async function toggleFavorite(phone) {
   const list = document.getElementById('contacts-list');
   if (!list) return;
   let startX = 0, startY = 0, item = null, dx = 0, swiping = false, quietTs = 0, startScroll = 0, touchT0 = 0;
-  const cancelSwipe = () => { if (item) { item.style.transition = ''; item.style.transform = ''; } item = null; swiping = false; };
+  const cancelSwipe = () => { if (item) { item.style.transition = ''; item.style.transform = ''; try { item.parentElement.classList.remove('swiping'); } catch (_) {} } item = null; swiping = false; };
   list.addEventListener('touchstart', e => {
     // Lista ainda deslizando (inércia)? Este toque é para PARAR/continuar a rolagem — não é swipe
     if (Date.now() - quietTs < 250) { item = null; return; }
@@ -3386,7 +3387,10 @@ async function toggleFavorite(phone) {
     if (Math.abs(list.scrollTop - startScroll) > 3) { cancelSwipe(); return; }
     if (!swiping && Date.now() - quietTs < 250) { cancelSwipe(); return; }
     // Rápido demais = arremesso de rolagem, nunca swipe (swipe de verdade é um arrasto deliberado)
-    if (!swiping && Math.abs(dx) > 26 && Math.abs(dx) > Math.abs(dy) * 3 && Date.now() - touchT0 >= 110) swiping = true;
+    if (!swiping && Math.abs(dx) > 26 && Math.abs(dx) > Math.abs(dy) * 3 && Date.now() - touchT0 >= 110) {
+      swiping = true;
+      try { item.parentElement.classList.add('swiping'); } catch (_) {} // só AGORA os botões passam a existir
+    }
     if (swiping) item.style.transform = `translateX(${Math.max(-100, Math.min(100, dx))}px)`;
   }, { passive: true });
   list.addEventListener('scroll', () => { // a lista rolou = não era swipe (NUNCA, nem engatado)
@@ -3397,6 +3401,8 @@ async function toggleFavorite(phone) {
     if (!item) return;
     item.style.transition = 'transform .22s ease';
     item.style.transform = '';
+    const _wrapEl = item.parentElement;
+    setTimeout(() => { try { _wrapEl.classList.remove('swiping'); } catch (_) {} }, 240); // esconde após recolher
     const phone = item.parentElement?.dataset?.phone;
     if (swiping && phone) {
       window._lastSwipeTs = Date.now(); // impede o clique de abrir a conversa junto
