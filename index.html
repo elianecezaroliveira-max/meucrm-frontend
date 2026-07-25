@@ -529,6 +529,33 @@
   .msg-ticks.read     { color:#53bdeb; }
   .cs-hit { outline: 2.5px solid #f7c948; border-radius: 10px; }
   .msg.selected { outline: 2.5px solid #00a884; }
+  /* ── 🌙 MODO ESCURO (paleta do WhatsApp) ── */
+  body.dark, body.dark #layout { background: #111b21; color: #e9edef; }
+  body.dark #topbar, body.dark #chat-header, body.dark #input-area, body.dark #pipeline-topbar { background: #202c33; border-color: #2a3942; color: #e9edef; }
+  body.dark #topbar h1, body.dark #chat-header .info .name, body.dark .contact-name, body.dark .acc-name { color: #e9edef; }
+  body.dark #sidebar { background: #111b21; border-color: #2a3942; }
+  body.dark .contact-item, body.dark .contact-swipe-wrap > .contact-item { background: #111b21; border-color: #222d34; }
+  body.dark .contact-item:hover { background: #202c33; }
+  body.dark .contact-item.active { background: #2a3942; }
+  body.dark .contact-swipe-wrap > .contact-item.is-fav { background: #263528; }
+  body.dark .contact-info { box-shadow: inset 0 -1px 0 #222d34; }
+  body.dark #messages-area { background-color: #0b141a; background-image: none; }
+  body.dark .msg.inbound { background: #202c33; color: #e9edef; }
+  body.dark .msg.outbound { background: #005c4b; color: #e9edef; }
+  body.dark .msg .time, body.dark .contact-preview, body.dark .contact-preview-row, body.dark .contact-time { color: #8696a0; }
+  body.dark #input-wrap, body.dark #msg-input { background: #2a3942; color: #e9edef; }
+  body.dark #msg-input::placeholder { color: #8696a0; }
+  body.dark input, body.dark select, body.dark textarea { background: #2a3942; color: #e9edef; border-color: #3b4a54; }
+  body.dark #msg-menu, body.dark #contact-menu, body.dark #info-menu, body.dark #attach-menu, body.dark #bot-launcher-menu, body.dark #mobile-plus-menu, body.dark #qr-popup { background: #233138; border-color: #3b4a54; color: #e9edef; }
+  body.dark .cm-item, body.dark .mpm-item { color: #e9edef; }
+  body.dark .cm-item:active, body.dark .mpm-item:active { background: #182229; }
+  @media (hover: hover) { body.dark .cm-item:hover { background: #182229; } }
+  body.dark .day-divider span { background: #182229; color: #8696a0; }
+  body.dark .quoted-bubble { background: rgba(255,255,255,.07); }
+  body.dark #lead-modal, body.dark #import-modal, body.dark #modal { background: #222e35; color: #e9edef; }
+  body.dark #pinned-banner, body.dark #chat-search-bar { background: #202c33; border-color: #2a3942; color: #e9edef; }
+  body.dark #splash { background: #111b21; }
+  body.dark .lf-chip { background: #202c33; color: #8696a0; }
   .msg-ticks.failed   { color:#ef4444; font-size:11px; }
   .msg-ticks.pending  { color:#8696a0; font-size:11px; }
   /* Ações de mensagem (reply + delete) */
@@ -992,6 +1019,7 @@
     setTimeout(() => { try { sp.remove(); } catch (_) {} }, 320);
   };
   setTimeout(() => window.hideSplash(), 6000);
+  try { if (localStorage.getItem('vetra_dark') === '1') document.body.classList.add('dark'); } catch (_) {}
 </script>
 
 <!-- ===== TELA DE LOGIN (Google via Supabase Auth) ===== -->
@@ -1383,7 +1411,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v107</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v108</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1597,6 +1625,8 @@ window.addEventListener('load', initAuth);
     </div>
 
     <div style="border:1px solid #e9edef;border-radius:10px;padding:14px">
+      <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">🌙 Aparência</div>
+      <button id="btn-dark" onclick="toggleDark()" style="background:#00a884;color:#fff;border:none;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;margin-bottom:16px">🌙 Ativar modo escuro</button>
       <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">🛟 Suporte</div>
       <div style="font-size:13px;color:#667781">Em breve.</div>
     </div>
@@ -1888,7 +1918,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v107</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v108</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1942,7 +1972,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 107;
+const APP_VER = 108;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2912,7 +2942,11 @@ async function startVoiceRec() {
     _recUI(true);
     // Cliente vê "gravando áudio…" (renovado a cada 8s enquanto grava)
     notifyTyping('recording');
+    window._recPaused = false;
+    const _obtn = document.getElementById('rec-ouvir'); if (_obtn) { _obtn.style.display = 'none'; _obtn.textContent = '▶ Ouvir'; }
+    const _pbtn = document.querySelector('#rec-bar .rec-pause'); if (_pbtn) _pbtn.textContent = '⏸';
     _recTimer = setInterval(() => {
+      if (window._recPaused) return; // pausada: o tempo congela
       _recSecs++;
       if (_recSecs % 8 === 0) notifyTyping('recording');
       const el = document.getElementById('rec-time');
@@ -2923,6 +2957,7 @@ async function startVoiceRec() {
     const wv = document.getElementById('rec-wave'); if (wv) wv.innerHTML = '';
     window._recWavePeak = 0; window._recNoise = null; // calibra do zero a cada gravação
     window._recWaveTimer = setInterval(() => {
+      if (window._recPaused) return; // pausada: a onda congela
       const w = document.getElementById('rec-wave'); if (!w) return;
       const last = _recBufs[_recBufs.length - 1];
       let rms = 0;
@@ -2976,13 +3011,41 @@ function _recFinish(cancel) {
 }
 // ➤ durante a gravação: ENVIA direto (igual WhatsApp)
 function stopVoiceRec(cancel) {
+  window._recPaused = false; _recStopPreview();
   const pnd = _recFinish(cancel);
   if (pnd) sendVoiceBlob(pnd.blob, pnd.secs);
 }
-// ⏸ durante a gravação: para e abre a REVISÃO para ouvir antes de enviar
-function _recPauseToReview() {
-  const pnd = _recFinish(false);
-  if (pnd) { _recPending = pnd; _showRecReview(); }
+// ⏸ PAUSA e ▶ RETOMA a gravação (igual WhatsApp) — pausada, dá para OUVIR a prévia
+function _recPauseToggle() {
+  if (!_recCtx) return;
+  const b = document.querySelector('#rec-bar .rec-pause');
+  const ou = document.getElementById('rec-ouvir');
+  if (!window._recPaused) {
+    window._recPaused = true;
+    try { _recCtx.suspend(); } catch (_) {}
+    if (b) b.textContent = '▶';
+    if (ou) ou.style.display = '';
+  } else {
+    window._recPaused = false;
+    _recStopPreview();
+    try { _recCtx.resume(); } catch (_) {}
+    if (b) b.textContent = '⏸';
+    if (ou) ou.style.display = 'none';
+  }
+}
+let _recPrevAudio = null;
+function _recPreviewToggle() {
+  if (_recPrevAudio && !_recPrevAudio.paused) { _recStopPreview(); return; }
+  if (!_recBufs.length) return;
+  _recPrevAudio = new Audio(URL.createObjectURL(_encodeWav(_recBufs, _recRate)));
+  const ou = document.getElementById('rec-ouvir');
+  _recPrevAudio.onended = () => { if (ou) ou.textContent = '▶ Ouvir'; };
+  _recPrevAudio.play().catch(() => {});
+  if (ou) ou.textContent = '⏹ Parar';
+}
+function _recStopPreview() {
+  try { if (_recPrevAudio) { _recPrevAudio.pause(); _recPrevAudio = null; } } catch (_) {}
+  const ou = document.getElementById('rec-ouvir'); if (ou) ou.textContent = '▶ Ouvir';
 }
 function _showRecReview() {
   if (!_recPending) return;
@@ -3463,6 +3526,15 @@ async function toggleFavorite(phone) {
 let _drafts = {};
 try { _drafts = JSON.parse(localStorage.getItem('vetra_drafts') || '{}'); } catch (_) {}
 function _saveDrafts() { try { localStorage.setItem('vetra_drafts', JSON.stringify(_drafts)); } catch (_) {} }
+// Celular: o iOS pode suspender o app antes do salvamento — salva NA HORA ao sair de cena
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) return;
+  try {
+    const i = document.getElementById('msg-input');
+    if (i && currentPhone) { if (i.value.trim()) _drafts[currentPhone] = i.value; else delete _drafts[currentPhone]; }
+    _saveDrafts();
+  } catch (_) {}
+});
 
 // 🔗 Tocar na mensagem CITADA pula até a original
 function _gotoMsg(id) {
@@ -3514,6 +3586,15 @@ async function openWaProfile(accId) {
   }
 }
 function closeWaProfile() { const o = document.getElementById('waprof-overlay'); if (o) o.style.display = 'none'; }
+
+// 🌙 Modo escuro (fica salvo; o botão de Configurações alterna)
+function toggleDark() {
+  const on = !document.body.classList.contains('dark');
+  document.body.classList.toggle('dark', on);
+  try { localStorage.setItem('vetra_dark', on ? '1' : '0'); } catch (_) {}
+  const b = document.getElementById('btn-dark'); if (b) b.textContent = on ? '☀️ Voltar ao modo claro' : '🌙 Ativar modo escuro';
+}
+setTimeout(() => { const b = document.getElementById('btn-dark'); if (b && document.body.classList.contains('dark')) b.textContent = '☀️ Voltar ao modo claro'; }, 800);
 function _wpPickPhoto(inp) {
   const f = inp.files && inp.files[0]; if (!f) return;
   const rd = new FileReader();
@@ -3675,7 +3756,8 @@ async function selectContact(phone, name, accountId) {
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between">
           <button onclick="stopVoiceRec(true)" title="Descartar" style="background:none;border:none;font-size:23px;cursor:pointer;color:#54656f;padding:2px 6px">🗑</button>
-          <button onclick="_recPauseToReview()" title="Pausar e ouvir" style="width:48px;height:48px;border-radius:50%;border:2.5px solid #ef4444;background:none;color:#ef4444;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center">⏸</button>
+          <button id="rec-ouvir" onclick="_recPreviewToggle()" style="display:none;background:none;border:1.5px solid #8696a0;border-radius:16px;color:#54656f;font-size:13px;font-weight:600;padding:6px 12px;cursor:pointer;font-family:inherit">▶ Ouvir</button>
+          <button class="rec-pause" onclick="_recPauseToggle()" title="Pausar / retomar" style="width:48px;height:48px;border-radius:50%;border:2.5px solid #ef4444;background:none;color:#ef4444;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center">⏸</button>
           <button onclick="stopVoiceRec(false)" title="Enviar" style="width:48px;height:48px;border-radius:50%;background:#00a884;border:none;color:#fff;font-size:17px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.25)">➤</button>
         </div>
       </div>
@@ -4332,13 +4414,27 @@ function renderMessageContent(m) {
       const vpId  = `vp-${m.id || m.media_id}`;
       // Gera barras de "forma de onda" com alturas variadas baseadas no media_id
       const seed = m.media_id || m.id || '';
-      const barH = [6,14,10,18,8,22,12,20,6,16,10,14,18,8,20,12,6,16,10,14];
-      const bars = barH.map((h,i) => `<i style="height:${h}px"></i>`).join('');
       const aid = m.id || m.media_id;
+      // Forma de onda REAL: do banco (QR) ou calculada na 1ª reprodução (API) e guardada
+      let barH = [6,14,10,18,8,22,12,20,6,16,10,14,18,8,20,12,6,16,10,14];
+      let temWf = false;
+      try {
+        const wfArr = m.waveform ? JSON.parse(m.waveform) : (JSON.parse(localStorage.getItem('vetra_wf') || '{}'))[String(aid)];
+        if (Array.isArray(wfArr) && wfArr.length) {
+          temWf = true;
+          const stp = wfArr.length / 20, out = [];
+          for (let bi = 0; bi < 20; bi++) out.push(Math.max(4, Math.round(4 + ((wfArr[Math.floor(bi * stp)] || 0) / 100) * 20)));
+          barH = out;
+        }
+      } catch (_) {}
+      const bars = barH.map((h,i) => `<i style="height:${h}px"></i>`).join('');
       const durTxt = (String(m.content || '').match(/\((\d+:\d{2})\)/) || [])[1] || '0:00';
       // Foto do lead ao lado do áudio + microfone verde (não ouvido) / azul (ouvido)
       let avHtml = '';
-      if (m.direction === 'inbound') {
+      if (m.direction === 'outbound') {
+        const _corS = m.status === 'read' ? '#53bdeb' : '#00a884';
+        avHtml = `<span style="position:relative;flex-shrink:0;width:38px;height:38px;display:block"><img src="/icons/icon-192.png" style="width:38px;height:38px;border-radius:50%;object-fit:cover;display:block"><svg class="vp-mic" viewBox="0 0 24 24" width="16" height="16" style="position:absolute;bottom:-3px;right:-6px;fill:${_corS}"><path d="M12 15.1a3.2 3.2 0 0 0 3.2-3.2V6a3.2 3.2 0 1 0-6.4 0v5.9A3.2 3.2 0 0 0 12 15.1zm5.4-3.2a5.4 5.4 0 0 1-10.8 0H4.8a7.2 7.2 0 0 0 6.3 7.1v2.1H8.9V23h6.2v-1.9H13v-2.1a7.2 7.2 0 0 0 6.3-7.1h-1.9z"/></svg></span>`;
+      } else if (m.direction === 'inbound') {
         const _ctA = (allContacts || []).find(x => x.phone === currentPhone);
         const _avU = (_ctA && _ctA.avatar) ? `${SERVER_URL}/avatar/${encodeURIComponent(String(_ctA.avatar).split('/').pop())}` : null;
         try { window._heardAudios = window._heardAudios || JSON.parse(localStorage.getItem('vetra_heard') || '[]'); } catch (_) { window._heardAudios = []; }
@@ -4354,7 +4450,7 @@ function renderMessageContent(m) {
           <div class="vp-bars" onclick="voiceSeek('${aid}',event)">${bars}</div>
           <span class="vp-time">${durTxt}</span>
           <button class="vp-speed" onclick="voiceSpeed('${aid}')" title="Velocidade">1x</button>
-          <audio preload="none" data-url="${proxyUrl}"
+          <audio preload="none" data-url="${proxyUrl}" ${temWf ? 'data-haswf="1"' : ''}
             onloadedmetadata="voiceMeta('${aid}')" ontimeupdate="voiceTime('${aid}')"
             onplay="voiceUI('${aid}',true)" onpause="voiceUI('${aid}',false)" onended="voiceEnded('${aid}')"
             onwaiting="voiceLoading('${aid}',true)" onplaying="voiceLoading('${aid}',false)" onstalled="voiceLoading('${aid}',true)"></audio>
@@ -4392,10 +4488,18 @@ function renderMessageContent(m) {
   if (m.type === 'location') {
     const uMatch = safeContent.match(/https?:\/\/\S+/);
     const title = (safeContent.split('\n')[0] || '').replace(/^📍\s*/, '');
+    // Mini-mapa REAL (OpenStreetMap) no lugar do cartão genérico
+    let mapBg = 'background:linear-gradient(160deg,#b7dfb0,#8ec487);';
+    const mLL = safeContent.match(/q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+    if (mLL) {
+      const _la = parseFloat(mLL[1]), _lo = parseFloat(mLL[2]), _zz = 15;
+      const _xt = Math.floor((_lo + 180) / 360 * Math.pow(2, _zz));
+      const _yt = Math.floor((1 - Math.log(Math.tan(_la * Math.PI / 180) + 1 / Math.cos(_la * Math.PI / 180)) / Math.PI) / 2 * Math.pow(2, _zz));
+      mapBg = `background-image:url('https://tile.openstreetmap.org/${_zz}/${_xt}/${_yt}.png');background-size:cover;background-position:center;background-color:#b7dfb0;`;
+    }
     return quotedHtml + `<a href="${uMatch ? uMatch[0] : '#'}" target="_blank" rel="noopener" style="display:block;text-decoration:none;color:inherit;min-width:210px;max-width:260px">
-      <div style="background:linear-gradient(160deg,#b7dfb0,#8ec487);border-radius:10px;height:96px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden">
-        <div style="position:absolute;inset:0;background-image:radial-gradient(circle at 30% 40%, rgba(255,255,255,.35) 2px, transparent 2.5px),radial-gradient(circle at 70% 65%, rgba(255,255,255,.3) 2px, transparent 2.5px);background-size:46px 46px"></div>
-        <span style="font-size:38px;filter:drop-shadow(0 2px 2px rgba(0,0,0,.25))">📍</span>
+      <div style="${mapBg}border-radius:10px;height:110px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden">
+        <span style="font-size:34px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35));margin-top:-14px">📍</span>
       </div>
       <div style="font-weight:600;font-size:13.5px;margin-top:7px">${escHtml(title || 'Localização')}</div>
       <div style="font-size:12.5px;color:#027eb5;margin-top:2px">Abrir no mapa</div>
@@ -4495,7 +4599,7 @@ async function loadMessages(phone, scroll = true) {
     // carregamento dos vídeos e fecha a tela cheia. Só re-renderiza se algo mudou
     // e se nenhuma mídia estiver tocando ou em tela cheia.
     const sig = phone + '::' + msgs.map(m =>
-      `${m.id}|${m.status || ''}|${m.reaction || ''}|${m.error_info ? 1 : 0}|${m.starred ? 1 : 0}${m.pinned ? 1 : 0}${m.edited ? 1 : 0}|${(m.content || '').length}.${String(m.content || '').slice(0, 16)}`).join(';');
+      `${m.id}|${m.status || ''}|${m.reaction || ''}|${m.error_info ? 1 : 0}|${m.starred ? 1 : 0}${m.pinned ? 1 : 0}${m.edited ? 1 : 0}${m.forwarded ? 1 : 0}|${(m.content || '').length}.${String(m.content || '').slice(0, 16)}`).join(';');
     if (!scroll) {
       if (sig === _lastMsgsSig) return; // nada mudou — não mexe no DOM
       const mediaEls = area.querySelectorAll('video, audio');
@@ -4633,7 +4737,7 @@ async function loadMessages(phone, scroll = true) {
           <div class="msg-actions">
             <button class="msg-menu-btn" title="Opções da mensagem" onclick="openMsgMenu(event,'${safeId}')">⌄</button>
           </div>
-          ${msgContent}
+          ${m.forwarded ? '<div style="font-size:11.5px;color:#8696a0;margin-bottom:3px;font-style:italic">↪️ Encaminhada</div>' : ''}${msgContent}
           <div class="time">${m.edited ? '<span style="font-size:10.5px;color:#8696a0;margin-right:4px">editada</span>' : ''}${m.starred ? '<span style="font-size:10px;margin-right:3px;opacity:.75">★</span>' : ''}${timeStr}${ticks}</div>
           ${reactBadge}
         </div>` });
@@ -4715,10 +4819,32 @@ function _vpApplyPitch(a){
   } catch(_){}
 }
 
+// Calcula a forma de onda REAL de um áudio (uma vez) e redesenha as barrinhas
+function _computeWf(id, url) {
+  try {
+    const cache = JSON.parse(localStorage.getItem('vetra_wf') || '{}');
+    if (cache[String(id)]) return;
+    fetch(url).then(r => r.arrayBuffer()).then(ab => {
+      const AC = window.AudioContext || window.webkitAudioContext; const ctx = new AC();
+      return ctx.decodeAudioData(ab).then(bu => {
+        const ch = bu.getChannelData(0), n = 40, blk = Math.max(1, Math.floor(ch.length / n)), arr = [];
+        for (let i = 0; i < n; i++) { let sm = 0, cnt = 0; for (let j2 = 0; j2 < blk; j2 += 50) { sm += Math.abs(ch[i * blk + j2] || 0); cnt++; } arr.push(cnt ? sm / cnt : 0); }
+        const mx = Math.max.apply(null, arr.concat([0.001]));
+        cache[String(id)] = arr.map(v => Math.round(v / mx * 100));
+        const ks = Object.keys(cache); if (ks.length > 300) delete cache[ks[0]];
+        localStorage.setItem('vetra_wf', JSON.stringify(cache));
+        const w = document.querySelector('#vp-' + ((window.CSS && CSS.escape) ? CSS.escape(String(id)) : id) + ' .vp-bars');
+        if (w) { const bs = w.querySelectorAll('i'); const stp = 40 / bs.length; bs.forEach((b, bi2) => { b.style.height = Math.max(4, Math.round(4 + (cache[String(id)][Math.floor(bi2 * stp)] / 100) * 20)) + 'px'; }); }
+        try { ctx.close(); } catch (_) {}
+      });
+    }).catch(() => {});
+  } catch (_) {}
+}
 function voiceToggle(id){
   const a = _vpAudio(id), w = _vpEl(id); if (!a) return;
   // Carrega o áudio na 1ª reprodução (o src fica em data-url para não baixar tudo ao abrir a conversa)
   if (!a.getAttribute('src') && a.dataset.url) { a.src = a.dataset.url; a.load(); }
+  if (!a.dataset.haswf && !a.dataset.wfPedida) { a.dataset.wfPedida = '1'; _computeWf(id, a.dataset.url); }
   if (a.paused) {
     if (_curAudioId && _curAudioId !== id) { const p = _vpAudio(_curAudioId); if (p) p.pause(); }
     _vpApplyPitch(a); a.playbackRate = _voiceSpeed;
