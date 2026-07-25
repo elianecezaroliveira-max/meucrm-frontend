@@ -365,7 +365,7 @@
   #sidebar-actions { display: flex; gap: 8px; padding: 8px 12px; background: #ffffff; }
   .btn-sidebar-action { flex: 1; background: #e9edef; border: none; color: #131c20; padding: 7px 6px; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 500; transition: background 0.15s; }
   .btn-sidebar-action:hover { background: #d1d7db; }
-  #lead-overlay, #import-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center; }
+  #lead-overlay, #import-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center; }
   #lead-overlay.open, #import-overlay.open { display: flex; }
   #lead-modal, #import-modal { background: #f0f2f5; border-radius: 12px; width: 460px; max-width: 95vw; padding: 24px; max-height: 90vh; overflow-y: auto; }
   #lead-modal h2, #import-modal h2 { font-size: 17px; font-weight: 600; margin-bottom: 20px; }
@@ -1383,7 +1383,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v101</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v102</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1888,7 +1888,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v101</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v102</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1942,7 +1942,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 101;
+const APP_VER = 102;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
