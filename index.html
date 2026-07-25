@@ -1383,7 +1383,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v104</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v105</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1888,7 +1888,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v104</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v105</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1942,7 +1942,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 104;
+const APP_VER = 105;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3559,9 +3559,6 @@ async function selectContact(phone, name, accountId) {
   currentPhone = phone;
   currentName = name || phone;
   currentAccountId = accountId || document.getElementById('account-select').value || '';
-  // Restaura o RASCUNHO desta conversa (se houver)
-  const _din = document.getElementById('msg-input');
-  if (_din) { _din.value = _drafts[phone] || ''; autoGrowMsgInput(_din); try { updateSendMicButtons(); } catch (_) {} }
   applyFilters(); // preserva a busca/filtros ativos ao abrir a conversa
   const chatArea = document.getElementById('chat-area');
 
@@ -3697,6 +3694,11 @@ async function selectContact(phone, name, accountId) {
   loadNotes(phone);
   // Painel de detalhes do lead (abre junto com a conversa)
   renderLeadPanel(phone);
+
+  // Restaura o RASCUNHO desta conversa — AGORA, com o campo novo já montado
+  // (antes restaurava cedo demais e o quadro recriava o campo vazio por cima)
+  const _din = document.getElementById('msg-input');
+  if (_din) { _din.value = _drafts[phone] || ''; autoGrowMsgInput(_din); try { updateSendMicButtons(); } catch (_) {} }
 
   await loadMessages(phone);
   // "Enviar de:" automático — se o contato não tem conta definida, usa a conta
