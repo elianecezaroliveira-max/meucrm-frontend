@@ -1378,7 +1378,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app">v98</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v99</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1883,7 +1883,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v98</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v99</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1937,7 +1937,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 98;
+const APP_VER = 99;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2557,6 +2557,34 @@ function formatContactTime(isoStr) {
   if (dDay === yest)  return 'Ontem';
   // DD/MM
   return `${dDay.substring(8, 10)}/${dDay.substring(5, 7)}`;
+}
+
+// 🔍 MODO DIAGNÓSTICO (toque no número da versão): pinta cada caixa com uma cor
+// e mostra as medidas — para enxergarmos EXATAMENTE qual caixa cria a borda.
+function toggleDiag() {
+  const on = !window._diagOn; window._diagOn = on;
+  const els = { layout: document.getElementById('layout'), sidebar: document.getElementById('sidebar'), lista: document.getElementById('contacts-list') };
+  document.documentElement.style.background = on ? '#ff3b30' : ''; // FUNDO VERMELHO = área fora do app
+  document.body.style.outline = on ? '3px dashed #ff9500' : '';
+  if (els.layout) els.layout.style.outline = on ? '3px dashed #007aff' : '';
+  if (els.sidebar) els.sidebar.style.outline = on ? '3px dashed #34c759' : '';
+  if (els.lista) els.lista.style.outline = on ? '3px dashed #af52de' : '';
+  let d = document.getElementById('diag-box');
+  if (!on) { if (d) d.remove(); return; }
+  if (!d) {
+    d = document.createElement('div'); d.id = 'diag-box';
+    d.style.cssText = 'position:fixed;top:70px;left:8px;right:8px;background:rgba(0,0,0,.88);color:#0f0;font:11px/1.6 monospace;padding:10px;border-radius:10px;z-index:99999;white-space:pre;pointer-events:none';
+    document.body.appendChild(d);
+  }
+  const r = el => { if (!el) return '—'; const b = el.getBoundingClientRect(); return Math.round(b.top) + ' até ' + Math.round(b.bottom) + '  (alt ' + Math.round(b.height) + ')'; };
+  d.textContent =
+    'tela (innerHeight): ' + window.innerHeight + '\n' +
+    'área visível (vv): ' + (window.visualViewport ? Math.round(window.visualViewport.height) + '  desloc ' + Math.round(window.visualViewport.offsetTop) : '—') + '\n' +
+    'body   (LARANJA): ' + r(document.body) + '\n' +
+    'layout (AZUL):    ' + r(els.layout) + '\n' +
+    'sidebar(VERDE):   ' + r(els.sidebar) + '\n' +
+    'lista  (ROXO):    ' + r(els.lista) + '\n' +
+    'screen.height: ' + screen.height + '   zoom: ' + window.devicePixelRatio;
 }
 
 // Relógio e tiques no TRAÇO do WhatsApp (SVG fino, não emoji)
