@@ -1411,7 +1411,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v108</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v110</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1557,7 +1557,8 @@ window.addEventListener('load', initAuth);
       <label>Conversas</label>
       <select id="filter-readstate" onchange="setListFilterSel(this.value)">
         <option value="all">Todas</option>
-        <option value="unread">Não lidas</option>
+        <option value="unread-first">Não lidas primeiro (ordenar)</option>
+        <option value="unread">Só não lidas</option>
         <option value="fav">Favoritas</option>
       </select>
       <label>Data (de)</label>
@@ -1918,7 +1919,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v108</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v110</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1972,7 +1973,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 108;
+const APP_VER = 110;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2536,6 +2537,7 @@ function clearFilters() {
   activeFilterTags.clear();
   const hadAccount = !!document.getElementById('account-select')?.value;
   _listFilter = 'all';
+  try { localStorage.removeItem('vetra_list_filter'); } catch (_) {}
   const _fr = document.getElementById('filter-readstate'); if (_fr) _fr.value = 'all';
   ['filter-stage-sel','filter-date-from','filter-date-to','search-input','filter-tag-search','account-select'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
@@ -2648,14 +2650,27 @@ function waPreviewHtml(p){
 }
 
 let _listFilter = 'all';
+try { _listFilter = localStorage.getItem('vetra_list_filter') || 'all'; } catch (_) {}
 function setListFilterSel(f) {
   _listFilter = f || 'all';
+  try { localStorage.setItem('vetra_list_filter', _listFilter); } catch (_) {} // fica salvo até VOCÊ tirar
   renderContacts(sortContacts(allContacts));
 }
+// Ao abrir o app, o seletor mostra o filtro salvo
+setTimeout(() => { const fr = document.getElementById('filter-readstate'); if (fr) fr.value = _listFilter; }, 400);
 function renderContacts(contacts) {
   const list = document.getElementById('contacts-list');
-  if (_listFilter !== 'all') {
+  if (_listFilter === 'unread' || _listFilter === 'fav') {
     contacts = contacts.filter(c => _listFilter === 'unread' ? (c.unread_count || 0) > 0 : !!c.favorite);
+  } else if (_listFilter === 'unread-first') {
+    // ORDENA: fixadas → não lidas (mais recentes primeiro) → o resto por data
+    contacts = [...contacts].sort((a, b) => {
+      const pa = a.pinned ? 1 : 0, pb = b.pinned ? 1 : 0;
+      if (pa !== pb) return pb - pa;
+      const ua = (a.unread_count || 0) > 0 ? 1 : 0, ub = (b.unread_count || 0) > 0 ? 1 : 0;
+      if (ua !== ub) return ub - ua;
+      return new Date(b.last_message_at) - new Date(a.last_message_at);
+    });
   }
   if (!contacts.length) {
     list.innerHTML = window._contactsLoaded
@@ -3526,15 +3541,17 @@ async function toggleFavorite(phone) {
 let _drafts = {};
 try { _drafts = JSON.parse(localStorage.getItem('vetra_drafts') || '{}'); } catch (_) {}
 function _saveDrafts() { try { localStorage.setItem('vetra_drafts', JSON.stringify(_drafts)); } catch (_) {} }
-// Celular: o iOS pode suspender o app antes do salvamento — salva NA HORA ao sair de cena
-document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) return;
+// Celular: o iOS pode suspender o app a qualquer momento — salva em TODOS os avisos de saída
+function _persistDraftNow() {
   try {
     const i = document.getElementById('msg-input');
     if (i && currentPhone) { if (i.value.trim()) _drafts[currentPhone] = i.value; else delete _drafts[currentPhone]; }
     _saveDrafts();
   } catch (_) {}
-});
+}
+document.addEventListener('visibilitychange', () => { if (document.hidden) _persistDraftNow(); });
+window.addEventListener('pagehide', _persistDraftNow);
+window.addEventListener('blur', _persistDraftNow);
 
 // 🔗 Tocar na mensagem CITADA pula até a original
 function _gotoMsg(id) {
@@ -3778,9 +3795,15 @@ async function selectContact(phone, name, accountId) {
   renderLeadPanel(phone);
 
   // Restaura o RASCUNHO desta conversa — AGORA, com o campo novo já montado
-  // (antes restaurava cedo demais e o quadro recriava o campo vazio por cima)
   const _din = document.getElementById('msg-input');
   if (_din) { _din.value = _drafts[phone] || ''; autoGrowMsgInput(_din); try { updateSendMicButtons(); } catch (_) {} }
+  // Reforço: se qualquer coisa limpar o campo logo depois, re-aplica o rascunho
+  setTimeout(() => {
+    const d2 = document.getElementById('msg-input');
+    if (d2 && !d2.value && _drafts[phone] && currentPhone === phone) {
+      d2.value = _drafts[phone]; autoGrowMsgInput(d2); try { updateSendMicButtons(); } catch (_) {}
+    }
+  }, 300);
 
   await loadMessages(phone);
   // "Enviar de:" automático — se o contato não tem conta definida, usa a conta
@@ -5852,11 +5875,11 @@ function openComposerTool() {
 // Atalho "/" — SÓ no computador (no celular o popup abre pelo ícone acima do campo)
 document.addEventListener('input', function(e) {
   if (e.target.id !== 'msg-input') return;
-  // Rascunho: guarda o que você digitou NESTA conversa (some se enviar/apagar)
+  // Rascunho: guarda o que você digitou NESTA conversa, A CADA TECLA (sem atraso)
   if (currentPhone) {
     if (e.target.value && e.target.value.trim()) _drafts[currentPhone] = e.target.value;
     else delete _drafts[currentPhone];
-    clearTimeout(window._dfT); window._dfT = setTimeout(_saveDrafts, 400);
+    _saveDrafts();
   }
   const isMob = window.matchMedia('(max-width: 768px)').matches;
   const val = e.target.value;
