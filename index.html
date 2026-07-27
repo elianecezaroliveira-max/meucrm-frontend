@@ -1414,7 +1414,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v112</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v113</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1922,7 +1922,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v112</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v113</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1976,7 +1976,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 112;
+const APP_VER = 113;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4447,10 +4447,14 @@ function renderMessageContent(m) {
       try {
         const wfArr = m.waveform ? JSON.parse(m.waveform) : (JSON.parse(localStorage.getItem('vetra_wf') || '{}'))[String(aid)];
         if (Array.isArray(wfArr) && wfArr.length) {
-          temWf = true;
-          const stp = wfArr.length / 20, out = [];
-          for (let bi = 0; bi < 20; bi++) out.push(Math.max(4, Math.round(4 + ((wfArr[Math.floor(bi * stp)] || 0) / 100) * 20)));
-          barH = out;
+          // Normaliza pela PRÓPRIA onda (o WhatsApp usa escalas diferentes: 0–1, 0–100, 0–255)
+          const mxW = Math.max.apply(null, wfArr);
+          if (mxW > 0) {
+            temWf = true;
+            const stp = wfArr.length / 20, out = [];
+            for (let bi = 0; bi < 20; bi++) out.push(Math.max(4, Math.round(4 + ((wfArr[Math.floor(bi * stp)] || 0) / mxW) * 20)));
+            barH = out;
+          }
         }
       } catch (_) {}
       const bars = barH.map((h,i) => `<i style="height:${h}px"></i>`).join('');
