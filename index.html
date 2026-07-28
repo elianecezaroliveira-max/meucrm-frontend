@@ -152,7 +152,7 @@
   .lp-head { display: flex; align-items: center; gap: 10px; padding: 14px; border-bottom: 1px solid #e9edef; background: #f0f2f5; position: sticky; top: 0; z-index: 2; }
   .lp-avatar { width: 40px; height: 40px; border-radius: 50%; background: #00a884; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; }
   .lp-name { font-size: 15px; font-weight: 600; color: #131c20; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .lp-sub { font-size: 12px; color: #667781; }
+  .lp-sub { font-size: 14px; color: #667781; }
   .lp-x { background: none; border: none; color: #667781; cursor: pointer; font-size: 15px; flex-shrink: 0; }
   .lp-section { padding: 12px 14px; border-bottom: 1px solid #f0f2f5; }
   .lp-label { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: #667781; font-weight: 600; margin-bottom: 6px; }
@@ -1414,7 +1414,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v113</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v114</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1592,7 +1592,7 @@ window.addEventListener('load', initAuth);
 <!-- Menu "informações do lead" (botão ℹ️ no chat) -->
 <div id="info-menu" style="display:none;position:fixed;z-index:700;background:#ffffff;border:1px solid #e9edef;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.25);min-width:230px;padding:4px">
   <div id="info-menu-phone" style="padding:8px 14px 6px;font-size:13px;color:#667781;border-bottom:1px solid #e9edef;margin-bottom:4px"></div>
-  <div class="cm-item" onclick="menuCopyPhone(this)">📋 Copiar número (sem o 55)</div>
+  <div class="cm-item" onclick="menuCopyPhone(this)">📋 Copiar número</div>
   <div class="cm-item" id="info-menu-pin" onclick="closeInfoMenu();togglePin(currentPhone)">📌 Fixar no topo</div>
   <div class="cm-item" id="info-menu-fav" onclick="closeInfoMenu();toggleFavorite(currentPhone)">⭐ Favoritar conversa</div>
   <div class="cm-item" id="info-menu-mute" onclick="closeInfoMenu();toggleMute(currentPhone)">🔇 Silenciar conversa</div>
@@ -1922,7 +1922,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v113</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v114</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1976,7 +1976,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 113;
+const APP_VER = 114;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2798,7 +2798,7 @@ function openInfoMenu(ev) {
   const menu = document.getElementById('info-menu');
   if (!menu) return;
   const ph = document.getElementById('info-menu-phone');
-  if (ph) ph.textContent = '📞 ' + (currentPhone || '');
+  if (ph) ph.textContent = '📞 ' + (typeof fmtPhoneBR === 'function' ? fmtPhoneBR(currentPhone) : (currentPhone || ''));
   try {
     const c = allContacts.find(x => x.phone === currentPhone);
     const pi = document.getElementById('info-menu-pin');
@@ -3839,6 +3839,15 @@ function toggleLeadPanel(force){
   if (b) b.style.color = show ? '#00a884' : '#667781';
   if (show) { const nt = document.getElementById('lp-notes'); if (nt) { nt.style.height = 'auto'; nt.style.height = nt.scrollHeight + 'px'; } }
 }
+// Formata para exibição: (15) 98165-1975 — sem DDI
+function fmtPhoneBR(raw) {
+  let p = String(raw || '').replace(/\D/g, '');
+  if (p.startsWith('55') && p.length >= 12) p = p.slice(2);
+  if (p.length === 11) return `(${p.slice(0,2)}) ${p.slice(2,7)}-${p.slice(7)}`;
+  if (p.length === 10) return `(${p.slice(0,2)}) ${p.slice(2,6)}-${p.slice(6)}`;
+  return p;
+}
+
 async function renderLeadPanel(phone){
   const p = document.getElementById('lead-panel');
   if (!p) return;
@@ -3850,7 +3859,7 @@ async function renderLeadPanel(phone){
   if (!Array.isArray(pipelineStages) || !pipelineStages.length) {
     try { const ss = await (await fetch(SERVER_URL + '/pipeline/stages')).json(); if (Array.isArray(ss)) pipelineStages = ss; } catch(_){}
   }
-  const telShow = phone.startsWith('55') ? phone.slice(2) : phone;
+  const telShow = fmtPhoneBR(phone);
   const stageOpts = '<option value="">Sem etapa</option>' +
     (pipelineStages||[]).map(s => `<option value="${s.id}" ${c.stage_id===s.id?'selected':''}>${escHtml(s.name)}</option>`).join('');
   p.innerHTML = `
@@ -3858,7 +3867,7 @@ async function renderLeadPanel(phone){
       <div class="lp-avatar">${escHtml((c.name||phone).charAt(0).toUpperCase())}</div>
       <div style="flex:1;min-width:0">
         <div class="lp-name" title="${escHtml(c.name||phone)}">${escHtml(c.name||phone)}</div>
-        <div class="lp-sub">+${escHtml(phone)}</div>
+        <div class="lp-sub">${escHtml(telShow)}</div>
       </div>
       <button class="lp-x" onclick="editLeadName()" title="Editar nome do lead" style="font-size:13px">✏️</button>
       <button class="lp-x" onclick="toggleLeadPanel(false)" title="Ocultar painel">✕</button>
@@ -3866,7 +3875,7 @@ async function renderLeadPanel(phone){
     <div class="lp-section">
       <div class="lp-label">Telefone</div>
       <div style="display:flex;gap:6px;align-items:center;justify-content:space-between">
-        <span style="font-size:13px;color:#131c20">${escHtml(telShow)}</span>
+        <span style="font-size:15px;color:#131c20;font-weight:500">${escHtml(telShow)}</span>
         <button class="lp-mini" onclick="lpCopy('${escHtml(telShow)}', this)">Copiar</button>
       </div>
     </div>
