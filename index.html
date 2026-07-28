@@ -1414,7 +1414,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v114</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v115</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1922,7 +1922,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v114</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v115</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1976,7 +1976,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 114;
+const APP_VER = 115;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3985,7 +3985,7 @@ async function lpLoadTasks(phone){
   el.innerHTML = mine.length ? mine.map(t => `
     <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:7px">
       <button onclick="lpToggleTask('${t.id}',${t.done?'false':'true'},'${phone}')" title="${t.done?'Reabrir':'Concluir'}" style="width:18px;height:18px;border-radius:50%;border:2px solid #00a884;background:${t.done?'#00a884':'transparent'};color:#fff;cursor:pointer;flex-shrink:0;font-size:11px;line-height:14px;padding:0">${t.done?'✓':''}</button>
-      <div style="flex:1;min-width:0;font-size:13px;color:#131c20;${t.done?'text-decoration:line-through;opacity:.6':''}">${escHtml(t.title)}${t.due_at?`<div style="font-size:11px;color:#667781">⏰ ${fmtTaskDue(t.due_at)}</div>`:''}</div>
+      <div style="flex:1;min-width:0;font-size:13px;color:#131c20;${t.done?'text-decoration:line-through;opacity:.6':''}">${escHtml(t.title)}${t.due_at?`<div style="font-size:11px;color:#667781">⏰ ${fmtTaskDue(t.due_at)}</div>`:''}${t.created_at?`<div style="font-size:11px;color:#8696a0">🕘 Criada ${fmtTaskCreated(t.created_at)}</div>`:''}</div>
     </div>`).join('') : '<div style="color:#8696a0;font-size:12px">Nenhuma tarefa</div>';
 }
 async function lpToggleTask(id, done, phone){
@@ -5440,6 +5440,18 @@ function fmtTaskDue(due) {
   const d = new Date(parseUTC(due) - _BRT_OFFSET);
   return `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')} ${String(d.getUTCHours()).padStart(2,'0')}:${String(d.getUTCMinutes()).padStart(2,'0')}`;
 }
+// "Criada em" — data e hora em que a tarefa foi criada (fuso de Brasília)
+function fmtTaskCreated(iso) {
+  if (!iso) return '';
+  const ms = parseUTC(iso), d = new Date(ms - _BRT_OFFSET);
+  const hoje = Math.floor((Date.now() - _BRT_OFFSET) / 86400000);
+  const dia = Math.floor((ms - _BRT_OFFSET) / 86400000);
+  const hm = String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0');
+  if (dia === hoje) return 'hoje às ' + hm;
+  if (dia === hoje - 1) return 'ontem às ' + hm;
+  return String(d.getUTCDate()).padStart(2, '0') + '/' + String(d.getUTCMonth() + 1).padStart(2, '0') + ' às ' + hm;
+}
+
 function renderTasks() {
   const list = document.getElementById('tasks-list');
   if (!currentTasks.length) { list.innerHTML = '<p style="color:#667781;font-size:13px">Nenhuma tarefa para este lead.</p>'; return; }
@@ -5450,6 +5462,7 @@ function renderTasks() {
       <div style="flex:1;min-width:0">
         <div style="${t.done?'text-decoration:line-through;opacity:.6':''};word-break:break-word">${escHtml(t.title)}</div>
         ${due}
+        ${t.created_at ? `<div style="font-size:11px;color:#8696a0;margin-top:2px">🕘 Criada ${fmtTaskCreated(t.created_at)}</div>` : ''}
       </div>
       <button onclick="deleteTask('${t.id}')" title="Excluir" style="background:none;border:none;color:#667781;cursor:pointer;font-size:15px">🗑️</button>
     </div>`;
@@ -8086,6 +8099,7 @@ function renderTasksPage(){
       <div style="flex:1;min-width:0">
         <div style="color:#131c20;font-size:14px;${t.done?'text-decoration:line-through;opacity:.6':''}">${escHtml(t.title)}</div>
         <div style="display:flex;gap:14px;margin-top:4px;flex-wrap:wrap;align-items:center">${lead}${due}
+          ${t.created_at ? `<span style="color:#8696a0;font-size:12px">🕘 Criada ${fmtTaskCreated(t.created_at)}</span>` : ''}
           <span style="color:#667781;font-size:12px;cursor:pointer" onclick="editTaskNote('${t.id}')">💬 ${t.notes?'Editar comentário':'Comentar'}</span>
         </div>
         ${noteBlock}
