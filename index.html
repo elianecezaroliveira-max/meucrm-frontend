@@ -624,7 +624,11 @@
   }
   /* Mídias recebidas */
   .media-wrap { display:flex; flex-direction:column; gap:6px; }
-  .msg-image { max-width:240px; max-height:320px; border-radius:8px; cursor:pointer; display:block; object-fit:cover; }
+  .msg-image { max-width:290px; max-height:360px; border-radius:8px; cursor:pointer; display:block; object-fit:cover; }
+  /* Bolha de MÍDIA mais larga (igual WhatsApp): foto/vídeo/arquivo usam até 78% */
+  .msg:has(.media-wrap) { max-width: 78%; }
+  /* No celular o arquivo abre com um toque — a linha "Baixar" não existe no WhatsApp */
+  @media (hover: none) { .doc-wrap .media-dl-link { display: none; } }
   .msg-image:hover { opacity:.88; }
   .media-caption { font-size:13px; margin-top:2px; }
   .doc-wrap { background:rgba(0,0,0,.05); border-radius:6px; padding:8px 10px; font-size:13px; display:flex; flex-direction:column; gap:6px; }
@@ -1417,7 +1421,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v129</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v131</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1925,7 +1929,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v129</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v131</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1979,7 +1983,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 129;
+const APP_VER = 131;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3791,7 +3795,9 @@ async function selectContact(phone, name, accountId) {
           <button onclick="stopVoiceRec(false)" title="Enviar" style="width:48px;height:48px;border-radius:50%;background:#00a884;border:none;color:#fff;font-size:17px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.25)">➤</button>
         </div>
       </div>
-      <button id="mic-btn" onclick="startVoiceRec()" title="Gravar áudio" style="background:none;border:none;font-size:20px;cursor:pointer;color:#667781;padding:6px;flex-shrink:0">🎤</button>
+      <button id="mic-btn" onclick="startVoiceRec()" title="Gravar áudio" style="background:#00a884;border:none;width:44px;height:44px;border-radius:50%;cursor:pointer;padding:0;flex-shrink:0">
+        <svg viewBox="0 0 24 24" style="width:22px;height:22px;fill:#fff;display:block;margin:auto"><path d="M12 15.1a3.2 3.2 0 0 0 3.2-3.2V6a3.2 3.2 0 1 0-6.4 0v5.9A3.2 3.2 0 0 0 12 15.1zm5.4-3.2a5.4 5.4 0 0 1-10.8 0H4.8a7.2 7.2 0 0 0 6.3 7.1v2.1H8.9V23h6.2v-1.9H13v-2.1a7.2 7.2 0 0 0 6.3-7.1h-1.9z"/></svg>
+      </button>
       <button id="send-btn" onclick="sendMessage()" onmousedown="event.preventDefault()" ontouchend="event.preventDefault();sendMessage()" style="display:none">
         <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
       </button>
@@ -4779,7 +4785,7 @@ function renderMessageContent(m) {
       const _midKey = String(m.media_id || m.id || '').replace(/['"<>]/g, '');
       return quotedHtml + `<div class="media-wrap">
         <div style="position:relative;display:inline-block">
-          <img src="${proxyUrl}" class="msg-image" alt="Imagem" loading="lazy" style="${_dimCss(_midKey, 240, 320, 120)}"
+          <img src="${proxyUrl}" class="msg-image" alt="Imagem" loading="lazy" style="${_dimCss(_midKey, 290, 360, 120)}"
             onload="_dimSave('${_midKey}',this);_keepBottom(this)" onclick="verMidia('${proxyUrl}','img','Imagem')"
             onerror="this.parentElement.innerHTML='<span style=opacity:.6>[Imagem não disponível]</span>'" />
           <a href="#" class="media-dl-btn" title="Baixar imagem" onclick="event.preventDefault();event.stopPropagation();baixarMidia('${dlUrl}','imagem.jpg',this)">⬇</a>
@@ -4866,10 +4872,10 @@ function renderMessageContent(m) {
           const _pK = String(m.media_id || m.id || '');
           const _pC = _pdfPrevCache[_pK];
           // Miniatura já conhecida → entra JUNTO com a mensagem (zero espera)
-          if (_pC && _pC.d) return `<div class="pdf-prev done" data-pdf="${proxyUrl}" data-key-id="${escHtml(_pK)}" style="width:100%;min-width:220px;height:86px;background:#f7f8fa;border-radius:8px;margin-bottom:8px;overflow:hidden;display:flex;align-items:flex-start;justify-content:center"><img src="${_pC.d}" style="width:100%;display:block"></div>`;
-          return `<div class="pdf-prev" data-pdf="${proxyUrl}" data-key-id="${escHtml(_pK)}" style="width:100%;min-width:220px;height:86px;background:#f7f8fa;border-radius:8px;margin-bottom:8px;overflow:hidden;display:flex;align-items:flex-start;justify-content:center"><span style="color:#8696a0;font-size:11px;margin-top:34px">visualizando…</span></div>`; })()}
+          if (_pC && _pC.d) return `<div class="pdf-prev done" data-pdf="${proxyUrl}" data-key-id="${escHtml(_pK)}" style="width:100%;min-width:220px;height:86px;background:#f7f8fa;border-radius:8px;margin-bottom:6px;overflow:hidden;display:flex;align-items:flex-start;justify-content:center"><img src="${_pC.d}" style="width:100%;display:block"></div>`;
+          return `<div class="pdf-prev" data-pdf="${proxyUrl}" data-key-id="${escHtml(_pK)}" style="width:100%;min-width:220px;height:86px;background:#f7f8fa;border-radius:8px;margin-bottom:6px;overflow:hidden;display:flex;align-items:flex-start;justify-content:center"><span style="color:#8696a0;font-size:11px;margin-top:34px">visualizando…</span></div>`; })()}
         <div style="display:flex;align-items:center;gap:10px;min-width:0">
-          <span style="background:${_extCor};color:#fff;font-size:10px;font-weight:800;border-radius:6px;padding:9px 7px;min-width:36px;text-align:center;letter-spacing:.4px;flex-shrink:0">${escHtml(_extShow)}</span>
+          <span style="background:${_extCor};color:#fff;font-size:10px;font-weight:800;border-radius:6px;padding:7px 6px;min-width:34px;text-align:center;letter-spacing:.4px;flex-shrink:0">${escHtml(_extShow)}</span>
           <span style="min-width:0;flex:1">
             <span style="word-break:break-all;display:block">${escHtml(fileName)}</span>
             ${(() => { if (!_isPdf) return '';
@@ -5139,7 +5145,7 @@ async function loadMessages(phone, scroll = true) {
             ? (ult.status === 'read' ? '<span class="msg-ticks read">' + TICK_TWO + '</span>' : ult.status === 'delivered' ? '<span class="msg-ticks delivered">' + TICK_TWO + '</span>' : '<span class="msg-ticks sent">' + TICK_ONE + '</span>') : '';
           const grpA = _prevDir === safeDir; _prevDir = safeDir;
           parts.push({ key: 'alb-' + safeId, html: `<div class="msg ${safeDir}${grpA ? ' grp' : ''}" style="position:relative" data-key="alb-${safeId}" data-msg-id="${safeId}" data-msg-dir="${safeDir}">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;width:236px;max-width:100%">${tiles}</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;width:290px;max-width:100%">${tiles}</div>
             <div class="time">${_brtTime(parseUTC(ult.timestamp))}${tk}</div>
           </div>` });
           continue;
