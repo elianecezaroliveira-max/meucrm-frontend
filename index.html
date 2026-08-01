@@ -175,6 +175,10 @@
   @media (min-width: 769px) { #btn-info { display: none !important; } }
   #messages-area { flex: 1; overflow-y: auto; overflow-anchor: none; padding: 16px; display: flex; flex-direction: column; gap: 0; transition: background 0.2s; background-color: #efeae2; background-image: radial-gradient(rgba(0,0,0,0.028) 1px, transparent 1px); background-size: 22px 22px; }
   .msg { margin-top: 4px; }
+  /* 📅 Dia FLUTUANTE no topo enquanto rola (igual WhatsApp) */
+  #day-float { position: fixed; transform: translateX(-50%); z-index: 60; background: #fff; color: #54656f; font-size: 12.5px; padding: 5px 12px; border-radius: 8px; box-shadow: 0 1px 2.5px rgba(0,0,0,.18); opacity: 0; transition: opacity .25s; pointer-events: none; white-space: nowrap; }
+  #day-float.show { opacity: 1; }
+  body.dark #day-float { background: #202c33; color: #8696a0; }
   .day-divider { margin: 8px 0 4px; }
   /* Bolhas AGRUPADAS: mensagens seguidas do mesmo lado se juntam (igual WhatsApp) */
   .msg.grp { margin-top: 1.5px; }
@@ -633,7 +637,7 @@
   }
   /* Mídias recebidas */
   .media-wrap { display:flex; flex-direction:column; gap:6px; }
-  .msg-image { max-width:min(330px,100%); max-height:420px; border-radius:6px; cursor:pointer; display:block; object-fit:cover; }
+  .msg-image { max-width:min(330px,100%); max-height:360px; border-radius:6px; cursor:pointer; display:block; object-fit:cover; }
   /* Bolha de MÍDIA mais larga (igual WhatsApp): foto/vídeo/arquivo usam até 74% */
   .msg:has(.media-wrap) { max-width: 74%; }
   /* Moldura FINA da mídia (igual WhatsApp): 4px em volta de foto/vídeo/álbum */
@@ -1449,7 +1453,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v138</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v139</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1957,7 +1961,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v138</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v139</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2011,7 +2015,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 138;
+const APP_VER = 139;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3848,6 +3852,7 @@ async function selectContact(phone, name, accountId) {
       <div id="notes-status"></div>
     </div>
     <div id="messages-area"></div>
+    <div id="day-float"></div>
     <div id="bot-run-banner">
       <span>🤖 Bot ativo:</span>
       <span id="bot-run-name" style="color:#00a884;font-weight:600"></span>
@@ -4799,12 +4804,14 @@ function _waMediaSize(w, h) {
   const area = document.getElementById('messages-area');
   const cw = area ? area.clientWidth : 360;
   const maxW = Math.min(330, Math.round(cw * 0.74));
-  const maxH = Math.min(420, Math.round((window.innerHeight || 700) * 0.58));
+  const maxH = Math.min(360, Math.round((window.innerHeight || 700) * 0.52));
   const s = Math.min(1, maxW / w, maxH / h); // nunca estica além do natural
   let dw = Math.round(w * s), dh = Math.round(h * s);
   if (s < 1) {
-    if (dw < 130) dw = 130; // retrato muito fino → alarga e corta
+    if (dw < 150) dw = 150; // retrato muito fino → alarga e corta
     if (dh < 110) dh = 110; // panorâmica → altura mínima e corta
+    // Print de celular (comprido demais) → corte leve, igual ao WhatsApp
+    if (dh > Math.round(dw * 1.55)) dh = Math.round(dw * 1.55);
   }
   return [dw, dh];
 }
@@ -5343,7 +5350,18 @@ async function loadMessages(phone, scroll = true) {
           const tEl = el.querySelector(':scope > .time');
           if (tEl && novoT != null) { tEl.innerHTML = novoT; el._html = parts[i].html; return; }
         }
-        el.replaceWith(_mkEl(parts[i].html));
+        // Recriação necessária: TRANSPLANTA a foto/vídeo já carregados para a
+        // bolha nova (mesmo src) — a mídia nunca é redecodificada, nunca pisca
+        const nu = _mkEl(parts[i].html);
+        try {
+          const vMedia = el.querySelector('img.msg-image, .media-wrap video');
+          const nMedia = nu.querySelector('img.msg-image, .media-wrap video');
+          if (vMedia && nMedia && vMedia.src === nMedia.src) {
+            vMedia.style.cssText = nMedia.style.cssText || vMedia.style.cssText;
+            nMedia.replaceWith(vMedia);
+          }
+        } catch (_) {}
+        el.replaceWith(nu);
       });
       for (let i = kids.length; i < parts.length; i++) area.appendChild(_mkEl(parts[i].html));
     } else {
@@ -5378,6 +5396,21 @@ async function loadMessages(phone, scroll = true) {
     // Rolou até o fim por conta própria → esconde o aviso
     area.onscroll = () => {
       if (area.scrollHeight - area.scrollTop - area.clientHeight < 80) hideNewMsgPill();
+      // 📅 Dia flutuante no topo enquanto rola (some sozinho ao parar)
+      const fl = document.getElementById('day-float');
+      if (fl) {
+        const aR = area.getBoundingClientRect();
+        let lab = null;
+        area.querySelectorAll('.day-divider').forEach(dv => { if (dv.getBoundingClientRect().top - aR.top < 34) lab = dv.textContent; });
+        if (lab) {
+          fl.textContent = lab;
+          fl.style.top = (aR.top + 8) + 'px';
+          fl.style.left = (aR.left + aR.width / 2) + 'px';
+          fl.classList.add('show');
+          clearTimeout(window._dayFloatT);
+          window._dayFloatT = setTimeout(() => fl.classList.remove('show'), 1100);
+        }
+      }
     };
   } catch(e) {
     console.error('[loadMessages] erro ao carregar mensagens:', e);
