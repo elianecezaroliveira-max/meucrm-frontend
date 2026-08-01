@@ -624,9 +624,16 @@
   }
   /* Mídias recebidas */
   .media-wrap { display:flex; flex-direction:column; gap:6px; }
-  .msg-image { max-width:265px; max-height:330px; border-radius:8px; cursor:pointer; display:block; object-fit:cover; }
+  .msg-image { max-width:min(330px,100%); max-height:420px; border-radius:6px; cursor:pointer; display:block; object-fit:cover; }
   /* Bolha de MÍDIA mais larga (igual WhatsApp): foto/vídeo/arquivo usam até 74% */
   .msg:has(.media-wrap) { max-width: 74%; }
+  /* Moldura FINA da mídia (igual WhatsApp): 4px em volta de foto/vídeo/álbum */
+  .msg:has(.msg-image), .msg:has(video), .msg[data-key^="alb-"] { padding: 4px; }
+  .msg:has(.msg-image) .time, .msg:has(video) .time, .msg[data-key^="alb-"] .time { margin-right: 6px; margin-bottom: 1px; }
+  .media-caption { padding: 2px 6px 4px; }
+  /* A mídia NUNCA passa da borda da bolha */
+  .media-wrap, .media-wrap > div { max-width: 100%; }
+  .media-wrap video { max-width: 100% !important; border-radius: 6px; }
   /* No celular o arquivo abre com um toque — a linha "Baixar" não existe no WhatsApp */
   @media (hover: none) { .doc-wrap .media-dl-link { display: none; } }
   .msg-image:hover { opacity:.88; }
@@ -1421,7 +1428,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v132</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v133</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1929,7 +1936,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v132</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v133</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1983,7 +1990,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 132;
+const APP_VER = 133;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3825,12 +3832,15 @@ async function selectContact(phone, name, accountId) {
   }, 300);
 
   await loadMessages(phone);
-  // "Enviar de:" automático — se o contato não tem conta definida, usa a conta
-  // da ÚLTIMA mensagem da conversa (o número pelo qual o lead falou com você)
-  if (!currentAccountId && Array.isArray(currentMessages) && currentMessages.length) {
-    const withAcct = [...currentMessages].reverse().find(m => m.account_id);
-    if (withAcct) {
-      currentAccountId = withAcct.account_id;
+  // "Enviar de:" automático — pré-seleciona SEMPRE o número em que o lead mandou
+  // a ÚLTIMA mensagem recebida (vale para QR e API: se ele trocou de número, a
+  // resposta já sai pelo número novo). Sem mensagem recebida, usa a última da conversa.
+  if (Array.isArray(currentMessages) && currentMessages.length) {
+    const _revs = [...currentMessages].reverse();
+    const _ultIn = _revs.find(m => m.direction === 'inbound' && m.account_id);
+    const _melhor = (_ultIn && _ultIn.account_id) || ((_revs.find(m => m.account_id) || {}).account_id);
+    if (_melhor) {
+      currentAccountId = _melhor;
       const sel = document.getElementById('chat-account-select');
       if (sel) sel.value = currentAccountId;
     }
@@ -4663,10 +4673,27 @@ function _dimSave(id, el) {
     localStorage.setItem('vetra_dim', JSON.stringify(d));
   } catch (_) {}
 }
-function _dimCss(id, maxW, maxH, minH) {
+// 📐 REGRA DO WHATSAPP (sem tamanho fixo): a mídia usa a PRÓPRIA proporção,
+// limitada pela largura da conversa (~74%) e por uma fração da altura da tela.
+// Retratos finíssimos e panorâmicas ganham um corte leve (object-fit: cover),
+// exatamente como o WhatsApp faz.
+function _waMediaSize(w, h) {
+  const area = document.getElementById('messages-area');
+  const cw = area ? area.clientWidth : 360;
+  const maxW = Math.min(330, Math.round(cw * 0.74));
+  const maxH = Math.min(420, Math.round((window.innerHeight || 700) * 0.58));
+  const s = Math.min(1, maxW / w, maxH / h); // nunca estica além do natural
+  let dw = Math.round(w * s), dh = Math.round(h * s);
+  if (s < 1) {
+    if (dw < 130) dw = 130; // retrato muito fino → alarga e corta
+    if (dh < 110) dh = 110; // panorâmica → altura mínima e corta
+  }
+  return [dw, dh];
+}
+function _dimCss(id) {
   const d = _dimGet(id); if (!d || !d[0] || !d[1]) return '';
-  const s = Math.min(1, maxW / d[0], maxH / d[1]);
-  return `width:${Math.round(d[0] * s)}px;height:${Math.max(minH || 0, Math.round(d[1] * s))}px;`;
+  const wh = _waMediaSize(d[0], d[1]);
+  return `width:${wh[0]}px;height:${wh[1]}px;`;
 }
 function _keepBottom(el) {
   const a = document.getElementById('messages-area'); if (!a) return;
@@ -4785,7 +4812,7 @@ function renderMessageContent(m) {
       const _midKey = String(m.media_id || m.id || '').replace(/['"<>]/g, '');
       return quotedHtml + `<div class="media-wrap">
         <div style="position:relative;display:inline-block">
-          <img src="${proxyUrl}" class="msg-image" alt="Imagem" loading="lazy" style="${_dimCss(_midKey, 265, 330, 120)}"
+          <img src="${proxyUrl}" class="msg-image" alt="Imagem" loading="lazy" style="${_dimCss(_midKey)}"
             onload="_dimSave('${_midKey}',this);_keepBottom(this)" onclick="verMidia('${proxyUrl}','img','Imagem')"
             onerror="this.parentElement.innerHTML='<span style=opacity:.6>[Imagem não disponível]</span>'" />
           <a href="#" class="media-dl-btn" title="Baixar imagem" onclick="event.preventDefault();event.stopPropagation();baixarMidia('${dlUrl}','imagem.jpg',this)">⬇</a>
@@ -4851,7 +4878,7 @@ function renderMessageContent(m) {
       const _vidKey = String(m.media_id || m.id || '').replace(/['"<>]/g, '');
       return quotedHtml + `<div class="media-wrap">
         <video controls preload="metadata" playsinline src="${proxyUrl}"
-          onloadedmetadata="_dimSave('${_vidKey}',this);_keepBottom(this)" style="max-width:280px;border-radius:8px;display:block;min-height:160px;background:#0b141a;${_dimCss(_vidKey, 280, 340, 160)}"></video>
+          onloadedmetadata="_dimSave('${_vidKey}',this);_keepBottom(this)" style="max-width:min(330px,100%);border-radius:8px;display:block;min-height:160px;background:#0b141a;${_dimCss(_vidKey)}"></video>
         <a href="#" class="media-dl-link" title="Baixar vídeo" onclick="event.preventDefault();event.stopPropagation();baixarMidia('${dlUrl}','video.mp4',this)">⬇ Baixar vídeo</a>
         ${caption}
       </div>`;
@@ -5183,7 +5210,18 @@ async function loadMessages(phone, scroll = true) {
       kids.every((el, i) => el.dataset && el.dataset.key === parts[i].key);
     if (samePrefix) {
       // troca apenas os blocos alterados (ex.: ✓ → ✓✓) e acrescenta os novos no fim
-      kids.forEach((el, i) => { if (el._html !== parts[i].html) el.replaceWith(_mkEl(parts[i].html)); });
+      // Se SÓ o rodapé mudou (✓ → ✓✓ → lida), troca apenas o horário/tique:
+      // recriar a bolha inteira fazia a FOTO piscar a cada confirmação
+      const _semTime = h => (h || '').replace(/<div class="time">[\s\S]*?<\/div>/, '');
+      kids.forEach((el, i) => {
+        if (el._html === parts[i].html) return;
+        if (_semTime(el._html) === _semTime(parts[i].html)) {
+          const novoT = (parts[i].html.match(/<div class="time">([\s\S]*?)<\/div>/) || [])[1];
+          const tEl = el.querySelector(':scope > .time');
+          if (tEl && novoT != null) { tEl.innerHTML = novoT; el._html = parts[i].html; return; }
+        }
+        el.replaceWith(_mkEl(parts[i].html));
+      });
       for (let i = kids.length; i < parts.length; i++) area.appendChild(_mkEl(parts[i].html));
     } else {
       // estrutura mudou (conversa nova, mensagem apagada...) → render completo
