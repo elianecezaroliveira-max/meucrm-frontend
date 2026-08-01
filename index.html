@@ -868,9 +868,9 @@
   /* Chat aberto: TELA INTEIRA — some a barra "VETRA" e o cabeçalho respeita a câmera */
   body.mobile-chat-open #topbar { display: none; }
   body.mobile-chat-open #chat-header { padding-top: calc(8px + env(safe-area-inset-top)); }
-  /* Rodapé colado na barra de gesto (sem borda sobrando) */
+  /* Rodapé colado embaixo, SEM margem sobrando abaixo do campo de mensagem */
   @supports (padding: env(safe-area-inset-top)) {
-    #input-area { padding-bottom: env(safe-area-inset-bottom) !important; padding-top: 5px; }
+    #input-area { padding-bottom: 6px !important; padding-top: 4px; }
   }
 
   /* Botão voltar aparece no mobile */
@@ -885,9 +885,7 @@
      (sem isso o iOS "engole" o gesto de voltar arrastando para a direita) */
   #messages-area { touch-action: pan-y; }
 
-  /* Barra "Enviar de:" compacta no celular (o seletor não pode estourar a tela) */
-  #chat-account-bar { padding: 5px 12px; gap: 8px; }
-  #chat-account-bar select { font-size: 13px; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* (a barra "Enviar de:" virou um seletor compacto dentro da linha de ferramentas) */
 
   /* Emoji picker menor no mobile */
   emoji-picker { width: 300px !important; height: 340px !important; }
@@ -1416,7 +1414,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v123</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v124</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1924,7 +1922,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v123</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v124</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1978,7 +1976,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 123;
+const APP_VER = 124;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3751,6 +3749,10 @@ async function selectContact(phone, name, accountId) {
       </div>
       <button id="emoji-btn" onclick="toggleEmojiPicker(event)" title="Emojis">😊</button>
       <div id="emoji-picker-wrap"></div>
+      <select id="chat-account-select" onchange="currentAccountId=this.value" title="Enviar pelo número"
+        style="margin-left:auto;max-width:44%;min-width:0;background:#e9edef;border:none;border-radius:14px;padding:5px 10px;font-size:12.5px;color:#54656f;font-family:inherit;outline:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+        ${accountOptions}
+      </select>
       </div>
       <div id="reply-bar">
         <span id="reply-preview-text"></span>
