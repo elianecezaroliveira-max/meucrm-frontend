@@ -901,9 +901,11 @@
   /* Chat aberto: TELA INTEIRA — some a barra "VETRA" e o cabeçalho respeita a câmera */
   body.mobile-chat-open #topbar { display: none; }
   body.mobile-chat-open #chat-header { padding-top: calc(8px + env(safe-area-inset-top)); }
-  /* Rodapé: campo de mensagem e botões mais ALTOS (pedido: subir mais um pouco) */
+  /* Rodapé: campo de mensagem e botões mais ALTOS (pedido: subir mais um pouco).
+     Com o TECLADO ABERTO a folga some — o teclado já encosta no campo. */
   @supports (padding: env(safe-area-inset-top)) {
     #input-area { padding-bottom: 20px !important; padding-top: 4px; }
+    body.kb-open #input-area { padding-bottom: 5px !important; }
   }
 
   /* Botão voltar aparece no mobile */
@@ -1447,7 +1449,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v136</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v137</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1955,7 +1957,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v136</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v137</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2009,7 +2011,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 136;
+const APP_VER = 137;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4613,7 +4615,10 @@ function _ensurePresenceWatch() {
       // O canal do CHAT é o da ÚLTIMA mensagem RECEBIDA do lead (não o seletor
       // "Enviar de"): lead falou por QR → presença; falou por API → janela de 24h
       const _inAcc = ([...(currentMessages || [])].reverse().find(x => x.direction === 'inbound' && x.account_id) || {}).account_id;
-      const acc = (window._accountsById || {})[_inAcc || currentAccountId];
+      // Plano B: conta da última recebida não localizada → usa a do "Enviar de"
+      const _accsMap = window._accountsById || {};
+      const _accIdSel = _accsMap[_inAcc] ? _inAcc : currentAccountId;
+      const acc = _accsMap[_accIdSel];
       // Conta ainda não identificada → não mostra nada (jamais assumir API oficial)
       if (!acc) { el.style.display = 'none'; return; }
       const isQr = !!(acc.type === 'evolution' || acc.evolution_instance);
@@ -4633,7 +4638,7 @@ function _ensurePresenceWatch() {
         } catch (_) { el.style.display = 'none'; }
         return;
       }
-      const r = await fetch(SERVER_URL + '/presence?phone=' + encodeURIComponent(currentPhone) + '&account_id=' + encodeURIComponent(currentAccountId));
+      const r = await fetch(SERVER_URL + '/presence?phone=' + encodeURIComponent(currentPhone) + '&account_id=' + encodeURIComponent(_accIdSel || currentAccountId));
       const d = await r.json();
       let t = '';
       if (d.state === 'composing') t = 'digitando…';
@@ -4671,6 +4676,8 @@ function _ensurePresenceWatch() {
       const tecladoAberto = (fullH - vv.height) > 60;
       const dH = prevH - vv.height; prevH = vv.height;
       document.body.style.height = tecladoAberto ? (vv.height + 'px') : '';
+      // Teclado aberto = a folga de baixo do rodapé some (o teclado já encosta nele)
+      document.body.classList.toggle('kb-open', tecladoAberto);
       // Teclado ABRIU (dH>0): as mensagens sobem o mesmo tanto — nada escondido.
       const a = document.getElementById('messages-area');
       if (a && dH > 0 && tecladoAberto) a.scrollTop += dH;
@@ -6058,10 +6065,10 @@ async function _sendOneFile(file, caption, semRecarga) {
     if (file.type.startsWith('image/')) {
       // A foto aparece NA HORA (prévia local) enquanto o envio acontece por trás
       uLocal = URL.createObjectURL(file);
-      div.innerHTML = `<img src="${uLocal}" style="max-width:230px;max-height:280px;border-radius:8px;display:block">${caption ? `<div class="media-caption">${escHtml(caption)}</div>` : ''}<div class="time">${horaAgora} <span class="msg-ticks pending">${TICK_CLOCK}</span></div>`;
+      div.innerHTML = `<img src="${uLocal}" onload="const a=document.getElementById('messages-area');if(a)a.scrollTop=a.scrollHeight" style="max-width:230px;max-height:280px;border-radius:8px;display:block">${caption ? `<div class="media-caption">${escHtml(caption)}</div>` : ''}<div class="time">${horaAgora} <span class="msg-ticks pending">${TICK_CLOCK}</span></div>`;
     } else if (file.type.startsWith('video/')) {
       uLocal = URL.createObjectURL(file);
-      div.innerHTML = `<video src="${uLocal}" muted playsinline style="max-width:230px;max-height:280px;border-radius:8px;display:block"></video>${caption ? `<div class="media-caption">${escHtml(caption)}</div>` : ''}<div class="time">${horaAgora} <span class="msg-ticks pending">${TICK_CLOCK}</span></div>`;
+      div.innerHTML = `<video src="${uLocal}" muted playsinline onloadedmetadata="const a=document.getElementById('messages-area');if(a)a.scrollTop=a.scrollHeight" style="max-width:230px;max-height:280px;border-radius:8px;display:block"></video>${caption ? `<div class="media-caption">${escHtml(caption)}</div>` : ''}<div class="time">${horaAgora} <span class="msg-ticks pending">${TICK_CLOCK}</span></div>`;
     } else {
       const icon = file.type.startsWith('audio/') ? '🎵' : '📄';
       div.innerHTML = `${icon} <em style="font-size:13px;opacity:.8">${escHtml(file.name)}</em><div class="time">${horaAgora}</div>`;
