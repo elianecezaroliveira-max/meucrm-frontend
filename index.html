@@ -105,6 +105,15 @@
   .contact-item.has-unread:hover { background: #d7f0e3 !important; }
   /* Swipe nas conversas (celular): direita = lida, esquerda = favorita */
   .contact-swipe-wrap { position: relative; overflow: hidden; }
+  /* ☑️ Seleção em massa de conversas */
+  #sel-bar { display: none; background: #00a884; color: #fff; padding: 8px 10px; align-items: center; gap: 5px; font-size: 13.5px; }
+  #sel-bar.on { display: flex; }
+  #sel-bar button { background: rgba(255,255,255,.16); border: none; color: #fff; border-radius: 8px; padding: 6px 8px; font-size: 15px; cursor: pointer; }
+  body.sel-mode .contact-menu-btn { display: none !important; }
+  body.sel-mode .contact-item { padding-left: 42px; }
+  body.sel-mode .contact-swipe-wrap::before { content: ''; position: absolute; left: 11px; top: 50%; transform: translateY(-50%); width: 20px; height: 20px; border: 2px solid #8696a0; border-radius: 50%; z-index: 3; background: #fff; box-sizing: border-box; pointer-events: none; }
+  body.sel-mode .contact-swipe-wrap.sel-on::before { content: '✓'; background: #00a884; border-color: #00a884; color: #fff; font-size: 13px; line-height: 16px; text-align: center; }
+  .contact-item { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
   .contact-swipe-wrap > .contact-item { position: relative; z-index: 1; background: #ffffff; touch-action: pan-y; will-change: transform; }
   .swipe-action { position: absolute; top: 0; bottom: 0; width: 92px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #fff; font-size: 11px; font-weight: 600; z-index: 0; visibility: hidden; }
   .contact-swipe-wrap.swiping .swipe-action { visibility: visible; }
@@ -1438,7 +1447,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v135</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v136</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1946,7 +1955,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v135</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v136</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2000,7 +2009,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 135;
+const APP_VER = 136;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2759,6 +2768,7 @@ function renderContacts(contacts) {
       </div>
     </div>`;
   }).join('');
+  if (window._selChats) _selPinta(); // re-render da lista mantém as seleções visíveis
   updateAppBadge(); // mantém o número no ícone do app em dia
 }
 
@@ -3489,6 +3499,7 @@ function openContactMenu(ev, phone) {
     `<div class="cm-item" onclick="toggleFavorite('${phone}');closeContactMenu()">${c && c.favorite ? '★ Remover dos favoritos' : '⭐ Favoritar conversa'}</div>` +
     `<div class="cm-item" onclick="togglePin('${phone}');closeContactMenu()">${c && c.pinned ? '📌 Desafixar do topo' : '📌 Fixar no topo'}</div>` +
     `<div class="cm-item" onclick="toggleMute('${phone}');closeContactMenu()">${c && c.muted ? '🔔 Reativar notificações' : '🔇 Silenciar conversa'}</div>` +
+    `<div class="cm-item" onclick="closeContactMenu();_selEntrar('${phone}')">☑️ Selecionar conversas</div>` +
     `<div class="cm-item" style="color:#ef4444" onclick="closeContactMenu();deleteConversation('${phone}')">🗑 Apagar conversa</div>`;
   menu.style.display = 'block';
   menu.style.left = Math.min(ev.clientX, window.innerWidth - 210) + 'px';
@@ -3498,6 +3509,86 @@ function closeContactMenu() {
   const m = document.getElementById('contact-menu');
   if (m) m.style.display = 'none';
 }
+// ── ☑️ SELEÇÃO EM MASSA de conversas (segurar o dedo na lista ou menu ⋯) ──
+window._selChats = null;
+function _selEntrar(ph) {
+  if (window._selChats) return;
+  window._selChats = new Set(ph ? [ph] : []);
+  window._selJustEntered = Date.now();
+  document.body.classList.add('sel-mode');
+  let bar = document.getElementById('sel-bar');
+  if (!bar) {
+    const lista = document.getElementById('contacts-list');
+    if (!lista) return;
+    bar = document.createElement('div'); bar.id = 'sel-bar';
+    bar.innerHTML = `<span id="sel-count" style="flex:1;font-weight:600"></span>
+      <button title="Marcar como lidas" onclick="_selAplicar('lida')">✓</button>
+      <button title="Marcar como não lidas" onclick="_selAplicar('naolida')">🔵</button>
+      <button title="Fixar no topo" onclick="_selAplicar('fixar')">📌</button>
+      <button title="Silenciar" onclick="_selAplicar('silenciar')">🔇</button>
+      <button title="Favoritar" onclick="_selAplicar('favoritar')">⭐</button>
+      <button title="Apagar conversas" onclick="_selAplicar('apagar')">🗑</button>
+      <button title="Cancelar" onclick="_selSair()">✕</button>`;
+    lista.parentElement.insertBefore(bar, lista);
+  }
+  bar.classList.add('on');
+  _selPinta();
+}
+function _selSair() {
+  window._selChats = null;
+  document.body.classList.remove('sel-mode');
+  const bar = document.getElementById('sel-bar'); if (bar) bar.classList.remove('on');
+  document.querySelectorAll('.contact-swipe-wrap.sel-on').forEach(w => w.classList.remove('sel-on'));
+}
+function _selToggle(ph) {
+  const s = window._selChats; if (!s) return;
+  if (s.has(ph)) s.delete(ph); else s.add(ph);
+  _selPinta();
+}
+function _selPinta() {
+  const s = window._selChats || new Set();
+  document.querySelectorAll('#contacts-list .contact-swipe-wrap').forEach(w =>
+    w.classList.toggle('sel-on', s.has(w.dataset.phone)));
+  const c = document.getElementById('sel-count');
+  if (c) c.textContent = s.size + ' selecionada' + (s.size === 1 ? '' : 's');
+}
+async function _selAplicar(acao) {
+  const alvos = Array.from(window._selChats || []);
+  if (!alvos.length) return;
+  if (acao === 'apagar' && !confirm(`Apagar ${alvos.length} conversa(s)?\n\nAs mensagens saem do CRM (não afeta o WhatsApp do cliente).\nOs leads CONTINUAM no Pipeline, com etiquetas e anotações.`)) return;
+  for (const ph of alvos) {
+    const c = allContacts.find(x => x.phone === ph);
+    const enc = encodeURIComponent(ph);
+    try {
+      if (acao === 'lida') { if (c) { c.unread_count = 0; c.first_unread_at = null; } await fetch(`${SERVER_URL}/contacts/${enc}/read`, { method: 'PUT' }); }
+      else if (acao === 'naolida') { if (c && !(c.unread_count > 0)) { c.unread_count = 1; c.first_unread_at = new Date().toISOString(); await fetch(`${SERVER_URL}/contacts/${enc}/unread`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: '{}' }); } }
+      else if (acao === 'fixar') { if (c) c.pinned = true; await fetch(`${SERVER_URL}/contacts/${enc}/pin`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pinned: true }) }); }
+      else if (acao === 'silenciar') { if (c) c.muted = true; await fetch(`${SERVER_URL}/contacts/${enc}/mute`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ muted: true }) }); }
+      else if (acao === 'favoritar') { if (c) c.favorite = true; await fetch(`${SERVER_URL}/contacts/${enc}/favorite`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ favorite: true }) }); }
+      else if (acao === 'apagar') { await fetch(`${SERVER_URL}/contacts/${enc}/messages`, { method: 'DELETE' }); if (c) { c.last_message_preview = null; c.unread_count = 0; } }
+    } catch (_) {}
+  }
+  _selSair();
+  allContacts = sortContacts(allContacts);
+  applyFilters();
+  loadContacts();
+}
+// Segurar o dedo (0,55s) numa conversa entra no modo de seleção
+(function _initSelLongPress() {
+  const list = document.getElementById('contacts-list');
+  if (!list) return;
+  let t = null, x0 = 0, y0 = 0;
+  list.addEventListener('touchstart', e => {
+    const wrap = e.target.closest('.contact-swipe-wrap'); if (!wrap || window._selChats) return;
+    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY;
+    clearTimeout(t);
+    t = setTimeout(() => { _selEntrar(wrap.dataset.phone); }, 550);
+  }, { passive: true });
+  list.addEventListener('touchmove', e => {
+    if (t && (Math.abs(e.touches[0].clientX - x0) > 10 || Math.abs(e.touches[0].clientY - y0) > 10)) { clearTimeout(t); t = null; }
+  }, { passive: true });
+  ['touchend', 'touchcancel'].forEach(ev => list.addEventListener(ev, () => { clearTimeout(t); t = null; }, { passive: true }));
+})();
 document.addEventListener('click', e => {
   if (!e.target.closest('#contact-menu') && !e.target.closest('.contact-menu-btn')) closeContactMenu();
 });
@@ -3668,6 +3759,12 @@ async function saveWaProfile() {
 
 // ── CHAT ──
 async function selectContact(phone, name, accountId) {
+  // Modo SELEÇÃO EM MASSA: o toque marca/desmarca em vez de abrir a conversa
+  if (window._selChats) {
+    if (Date.now() - (window._selJustEntered || 0) < 600) return; // toque que iniciou o modo
+    _selToggle(phone);
+    return;
+  }
   // Marca onde começam as NÃO LIDAS (divisória igual WhatsApp)
   try {
     const _cUn = (allContacts || []).find(x => x.phone === phone);
