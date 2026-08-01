@@ -1414,7 +1414,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v125</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v126</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1922,7 +1922,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v125</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v126</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1976,7 +1976,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 125;
+const APP_VER = 126;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2175,12 +2175,17 @@ function startQRPoll() {
           clearInterval(_qrPollInterval);
           clearTimeout(_qrRefreshTimeout);
           onQRConnected(d.phone);
+        } else if (d.state === 'pairing') {
+          // O celular JÁ leu o QR — avisa na hora enquanto a conexão termina de subir
+          const st = document.getElementById('qr-status-txt');
+          if (st) { st.textContent = '✅ QR Code lido! Conectando…'; st.style.color = '#00a884'; }
         } else if (d.state === 'close' || d.state === 'refused') {
-          document.getElementById('qr-status-txt').textContent = 'Aguardando leitura...';
+          const st = document.getElementById('qr-status-txt');
+          if (st) { st.textContent = 'Aguardando leitura...'; st.style.color = '#667781'; }
         }
       })
       .catch(() => {});
-  }, 3000);
+  }, 2000);
 }
 
 function onQRConnected(phone) {
@@ -3888,8 +3893,9 @@ async function _fillPdfPreviews() {
       _pdfPrevCache[key] = dados;
       _pintaPdfPrev(el, dados);
       try { doc.destroy(); } catch (_) {}
-      _keepBottom();
-    } catch (_) { try { el.remove(); } catch (_) {} }
+      // (sem _keepBottom aqui: a prévia tem altura FIXA de 86px — nada cresce,
+      //  e o chamado antigo era justamente o que empurrava a tela para baixo)
+    } catch (_) { try { el.innerHTML = ''; } catch (_) {} }
   }
 }
 
@@ -3908,14 +3914,18 @@ function abrirArquivo(url, tipo, nome) {
         <span id="fv-nome" style="flex:1;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
         <span id="fv-baixar" style="cursor:pointer;font-size:18px;padding:2px 8px">⬇</span>
       </div>
-      <div id="fv-body" style="flex:1;overflow:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;align-items:center;gap:8px;padding:10px"></div>
+      <div id="fv-body" style="flex:1;overflow:auto;-webkit-overflow-scrolling:touch;padding:10px;touch-action:pan-x pan-y">
+        <div id="fv-zoom" style="transform-origin:0 0;display:flex;flex-direction:column;align-items:center;gap:8px;min-height:100%"></div>
+      </div>
     </div>`);
     ov = document.getElementById('file-viewer');
+    _fvGestos(); // pinça para dar zoom + toque duplo (instala uma única vez)
   }
   ov.style.display = 'flex';
+  _fvZoomReset();
   document.getElementById('fv-nome').textContent = nome || 'Arquivo';
   document.getElementById('fv-baixar').onclick = () => baixarMidia(url.includes('download=1') ? url : url + '&download=1&filename=' + encodeURIComponent(nome || 'arquivo'), nome || 'arquivo');
-  const body = document.getElementById('fv-body');
+  const body = document.getElementById('fv-zoom');
   body.innerHTML = '<span style="color:#8696a0;font-size:13px;margin-top:36px">Abrindo…</span>';
   if (tipo === 'img') { body.innerHTML = `<img src="${url}" style="max-width:100%;height:auto;border-radius:4px">`; return; }
   if (tipo === 'pdf') {
@@ -3923,30 +3933,92 @@ function abrirArquivo(url, tipo, nome) {
       const doc = await window.pdfjsLib.getDocument({ url }).promise;
       body.innerHTML = '';
       const n = Math.min(doc.numPages, 30);
-      // Renderiza na resolução REAL da tela (Retina = 3x) — páginas nítidas, sem borrão
-      const dpr = Math.min(3, window.devicePixelRatio || 1);
+      // Nitidez de tela Retina SEM estourar a memória do iOS: usa UM canvas
+      // temporário e guarda cada página como imagem JPEG leve (30 canvas 3x
+      // era o que fazia o iOS matar o app — o "reinício" ao mexer no arquivo)
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const larg = document.getElementById('fv-body').clientWidth - 20;
+      const cv = document.createElement('canvas');
+      const ctx = cv.getContext('2d');
       for (let i = 1; i <= n; i++) {
         const pg = await doc.getPage(i);
         const vp0 = pg.getViewport({ scale: 1 });
-        const cssScale = Math.min(2, Math.max(0.5, (body.clientWidth - 16) / vp0.width));
+        const cssScale = Math.min(2, Math.max(0.5, larg / vp0.width));
         const vp = pg.getViewport({ scale: cssScale * dpr });
-        const cv = document.createElement('canvas');
         cv.width = vp.width; cv.height = vp.height;
-        cv.style.cssText = `width:${Math.round(vp.width / dpr)}px;max-width:100%;background:#fff;border-radius:4px`;
-        body.appendChild(cv);
-        await pg.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height); // fundo branco (JPEG não tem transparência)
+        await pg.render({ canvasContext: ctx, viewport: vp }).promise;
+        const im = new Image();
+        im.src = cv.toDataURL('image/jpeg', 0.88);
+        im.style.cssText = `width:${Math.round(vp.width / dpr)}px;max-width:100%;background:#fff;border-radius:4px`;
+        body.appendChild(im);
       }
+      cv.width = cv.height = 0; // libera a memória do canvas temporário
       if (doc.numPages > n) body.insertAdjacentHTML('beforeend', `<span style="color:#8696a0;font-size:12px;padding:8px">Mostrando ${n} de ${doc.numPages} páginas — use ⬇ para o arquivo completo</span>`);
       try { doc.destroy(); } catch (_) {}
     }).catch(() => { body.innerHTML = '<span style="color:#8696a0;font-size:13px;margin-top:36px">Não consegui abrir aqui — use o ⬇ para baixar.</span>'; });
     return;
   }
   // Outros formatos: tenta exibir; se o aparelho não suportar, o ⬇ resolve
-  body.innerHTML = `<iframe src="${url}" style="width:100%;height:100%;border:none;background:#fff;border-radius:4px"></iframe>`;
+  body.innerHTML = `<iframe src="${url}" style="width:100%;height:78vh;border:none;background:#fff;border-radius:4px"></iframe>`;
+}
+// 🔍 Zoom de pinça dentro do visualizador (igual WhatsApp): dois dedos aproximam/afastam,
+// toque duplo alterna 1x ↔ 2,2x, e com zoom o arrasto navega pela página
+let _fvS = 1;
+function _fvZoomReset() {
+  _fvS = 1;
+  const z = document.getElementById('fv-zoom'); if (z) z.style.transform = '';
+  const b = document.getElementById('fv-body'); if (b) { b.scrollTop = 0; b.scrollLeft = 0; }
+}
+function _fvAplicaZoom(alvo, mx, my) {
+  const b = document.getElementById('fv-body'), z = document.getElementById('fv-zoom');
+  if (!b || !z) return;
+  const novo = Math.min(5, Math.max(1, alvo));
+  const k = novo / _fvS;
+  _fvS = novo;
+  z.style.transform = novo === 1 ? '' : `scale(${novo})`;
+  // Mantém o ponto da pinça parado na tela enquanto a escala muda
+  b.scrollLeft = (b.scrollLeft + mx) * k - mx;
+  b.scrollTop  = (b.scrollTop + my) * k - my;
+}
+function _fvGestos() {
+  const b = document.getElementById('fv-body'); if (!b) return;
+  let d0 = 0, s0 = 1, pinca = false, tapT = 0, tapX = 0, tapY = 0;
+  b.addEventListener('touchstart', e => {
+    if (e.touches.length === 2) {
+      pinca = true; s0 = _fvS;
+      d0 = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY) || 1;
+    }
+  }, { passive: true });
+  b.addEventListener('touchmove', e => {
+    if (pinca && e.touches.length === 2) {
+      e.preventDefault();
+      const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY) || 1;
+      const r = b.getBoundingClientRect();
+      const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - r.left;
+      const my = (e.touches[0].clientY + e.touches[1].clientY) / 2 - r.top;
+      _fvAplicaZoom(s0 * d / d0, mx, my);
+    }
+  }, { passive: false });
+  b.addEventListener('touchend', e => {
+    if (e.touches.length < 2) pinca = false;
+    if (e.touches.length) return;
+    const ch = e.changedTouches && e.changedTouches[0]; if (!ch) return;
+    const agora = Date.now();
+    if (agora - tapT < 300 && Math.abs(ch.clientX - tapX) < 30 && Math.abs(ch.clientY - tapY) < 30) {
+      const r = b.getBoundingClientRect();
+      _fvAplicaZoom(_fvS > 1.2 ? 1 : 2.2, ch.clientX - r.left, ch.clientY - r.top);
+      tapT = 0;
+    } else { tapT = agora; tapX = ch.clientX; tapY = ch.clientY; }
+  }, { passive: true });
+  // Bloqueia o gesto de zoom do Safari NA PÁGINA (que bagunçava/derrubava o app)
+  ['gesturestart', 'gesturechange', 'gestureend'].forEach(ev =>
+    b.addEventListener(ev, e => e.preventDefault()));
 }
 function fecharArquivo() {
   const o = document.getElementById('file-viewer'); if (o) o.style.display = 'none';
-  const b = document.getElementById('fv-body'); if (b) b.innerHTML = '';
+  const b = document.getElementById('fv-zoom'); if (b) b.innerHTML = '';
+  _fvZoomReset();
 }
 
 // ⬇ Baixa o arquivo DIRETO na pasta de downloads do navegador (sem abrir aba
@@ -4559,7 +4631,25 @@ function waFormat(raw) {
 }
 
 // 🔗 Prévia de link (cartão com título/imagem) — preenchida depois do render
-const _lpCache = {};
+// Cache PERMANENTE dos cartões de link: quem já foi visto rende o cartão
+// junto com a mensagem (altura certa desde o 1º quadro — o chat não "pula")
+let _lpCache = {};
+try { _lpCache = JSON.parse(localStorage.getItem('vetra_lp') || '{}'); } catch (_) { _lpCache = {}; }
+function _lpCardHtml(u, d) {
+  if (!d || (!d.title && !d.image)) return '';
+  return `<a href="${u}" target="_blank" rel="noopener" style="display:flex;gap:9px;text-decoration:none;color:inherit;background:rgba(0,0,0,.055);border-radius:8px;padding:8px;margin-bottom:5px;align-items:center;max-width:300px;height:68px;box-sizing:border-box;overflow:hidden">
+      ${d.image ? `<img src="${d.image}" style="width:52px;height:52px;object-fit:cover;border-radius:6px;flex-shrink:0" onerror="this.style.visibility='hidden'">` : ''}
+      <span style="min-width:0"><span style="display:block;font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(d.title || d.site || '')}</span>
+      ${d.desc ? `<span style="display:block;font-size:11.5px;color:#54656f;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(d.desc)}</span>` : ''}
+      ${d.site ? `<span style="display:block;font-size:11px;color:#8696a0">${escHtml(d.site)}</span>` : ''}</span></a>`;
+}
+function _lpSalva() {
+  try {
+    const ks = Object.keys(_lpCache);
+    if (ks.length > 300) ks.slice(0, ks.length - 300).forEach(k => delete _lpCache[k]);
+    localStorage.setItem('vetra_lp', JSON.stringify(_lpCache));
+  } catch (_) {}
+}
 async function _fillLinkPreviews() {
   document.querySelectorAll('#messages-area .link-prev:not(.done)').forEach(async el => {
     el.classList.add('done');
@@ -4568,13 +4658,11 @@ async function _fillLinkPreviews() {
     if (!d) {
       try { d = await (await fetch(SERVER_URL + '/link-preview?url=' + encodeURIComponent(u))).json(); } catch (_) { d = {}; }
       _lpCache[u] = d || {};
+      _lpSalva();
     }
-    if (!d || (!d.title && !d.image)) { el.remove(); return; }
-    el.innerHTML = `<a href="${u}" target="_blank" rel="noopener" style="display:flex;gap:9px;text-decoration:none;color:inherit;background:rgba(0,0,0,.055);border-radius:8px;padding:8px;margin-bottom:5px;align-items:center;max-width:300px">
-      ${d.image ? `<img src="${d.image}" style="width:52px;height:52px;object-fit:cover;border-radius:6px;flex-shrink:0" onerror="this.remove()">` : ''}
-      <span style="min-width:0"><span style="display:block;font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(d.title || d.site || '')}</span>
-      ${d.desc ? `<span style="display:block;font-size:11.5px;color:#54656f;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(d.desc)}</span>` : ''}
-      ${d.site ? `<span style="display:block;font-size:11px;color:#8696a0">${escHtml(d.site)}</span>` : ''}</span></a>`;
+    const html = _lpCardHtml(u, d);
+    if (!html) { el.remove(); return; }
+    el.innerHTML = html;
   });
 }
 
@@ -4703,7 +4791,7 @@ function renderMessageContent(m) {
           <span style="background:${_extCor};color:#fff;font-size:10px;font-weight:800;border-radius:6px;padding:9px 7px;min-width:36px;text-align:center;letter-spacing:.4px;flex-shrink:0">${escHtml(_extShow)}</span>
           <span style="min-width:0;flex:1">
             <span style="word-break:break-all;display:block">${escHtml(fileName)}</span>
-            ${_isPdf ? '<span class="pdf-pgs" style="font-size:11.5px;color:#8696a0;display:block;margin-top:1px"></span>' : ''}
+            ${_isPdf ? '<span class="pdf-pgs" style="font-size:11.5px;color:#8696a0;display:block;margin-top:1px;height:15px;line-height:15px;overflow:hidden"></span>' : ''}
           </span>
         </div>
         <a href="#" class="media-dl-link" onclick="event.preventDefault();event.stopPropagation();baixarMidia('${dlUrl}','${escHtml(fileName).replace(/'/g, "\\'")}',this)">⬇ Baixar arquivo</a>
@@ -4780,7 +4868,18 @@ function renderMessageContent(m) {
     </div>`;
   }
   const _urlM = (m.type === 'text' || !m.type) ? safeContent.match(/(?:https?:\/\/|www\.)[^\s<]+/) : null;
-  const _lpHtml = _urlM ? `<div class="link-prev" data-url="${escHtml(_urlM[0].startsWith('http') ? _urlM[0] : 'https://' + _urlM[0])}"></div>` : '';
+  let _lpHtml = '';
+  if (_urlM) {
+    const _lpU = _urlM[0].startsWith('http') ? _urlM[0] : 'https://' + _urlM[0];
+    const _lpD = _lpCache[_lpU];
+    if (_lpD !== undefined) {
+      // Link já conhecido: cartão entra JUNTO com a mensagem (sem pulo depois)
+      const _card = _lpCardHtml(_lpU, _lpD);
+      _lpHtml = _card ? `<div class="link-prev done" data-url="${escHtml(_lpU)}">${_card}</div>` : '';
+    } else {
+      _lpHtml = `<div class="link-prev" data-url="${escHtml(_lpU)}"></div>`;
+    }
+  }
   return quotedHtml + _lpHtml + `<span class="msg-text">${waFormat(safeContent)}</span>`;
 }
 
