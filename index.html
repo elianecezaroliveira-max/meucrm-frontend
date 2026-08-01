@@ -1453,7 +1453,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v140</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v141</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1961,7 +1961,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v140</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v141</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2015,7 +2015,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 140;
+const APP_VER = 141;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5153,6 +5153,9 @@ function msgDayKey(dateStr) {
 let _lastMsgsSig = ''; // assinatura da última renderização — evita re-render desnecessário
 async function loadMessages(phone, scroll = true) {
   try {
+    // Envio de mídia em andamento: o polling NÃO mexe na tela (a prévia local
+    // fica parada; a real entra de uma vez quando o envio termina — sem piscar)
+    if (!scroll && window._enviandoMidia) return;
     _ensurePresenceWatch();
     const res = await fetch(SERVER_URL + '/messages/' + phone);
     if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -5354,9 +5357,11 @@ async function loadMessages(phone, scroll = true) {
         // bolha nova (mesmo src) — a mídia nunca é redecodificada, nunca pisca
         const nu = _mkEl(parts[i].html);
         try {
+          // Mesma mensagem (mesma chave) = mesma mídia → mantém o elemento JÁ
+          // CARREGADO mesmo que o endereço mude (prévia local × cópia da rede)
           const vMedia = el.querySelector('img.msg-image, .media-wrap video');
           const nMedia = nu.querySelector('img.msg-image, .media-wrap video');
-          if (vMedia && nMedia && vMedia.src === nMedia.src) {
+          if (vMedia && nMedia) {
             vMedia.style.cssText = nMedia.style.cssText || vMedia.style.cssText;
             nMedia.replaceWith(vMedia);
           }
@@ -5379,7 +5384,7 @@ async function loadMessages(phone, scroll = true) {
           try {
             const vM = velho.querySelector('img.msg-image, .media-wrap video');
             const nM = nu.querySelector('img.msg-image, .media-wrap video');
-            if (vM && nM && vM.src === nM.src) { vM.style.cssText = nM.style.cssText || vM.style.cssText; nM.replaceWith(vM); }
+            if (vM && nM) { vM.style.cssText = nM.style.cssText || vM.style.cssText; nM.replaceWith(vM); }
           } catch (_) {}
         }
         frag.appendChild(nu);
@@ -6130,6 +6135,7 @@ async function _sendOneFile(file, caption, semRecarga) {
     area.appendChild(div);
     area.scrollTop = area.scrollHeight;
   }
+  window._enviandoMidia = (window._enviandoMidia || 0) + 1; // pausa o polling na tela
   try {
     const res = await fetch(SERVER_URL + '/send-media', {
       method: 'POST',
@@ -6144,6 +6150,7 @@ async function _sendOneFile(file, caption, semRecarga) {
       })
     });
     const data = await res.json();
+    window._enviandoMidia = Math.max(0, (window._enviandoMidia || 1) - 1);
     if (!data.success) throw new Error(data.error || 'Erro ao enviar');
     // A MESMA foto que você acabou de mandar continua no lugar: a mensagem real
     // usará esta prévia local (a cópia da rede fica para as próximas aberturas)
@@ -6155,6 +6162,7 @@ async function _sendOneFile(file, caption, semRecarga) {
     await loadMessages(currentPhone);
     return { ok: true };
   } catch(err) {
+    window._enviandoMidia = Math.max(0, (window._enviandoMidia || 1) - 1);
     if (optDiv) optDiv.remove();
     alert('Erro ao enviar arquivo: ' + err.message);
     return { ok: false }; // FALHOU: quem chamou não pode marcar a conversa como lida
