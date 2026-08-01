@@ -1414,7 +1414,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v127</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v128</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1922,7 +1922,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v127</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v128</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1976,7 +1976,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 127;
+const APP_VER = 128;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3849,7 +3849,23 @@ function toggleLeadPanel(force){
   if (show) { const nt = document.getElementById('lp-notes'); if (nt) { nt.style.height = 'auto'; nt.style.height = nt.scrollHeight + 'px'; } }
 }
 // 📄 Prévia da 1ª página dos PDFs no chat (igual WhatsApp) — desenhada uma vez e guardada
-const _pdfPrevCache = {};
+// Cache PERMANENTE das miniaturas de PDF: a prévia aparece NA HORA nas próximas
+// aberturas (antes era só memória — cada abertura baixava o PDF inteiro de novo)
+let _pdfPrevCache = {};
+try { _pdfPrevCache = JSON.parse(localStorage.getItem('vetra_pdfprev') || '{}'); } catch (_) { _pdfPrevCache = {}; }
+function _pdfPrevSalva() {
+  try {
+    const ks = Object.keys(_pdfPrevCache);
+    if (ks.length > 30) ks.slice(0, ks.length - 30).forEach(k => delete _pdfPrevCache[k]);
+    localStorage.setItem('vetra_pdfprev', JSON.stringify(_pdfPrevCache));
+  } catch (_) {
+    try { // sem espaço → guarda só as 10 mais recentes
+      const ks = Object.keys(_pdfPrevCache);
+      ks.slice(0, Math.max(0, ks.length - 10)).forEach(k => delete _pdfPrevCache[k]);
+      localStorage.setItem('vetra_pdfprev', JSON.stringify(_pdfPrevCache));
+    } catch (_) {}
+  }
+}
 let _pdfJsLoading = null;
 function _loadPdfJs() {
   if (window.pdfjsLib) return Promise.resolve();
@@ -3863,6 +3879,9 @@ function _loadPdfJs() {
   });
   return _pdfJsLoading;
 }
+// Pré-carrega a biblioteca de PDF em segundo plano: a 1ª prévia/abertura de
+// arquivo da sessão sai bem mais rápida (depois fica no cache do navegador)
+setTimeout(() => { try { _loadPdfJs().catch(() => {}); } catch (_) {} }, 4000);
 function _pintaPdfPrev(el, dados) {
   // Faixa CURTA do topo da 1ª página (igual WhatsApp): o contêiner de altura fixa corta o resto
   el.innerHTML = `<img src="${dados.d}" style="width:100%;display:block">`;
@@ -3891,6 +3910,7 @@ async function _fillPdfPreviews() {
       await pg.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
       const dados = { d: cv.toDataURL('image/jpeg', 0.78), p: doc.numPages };
       _pdfPrevCache[key] = dados;
+      _pdfPrevSalva();
       _pintaPdfPrev(el, dados);
       try { doc.destroy(); } catch (_) {}
       // (sem _keepBottom aqui: a prévia tem altura FIXA de 86px — nada cresce,
@@ -3906,6 +3926,16 @@ function verMidia(url, tipo, nome) {
   else window.open(url, '_blank');
 }
 function abrirArquivo(url, tipo, nome) {
+  if (tipo !== 'img') {
+    // ARQUIVOS: visualizador NATIVO do iPhone (como era antes — qualidade e zoom
+    // perfeitos), aberto numa janela POR CIMA do app. O clique direto no link
+    // "_blank" abre o navegador embutido do iOS; tocar em "Concluído" volta
+    // para a conversa exatamente onde estava — o VETRA não recarrega.
+    const a = document.createElement('a');
+    a.href = url; a.target = '_blank'; a.rel = 'noopener';
+    document.body.appendChild(a); a.click(); a.remove();
+    return;
+  }
   let ov = document.getElementById('file-viewer');
   if (!ov) {
     document.body.insertAdjacentHTML('beforeend', `<div id="file-viewer" style="position:fixed;inset:0;background:#0b141a;z-index:3000;display:flex;flex-direction:column">
@@ -4829,12 +4859,20 @@ function renderMessageContent(m) {
       return quotedHtml + `<div class="media-wrap doc-wrap" style="cursor:pointer" title="Toque para abrir"
         onclick="if(window.matchMedia('(hover: none)').matches){event.stopPropagation();abrirArquivo('${proxyUrl}','${_isPdf ? 'pdf' : 'outro'}','${escHtml(fileName).replace(/'/g, "\\'")}');}"
         ondblclick="window.open('${proxyUrl}','_blank')">
-        ${_isPdf ? `<div class="pdf-prev" data-pdf="${proxyUrl}" data-key-id="${escHtml(String(m.media_id || m.id || ''))}" style="width:100%;min-width:220px;height:86px;background:#f7f8fa;border-radius:8px;margin-bottom:8px;overflow:hidden;display:flex;align-items:flex-start;justify-content:center"><span style="color:#8696a0;font-size:11px;margin-top:34px">visualizando…</span></div>` : ''}
+        ${(() => { if (!_isPdf) return '';
+          const _pK = String(m.media_id || m.id || '');
+          const _pC = _pdfPrevCache[_pK];
+          // Miniatura já conhecida → entra JUNTO com a mensagem (zero espera)
+          if (_pC && _pC.d) return `<div class="pdf-prev done" data-pdf="${proxyUrl}" data-key-id="${escHtml(_pK)}" style="width:100%;min-width:220px;height:86px;background:#f7f8fa;border-radius:8px;margin-bottom:8px;overflow:hidden;display:flex;align-items:flex-start;justify-content:center"><img src="${_pC.d}" style="width:100%;display:block"></div>`;
+          return `<div class="pdf-prev" data-pdf="${proxyUrl}" data-key-id="${escHtml(_pK)}" style="width:100%;min-width:220px;height:86px;background:#f7f8fa;border-radius:8px;margin-bottom:8px;overflow:hidden;display:flex;align-items:flex-start;justify-content:center"><span style="color:#8696a0;font-size:11px;margin-top:34px">visualizando…</span></div>`; })()}
         <div style="display:flex;align-items:center;gap:10px;min-width:0">
           <span style="background:${_extCor};color:#fff;font-size:10px;font-weight:800;border-radius:6px;padding:9px 7px;min-width:36px;text-align:center;letter-spacing:.4px;flex-shrink:0">${escHtml(_extShow)}</span>
           <span style="min-width:0;flex:1">
             <span style="word-break:break-all;display:block">${escHtml(fileName)}</span>
-            ${_isPdf ? '<span class="pdf-pgs" style="font-size:11.5px;color:#8696a0;display:block;margin-top:1px;height:15px;line-height:15px;overflow:hidden"></span>' : ''}
+            ${(() => { if (!_isPdf) return '';
+              const _pC2 = _pdfPrevCache[String(m.media_id || m.id || '')];
+              const _tx = (_pC2 && _pC2.p) ? _pC2.p + (_pC2.p > 1 ? ' páginas' : ' página') + ' • PDF' : '';
+              return `<span class="pdf-pgs" style="font-size:11.5px;color:#8696a0;display:block;margin-top:1px;height:15px;line-height:15px;overflow:hidden">${_tx}</span>`; })()}
           </span>
         </div>
         <a href="#" class="media-dl-link" onclick="event.preventDefault();event.stopPropagation();baixarMidia('${dlUrl}','${escHtml(fileName).replace(/'/g, "\\'")}',this)">⬇ Baixar arquivo</a>
