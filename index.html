@@ -175,7 +175,10 @@
   .msg { max-width: 65%; padding: 8px 12px; border-radius: 8px; font-size: 14px; line-height: 1.4; position: relative; word-wrap: break-word; color: #131c20; }
   .msg.inbound { background: #ffffff; align-self: flex-start; border-top-left-radius: 0; box-shadow: 0 1px 1px rgba(0,0,0,.08); }
   .msg.outbound { background: #d9fdd3; align-self: flex-end; border-top-right-radius: 0; box-shadow: 0 1px 1px rgba(0,0,0,.08); }
-  .msg .time { font-size: 11px; color: #667781; text-align: right; margin-top: 4px; }
+  /* Horário IGUAL ao WhatsApp: flutua na MESMA linha do fim do texto (à direita);
+     só desce para a linha de baixo quando a última linha é comprida demais */
+  .msg .time { float: right; font-size: 11px; color: #667781; margin: 7px 0 -3px 9px; line-height: 1; }
+  .msg::after { content: ''; display: block; clear: both; } /* a bolha abraça o horário flutuante */
   /* Preserva quebras de linha e espaçamento do texto (igual chega no WhatsApp) */
   .msg-text, .media-caption { white-space: pre-wrap; }
   #input-area { background: #f0f2f5; padding: 8px 16px 10px; display: flex; flex-direction: column; align-items: stretch; gap: 6px; border-top: 1px solid #e9edef; position: relative; }
@@ -1414,7 +1417,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v128</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v129</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1922,7 +1925,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v128</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v129</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1976,7 +1979,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 128;
+const APP_VER = 129;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
