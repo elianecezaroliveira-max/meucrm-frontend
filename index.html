@@ -1414,7 +1414,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v117</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v118</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1922,7 +1922,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v117</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v118</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1976,7 +1976,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 117;
+const APP_VER = 118;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2703,8 +2703,11 @@ function renderContacts(contacts) {
     let previewHtml = isOut
       ? (stTick ? stTick + shownPrev : `<span style="color:#667781">Você: </span>${shownPrev}`)
       : shownPrev;
-    // Rascunho pendente nesta conversa? Mostra em verde, igual WhatsApp
-    if (_drafts[c.phone] && c.phone !== currentPhone)
+    // Rascunho pendente nesta conversa? Mostra em verde, igual WhatsApp.
+    // No celular, com a LISTA em cena, mostra até para a conversa "atual"
+    // (ela continua marcada como aberta internamente após o voltar).
+    const _naLista = window.matchMedia('(max-width: 768px)').matches && !document.body.classList.contains('mobile-chat-open');
+    if (_drafts[c.phone] && (c.phone !== currentPhone || _naLista))
       previewHtml = `<span style="color:#00a884;font-weight:600">Rascunho: </span>${escHtml(String(_drafts[c.phone]).slice(0, 60))}`;
     const isFav = !!c.favorite;
     return `<div class="contact-swipe-wrap" data-phone="${c.phone}">
