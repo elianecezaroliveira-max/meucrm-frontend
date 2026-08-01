@@ -1414,7 +1414,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v126</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v127</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1922,7 +1922,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v126</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v127</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1976,7 +1976,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 126;
+const APP_VER = 127;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3930,7 +3930,9 @@ function abrirArquivo(url, tipo, nome) {
   if (tipo === 'img') { body.innerHTML = `<img src="${url}" style="max-width:100%;height:auto;border-radius:4px">`; return; }
   if (tipo === 'pdf') {
     _loadPdfJs().then(async () => {
+      if (_fvDoc) { try { _fvDoc.destroy(); } catch (_) {} _fvDoc = null; }
       const doc = await window.pdfjsLib.getDocument({ url }).promise;
+      _fvDoc = doc; // fica vivo para RE-RENDERIZAR nítido quando você dá zoom
       body.innerHTML = '';
       const n = Math.min(doc.numPages, 30);
       // Nitidez de tela Retina SEM estourar a memória do iOS: usa UM canvas
@@ -3941,6 +3943,7 @@ function abrirArquivo(url, tipo, nome) {
       const cv = document.createElement('canvas');
       const ctx = cv.getContext('2d');
       for (let i = 1; i <= n; i++) {
+        if (_fvDoc !== doc) return; // abriu outro arquivo no meio — aborta este
         const pg = await doc.getPage(i);
         const vp0 = pg.getViewport({ scale: 1 });
         const cssScale = Math.min(2, Math.max(0.5, larg / vp0.width));
@@ -3950,12 +3953,12 @@ function abrirArquivo(url, tipo, nome) {
         await pg.render({ canvasContext: ctx, viewport: vp }).promise;
         const im = new Image();
         im.src = cv.toDataURL('image/jpeg', 0.88);
+        im.dataset.pg = i; im.dataset.res = String(cssScale * dpr); // para o re-render do zoom
         im.style.cssText = `width:${Math.round(vp.width / dpr)}px;max-width:100%;background:#fff;border-radius:4px`;
         body.appendChild(im);
       }
       cv.width = cv.height = 0; // libera a memória do canvas temporário
       if (doc.numPages > n) body.insertAdjacentHTML('beforeend', `<span style="color:#8696a0;font-size:12px;padding:8px">Mostrando ${n} de ${doc.numPages} páginas — use ⬇ para o arquivo completo</span>`);
-      try { doc.destroy(); } catch (_) {}
     }).catch(() => { body.innerHTML = '<span style="color:#8696a0;font-size:13px;margin-top:36px">Não consegui abrir aqui — use o ⬇ para baixar.</span>'; });
     return;
   }
@@ -3964,7 +3967,7 @@ function abrirArquivo(url, tipo, nome) {
 }
 // 🔍 Zoom de pinça dentro do visualizador (igual WhatsApp): dois dedos aproximam/afastam,
 // toque duplo alterna 1x ↔ 2,2x, e com zoom o arrasto navega pela página
-let _fvS = 1;
+let _fvS = 1, _fvDoc = null, _fvSharpTimer = null, _fvSharpBusy = false;
 function _fvZoomReset() {
   _fvS = 1;
   const z = document.getElementById('fv-zoom'); if (z) z.style.transform = '';
@@ -3980,6 +3983,44 @@ function _fvAplicaZoom(alvo, mx, my) {
   // Mantém o ponto da pinça parado na tela enquanto a escala muda
   b.scrollLeft = (b.scrollLeft + mx) * k - mx;
   b.scrollTop  = (b.scrollTop + my) * k - my;
+  // Parou de mexer? Re-renderiza as páginas visíveis na resolução do zoom (nítido)
+  clearTimeout(_fvSharpTimer);
+  _fvSharpTimer = setTimeout(_fvSharpen, 320);
+}
+// ✨ Afiador do zoom: redesenha SÓ as páginas na tela, na resolução ampliada.
+// Uma-duas páginas por vez = qualidade de zoom sem estourar a memória do iOS.
+async function _fvSharpen() {
+  if (!_fvDoc || _fvSharpBusy || _fvS <= 1.05) return;
+  _fvSharpBusy = true;
+  try {
+    const b = document.getElementById('fv-body');
+    const imgs = Array.from(document.querySelectorAll('#fv-zoom img[data-pg]'));
+    const rb = b.getBoundingClientRect();
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    for (const im of imgs) {
+      const r = im.getBoundingClientRect();
+      if (r.bottom < rb.top - 80 || r.top > rb.bottom + 80) continue; // fora da tela
+      const doc = _fvDoc;
+      const pgN = parseInt(im.dataset.pg, 10); if (!pgN) continue;
+      const pg = await doc.getPage(pgN);
+      if (_fvDoc !== doc) return; // trocou de arquivo no meio
+      const vp0 = pg.getViewport({ scale: 1 });
+      const cssW = parseFloat(im.style.width) || (b.clientWidth - 20);
+      const desejado = Math.min(6, (cssW / vp0.width) * dpr * _fvS);
+      if (desejado <= parseFloat(im.dataset.res || '1') * 1.25) continue; // já está nítido
+      const vp = pg.getViewport({ scale: desejado });
+      const cv = document.createElement('canvas');
+      cv.width = vp.width; cv.height = vp.height;
+      const ctx = cv.getContext('2d');
+      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height);
+      await pg.render({ canvasContext: ctx, viewport: vp }).promise;
+      if (_fvDoc !== doc) return;
+      im.src = cv.toDataURL('image/jpeg', 0.9); // mesma largura CSS → nada se mexe
+      im.dataset.res = String(desejado);
+      cv.width = cv.height = 0;
+    }
+  } catch (_) {}
+  _fvSharpBusy = false;
 }
 function _fvGestos() {
   const b = document.getElementById('fv-body'); if (!b) return;
@@ -4018,6 +4059,8 @@ function _fvGestos() {
 function fecharArquivo() {
   const o = document.getElementById('file-viewer'); if (o) o.style.display = 'none';
   const b = document.getElementById('fv-zoom'); if (b) b.innerHTML = '';
+  clearTimeout(_fvSharpTimer);
+  if (_fvDoc) { try { _fvDoc.destroy(); } catch (_) {} _fvDoc = null; }
   _fvZoomReset();
 }
 
@@ -5105,7 +5148,17 @@ async function loadMessages(phone, scroll = true) {
     const _maoLivre = !window._userTouching && Date.now() - (window._scrollUpTs || 0) > 2500;
     if (scroll || (nearBottom && _maoLivre)) {
       if (scroll) window._openPinTs = Date.now(); // janela de abertura: fica colado no fim enquanto as mídias carregam
-      area.scrollTop = area.scrollHeight; // direto no fim, determinístico
+      // Tem não lidas? A conversa JÁ NASCE na divisória — no mesmo quadro do
+      // render, sem aparecer o fim antes (nada de "piscar" na última mensagem)
+      const _dvNL = (scroll && window._unreadMark && !window._unreadMark.scrolled && window._unreadMark.msgId)
+        ? area.querySelector('[data-key="unread-div"]') : null;
+      if (_dvNL) {
+        window._unreadMark.scrolled = true;
+        const _rD = _dvNL.getBoundingClientRect(), _rA = area.getBoundingClientRect();
+        area.scrollTop += (_rD.top - _rA.top) - Math.max(0, (area.clientHeight - _rD.height) / 2);
+      } else {
+        area.scrollTop = area.scrollHeight; // direto no fim, determinístico
+      }
       hideNewMsgPill();
     } else {
       if (!samePrefix) area.scrollTop = prevTop; // no incremental a posição nem chega a mudar
