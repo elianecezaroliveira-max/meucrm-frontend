@@ -106,9 +106,9 @@
   /* Swipe nas conversas (celular): direita = lida, esquerda = favorita */
   .contact-swipe-wrap { position: relative; overflow: hidden; }
   /* ☑️ Seleção em massa de conversas */
-  #sel-bar { display: none; background: #00a884; color: #fff; padding: 8px 10px; align-items: center; gap: 5px; font-size: 13.5px; }
-  #sel-bar.on { display: flex; }
-  #sel-bar button { background: rgba(255,255,255,.16); border: none; color: #fff; border-radius: 8px; padding: 6px 8px; font-size: 15px; cursor: pointer; }
+  #sel-chats-bar { display: none; background: #00a884; color: #fff; padding: 8px 10px; align-items: center; gap: 5px; font-size: 13.5px; }
+  #sel-chats-bar.on { display: flex; }
+  #sel-chats-bar button { background: rgba(255,255,255,.16); border: none; color: #fff; border-radius: 8px; padding: 6px 8px; font-size: 15px; cursor: pointer; }
   body.sel-mode .contact-menu-btn { display: none !important; }
   body.sel-mode .contact-item { padding-left: 42px; }
   body.sel-mode .contact-swipe-wrap::before { content: ''; position: absolute; left: 11px; top: 50%; transform: translateY(-50%); width: 20px; height: 20px; border: 2px solid #8696a0; border-radius: 50%; z-index: 3; background: #fff; box-sizing: border-box; pointer-events: none; }
@@ -1449,7 +1449,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v137</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v138</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1957,7 +1957,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v137</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v138</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2011,7 +2011,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 137;
+const APP_VER = 138;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3352,7 +3352,8 @@ async function selDelete() {
 function msgMenuInfo() {
   const id = _msgMenuId; closeMsgMenu(); if (!id) return;
   const m = (currentMessages || []).find(x => String(x.id) === String(id)); if (!m) return;
-  const f = t => t ? new Date(parseUTC(t)).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : null;
+  // Mesmo formato do WhatsApp: "Hoje às 14:32" / "Ontem às 09:10" / "sáb., 20 de jun. às 18:05"
+  const f = t => t ? `${formatDayLabel(t)} às ${_brtTime(parseUTC(t))}` : null;
   const rk = { pending: 0, sent: 1, delivered: 2, read: 3 }[m.status] ?? 1;
   const linEnt = f(m.delivered_at) || (rk >= 2 ? 'sim' : '—');
   const linLida = f(m.read_at) || (rk >= 3 ? 'sim' : '—');
@@ -3518,12 +3519,12 @@ function _selEntrar(ph) {
   window._selChats = new Set(ph ? [ph] : []);
   window._selJustEntered = Date.now();
   document.body.classList.add('sel-mode');
-  let bar = document.getElementById('sel-bar');
+  let bar = document.getElementById('sel-chats-bar');
   if (!bar) {
     const lista = document.getElementById('contacts-list');
     if (!lista) return;
-    bar = document.createElement('div'); bar.id = 'sel-bar';
-    bar.innerHTML = `<span id="sel-count" style="flex:1;font-weight:600"></span>
+    bar = document.createElement('div'); bar.id = 'sel-chats-bar';
+    bar.innerHTML = `<span id="sel-chats-count" style="flex:1;font-weight:600"></span>
       <button title="Marcar como lidas" onclick="_selAplicar('lida')">✓</button>
       <button title="Marcar como não lidas" onclick="_selAplicar('naolida')">🔵</button>
       <button title="Fixar no topo" onclick="_selAplicar('fixar')">📌</button>
@@ -3539,7 +3540,7 @@ function _selEntrar(ph) {
 function _selSair() {
   window._selChats = null;
   document.body.classList.remove('sel-mode');
-  const bar = document.getElementById('sel-bar'); if (bar) bar.classList.remove('on');
+  const bar = document.getElementById('sel-chats-bar'); if (bar) bar.classList.remove('on');
   document.querySelectorAll('.contact-swipe-wrap.sel-on').forEach(w => w.classList.remove('sel-on'));
 }
 function _selToggle(ph) {
@@ -3551,7 +3552,7 @@ function _selPinta() {
   const s = window._selChats || new Set();
   document.querySelectorAll('#contacts-list .contact-swipe-wrap').forEach(w =>
     w.classList.toggle('sel-on', s.has(w.dataset.phone)));
-  const c = document.getElementById('sel-count');
+  const c = document.getElementById('sel-chats-count');
   if (c) c.textContent = s.size + ' selecionada' + (s.size === 1 ? '' : 's');
 }
 async function _selAplicar(acao) {
@@ -5121,6 +5122,7 @@ function renderMessageContent(m) {
 }
 
 function formatDayLabel(dateStr) {
+  // IGUAL ao WhatsApp: Hoje · Ontem · quarta-feira (últimos 7 dias) · sáb., 20 de jun.
   const ms     = parseUTC(dateStr) - _BRT_OFFSET;
   const d      = new Date(ms);
   const msgDay = Math.floor(ms / 86400000);
@@ -5128,12 +5130,13 @@ function formatDayLabel(dateStr) {
   const today  = Math.floor(nowMs / 86400000);
   if (msgDay === today)     return 'Hoje';
   if (msgDay === today - 1) return 'Ontem';
-  const months = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  const dias = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+  if (today - msgDay < 7 && today - msgDay > 0) return dias[d.getUTCDay()];
+  const diasAb  = ['dom.','seg.','ter.','qua.','qui.','sex.','sáb.'];
+  const mesesAb = ['jan.','fev.','mar.','abr.','mai.','jun.','jul.','ago.','set.','out.','nov.','dez.'];
   const year = d.getUTCFullYear();
   const nowYear = new Date(nowMs).getUTCFullYear();
-  return year === nowYear
-    ? `${d.getUTCDate()} de ${months[d.getUTCMonth()]}`
-    : `${d.getUTCDate()} de ${months[d.getUTCMonth()]} de ${year}`;
+  return `${diasAb[d.getUTCDay()]}, ${d.getUTCDate()} de ${mesesAb[d.getUTCMonth()]}` + (year === nowYear ? '' : ` de ${year}`);
 }
 
 function msgDayKey(dateStr) {
