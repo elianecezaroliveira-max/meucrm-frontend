@@ -634,6 +634,16 @@
   /* A mídia NUNCA passa da borda da bolha */
   .media-wrap, .media-wrap > div { max-width: 100%; }
   .media-wrap video { max-width: 100% !important; border-radius: 6px; }
+  /* Foto/vídeo/álbum SEM legenda: horário DENTRO da mídia (igual WhatsApp) */
+  .msg:has(.msg-image):not(:has(.media-caption)) .time,
+  .msg:has(video):not(:has(.media-caption)) .time,
+  .msg[data-key^="alb-"] .time {
+    position: absolute; right: 10px; bottom: 8px; float: none; margin: 0;
+    color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.75); z-index: 2;
+  }
+  .msg:has(.msg-image):not(:has(.media-caption)) .time .msg-ticks:not(.read),
+  .msg:has(video):not(:has(.media-caption)) .time .msg-ticks:not(.read),
+  .msg[data-key^="alb-"] .time .msg-ticks:not(.read) { color: #fff; }
   /* No celular o arquivo abre com um toque — a linha "Baixar" não existe no WhatsApp */
   @media (hover: none) { .doc-wrap .media-dl-link { display: none; } }
   .msg-image:hover { opacity:.88; }
@@ -882,9 +892,9 @@
   /* Chat aberto: TELA INTEIRA — some a barra "VETRA" e o cabeçalho respeita a câmera */
   body.mobile-chat-open #topbar { display: none; }
   body.mobile-chat-open #chat-header { padding-top: calc(8px + env(safe-area-inset-top)); }
-  /* Rodapé: campo e botão de enviar um pouco mais ALTOS (sem margem sobrando) */
+  /* Rodapé: campo de mensagem e botões mais ALTOS (pedido: subir mais um pouco) */
   @supports (padding: env(safe-area-inset-top)) {
-    #input-area { padding-bottom: 12px !important; padding-top: 4px; }
+    #input-area { padding-bottom: 20px !important; padding-top: 4px; }
   }
 
   /* Botão voltar aparece no mobile */
@@ -1428,7 +1438,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v133</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v135</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1936,7 +1946,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v133</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v135</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1990,7 +2000,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 133;
+const APP_VER = 135;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4503,7 +4513,10 @@ function _ensurePresenceWatch() {
       // Espera as mensagens da conversa carregarem: sem isso aparecia
       // "cliente ainda não respondeu" por 1s antes da janela real
       if (window._msgsReadyFor !== currentPhone) { el.style.display = 'none'; return; }
-      const acc = (window._accountsById || {})[currentAccountId];
+      // O canal do CHAT é o da ÚLTIMA mensagem RECEBIDA do lead (não o seletor
+      // "Enviar de"): lead falou por QR → presença; falou por API → janela de 24h
+      const _inAcc = ([...(currentMessages || [])].reverse().find(x => x.direction === 'inbound' && x.account_id) || {}).account_id;
+      const acc = (window._accountsById || {})[_inAcc || currentAccountId];
       // Conta ainda não identificada → não mostra nada (jamais assumir API oficial)
       if (!acc) { el.style.display = 'none'; return; }
       const isQr = !!(acc.type === 'evolution' || acc.evolution_instance);
@@ -4810,9 +4823,11 @@ function renderMessageContent(m) {
       const caption = m.content && !m.content.startsWith('[Imagem') ? `<div class="media-caption">${waFormat(m.content)}</div>` : '';
       const dlUrl = `${proxyUrl}&download=1&filename=${encodeURIComponent('imagem.jpg')}`;
       const _midKey = String(m.media_id || m.id || '').replace(/['"<>]/g, '');
+      // Foto recém-enviada: usa a prévia LOCAL (a mesma que estava na tela) — não pisca
+      const _srcImg = (window._localPrev || {})[String(m.media_id)] || proxyUrl;
       return quotedHtml + `<div class="media-wrap">
         <div style="position:relative;display:inline-block">
-          <img src="${proxyUrl}" class="msg-image" alt="Imagem" loading="lazy" style="${_dimCss(_midKey)}"
+          <img src="${_srcImg}" class="msg-image" alt="Imagem" loading="lazy" style="${_dimCss(_midKey)}"
             onload="_dimSave('${_midKey}',this);_keepBottom(this)" onclick="verMidia('${proxyUrl}','img','Imagem')"
             onerror="this.parentElement.innerHTML='<span style=opacity:.6>[Imagem não disponível]</span>'" />
           <a href="#" class="media-dl-btn" title="Baixar imagem" onclick="event.preventDefault();event.stopPropagation();baixarMidia('${dlUrl}','imagem.jpg',this)">⬇</a>
@@ -4876,8 +4891,9 @@ function renderMessageContent(m) {
       const caption = m.content && !m.content.startsWith('[Vídeo') ? `<div class="media-caption">${waFormat(m.content)}</div>` : '';
       const dlUrl = `${proxyUrl}&download=1&filename=${encodeURIComponent('video.mp4')}`;
       const _vidKey = String(m.media_id || m.id || '').replace(/['"<>]/g, '');
+      const _srcVid = (window._localPrev || {})[String(m.media_id)] || proxyUrl;
       return quotedHtml + `<div class="media-wrap">
-        <video controls preload="metadata" playsinline src="${proxyUrl}"
+        <video controls preload="metadata" playsinline src="${_srcVid}"
           onloadedmetadata="_dimSave('${_vidKey}',this);_keepBottom(this)" style="max-width:min(330px,100%);border-radius:8px;display:block;min-height:160px;background:#0b141a;${_dimCss(_vidKey)}"></video>
         <a href="#" class="media-dl-link" title="Baixar vídeo" onclick="event.preventDefault();event.stopPropagation();baixarMidia('${dlUrl}','video.mp4',this)">⬇ Baixar vídeo</a>
         ${caption}
@@ -5936,6 +5952,7 @@ async function _sendOneFile(file, caption, semRecarga) {
   // Exibe mensagem otimista na tela
   const area = document.getElementById('messages-area');
   let optDiv = null;
+  let uLocal = null; // prévia local — depois vira a imagem da mensagem real (não pisca)
   if (area) {
     const div = document.createElement('div');
     optDiv = div;
@@ -5943,10 +5960,10 @@ async function _sendOneFile(file, caption, semRecarga) {
     const horaAgora = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     if (file.type.startsWith('image/')) {
       // A foto aparece NA HORA (prévia local) enquanto o envio acontece por trás
-      const uLocal = URL.createObjectURL(file);
+      uLocal = URL.createObjectURL(file);
       div.innerHTML = `<img src="${uLocal}" style="max-width:230px;max-height:280px;border-radius:8px;display:block">${caption ? `<div class="media-caption">${escHtml(caption)}</div>` : ''}<div class="time">${horaAgora} <span class="msg-ticks pending">${TICK_CLOCK}</span></div>`;
     } else if (file.type.startsWith('video/')) {
-      const uLocal = URL.createObjectURL(file);
+      uLocal = URL.createObjectURL(file);
       div.innerHTML = `<video src="${uLocal}" muted playsinline style="max-width:230px;max-height:280px;border-radius:8px;display:block"></video>${caption ? `<div class="media-caption">${escHtml(caption)}</div>` : ''}<div class="time">${horaAgora} <span class="msg-ticks pending">${TICK_CLOCK}</span></div>`;
     } else {
       const icon = file.type.startsWith('audio/') ? '🎵' : '📄';
@@ -5970,6 +5987,9 @@ async function _sendOneFile(file, caption, semRecarga) {
     });
     const data = await res.json();
     if (!data.success) throw new Error(data.error || 'Erro ao enviar');
+    // A MESMA foto que você acabou de mandar continua no lugar: a mensagem real
+    // usará esta prévia local (a cópia da rede fica para as próximas aberturas)
+    if (data.media_id && uLocal) (window._localPrev = window._localPrev || {})[String(data.media_id)] = uLocal;
     if (semRecarga) return { ok: true, el: optDiv }; // no lote: devolve a prévia para remoção no final
     markAsRead(currentPhone);
     if (optDiv) { optDiv.remove(); optDiv = null; } // remove a prévia local (a real entra agora — sem duplicar)
