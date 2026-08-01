@@ -1414,7 +1414,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v115</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v116</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1922,7 +1922,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v115</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v116</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1976,7 +1976,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 115;
+const APP_VER = 116;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3839,6 +3839,26 @@ function toggleLeadPanel(force){
   if (b) b.style.color = show ? '#00a884' : '#667781';
   if (show) { const nt = document.getElementById('lp-notes'); if (nt) { nt.style.height = 'auto'; nt.style.height = nt.scrollHeight + 'px'; } }
 }
+// ⬇ Baixa o arquivo DIRETO na pasta de downloads do navegador (sem abrir aba
+// nem a janela "Salvar como": traz o arquivo para a memória e salva com o nome certo)
+async function baixarMidia(url, nome, el) {
+  try {
+    if (el) { el._txt = el.textContent; el.textContent = '⏳'; }
+    const r = await fetch(url);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const b = await r.blob();
+    const u = URL.createObjectURL(b);
+    const a = document.createElement('a');
+    a.href = u; a.download = nome || 'arquivo';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(u), 4000);
+    if (el) el.textContent = el._txt || '⬇';
+  } catch (e) {
+    if (el) el.textContent = el._txt || '⬇';
+    window.open(url, '_blank'); // reserva: abre normalmente se algo falhar
+  }
+}
+
 // Formata para exibição: (15) 98165-1975 — sem DDI
 function fmtPhoneBR(raw) {
   let p = String(raw || '').replace(/\D/g, '');
@@ -4439,7 +4459,7 @@ function renderMessageContent(m) {
           <img src="${proxyUrl}" class="msg-image" alt="Imagem" loading="lazy"
             onload="_keepBottom(this)" onclick="window.open('${proxyUrl}','_blank')"
             onerror="this.parentElement.innerHTML='<span style=opacity:.6>[Imagem não disponível]</span>'" />
-          <a href="${dlUrl}" class="media-dl-btn" title="Baixar imagem" download>⬇</a>
+          <a href="#" class="media-dl-btn" title="Baixar imagem" onclick="event.preventDefault();event.stopPropagation();baixarMidia('${dlUrl}','imagem.jpg',this)">⬇</a>
         </div>
         ${caption}
       </div>`;
@@ -4502,7 +4522,7 @@ function renderMessageContent(m) {
       return quotedHtml + `<div class="media-wrap">
         <video controls preload="metadata" playsinline src="${proxyUrl}"
           onloadedmetadata="_keepBottom(this)" style="max-width:280px;border-radius:8px;display:block;min-height:160px;background:#0b141a"></video>
-        <a href="${dlUrl}" class="media-dl-link" title="Baixar vídeo" download>⬇ Baixar vídeo</a>
+        <a href="#" class="media-dl-link" title="Baixar vídeo" onclick="event.preventDefault();event.stopPropagation();baixarMidia('${dlUrl}','video.mp4',this)">⬇ Baixar vídeo</a>
         ${caption}
       </div>`;
 
@@ -4520,7 +4540,7 @@ function renderMessageContent(m) {
           <span style="background:${_extCor};color:#fff;font-size:10px;font-weight:800;border-radius:6px;padding:9px 7px;min-width:36px;text-align:center;letter-spacing:.4px;flex-shrink:0">${escHtml(_extShow)}</span>
           <span style="word-break:break-all;flex:1;min-width:0">${escHtml(fileName)}</span>
         </div>
-        <a href="${dlUrl}" class="media-dl-link" download onclick="event.stopPropagation()">⬇ Baixar arquivo</a>
+        <a href="#" class="media-dl-link" onclick="event.preventDefault();event.stopPropagation();baixarMidia('${dlUrl}','${escHtml(fileName).replace(/'/g, "\\'")}',this)">⬇ Baixar arquivo</a>
       </div>`;
     }
   }
