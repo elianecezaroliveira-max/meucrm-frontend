@@ -1414,7 +1414,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v124</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v125</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1922,7 +1922,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v124</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v125</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1976,7 +1976,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 124;
+const APP_VER = 125;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3657,6 +3657,7 @@ async function selectContact(phone, name, accountId) {
     const _ma = document.getElementById('messages-area');
     if (_ma) _ma.innerHTML = '';
     currentMessages = [];
+    window._msgsReadyFor = null; // reabriu a conversa → espera recarregar antes de mostrar a janela 24h
     _lastMsgsSig = '';
     const _pb = document.getElementById('pinned-banner'); if (_pb) _pb.style.display = 'none';
   }
@@ -3820,6 +3821,8 @@ async function selectContact(phone, name, accountId) {
       if (sel) sel.value = currentAccountId;
     }
   }
+  // Conta definida → atualiza a linha (janela 24h para API / presença para QR)
+  if (window._presUpd) { try { window._presUpd(); } catch (_) {} }
   // Verifica bot ativo para este contato
   checkActiveBotRun(phone);
   // Mídia do lead (depois que as mensagens carregaram)
@@ -3875,9 +3878,11 @@ async function _fillPdfPreviews() {
       const doc = await window.pdfjsLib.getDocument({ url: el.dataset.pdf }).promise;
       const pg = await doc.getPage(1);
       const vp0 = pg.getViewport({ scale: 1 });
-      const vp = pg.getViewport({ scale: 300 / vp0.width });
+      // 2x em telas Retina: a miniatura do PDF fica nítida no celular
+      const _pw = (window.devicePixelRatio > 1 ? 600 : 300);
+      const vp = pg.getViewport({ scale: _pw / vp0.width });
       const cv = document.createElement('canvas');
-      cv.width = vp.width; cv.height = Math.min(vp.height, 240);
+      cv.width = vp.width; cv.height = Math.min(vp.height, _pw * 0.8);
       await pg.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
       const dados = { d: cv.toDataURL('image/jpeg', 0.78), p: doc.numPages };
       _pdfPrevCache[key] = dados;
@@ -3918,13 +3923,16 @@ function abrirArquivo(url, tipo, nome) {
       const doc = await window.pdfjsLib.getDocument({ url }).promise;
       body.innerHTML = '';
       const n = Math.min(doc.numPages, 30);
+      // Renderiza na resolução REAL da tela (Retina = 3x) — páginas nítidas, sem borrão
+      const dpr = Math.min(3, window.devicePixelRatio || 1);
       for (let i = 1; i <= n; i++) {
         const pg = await doc.getPage(i);
         const vp0 = pg.getViewport({ scale: 1 });
-        const vp = pg.getViewport({ scale: Math.min(2, Math.max(0.5, (body.clientWidth - 16) / vp0.width)) });
+        const cssScale = Math.min(2, Math.max(0.5, (body.clientWidth - 16) / vp0.width));
+        const vp = pg.getViewport({ scale: cssScale * dpr });
         const cv = document.createElement('canvas');
         cv.width = vp.width; cv.height = vp.height;
-        cv.style.cssText = 'max-width:100%;background:#fff;border-radius:4px';
+        cv.style.cssText = `width:${Math.round(vp.width / dpr)}px;max-width:100%;background:#fff;border-radius:4px`;
         body.appendChild(cv);
         await pg.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
       }
@@ -4328,8 +4336,13 @@ function _ensurePresenceWatch() {
   const upd = async () => {
     try {
       const el = document.getElementById('chat-presence'); if (!el || !currentPhone) return;
+      // Espera as mensagens da conversa carregarem: sem isso aparecia
+      // "cliente ainda não respondeu" por 1s antes da janela real
+      if (window._msgsReadyFor !== currentPhone) { el.style.display = 'none'; return; }
       const acc = (window._accountsById || {})[currentAccountId];
-      const isQr = !!(acc && (acc.type === 'evolution' || acc.evolution_instance));
+      // Conta ainda não identificada → não mostra nada (jamais assumir API oficial)
+      if (!acc) { el.style.display = 'none'; return; }
+      const isQr = !!(acc.type === 'evolution' || acc.evolution_instance);
       if (!isQr) {
         // API OFICIAL: mostra a JANELA DE 24H (conta a partir da última mensagem do cliente)
         try {
@@ -4361,6 +4374,7 @@ function _ensurePresenceWatch() {
       else el.style.display = 'none';
     } catch (_) {}
   };
+  window._presUpd = upd; // chamado assim que as mensagens da conversa terminam de carregar
   upd();
   _presTimer = setInterval(upd, 10000);
 }
@@ -4476,12 +4490,39 @@ document.addEventListener('wheel', e => { if (e.target.closest && e.target.close
 })();
 
 // Quando uma mídia termina de carregar e muda a altura, mantém a conversa no fim
+// 📏 Memória do TAMANHO das mídias: guarda largura×altura de cada foto/vídeo já visto.
+// Ao reabrir a conversa, cada mídia nasce com a altura EXATA — a tela fica parada
+// enquanto os arquivos carregam (nada de chat "andando" sozinho).
+function _dimGet(id) {
+  try { window._vDims = window._vDims || JSON.parse(localStorage.getItem('vetra_dim') || '{}'); return window._vDims[String(id)]; }
+  catch (_) { return null; }
+}
+function _dimSave(id, el) {
+  try {
+    const w = el.naturalWidth || el.videoWidth, h = el.naturalHeight || el.videoHeight;
+    if (!id || !w || !h) return;
+    const d = window._vDims = window._vDims || JSON.parse(localStorage.getItem('vetra_dim') || '{}');
+    if (d[String(id)]) return;
+    d[String(id)] = [w, h];
+    const ks = Object.keys(d);
+    if (ks.length > 600) ks.slice(0, ks.length - 600).forEach(k => delete d[k]);
+    localStorage.setItem('vetra_dim', JSON.stringify(d));
+  } catch (_) {}
+}
+function _dimCss(id, maxW, maxH, minH) {
+  const d = _dimGet(id); if (!d || !d[0] || !d[1]) return '';
+  const s = Math.min(1, maxW / d[0], maxH / d[1]);
+  return `width:${Math.round(d[0] * s)}px;height:${Math.max(minH || 0, Math.round(d[1] * s))}px;`;
+}
 function _keepBottom(el) {
   const a = document.getElementById('messages-area'); if (!a) return;
   // Mídia carregou ACIMA do ponto que você está lendo → compensa o crescimento
   // na rolagem: o que está na sua tela NÃO SE MEXE nem um pixel.
   try {
     if (el && el.getBoundingClientRect) {
+      // Tamanho já estava reservado pela memória de dimensões → nada cresceu,
+      // nada a compensar (compensar aqui é que FARIA a tela se mexer)
+      if (el.style && el.style.height) return;
       const r = el.getBoundingClientRect(), ar = a.getBoundingClientRect();
       if (r.bottom < ar.top + 10) {
         const rsv = (el.tagName === 'VIDEO') ? 160 : 120; // altura que já estava reservada
@@ -4571,10 +4612,11 @@ function renderMessageContent(m) {
     } else if (m.type === 'image') {
       const caption = m.content && !m.content.startsWith('[Imagem') ? `<div class="media-caption">${waFormat(m.content)}</div>` : '';
       const dlUrl = `${proxyUrl}&download=1&filename=${encodeURIComponent('imagem.jpg')}`;
+      const _midKey = String(m.media_id || m.id || '').replace(/['"<>]/g, '');
       return quotedHtml + `<div class="media-wrap">
         <div style="position:relative;display:inline-block">
-          <img src="${proxyUrl}" class="msg-image" alt="Imagem" loading="lazy"
-            onload="_keepBottom(this)" onclick="verMidia('${proxyUrl}','img','Imagem')"
+          <img src="${proxyUrl}" class="msg-image" alt="Imagem" loading="lazy" style="${_dimCss(_midKey, 240, 320, 120)}"
+            onload="_dimSave('${_midKey}',this);_keepBottom(this)" onclick="verMidia('${proxyUrl}','img','Imagem')"
             onerror="this.parentElement.innerHTML='<span style=opacity:.6>[Imagem não disponível]</span>'" />
           <a href="#" class="media-dl-btn" title="Baixar imagem" onclick="event.preventDefault();event.stopPropagation();baixarMidia('${dlUrl}','imagem.jpg',this)">⬇</a>
         </div>
@@ -4636,9 +4678,10 @@ function renderMessageContent(m) {
     } else if (m.type === 'video') {
       const caption = m.content && !m.content.startsWith('[Vídeo') ? `<div class="media-caption">${waFormat(m.content)}</div>` : '';
       const dlUrl = `${proxyUrl}&download=1&filename=${encodeURIComponent('video.mp4')}`;
+      const _vidKey = String(m.media_id || m.id || '').replace(/['"<>]/g, '');
       return quotedHtml + `<div class="media-wrap">
         <video controls preload="metadata" playsinline src="${proxyUrl}"
-          onloadedmetadata="_keepBottom(this)" style="max-width:280px;border-radius:8px;display:block;min-height:160px;background:#0b141a"></video>
+          onloadedmetadata="_dimSave('${_vidKey}',this);_keepBottom(this)" style="max-width:280px;border-radius:8px;display:block;min-height:160px;background:#0b141a;${_dimCss(_vidKey, 280, 340, 160)}"></video>
         <a href="#" class="media-dl-link" title="Baixar vídeo" onclick="event.preventDefault();event.stopPropagation();baixarMidia('${dlUrl}','video.mp4',this)">⬇ Baixar vídeo</a>
         ${caption}
       </div>`;
@@ -4775,6 +4818,10 @@ async function loadMessages(phone, scroll = true) {
       return;
     }
     currentMessages = msgs; // guarda para a galeria de mídias
+    // Mensagens prontas → agora sim a linha de presença/janela 24h pode aparecer
+    const _presPronto = window._msgsReadyFor !== phone;
+    window._msgsReadyFor = phone;
+    if (_presPronto && window._presUpd) { try { window._presUpd(); } catch (_) {} }
 
     // ── Proteção contra re-render que destrói vídeos/áudios ──
     // O polling chama esta função a cada 3s; recriar o innerHTML reinicia o
