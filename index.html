@@ -624,9 +624,9 @@
   }
   /* Mídias recebidas */
   .media-wrap { display:flex; flex-direction:column; gap:6px; }
-  .msg-image { max-width:290px; max-height:360px; border-radius:8px; cursor:pointer; display:block; object-fit:cover; }
-  /* Bolha de MÍDIA mais larga (igual WhatsApp): foto/vídeo/arquivo usam até 78% */
-  .msg:has(.media-wrap) { max-width: 78%; }
+  .msg-image { max-width:265px; max-height:330px; border-radius:8px; cursor:pointer; display:block; object-fit:cover; }
+  /* Bolha de MÍDIA mais larga (igual WhatsApp): foto/vídeo/arquivo usam até 74% */
+  .msg:has(.media-wrap) { max-width: 74%; }
   /* No celular o arquivo abre com um toque — a linha "Baixar" não existe no WhatsApp */
   @media (hover: none) { .doc-wrap .media-dl-link { display: none; } }
   .msg-image:hover { opacity:.88; }
@@ -875,9 +875,9 @@
   /* Chat aberto: TELA INTEIRA — some a barra "VETRA" e o cabeçalho respeita a câmera */
   body.mobile-chat-open #topbar { display: none; }
   body.mobile-chat-open #chat-header { padding-top: calc(8px + env(safe-area-inset-top)); }
-  /* Rodapé colado embaixo, SEM margem sobrando abaixo do campo de mensagem */
+  /* Rodapé: campo e botão de enviar um pouco mais ALTOS (sem margem sobrando) */
   @supports (padding: env(safe-area-inset-top)) {
-    #input-area { padding-bottom: 6px !important; padding-top: 4px; }
+    #input-area { padding-bottom: 12px !important; padding-top: 4px; }
   }
 
   /* Botão voltar aparece no mobile */
@@ -1421,7 +1421,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v131</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v132</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1929,7 +1929,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v131</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v132</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -1983,7 +1983,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 131;
+const APP_VER = 132;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4785,7 +4785,7 @@ function renderMessageContent(m) {
       const _midKey = String(m.media_id || m.id || '').replace(/['"<>]/g, '');
       return quotedHtml + `<div class="media-wrap">
         <div style="position:relative;display:inline-block">
-          <img src="${proxyUrl}" class="msg-image" alt="Imagem" loading="lazy" style="${_dimCss(_midKey, 290, 360, 120)}"
+          <img src="${proxyUrl}" class="msg-image" alt="Imagem" loading="lazy" style="${_dimCss(_midKey, 265, 330, 120)}"
             onload="_dimSave('${_midKey}',this);_keepBottom(this)" onclick="verMidia('${proxyUrl}','img','Imagem')"
             onerror="this.parentElement.innerHTML='<span style=opacity:.6>[Imagem não disponível]</span>'" />
           <a href="#" class="media-dl-btn" title="Baixar imagem" onclick="event.preventDefault();event.stopPropagation();baixarMidia('${dlUrl}','imagem.jpg',this)">⬇</a>
@@ -5145,7 +5145,7 @@ async function loadMessages(phone, scroll = true) {
             ? (ult.status === 'read' ? '<span class="msg-ticks read">' + TICK_TWO + '</span>' : ult.status === 'delivered' ? '<span class="msg-ticks delivered">' + TICK_TWO + '</span>' : '<span class="msg-ticks sent">' + TICK_ONE + '</span>') : '';
           const grpA = _prevDir === safeDir; _prevDir = safeDir;
           parts.push({ key: 'alb-' + safeId, html: `<div class="msg ${safeDir}${grpA ? ' grp' : ''}" style="position:relative" data-key="alb-${safeId}" data-msg-id="${safeId}" data-msg-dir="${safeDir}">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;width:290px;max-width:100%">${tiles}</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;width:265px;max-width:100%">${tiles}</div>
             <div class="time">${_brtTime(parseUTC(ult.timestamp))}${tk}</div>
           </div>` });
           continue;
