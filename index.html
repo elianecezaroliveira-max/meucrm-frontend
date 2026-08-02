@@ -1453,7 +1453,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v148</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v149</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1961,7 +1961,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v148</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v149</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2015,7 +2015,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 148;
+const APP_VER = 149;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5451,29 +5451,41 @@ async function loadMessages(phone, scroll = true) {
         _adotaMidia(nuA); area.appendChild(nuA);
       }
     } else {
-      // Estrutura mudou (divisória saiu, mensagem apagada, conversa nova…):
-      // reconstrói POR CHAVE reaproveitando bolhas e mídias JÁ CARREGADAS —
-      // o render completo antigo recriava todas as fotos (era o pisca restante)
+      // Estrutura mudou (ex.: a divisória de não lidas saiu): reconciliação
+      // SUAVE — remove só o que saiu, insere só o que entrou, e NÃO TOCA em
+      // nenhuma outra bolha. (O rebuild antigo desanexava a conversa INTEIRA:
+      // todas as fotos repintavam e as ainda carregando recomeçavam — o pisca.)
+      _fotoLog('🧩 reconciliação SUAVE (scroll=' + scroll + ')');
       const antigos = {};
       kids.forEach(el => { if (el.dataset && el.dataset.key) antigos[el.dataset.key] = el; });
-      const frag = document.createDocumentFragment();
-      _fotoLog('🧱 REBUILD estrutural da conversa (scroll=' + scroll + ')');
+      const validas = new Set(parts.map(p => p.key));
+      kids.forEach(el => {
+        const k = el.dataset && el.dataset.key;
+        if (!k || !validas.has(k)) { if (el.querySelector && el.querySelector('img.msg-image')) _fotoLog('🗑 removida bolha que saiu', k || 'sem-chave'); el.remove(); }
+      });
+      let ref = area.firstElementChild;
       for (const p of parts) {
-        const velho = antigos[p.key];
-        if (velho && velho._html === p.html) { frag.appendChild(velho); continue; }
-        const nu = _mkEl(p.html);
-        if (nu.querySelector && nu.querySelector('img.msg-image')) _fotoLog(velho ? '🔁 rebuild: recriada (transplantando foto)' : '🆕 rebuild: bolha nova com foto', p.key);
-        if (velho) {
+        let el = antigos[p.key] || null;
+        if (el && el._html !== p.html) {
+          const nu = _mkEl(p.html);
           try {
-            const vM = velho.querySelector('img.msg-image, .media-wrap video');
+            const vM = el.querySelector('img.msg-image, .media-wrap video');
             const nM = nu.querySelector('img.msg-image, .media-wrap video');
             if (vM && nM) { vM.style.cssText = nM.style.cssText || vM.style.cssText; nM.replaceWith(vM); }
           } catch (_) {}
-        } else _adotaMidia(nu); // bolha NOVA: adota a mídia decodificada da prévia
-        frag.appendChild(nu);
+          const eraRef = (el === ref);
+          el.replaceWith(nu);
+          el = nu;
+          if (el.querySelector && el.querySelector('img.msg-image')) _fotoLog('🔁 atualizada no lugar (foto transplantada)', p.key);
+          if (eraRef) { ref = el.nextElementSibling; continue; }
+        } else if (el && el === ref) { ref = ref.nextElementSibling; continue; }
+        if (!el) {
+          el = _mkEl(p.html);
+          _adotaMidia(el);
+          if (el.querySelector && el.querySelector('img.msg-image')) _fotoLog('🆕 inserida bolha nova', p.key);
+        }
+        area.insertBefore(el, ref); // só ESTA bolha se move — o resto fica intocado
       }
-      area.textContent = '';
-      area.appendChild(frag);
     }
 
     // NUNCA contra o dedo: só acompanha o fim se você não subiu DE PROPÓSITO
