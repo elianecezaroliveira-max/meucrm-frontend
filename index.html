@@ -1453,7 +1453,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v150</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v151</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1961,7 +1961,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v150</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v151</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2015,7 +2015,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 150;
+const APP_VER = 151;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5424,7 +5424,12 @@ async function loadMessages(phone, scroll = true) {
         const idx = hs.findIndex(h => h.el && h.el.src && h.el.src === nM.src && Date.now() - h.ts < 20000);
         if (idx < 0) return;
         const h = hs.splice(idx, 1)[0];
-        for (const at of Array.from(nM.attributes)) { if (at.name !== 'src') h.el.setAttribute(at.name, at.value); }
+        // NÃO copia src/crossorigin/loading: mudar esses atributos força o
+        // navegador a RECARREGAR a imagem (era o último pisca que faltava)
+        for (const at of Array.from(nM.attributes)) {
+          if (at.name === 'src' || at.name === 'crossorigin' || at.name === 'loading') continue;
+          h.el.setAttribute(at.name, at.value);
+        }
         nM.replaceWith(h.el);
         _fotoLog('🤝 ADOÇÃO ok (prévia reutilizada na bolha real)');
       } catch (_) {}
@@ -5434,6 +5439,21 @@ async function loadMessages(phone, scroll = true) {
       const txt = (t.querySelector('.msg-text') || {}).textContent || '';
       if (txt && msgs.some(x => x.direction === 'outbound' && String(x.content) === txt)) t.remove();
     });
+    // Comparadores compartilhados: rodapé e MIOLO da foto fora da comparação
+    // (endereço/tamanho internos da imagem variam sem nada visível mudar)
+    const _semTime = h => (h || '').replace(/<div class="time">[\s\S]*?<\/div>/, '');
+    const _neutra = h => _semTime(h).replace(/<img[^>]*class="msg-image"[^>]*>/, '<imgN>');
+    // Atualiza rodapé/estilo SEM recriar a bolha; devolve true se resolveu
+    const _patchLeve = (el, htmlNovo) => {
+      const novoT = (htmlNovo.match(/<div class="time">([\s\S]*?)<\/div>/) || [])[1];
+      const tEl = el.querySelector(':scope > .time');
+      const stNovo = (htmlNovo.match(/<img[^>]*class="msg-image"[^>]*?style="([^"]*)"/) || [])[1];
+      const vImg = el.querySelector('img.msg-image');
+      if (vImg && stNovo != null && vImg.style.cssText !== stNovo) { vImg.style.cssText = stNovo; _fotoLog('📐 só o TAMANHO da foto ajustado', stNovo); }
+      if (tEl && novoT != null) { tEl.innerHTML = novoT; el._html = htmlNovo; if (vImg) _fotoLog('✏️ só RODAPÉ trocado (foto intocada)'); return true; }
+      if (novoT == null && !tEl) { el._html = htmlNovo; return true; }
+      return false;
+    };
     const kids = Array.from(area.children);
     const samePrefix = kids.length > 0 && kids.length <= parts.length &&
       kids.every((el, i) => el.dataset && el.dataset.key === parts[i].key);
@@ -5441,23 +5461,9 @@ async function loadMessages(phone, scroll = true) {
       // troca apenas os blocos alterados (ex.: ✓ → ✓✓) e acrescenta os novos no fim
       // Se SÓ o rodapé mudou (✓ → ✓✓ → lida), troca apenas o horário/tique:
       // recriar a bolha inteira fazia a FOTO piscar a cada confirmação
-      const _semTime = h => (h || '').replace(/<div class="time">[\s\S]*?<\/div>/, '');
-      // A FOTO é neutralizada na comparação: o endereço interno (prévia local ×
-      // cópia da rede) e o tamanho memorizado podem variar entre renders sem
-      // nada visível mudar — recriar a bolha por isso era o que fazia piscar
-      const _neutra = h => _semTime(h).replace(/<img[^>]*class="msg-image"[^>]*>/, '<imgN>');
       kids.forEach((el, i) => {
         if (el._html === parts[i].html) return;
-        if (_neutra(el._html) === _neutra(parts[i].html)) {
-          const novoT = (parts[i].html.match(/<div class="time">([\s\S]*?)<\/div>/) || [])[1];
-          const tEl = el.querySelector(':scope > .time');
-          // aplica o tamanho novo da foto SEM recriar o elemento
-          const stNovo = (parts[i].html.match(/<img[^>]*class="msg-image"[^>]*?style="([^"]*)"/) || [])[1];
-          const vImg = el.querySelector('img.msg-image');
-          if (vImg && stNovo != null && vImg.style.cssText !== stNovo) { vImg.style.cssText = stNovo; _fotoLog('📐 só o TAMANHO da foto ajustado', stNovo); }
-          if (tEl && novoT != null) { tEl.innerHTML = novoT; el._html = parts[i].html; if (vImg) _fotoLog('✏️ só RODAPÉ trocado (foto intocada)'); return; }
-          if (novoT == null && !tEl) { el._html = parts[i].html; return; }
-        }
+        if (_neutra(el._html) === _neutra(parts[i].html) && _patchLeve(el, parts[i].html)) return;
         if (el.querySelector && el.querySelector('img.msg-image')) _fotoLog('🔁 bolha COM FOTO recriada (diferença fora do rodapé)', parts[i].key);
         // Recriação necessária: TRANSPLANTA a foto/vídeo já carregados para a
         // bolha nova (mesmo src) — a mídia nunca é redecodificada, nunca pisca
@@ -5495,6 +5501,8 @@ async function loadMessages(phone, scroll = true) {
       let ref = area.firstElementChild;
       for (const p of parts) {
         let el = antigos[p.key] || null;
+        // Só o miolo da foto/rodapé mudou → atualiza no lugar, sem recriar
+        if (el && el._html !== p.html && _neutra(el._html) === _neutra(p.html) && _patchLeve(el, p.html)) { /* resolvido */ }
         if (el && el._html !== p.html) {
           const nu = _mkEl(p.html);
           try {
