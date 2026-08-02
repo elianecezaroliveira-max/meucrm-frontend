@@ -1222,6 +1222,7 @@ window.addEventListener('load', initAuth);
         <p style="font-size:12px;color:#667781;margin-bottom:10px;line-height:1.5;">Use para números do mesmo portfólio do aplicativo. Pegue o Phone Number ID em developers.facebook.com → seu app → WhatsApp → Configuração da API.</p>
         <input id="acc-name" placeholder="Nome da conta (ex.: Valorize 04)" style="width:100%;box-sizing:border-box;background:#fff;border:1px solid #d1d7db;border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit;outline:none;margin-bottom:8px">
         <input id="acc-phone-id" placeholder="Phone Number ID (ex.: 1293622030495570)" style="width:100%;box-sizing:border-box;background:#fff;border:1px solid #d1d7db;border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit;outline:none;margin-bottom:8px">
+        <input id="acc-waba" placeholder="WABA ID — Identificação da conta do WhatsApp Business" style="width:100%;box-sizing:border-box;background:#fff;border:1px solid #d1d7db;border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit;outline:none;margin-bottom:8px">
         <input id="acc-token" placeholder="Token permanente (o mesmo das outras contas)" style="width:100%;box-sizing:border-box;background:#fff;border:1px solid #d1d7db;border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit;outline:none;margin-bottom:10px">
         <button onclick="addAccount()" style="width:100%;background:#00a884;border:none;color:#fff;padding:11px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">➕ Adicionar conta</button>
       </div>
@@ -1477,7 +1478,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v155</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v156</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1985,7 +1986,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v155</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v156</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2039,7 +2040,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 155;
+const APP_VER = 156;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2459,12 +2460,13 @@ async function addAccount() {
   const name = document.getElementById('acc-name').value.trim();
   const phone_number_id = document.getElementById('acc-phone-id').value.trim();
   const token = document.getElementById('acc-token').value.trim();
-  if (!name || !phone_number_id || !token) return alert('Preencha todos os campos!');
+  const waba_id = (document.getElementById('acc-waba')?.value || '').trim();
+  if (!name || !phone_number_id || !token) return alert('Preencha nome, Phone Number ID e token!');
   try {
     const res = await fetch(SERVER_URL + '/accounts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, phone_number_id, token })
+      body: JSON.stringify({ name, phone_number_id, token, waba_id: waba_id || undefined })
     });
     const data = await res.json();
     if (data.error) return alert('Erro: ' + data.error);
