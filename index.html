@@ -1453,7 +1453,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v147</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v148</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1961,7 +1961,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v147</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v148</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2015,7 +2015,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 147;
+const APP_VER = 148;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -6056,8 +6056,10 @@ async function confirmMediaSend() {
     p.el.remove();
   } catch (_) {} }); // prévias locais saem, as reais entram
   window._enviandoMidia = 0; // lote concluído → libera o polling (as reais entram já adotando as prévias)
+  _fotoLog('📤 lote confirmado → render da(s) mensagem(ns) real(is)');
   _lastMsgsSig = '';
   await loadMessages(currentPhone);
+  _fotoLog('📤 ═══ ENVIO CONCLUÍDO ═══');
 }
 function removeFile() {
   selectedFile = null;
@@ -6199,6 +6201,7 @@ async function sendFile() {
 
 async function _sendOneFile(file, caption, semRecarga) {
   if (!file || !currentPhone) return;
+  _fotoLog('📤 ═══ ENVIO INICIADO ═══', file.type);
   // Lê como base64
   const base64 = await new Promise((resolve) => {
     const reader = new FileReader();
@@ -6264,8 +6267,10 @@ async function _sendOneFile(file, caption, semRecarga) {
       optDiv.remove(); optDiv = null;
     }
     window._enviandoMidia = Math.max(0, (window._enviandoMidia || 1) - 1); // agora sim: polling liberado
+    _fotoLog('📤 envio confirmado → render da mensagem real');
     _lastMsgsSig = '';
     await loadMessages(currentPhone);
+    _fotoLog('📤 ═══ ENVIO CONCLUÍDO ═══');
     return { ok: true };
   } catch(err) {
     window._enviandoMidia = Math.max(0, (window._enviandoMidia || 1) - 1);
