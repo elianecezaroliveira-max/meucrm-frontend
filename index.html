@@ -1453,7 +1453,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v141</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v142</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1961,7 +1961,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v141</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v142</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2015,7 +2015,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 141;
+const APP_VER = 142;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5346,12 +5346,21 @@ async function loadMessages(phone, scroll = true) {
       // Se SÓ o rodapé mudou (✓ → ✓✓ → lida), troca apenas o horário/tique:
       // recriar a bolha inteira fazia a FOTO piscar a cada confirmação
       const _semTime = h => (h || '').replace(/<div class="time">[\s\S]*?<\/div>/, '');
+      // A FOTO é neutralizada na comparação: o endereço interno (prévia local ×
+      // cópia da rede) e o tamanho memorizado podem variar entre renders sem
+      // nada visível mudar — recriar a bolha por isso era o que fazia piscar
+      const _neutra = h => _semTime(h).replace(/<img[^>]*class="msg-image"[^>]*>/, '<imgN>');
       kids.forEach((el, i) => {
         if (el._html === parts[i].html) return;
-        if (_semTime(el._html) === _semTime(parts[i].html)) {
+        if (_neutra(el._html) === _neutra(parts[i].html)) {
           const novoT = (parts[i].html.match(/<div class="time">([\s\S]*?)<\/div>/) || [])[1];
           const tEl = el.querySelector(':scope > .time');
+          // aplica o tamanho novo da foto SEM recriar o elemento
+          const stNovo = (parts[i].html.match(/<img[^>]*class="msg-image"[^>]*?style="([^"]*)"/) || [])[1];
+          const vImg = el.querySelector('img.msg-image');
+          if (vImg && stNovo != null && vImg.style.cssText !== stNovo) vImg.style.cssText = stNovo;
           if (tEl && novoT != null) { tEl.innerHTML = novoT; el._html = parts[i].html; return; }
+          if (novoT == null && !tEl) { el._html = parts[i].html; return; }
         }
         // Recriação necessária: TRANSPLANTA a foto/vídeo já carregados para a
         // bolha nova (mesmo src) — a mídia nunca é redecodificada, nunca pisca
