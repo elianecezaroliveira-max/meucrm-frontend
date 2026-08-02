@@ -1453,7 +1453,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v146</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v147</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1961,7 +1961,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v146</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v147</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2015,7 +2015,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 146;
+const APP_VER = 147;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4820,6 +4820,57 @@ function _dimCss(id) {
   const wh = _waMediaSize(d[0], d[1]);
   return `width:${wh[0]}px;height:${wh[1]}px;`;
 }
+// ── 🧪 DIAGNÓSTICO TEMPORÁRIO do pisca da foto (botão 🧪 no canto) ──
+window._fotoDiag = [];
+function _fotoLog(ev, extra) {
+  try {
+    const t = new Date();
+    window._fotoDiag.push(t.toLocaleTimeString('pt-BR') + '.' + String(t.getMilliseconds()).padStart(3, '0') + ' ' + ev + (extra ? ' ' + extra : ''));
+    if (window._fotoDiag.length > 150) window._fotoDiag.splice(0, 50);
+    const p = document.getElementById('foto-diag-body');
+    if (p) { p.textContent = window._fotoDiag.slice(-45).join('\n'); p.scrollTop = p.scrollHeight; }
+  } catch (_) {}
+}
+function toggleFotoDiag() {
+  let p = document.getElementById('foto-diag');
+  if (!p) {
+    document.body.insertAdjacentHTML('beforeend', `<div id="foto-diag" style="position:fixed;left:6px;right:6px;bottom:92px;max-height:46vh;background:rgba(11,20,26,.94);color:#9de0c7;z-index:4000;border-radius:10px;padding:8px;display:none;flex-direction:column">
+      <div style="display:flex;gap:8px;align-items:center;color:#fff;font-size:12px;margin-bottom:4px"><b style="flex:1">🧪 Diagnóstico da foto</b>
+      <button onclick="try{navigator.clipboard.writeText(window._fotoDiag.join(String.fromCharCode(10)))}catch(_){}" style="background:#00a884;color:#fff;border:none;border-radius:6px;padding:3px 8px;font-size:11px">Copiar</button>
+      <button onclick="document.getElementById('foto-diag').style.display='none'" style="background:none;border:none;color:#fff;font-size:14px">✕</button></div>
+      <pre id="foto-diag-body" style="margin:0;overflow:auto;font-size:9.5px;line-height:1.45;white-space:pre-wrap;word-break:break-all;flex:1"></pre>
+    </div>`);
+    p = document.getElementById('foto-diag');
+  }
+  const aberto = p.style.display === 'flex';
+  p.style.display = aberto ? 'none' : 'flex';
+  const b = document.getElementById('foto-diag-body');
+  if (b && !aberto) b.textContent = (window._fotoDiag || []).slice(-45).join('\n');
+}
+// Prova real: registra CADA imagem que sai/entra no chat e se precisou redecodificar
+(function _fotoObs() {
+  const srcTag = s => !s ? 'vazio' : (String(s).startsWith('blob:') ? 'PRÉVIA-LOCAL' : 'REDE');
+  const pega = n => {
+    if (!n || n.nodeType !== 1) return [];
+    if (n.tagName === 'IMG') return n.classList.contains('msg-image') ? [n] : [];
+    return n.querySelectorAll ? Array.from(n.querySelectorAll('img.msg-image')) : [];
+  };
+  const obs = new MutationObserver(muts => {
+    for (const mu of muts) {
+      mu.removedNodes && mu.removedNodes.forEach(n => pega(n).forEach(im =>
+        _fotoLog('❌ IMG SAIU', srcTag(im.src) + (im.complete ? ' (carregada)' : ' (carregando)'))));
+      mu.addedNodes && mu.addedNodes.forEach(n => pega(n).forEach(im =>
+        _fotoLog('➕ IMG ENTROU', srcTag(im.src) + (im.complete ? ' (pronta ✅)' : ' (VAI DECODIFICAR ⚠️)') + ' tam=' + (im.style.width || '?'))));
+    }
+  });
+  setInterval(() => {
+    const a = document.getElementById('messages-area');
+    if (a && a !== obs._el) { try { obs.disconnect(); } catch (_) {} obs.observe(a, { childList: true, subtree: true }); obs._el = a; }
+  }, 1500);
+  // Botão 🧪 flutuante (temporário — sai quando o pisca for resolvido)
+  const mete = () => { if (!document.getElementById('foto-diag-btn')) document.body.insertAdjacentHTML('beforeend', '<button id="foto-diag-btn" onclick="toggleFotoDiag()" style="position:fixed;left:8px;bottom:80px;z-index:3500;background:rgba(11,20,26,.5);border:none;border-radius:50%;width:34px;height:34px;font-size:15px;cursor:pointer">🧪</button>'); };
+  if (document.body) mete(); else document.addEventListener('DOMContentLoaded', mete);
+})();
 function _keepBottom(el) {
   const a = document.getElementById('messages-area'); if (!a) return;
   // Mídia carregou ACIMA do ponto que você está lendo → compensa o crescimento
@@ -5346,6 +5397,7 @@ async function loadMessages(phone, scroll = true) {
         const h = hs.splice(idx, 1)[0];
         for (const at of Array.from(nM.attributes)) { if (at.name !== 'src') h.el.setAttribute(at.name, at.value); }
         nM.replaceWith(h.el);
+        _fotoLog('🤝 ADOÇÃO ok (prévia reutilizada na bolha real)');
       } catch (_) {}
     };
     // Bolhas temporárias já confirmadas saem AGORA (a real entra no mesmo quadro)
@@ -5373,10 +5425,11 @@ async function loadMessages(phone, scroll = true) {
           // aplica o tamanho novo da foto SEM recriar o elemento
           const stNovo = (parts[i].html.match(/<img[^>]*class="msg-image"[^>]*?style="([^"]*)"/) || [])[1];
           const vImg = el.querySelector('img.msg-image');
-          if (vImg && stNovo != null && vImg.style.cssText !== stNovo) vImg.style.cssText = stNovo;
-          if (tEl && novoT != null) { tEl.innerHTML = novoT; el._html = parts[i].html; return; }
+          if (vImg && stNovo != null && vImg.style.cssText !== stNovo) { vImg.style.cssText = stNovo; _fotoLog('📐 só o TAMANHO da foto ajustado', stNovo); }
+          if (tEl && novoT != null) { tEl.innerHTML = novoT; el._html = parts[i].html; if (vImg) _fotoLog('✏️ só RODAPÉ trocado (foto intocada)'); return; }
           if (novoT == null && !tEl) { el._html = parts[i].html; return; }
         }
+        if (el.querySelector && el.querySelector('img.msg-image')) _fotoLog('🔁 bolha COM FOTO recriada (diferença fora do rodapé)', parts[i].key);
         // Recriação necessária: TRANSPLANTA a foto/vídeo já carregados para a
         // bolha nova (mesmo src) — a mídia nunca é redecodificada, nunca pisca
         const nu = _mkEl(parts[i].html);
@@ -5392,7 +5445,11 @@ async function loadMessages(phone, scroll = true) {
         } catch (_) {}
         el.replaceWith(nu);
       });
-      for (let i = kids.length; i < parts.length; i++) { const nuA = _mkEl(parts[i].html); _adotaMidia(nuA); area.appendChild(nuA); }
+      for (let i = kids.length; i < parts.length; i++) {
+        const nuA = _mkEl(parts[i].html);
+        if (nuA.querySelector && nuA.querySelector('img.msg-image')) _fotoLog('🆕 bolha NOVA com foto anexada', parts[i].key);
+        _adotaMidia(nuA); area.appendChild(nuA);
+      }
     } else {
       // Estrutura mudou (divisória saiu, mensagem apagada, conversa nova…):
       // reconstrói POR CHAVE reaproveitando bolhas e mídias JÁ CARREGADAS —
@@ -5400,10 +5457,12 @@ async function loadMessages(phone, scroll = true) {
       const antigos = {};
       kids.forEach(el => { if (el.dataset && el.dataset.key) antigos[el.dataset.key] = el; });
       const frag = document.createDocumentFragment();
+      _fotoLog('🧱 REBUILD estrutural da conversa (scroll=' + scroll + ')');
       for (const p of parts) {
         const velho = antigos[p.key];
         if (velho && velho._html === p.html) { frag.appendChild(velho); continue; }
         const nu = _mkEl(p.html);
+        if (nu.querySelector && nu.querySelector('img.msg-image')) _fotoLog(velho ? '🔁 rebuild: recriada (transplantando foto)' : '🆕 rebuild: bolha nova com foto', p.key);
         if (velho) {
           try {
             const vM = velho.querySelector('img.msg-image, .media-wrap video');
