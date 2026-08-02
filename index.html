@@ -1453,7 +1453,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v142</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v144</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1961,7 +1961,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v142</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v144</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2015,7 +2015,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 142;
+const APP_VER = 144;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5333,6 +5333,21 @@ async function loadMessages(phone, scroll = true) {
     // Atualização INCREMENTAL: mexe só no que mudou — nada de recriar a conversa
     // inteira (que recarregava fotos/áudios e fazia a tela subir/descer sozinha)
     const _mkEl = html => { const t = document.createElement('div'); t.innerHTML = html; const el = t.firstElementChild; el._html = html; return el; };
+    // 🖼️ ADOÇÃO: a bolha real recebe o elemento de mídia JÁ DECODIFICADO da
+    // prévia de envio (mesmo endereço) — troca invisível, sem redecodificar
+    const _adotaMidia = (nu) => {
+      try {
+        const hs = window._handoffMedia;
+        if (!hs || !hs.length) return;
+        const nM = nu.querySelector('img.msg-image, .media-wrap video');
+        if (!nM) return;
+        const idx = hs.findIndex(h => h.el && h.el.src && h.el.src === nM.src && Date.now() - h.ts < 20000);
+        if (idx < 0) return;
+        const h = hs.splice(idx, 1)[0];
+        for (const at of Array.from(nM.attributes)) { if (at.name !== 'src') h.el.setAttribute(at.name, at.value); }
+        nM.replaceWith(h.el);
+      } catch (_) {}
+    };
     // Bolhas temporárias já confirmadas saem AGORA (a real entra no mesmo quadro)
     area.querySelectorAll('[data-key^="temp-"]').forEach(t => {
       const txt = (t.querySelector('.msg-text') || {}).textContent || '';
@@ -5377,7 +5392,7 @@ async function loadMessages(phone, scroll = true) {
         } catch (_) {}
         el.replaceWith(nu);
       });
-      for (let i = kids.length; i < parts.length; i++) area.appendChild(_mkEl(parts[i].html));
+      for (let i = kids.length; i < parts.length; i++) { const nuA = _mkEl(parts[i].html); _adotaMidia(nuA); area.appendChild(nuA); }
     } else {
       // Estrutura mudou (divisória saiu, mensagem apagada, conversa nova…):
       // reconstrói POR CHAVE reaproveitando bolhas e mídias JÁ CARREGADAS —
@@ -5395,7 +5410,7 @@ async function loadMessages(phone, scroll = true) {
             const nM = nu.querySelector('img.msg-image, .media-wrap video');
             if (vM && nM) { vM.style.cssText = nM.style.cssText || vM.style.cssText; nM.replaceWith(vM); }
           } catch (_) {}
-        }
+        } else _adotaMidia(nu); // bolha NOVA: adota a mídia decodificada da prévia
         frag.appendChild(nu);
       }
       area.textContent = '';
@@ -5971,7 +5986,12 @@ async function confirmMediaSend() {
     if (r && r.ok) { algumOk = true; if (r.el) previas.push(r.el); }
   }
   if (algumOk) markAsRead(currentPhone); // só marca como lida se ALGO foi enviado de verdade
-  previas.forEach(d => { try { d.remove(); } catch (_) {} }); // prévias locais saem, as reais entram
+  previas.forEach(d => { try {
+    // Entrega cada foto JÁ DECODIFICADA para a bolha real adotar (não pisca)
+    const hm = d.querySelector('img,video');
+    if (hm) (window._handoffMedia = window._handoffMedia || []).push({ el: hm, ts: Date.now() });
+    d.remove();
+  } catch (_) {} }); // prévias locais saem, as reais entram
   _lastMsgsSig = '';
   await loadMessages(currentPhone);
 }
@@ -6166,7 +6186,14 @@ async function _sendOneFile(file, caption, semRecarga) {
     if (data.media_id && uLocal) (window._localPrev = window._localPrev || {})[String(data.media_id)] = uLocal;
     if (semRecarga) return { ok: true, el: optDiv }; // no lote: devolve a prévia para remoção no final
     markAsRead(currentPhone);
-    if (optDiv) { optDiv.remove(); optDiv = null; } // remove a prévia local (a real entra agora — sem duplicar)
+    if (optDiv) {
+      // Entrega a FOTO JÁ DECODIFICADA para a bolha real adotar (zero pisca):
+      // criar um <img> novo, mesmo com o mesmo arquivo, faz o iPhone decodificar
+      // de novo — e era esse vão que fazia a foto sumir e voltar
+      const hm = optDiv.querySelector('img,video');
+      if (hm) (window._handoffMedia = window._handoffMedia || []).push({ el: hm, ts: Date.now() });
+      optDiv.remove(); optDiv = null;
+    }
     _lastMsgsSig = '';
     await loadMessages(currentPhone);
     return { ok: true };
