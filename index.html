@@ -1478,7 +1478,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v157</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v158</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1986,7 +1986,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v157</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v158</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2040,7 +2040,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 157;
+const APP_VER = 158;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5603,7 +5603,7 @@ async function loadMessages(phone, scroll = true) {
 // ── Web Audio API — Voice Player ──
 // ── Player de áudio nativo (<audio>): preserva a voz na velocidade, toca no 1º clique ──
 let _curAudioId = null;
-let _voiceSpeed = 1;          // velocidade global (1, 1.5, 2)
+let _voiceSpeed = (() => { const v = parseFloat(localStorage.getItem('vetra_spd')); return [1, 1.5, 2].includes(v) ? v : 1; })(); // velocidade global, LEMBRADA entre sessões
 function _vpEl(id){ return document.getElementById('vp-' + id); }
 function _vpAudio(id){ const w = _vpEl(id); return w ? w.querySelector('audio') : null; }
 function _vpSpeedLabel(){ return _voiceSpeed === 1 ? '1x' : _voiceSpeed + 'x'; }
@@ -5710,6 +5710,7 @@ function voiceEnded(id){
 function voiceSpeed(id){
   const cycle = [1, 1.5, 2];
   _voiceSpeed = cycle[(cycle.indexOf(_voiceSpeed) + 1) % cycle.length] || 1;
+  try { localStorage.setItem('vetra_spd', String(_voiceSpeed)); } catch (_) {} // lembra a escolha
   const w = _vpEl(id), spd = w && w.querySelector('.vp-speed'); if (spd) spd.textContent = _vpSpeedLabel();
   const a = _vpAudio(id); if (a) { _vpApplyPitch(a); a.playbackRate = _voiceSpeed; }
 }
