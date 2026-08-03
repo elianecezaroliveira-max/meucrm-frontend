@@ -1478,7 +1478,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v158</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v159</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1986,7 +1986,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v158</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v159</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2040,7 +2040,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 158;
+const APP_VER = 159;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3218,9 +3218,20 @@ async function sendVoiceBlob(blob, durationSecs) {
   const ext = mime.includes('wav') ? 'wav' : mime.includes('mp4') ? 'm4a' : mime.includes('mpeg') ? 'mp3' : mime.includes('ogg') ? 'ogg' : 'webm';
   const area = document.getElementById('messages-area');
   if (area) {
+    // IGUAL AO WHATSAPP: o áudio já aparece como bolha de voz TOCÁVEL (com 🕐),
+    // e é trocado pela mensagem real no mesmo quadro quando o envio confirma
     const d = document.createElement('div');
     d.className = 'msg outbound';
-    d.innerHTML = '🎤 <em style="font-size:13px;opacity:.8">Enviando áudio...</em>';
+    const uA = URL.createObjectURL(blob);
+    const barsTmp = [6,14,10,18,8,22,12,20,6,16,10,14,18,8,20,12,6,16,10,14].map(h => `<i style="height:${h}px"></i>`).join('');
+    const horaA = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    d.innerHTML = `<div class="media-wrap"><div class="voice-player">
+      <span style="position:relative;flex-shrink:0;width:38px;height:38px;display:block"><img src="/icons/icon-192.png" style="width:38px;height:38px;border-radius:50%;object-fit:cover;display:block"><svg class="vp-mic" viewBox="0 0 24 24" width="16" height="16" style="position:absolute;bottom:-3px;right:-6px;fill:#00a884"><path d="M12 15.1a3.2 3.2 0 0 0 3.2-3.2V6a3.2 3.2 0 1 0-6.4 0v5.9A3.2 3.2 0 0 0 12 15.1zm5.4-3.2a5.4 5.4 0 0 1-10.8 0H4.8a7.2 7.2 0 0 0 6.3 7.1v2.1H8.9V23h6.2v-1.9H13v-2.1a7.2 7.2 0 0 0 6.3-7.1h-1.9z"/></svg></span>
+      <button class="vp-btn" onclick="(function(b){const a=b.parentElement.querySelector('audio');if(a.paused){a.play();b.textContent='⏸';}else{a.pause();b.textContent='▶';}})(this)">▶</button>
+      <div class="vp-bars">${barsTmp}</div>
+      <span class="vp-time">${_fmtVoice(durationSecs || 0)}</span>
+      <audio preload="auto" src="${uA}" onended="const b=this.parentElement.querySelector('.vp-btn');if(b)b.textContent='▶'"></audio>
+    </div></div><div class="time">${horaA} <span class="msg-ticks pending">${TICK_CLOCK}</span></div>`;
     area.appendChild(d); area.scrollTop = area.scrollHeight;
   }
   try {
@@ -5620,8 +5631,9 @@ const _IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
   (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 function _vpApplyPitch(a){
   try {
-    const keep = !_IS_IOS;
-    a.preservesPitch = keep; a.mozPreservesPitch = keep; a.webkitPreservesPitch = keep;
+    // SEMPRE preserva o TOM da voz (o iOS moderno suporta — desligar era o que
+    // deixava a voz "de desenho animado" no 1,5x/2x)
+    a.preservesPitch = true; a.mozPreservesPitch = true; a.webkitPreservesPitch = true;
   } catch(_){}
 }
 
