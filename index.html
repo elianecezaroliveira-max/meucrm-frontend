@@ -1094,7 +1094,7 @@ async function loginGoogle(){
   document.getElementById('login-msg').textContent = 'Abrindo o Google...';
   await _supaAuth.auth.signInWithOAuth({ provider:'google', options:{ redirectTo: window.location.origin } });
 }
-async function logoutCRM(){ if(_supaAuth){ await _supaAuth.auth.signOut(); _showLogin(); } }
+async function logoutCRM(){ if(_supaAuth){ await _supaAuth.auth.signOut({ scope: 'local' }); _showLogin(); } } // sai SÓ deste aparelho (o padrão derrubava todos)
 function _emailAllowed(email){
   if(!AUTH_ALLOWED.length) return true; // lista vazia = libera geral
   return AUTH_ALLOWED.map(e=>e.toLowerCase()).includes(String(email||'').toLowerCase());
@@ -1478,7 +1478,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v159</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v160</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1986,7 +1986,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v159</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v160</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2040,7 +2040,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 159;
+const APP_VER = 160;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3674,14 +3674,14 @@ async function toggleFavorite(phone) {
     dx = e.touches[0].clientX - startX;
     const dy = e.touches[0].clientY - startY;
     // Rolagem VERTICAL detectada → cancela o swipe de vez (não entreabre as ações)
-    if (!swiping && Math.abs(dy) > 8) {
+    if (!swiping && Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) {
       item.style.transition = ''; item.style.transform = ''; item = null; return;
     }
     // REGRA ABSOLUTA: a lista rolou (mais de 3px) = é rolagem, nunca swipe — mesmo já engatado
     if (Math.abs(list.scrollTop - startScroll) > 3) { cancelSwipe(); return; }
     if (!swiping && Date.now() - quietTs < 250) { cancelSwipe(); return; }
-    // Rápido demais = arremesso de rolagem, nunca swipe (swipe de verdade é um arrasto deliberado)
-    if (!swiping && Math.abs(dx) > 26 && Math.abs(dx) > Math.abs(dy) * 3 && Date.now() - touchT0 >= 110) {
+    // Engate mais FÁCIL (pedido): menos distância, menos tempo e ângulo mais tolerante
+    if (!swiping && Math.abs(dx) > 18 && Math.abs(dx) > Math.abs(dy) * 2 && Date.now() - touchT0 >= 70) {
       swiping = true;
       try { item.parentElement.classList.add('swiping'); } catch (_) {} // só AGORA os botões passam a existir
     }
@@ -3700,8 +3700,8 @@ async function toggleFavorite(phone) {
     const phone = item.parentElement?.dataset?.phone;
     if (swiping && phone) {
       window._lastSwipeTs = Date.now(); // impede o clique de abrir a conversa junto
-      if (dx > 70) markContactRead(phone);
-      else if (dx < -70) toggleFavorite(phone);
+      if (dx > 52) markContactRead(phone);
+      else if (dx < -52) toggleFavorite(phone);
     }
     item = null;
   });
