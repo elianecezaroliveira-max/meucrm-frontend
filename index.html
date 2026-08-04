@@ -358,7 +358,10 @@
   /* ENVIAR TEMPLATE */
   #send-tmpl-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; align-items: center; justify-content: center; }
   #send-tmpl-overlay.open { display: flex; }
-  #send-tmpl-modal { background: #f0f2f5; border-radius: 12px; width: 500px; max-width: 95vw; padding: 24px; max-height: 88vh; overflow-y: auto; }
+  /* O botão ENVIAR fica SEMPRE visível: quem rola é a LISTA de modelos, não o modal */
+  #send-tmpl-modal { background: #f0f2f5; border-radius: 12px; width: 500px; max-width: 95vw; padding: 24px; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; }
+  #tmpl-select-list { overflow-y: auto; -webkit-overflow-scrolling: touch; flex: 1; min-height: 0; }
+  #tmpl-vars-area { overflow-y: auto; max-height: 32vh; flex-shrink: 0; }
   #send-tmpl-modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
   .tmpl-select-item { padding: 12px 14px; background: #e9edef; border-radius: 8px; margin-bottom: 8px; cursor: pointer; border: 2px solid transparent; transition: border-color 0.15s; }
   .tmpl-select-item:hover { border-color: #d1d7db; }
@@ -1390,7 +1393,7 @@ window.addEventListener('load', initAuth);
     <p style="font-size:13px;color:#667781;margin-bottom:14px">Selecione um modelo aprovado para enviar:</p>
     <div id="tmpl-select-list"></div>
     <div id="tmpl-vars-area" style="display:none"></div>
-    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;flex-shrink:0">
       <button class="btn-cancel" onclick="closeSendTemplate()">Cancelar</button>
       <button class="btn-save" id="btn-send-tmpl" onclick="confirmSendTemplate()" disabled>Enviar</button>
     </div>
@@ -1478,7 +1481,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v160</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v162</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1986,7 +1989,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v160</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v162</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2040,7 +2043,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 160;
+const APP_VER = 162;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5745,13 +5748,14 @@ function _reactEmojiList(){
 }
 function _renderReactBody(msgId){
   const emojis=_reactEmojiList();
-  const row = emojis.map(e=>`<span style="cursor:pointer;font-size:22px" onclick="reactMessage('${msgId}','${e}')">${e}</span>`).join('')
-    + `<span style="cursor:pointer;font-size:18px;color:#667781;padding:0 2px" title="Remover reação" onclick="reactMessage('${msgId}','')">✖</span>`;
+  // Emojis GRANDES, no tamanho da barra de reação do WhatsApp
+  const row = emojis.map(e=>`<span style="cursor:pointer;font-size:31px;line-height:1;transition:transform .12s" ontouchstart="this.style.transform='scale(1.25)'" ontouchend="this.style.transform=''" onclick="reactMessage('${msgId}','${e}')">${e}</span>`).join('')
+    + `<span style="cursor:pointer;font-size:22px;color:#667781;padding:0 2px;line-height:1" title="Remover reação" onclick="reactMessage('${msgId}','')">✖</span>`;
   const tones = REACT_TONES.map(tn=>{
     const sel = tn===_reactTone ? 'border:2px solid #00a884' : 'border:2px solid transparent';
-    return `<span style="cursor:pointer;font-size:15px;${sel};border-radius:50%;line-height:1" title="Tom de pele" onclick="setReactTone('${tn}','${msgId}')">${tn||'✋'}</span>`;
+    return `<span style="cursor:pointer;font-size:17px;${sel};border-radius:50%;line-height:1" title="Tom de pele" onclick="setReactTone('${tn}','${msgId}')">${tn||'✋'}</span>`;
   }).join('');
-  return `<div style="display:flex;gap:6px;align-items:center">${row}</div>
+  return `<div style="display:flex;gap:10px;align-items:center;padding:2px 2px">${row}</div>
           <div style="display:flex;gap:4px;align-items:center;justify-content:center;margin-top:5px;padding-top:5px;border-top:1px solid #e9edef">${tones}</div>`;
 }
 function setReactTone(tn, msgId){
@@ -9103,7 +9107,13 @@ async function saveBotFlow() {
   const data = await res.json();
   if (data.success) {
     const btn = document.getElementById('bot-editor-topbar')?.querySelector('.btn-primary');
-    if (btn) { const orig=btn.textContent; btn.textContent='✅ Salvo!'; setTimeout(()=>btn.textContent=orig,2000); }
+    // Restauração FIXA: salvar 2x seguidas "memorizava" o ✅ Salvo! como texto
+    // original e o botão ficava congelado nele para sempre
+    if (btn) {
+      clearTimeout(window._botSaveT);
+      btn.textContent = '✅ Salvo!';
+      window._botSaveT = setTimeout(() => { btn.textContent = '💾 Salvar'; }, 2000);
+    }
   } else {
     alert('Erro ao salvar: '+(data.error||''));
   }
