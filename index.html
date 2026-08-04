@@ -114,6 +114,9 @@
   body.sel-mode .contact-swipe-wrap::before { content: ''; position: absolute; left: 11px; top: 50%; transform: translateY(-50%); width: 20px; height: 20px; border: 2px solid #8696a0; border-radius: 50%; z-index: 3; background: #fff; box-sizing: border-box; pointer-events: none; }
   body.sel-mode .contact-swipe-wrap.sel-on::before { content: '✓'; background: #00a884; border-color: #00a884; color: #fff; font-size: 13px; line-height: 16px; text-align: center; }
   .contact-item { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+  /* 🆔 ID externo da etapa (automações) no cabeçalho da coluna do Pipeline */
+  .kanban-col-extid { font-size: 10px; color: #8696a0; cursor: pointer; flex-shrink: 1; min-width: 0; max-width: 82px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: rgba(134,150,160,.12); border-radius: 6px; padding: 2px 5px; }
+  .kanban-col-extid:hover { background: rgba(134,150,160,.25); color: #54656f; }
   .contact-swipe-wrap > .contact-item { position: relative; z-index: 1; background: #ffffff; touch-action: pan-y; will-change: transform; }
   .swipe-action { position: absolute; top: 0; bottom: 0; width: 92px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #fff; font-size: 11px; font-weight: 600; z-index: 0; visibility: hidden; }
   .contact-swipe-wrap.swiping .swipe-action { visibility: visible; }
@@ -1481,7 +1484,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v167</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v168</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1989,7 +1992,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v167</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v168</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2043,7 +2046,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 167;
+const APP_VER = 168;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -7952,6 +7955,7 @@ function renderKanbanWith(contacts) {
           onblur="renameStage('${stage.id}', this.value)"
           onkeydown="if(event.key==='Enter')this.blur()">
         <span class="kanban-col-count">${cards.length}</span>
+        ${!stage.fixed ? `<span class="kanban-col-extid" onclick="editStageExtId('${stage.id}')" title="ID da etapa para automações (n8n) — toque para ver/editar">#${stage.external_id || 'sem ID'}</span>` : ''}
         <button class="col-select-all" onclick="selectAllInColumn('${stage.id}')" title="Selecionar todos">☑</button>
         ${!stage.fixed ? `<button class="kanban-col-del" onclick="deleteStage('${stage.id}')" title="Excluir coluna">✕</button>` : ''}
       </div>
@@ -8076,6 +8080,22 @@ function stageColor(id) {
   return colors[idx % colors.length] || '#00a884';
 }
 
+// 🆔 ID externo da etapa (usado pelo n8n): ver, copiar ou trocar
+async function editStageExtId(id) {
+  const st = (pipelineStages || []).find(s => s.id === id);
+  const atual = (st && st.external_id) ? String(st.external_id) : '';
+  const novo = prompt('ID externo da etapa (use este número nas automações do n8n).\nCopie daqui, ou digite outro para trocar:', atual);
+  if (novo === null || novo.trim() === atual) return;
+  try {
+    await fetch(`${SERVER_URL}/pipeline/stages/${id}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ external_id: novo.trim() })
+    });
+    if (st) st.external_id = novo.trim();
+    document.querySelectorAll(`.kanban-col[data-stage-id="${id}"] .kanban-col-extid`)
+      .forEach(e => { e.textContent = '#' + (novo.trim() || 'sem ID'); });
+  } catch (_) { alert('Erro ao salvar o ID da etapa.'); }
+}
 async function addStage() {
   const name = prompt('Nome da nova coluna:', 'Nova etapa');
   if (!name) return;
