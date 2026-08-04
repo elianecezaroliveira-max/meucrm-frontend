@@ -1481,7 +1481,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v162</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v163</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1989,7 +1989,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v162</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v163</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2043,7 +2043,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 162;
+const APP_VER = 163;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3264,7 +3264,8 @@ function openMsgMenu(ev, id) {
   menu.style.overflowY = 'auto';
   const mh = menu.offsetHeight; // altura REAL do menu → nunca sai da tela
   menu.style.left = Math.max(8, Math.min(r.left - 80, window.innerWidth - 185)) + 'px';
-  menu.style.top  = Math.max(8, Math.min(r.bottom + 4, window.innerHeight - mh - 8)) + 'px';
+  menu.style.top  = Math.max(48, Math.min(r.bottom + 4, window.innerHeight - mh - 8)) + 'px';
+  _reactBarComMenu(id, menu); // igual WhatsApp: emojis em cima, opções embaixo
 }
 function closeMsgMenu() {
   const m = document.getElementById('msg-menu');
@@ -3510,7 +3511,25 @@ function openMsgMenuAt(id, x, y, anchorEl) {
   menu.style.overflowY = 'auto';
   const mhL = menu.offsetHeight; // altura REAL → nunca corta embaixo
   menu.style.left = Math.max(8, Math.min(x - 60, window.innerWidth - 185)) + 'px';
-  menu.style.top  = Math.max(8, Math.min(y + 10, window.innerHeight - mhL - 8)) + 'px';
+  menu.style.top  = Math.max(48, Math.min(y + 10, window.innerHeight - mhL - 8)) + 'px';
+  _reactBarComMenu(id, menu); // igual WhatsApp: emojis em cima, opções embaixo
+}
+// 💛 Barra de reações JÁ ABERTA junto com o menu da mensagem (igual WhatsApp)
+function _reactBarComMenu(id, menu) {
+  try {
+    closeReactPicker();
+    const pop = document.createElement('div');
+    pop.id = 'react-picker';
+    pop.style.cssText = 'position:fixed;z-index:9999;background:#ffffff;border:1px solid #e9edef;border-radius:24px;padding:7px 12px;box-shadow:0 3px 12px rgba(0,0,0,.35)';
+    pop.innerHTML = _renderReactBody(id);
+    document.body.appendChild(pop);
+    const mr = menu.getBoundingClientRect();
+    const left = Math.max(8, Math.min(mr.left, window.innerWidth - pop.offsetWidth - 8));
+    let top = mr.top - pop.offsetHeight - 8;
+    if (top < 8) top = Math.min(mr.bottom + 8, window.innerHeight - pop.offsetHeight - 8);
+    pop.style.left = left + 'px'; pop.style.top = top + 'px';
+    setTimeout(() => document.addEventListener('click', _reactOutside), 0);
+  } catch (_) {}
 }
 (function initMsgLongPress() {
   let timer = null, sx = 0, sy = 0;
