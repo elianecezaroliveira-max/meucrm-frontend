@@ -1484,7 +1484,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v168</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v169</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1691,6 +1691,12 @@ window.addEventListener('load', initAuth);
         <button class="pf-topbtn" onclick="genIntegrationToken()">🔄 Gerar</button>
       </div>
       <div id="cfg-token-status" style="font-size:11px;color:#00a884;height:14px;margin-top:4px"></div>
+    </div>
+
+    <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
+      <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">🆔 IDs das etapas (automações)</div>
+      <p style="font-size:12px;color:#667781;margin:0 0 8px">Use estes números nas planilhas/fluxos do n8n. Toque no ID para copiar; no ✏️ para trocar.</p>
+      <div id="cfg-stage-ids" style="font-size:13px;color:#54656f">Carregando...</div>
     </div>
 
     <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
@@ -1992,7 +1998,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v168</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v169</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2046,7 +2052,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 168;
+const APP_VER = 169;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -6684,6 +6690,23 @@ async function openConfigModal() {
     const v = d.value || {};
     b.innerHTML = `Plano: <b>${escHtml(v.plano || 'VETRA')}</b> &nbsp;·&nbsp; Validade: <b>${escHtml(v.validade || '—')}</b>`;
   } catch (_) { b.textContent = 'Plano: VETRA'; }
+  _renderCfgStageIds();
+}
+// 🆔 Lista das etapas com seus IDs externos (para automações do n8n)
+async function _renderCfgStageIds() {
+  const box = document.getElementById('cfg-stage-ids'); if (!box) return;
+  try {
+    const ss = await (await fetch(SERVER_URL + '/pipeline/stages')).json();
+    if (Array.isArray(ss)) pipelineStages = ss;
+    if (!ss.length) { box.textContent = 'Nenhuma etapa criada no Pipeline ainda.'; return; }
+    box.innerHTML = ss.map(s => `
+      <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #f0f2f5">
+        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#131c20">${escHtml(s.name)}</span>
+        <span onclick="navigator.clipboard&&navigator.clipboard.writeText('${escHtml(String(s.external_id||''))}');const o=this.textContent;this.textContent='✓ copiado';setTimeout(()=>{this.textContent=o},1100)"
+          style="font-family:monospace;font-size:12.5px;color:#027eb5;cursor:pointer" title="Tocar para copiar">${escHtml(String(s.external_id || 'sem ID'))}</span>
+        <span onclick="editStageExtId('${s.id}')" style="cursor:pointer;font-size:13px" title="Trocar o ID">✏️</span>
+      </div>`).join('');
+  } catch (_) { box.textContent = 'Erro ao carregar as etapas.'; }
 }
 function closeConfigModal() { document.getElementById('cfg-overlay').style.display = 'none'; }
 async function genIntegrationToken() {
@@ -7955,7 +7978,6 @@ function renderKanbanWith(contacts) {
           onblur="renameStage('${stage.id}', this.value)"
           onkeydown="if(event.key==='Enter')this.blur()">
         <span class="kanban-col-count">${cards.length}</span>
-        ${!stage.fixed ? `<span class="kanban-col-extid" onclick="editStageExtId('${stage.id}')" title="ID da etapa para automações (n8n) — toque para ver/editar">#${stage.external_id || 'sem ID'}</span>` : ''}
         <button class="col-select-all" onclick="selectAllInColumn('${stage.id}')" title="Selecionar todos">☑</button>
         ${!stage.fixed ? `<button class="kanban-col-del" onclick="deleteStage('${stage.id}')" title="Excluir coluna">✕</button>` : ''}
       </div>
@@ -8092,8 +8114,7 @@ async function editStageExtId(id) {
       body: JSON.stringify({ external_id: novo.trim() })
     });
     if (st) st.external_id = novo.trim();
-    document.querySelectorAll(`.kanban-col[data-stage-id="${id}"] .kanban-col-extid`)
-      .forEach(e => { e.textContent = '#' + (novo.trim() || 'sem ID'); });
+    if (typeof _renderCfgStageIds === 'function') _renderCfgStageIds(); // atualiza a lista das Configurações
   } catch (_) { alert('Erro ao salvar o ID da etapa.'); }
 }
 async function addStage() {
