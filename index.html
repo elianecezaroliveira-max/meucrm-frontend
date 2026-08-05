@@ -1507,7 +1507,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v178</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v179</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -2022,7 +2022,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v178</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v179</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2076,7 +2076,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 178;
+const APP_VER = 179;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -6354,6 +6354,16 @@ function fmtTaskCreated(iso) {
   if (dia === hoje - 1) return 'ontem às ' + hm;
   return String(d.getUTCDate()).padStart(2, '0') + '/' + String(d.getUTCMonth() + 1).padStart(2, '0') + ' às ' + hm;
 }
+// Versão COMPACTA (tela de Tarefas): só o horário; dias anteriores levam a data curta
+function fmtTaskCreatedCurto(iso) {
+  if (!iso) return '';
+  const ms = parseUTC(iso), d = new Date(ms - _BRT_OFFSET);
+  const hoje = Math.floor((Date.now() - _BRT_OFFSET) / 86400000);
+  const dia = Math.floor((ms - _BRT_OFFSET) / 86400000);
+  const hm = String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0');
+  if (dia === hoje) return hm;
+  return String(d.getUTCDate()).padStart(2, '0') + '/' + String(d.getUTCMonth() + 1).padStart(2, '0') + ' ' + hm;
+}
 
 function renderTasks() {
   const list = document.getElementById('tasks-list');
@@ -9101,11 +9111,11 @@ function renderTasksPage(){
       <button class="task-check" title="${t.done?'Reabrir':'Concluir'}" onclick="toggleTaskGlobal('${t.id}',${t.done?'false':'true'})">${t.done?'✓':''}</button>
       <div style="flex:1;min-width:0">
         <div style="color:#131c20;font-size:14px;${t.done?'text-decoration:line-through;opacity:.6':''}">${escHtml(t.title)}</div>
+        ${noteBlock}
         <div style="display:flex;gap:14px;margin-top:4px;flex-wrap:wrap;align-items:center">${lead}${due}
-          ${t.created_at ? `<span style="color:#8696a0;font-size:12px">🕘 Criada ${fmtTaskCreated(t.created_at)}</span>` : ''}
+          ${t.created_at ? `<span style="color:#8696a0;font-size:12px">🕘 ${fmtTaskCreatedCurto(t.created_at)}</span>` : ''}
           <span style="color:#667781;font-size:12px;cursor:pointer" onclick="editTaskTitle('${t.id}')">✏️ Editar</span>
         </div>
-        ${noteBlock}
       </div>
       <button title="Excluir" onclick="deleteTaskGlobal('${t.id}')" style="background:none;border:none;color:#667781;cursor:pointer;font-size:14px">🗑</button>
     </div>`;
