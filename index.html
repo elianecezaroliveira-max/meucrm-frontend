@@ -1470,7 +1470,7 @@ window.addEventListener('load', initAuth);
       <h2 style="font-size:16px;font-weight:600;margin:0">✅ Tarefas do lead</h2>
       <button onclick="closeTasks()" style="background:#e9edef;border:none;color:#131c20;width:30px;height:30px;border-radius:50%;cursor:pointer">✕</button>
     </div>
-    <input id="task-title" placeholder="Nova tarefa (ex.: Ligar para confirmar)" style="width:100%;box-sizing:border-box;background:#ffffff;border:1px solid #e9edef;color:#131c20;padding:9px 12px;border-radius:8px;outline:none;margin-bottom:8px">
+    <input id="task-title" placeholder="Descreva a tarefa (opcional)" style="width:100%;box-sizing:border-box;background:#ffffff;border:1px solid #e9edef;color:#131c20;padding:9px 12px;border-radius:8px;outline:none;margin-bottom:8px">
     <div style="display:flex;gap:8px;margin-bottom:16px">
       <input id="task-due" type="datetime-local" style="flex:1;background:#ffffff;border:1px solid #e9edef;color:#131c20;padding:8px 12px;border-radius:8px;outline:none">
       <button onclick="addTask()" style="background:#00a884;border:none;color:#fff;padding:9px 16px;border-radius:8px;cursor:pointer;font-weight:600">Adicionar</button>
@@ -1507,7 +1507,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v175</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v176</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1931,11 +1931,12 @@ window.addEventListener('load', initAuth);
   <div id="tasks-page-topbar">
     <button class="btn-secondary" onclick="closeTasksPage()">← Voltar</button>
     <h2>✅ Tarefas</h2>
-    <label style="font-size:13px;color:#667781;display:flex;align-items:center;gap:6px;cursor:pointer" title="Selecionar/desmarcar todos os leads da lista">
+    <button class="btn-secondary" id="tasks-sel-btn" onclick="toggleTaskSelMode()" title="Entrar no modo de seleção de leads">☑️ Selecionar</button>
+    <label id="tasks-select-all-wrap" style="display:none;font-size:13px;color:#667781;align-items:center;gap:6px;cursor:pointer" title="Selecionar/desmarcar todos os leads da lista">
       <input type="checkbox" id="tasks-select-all" onchange="toggleSelectAllTasks(this.checked)" /> Selecionar todos
     </label>
     <span id="tasks-sel-count" style="font-size:12px;color:#00a884;font-weight:600"></span>
-    <button class="btn-secondary" onclick="openBulkBotMenu(event)" title="Dispara o bot SEGUE SIMULAÇÃO para os leads selecionados">📢 Disparar bot</button>
+    <button class="btn-secondary" id="tasks-disparo-btn" style="display:none" onclick="openBulkBotMenu(event)" title="Dispara o bot para os leads selecionados">📢 Disparar bot</button>
     <label style="font-size:13px;color:#667781;display:flex;align-items:center;gap:6px;cursor:pointer">
       <input type="checkbox" id="tasks-show-done" onchange="renderTasksPage()" /> Mostrar concluídas
     </label>
@@ -2021,7 +2022,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v175</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v176</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2075,7 +2076,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 175;
+const APP_VER = 176;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4516,8 +4517,8 @@ async function lpToggleTask(id, done, phone){
   lpLoadTasks(phone);
 }
 async function lpAddTask(phone){
-  const title = prompt('Nova tarefa:'); if (title === null) return;
-  const tt = title.trim(); if (!tt) return;
+  const title = prompt('Nova tarefa (o nome é opcional):'); if (title === null) return;
+  const tt = title.trim() || 'Tarefa'; // sem texto = nasce como "Tarefa"
   const c = allContacts.find(x => x.phone === phone);
   try { await fetch(SERVER_URL+'/tasks', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, account_id: c?.account_id || null, title: tt }) }); } catch(_){}
   lpLoadTasks(phone);
@@ -6346,8 +6347,7 @@ function renderTasks() {
   }).join('');
 }
 async function addTask() {
-  const title = document.getElementById('task-title').value.trim();
-  if (!title) return alert('Escreva a tarefa.');
+  const title = document.getElementById('task-title').value.trim() || 'Tarefa'; // nome é OPCIONAL
   const dueRaw = document.getElementById('task-due').value;
   const due_at = dueRaw ? new Date(dueRaw).toISOString() : null;
   try {
@@ -8994,6 +8994,20 @@ async function saveTaskReminder() {
 
 // ── Disparo em massa de bot para os leads SELECIONADOS na lista de tarefas ──
 let _selTaskPhones = new Set();
+// ☑️ Modo de seleção das tarefas: os quadradinhos só aparecem depois de tocar
+// em "Selecionar" (aí surgem também o "Selecionar todos" e o "Disparar bot")
+let _taskSelMode = false;
+function toggleTaskSelMode(){
+  _taskSelMode = !_taskSelMode;
+  if (!_taskSelMode) _selTaskPhones.clear();
+  const btn = document.getElementById('tasks-sel-btn');
+  if (btn) { btn.textContent = _taskSelMode ? '✕ Cancelar' : '☑️ Selecionar'; }
+  const wrap = document.getElementById('tasks-select-all-wrap');
+  if (wrap) wrap.style.display = _taskSelMode ? 'flex' : 'none';
+  const disp = document.getElementById('tasks-disparo-btn');
+  if (disp) disp.style.display = _taskSelMode ? '' : 'none';
+  renderTasksPage();
+}
 function toggleTaskSel(phone){ if(_selTaskPhones.has(phone)) _selTaskPhones.delete(phone); else _selTaskPhones.add(phone); renderTasksPage(); }
 function toggleSelectAllTasks(checked){
   const showDone=document.getElementById('tasks-show-done')?.checked;
@@ -9033,11 +9047,10 @@ function renderTasksPage(){
   const now=Date.now();
   area.innerHTML=list.map(t=>{
     const overdue=t.due_at && !t.done && parseUTC(t.due_at)<now;
-    // Caixa de SELEÇÃO (disparo em massa) claramente separada do círculo de CONCLUIR:
-    // menor, cinza, com rótulo próprio no toque longo/hover
-    const selBox=t.phone
+    // Caixa de SELEÇÃO: só existe no MODO SELEÇÃO (botão "Selecionar" no topo)
+    const selBox = !_taskSelMode ? '' : (t.phone
       ? `<label title="Selecionar para disparo em massa" style="display:flex;align-items:center;flex-shrink:0;margin-right:2px;opacity:.75;cursor:pointer"><input type="checkbox" class="task-sel" onclick="toggleTaskSel('${escHtml(t.phone)}')" ${_selTaskPhones.has(t.phone)?'checked':''} style="width:15px;height:15px;cursor:pointer;accent-color:#8696a0" /></label>`
-      : `<span style="width:17px;flex-shrink:0;display:inline-block"></span>`;
+      : `<span style="width:17px;flex-shrink:0;display:inline-block"></span>`);
     const due=t.due_at?`<span style="color:${overdue?'#ef4444':'#667781'};font-size:12px">⏰ ${fmtTaskDue(t.due_at)}</span>`:'';
     // Botão GRANDE e claro para abrir o lead a partir da tarefa
     const lead=t.contact_name?`<button onclick="openTaskLead('${t.phone}','${escHtml(t.contact_name).replace(/'/g,"\\'")}',${t.account_id?`'${t.account_id}'`:'null'})" title="Abrir a conversa e os dados deste lead" style="display:inline-flex;align-items:center;gap:6px;background:#e7f7ef;border:1px solid #00a884;color:#00806a;border-radius:16px;padding:5px 12px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit">👤 ${escHtml(t.contact_name)} <span style="font-size:11px">›</span></button>`:'';
@@ -9051,7 +9064,7 @@ function renderTasksPage(){
         <div style="color:#131c20;font-size:14px;${t.done?'text-decoration:line-through;opacity:.6':''}">${escHtml(t.title)}</div>
         <div style="display:flex;gap:14px;margin-top:4px;flex-wrap:wrap;align-items:center">${lead}${due}
           ${t.created_at ? `<span style="color:#8696a0;font-size:12px">🕘 Criada ${fmtTaskCreated(t.created_at)}</span>` : ''}
-          <span style="color:#667781;font-size:12px;cursor:pointer" onclick="editTaskNote('${t.id}')">💬 ${t.notes?'Editar comentário':'Comentar'}</span>
+          <span style="color:#667781;font-size:12px;cursor:pointer" onclick="editTaskTitle('${t.id}')">✏️ Editar</span>
         </div>
         ${noteBlock}
       </div>
@@ -9071,6 +9084,18 @@ async function toggleTaskGlobal(id, done){
     const t=_allTasksCache.find(x=>String(x.id)===String(id)); if(t) t.done=done;
     renderTasksPage();
   }catch(e){ alert('Erro ao atualizar tarefa'); }
+}
+// ✏️ CAMPO ÚNICO: edita o próprio texto da tarefa (o "comentário" separado saiu)
+async function editTaskTitle(id){
+  const t=_allTasksCache.find(x=>String(x.id)===String(id));
+  const val=prompt('Texto da tarefa:', t?.title||'');
+  if(val===null) return; // cancelou
+  const novo=val.trim()||'Tarefa';
+  try{
+    await fetch(SERVER_URL+'/tasks/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:novo})});
+    if(t) t.title=novo;
+    renderTasksPage();
+  }catch(e){ alert('Erro ao salvar a tarefa'); }
 }
 async function editTaskNote(id){
   const t=_allTasksCache.find(x=>String(x.id)===String(id));
