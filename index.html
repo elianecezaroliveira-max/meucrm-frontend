@@ -202,7 +202,17 @@
   /* Ferramentas EM CIMA (modelo, anexo, bot, emoji) e o campo inteiro embaixo */
   #input-tools { display: flex; align-items: center; gap: 10px; }
   #input-row { display: flex; align-items: flex-end; gap: 10px; }
-  #input-wrap { flex: 1; display: flex; align-items: center; background: #e9edef; border-radius: 24px; overflow: hidden; min-width: 0; }
+  #input-wrap { flex: 1; display: flex; align-items: center; background: #e9edef; border-radius: 24px; overflow: hidden; min-width: 0; position: relative; }
+  /* ✍️ NEGRITO NO PRÓPRIO CAMPO (igual WhatsApp): camada-espelho atrás do campo.
+     O "negrito" é feito com sombra do texto (engrossa SEM mudar a largura das
+     letras) — o cursor e a digitação continuam perfeitamente alinhados. */
+  #msg-backdrop { display: none; position: absolute; inset: 0; padding: 10px 16px; font-family: inherit; font-size: 15px; line-height: 20px; color: #131c20; white-space: pre-wrap; word-wrap: break-word; overflow: hidden; pointer-events: none; z-index: 1; box-sizing: border-box; }
+  #msg-input { position: relative; z-index: 2; }
+  #msg-input.fx-on { color: transparent; caret-color: #131c20; }
+  body.dark #msg-backdrop { color: #e9edef; }
+  body.dark #msg-input.fx-on { caret-color: #e9edef; }
+  .fx-b { text-shadow: 0.045em 0 0 currentColor; }
+  .fx-s { text-decoration: line-through; }
   #msg-input { flex: 1; background: transparent; border: none; color: #131c20; padding: 10px 16px; font-family: inherit; font-size: 15px; line-height: 20px; height: 40px; max-height: 120px; overflow-y: auto; resize: none; outline: none; min-width: 0; }
   #msg-input::placeholder { color: #667781; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   /* chip de arquivo dentro do input */
@@ -972,6 +982,7 @@
      (anotações, busca, etiquetas, tarefas...) — abaixo disso o iOS amplia a tela */
   input, textarea, select { font-size: 16px !important; }
   #msg-input { font-size: 16px; line-height: 20px; height: 40px; padding: 10px 12px; }
+  #msg-backdrop { font-size: 16px; line-height: 20px; padding: 10px 12px; } /* espelha o campo no celular */
 
   /* Chat header: nome e telefone menores */
   #chat-header .info .name { font-size: 18px; }
@@ -1494,7 +1505,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v173</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v174</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -2008,7 +2019,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v173</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v174</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2062,7 +2073,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 173;
+const APP_VER = 174;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2965,12 +2976,30 @@ function autoGrowMsgInput(ta) {
   if (!ta) return;
   // Campo VAZIO volta ao tamanho normal NA HORA (o iOS reportava altura errada
   // com o teclado aberto e o campo demorava a encolher depois do envio)
-  if (!ta.value) { ta.style.height = '40px'; return; }
+  if (!ta.value) { ta.style.height = '40px'; _fmtInline(ta); return; }
   ta.style.height = '40px';
   ta.style.height = Math.min(ta.scrollHeight, 120) + 'px'; // até 5 linhas visíveis
+  _fmtInline(ta); // negrito/riscado NO CAMPO enquanto digita
 }
-// (prévia de formatação acima do campo foi removida a pedido — a formatação
-//  continua sendo aplicada normalmente na bolha ao enviar)
+// ✍️ NEGRITO/RISCADO no PRÓPRIO campo enquanto digita (igual WhatsApp):
+// a camada-espelho mostra o texto com *negrito* engrossado e ~riscado~ cortado;
+// o campo real fica com o texto transparente e o cursor visível — alinhamento
+// perfeito porque a sombra de texto não altera a largura das letras
+function _fmtInline(ta) {
+  try {
+    const b = document.getElementById('msg-backdrop'); if (!b || !ta) return;
+    const v = ta.value || '';
+    const tem = /\*[^*\n]+\*/.test(v) || /~[^~\n]+~/.test(v);
+    if (!tem) { b.style.display = 'none'; b.innerHTML = ''; ta.classList.remove('fx-on'); return; }
+    b.innerHTML = escHtml(v)
+      .replace(/\*([^*\n]+)\*/g, '<span class="fx-b">*$1*</span>')
+      .replace(/~([^~\n]+)~/g, '<span class="fx-s">~$1~</span>')
+      .replace(/\n/g, '<br>') + '&#8203;';
+    b.style.display = 'block';
+    ta.classList.add('fx-on');
+    b.scrollTop = ta.scrollTop;
+  } catch (_) {}
+}
 
 // ── "digitando…"/"gravando áudio…" para o cliente (QR Code e API oficial) ──
 let _typingLastSent = 0, _typingStopTimer = null;
@@ -3983,7 +4012,8 @@ async function selectContact(phone, name, accountId) {
           </div>
           <button id="file-chip-remove" onclick="removeFile()" title="Remover">✕</button>
         </div>
-        <textarea id="msg-input" placeholder="Mensagem" rows="1" onkeydown="handleKey(event)" oninput="updateSendMicButtons();notifyTypingThrottled();autoGrowMsgInput(this)"></textarea>
+        <div id="msg-backdrop" aria-hidden="true"></div>
+        <textarea id="msg-input" placeholder="Mensagem" rows="1" onkeydown="handleKey(event)" oninput="updateSendMicButtons();notifyTypingThrottled();autoGrowMsgInput(this)" onscroll="const b=document.getElementById('msg-backdrop');if(b)b.scrollTop=this.scrollTop"></textarea>
       </div>
       <div id="rec-bar" style="display:none;flex:1;flex-direction:column;gap:10px;min-width:0;padding:2px 2px 4px">
         <div style="display:flex;align-items:center;gap:12px">
