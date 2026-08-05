@@ -173,9 +173,10 @@
   .lp-tag { display: inline-flex; align-items: center; gap: 4px; background: #e7f7ef; color: #00a884; border-radius: 10px; padding: 2px 8px; font-size: 12px; margin: 2px 2px 0 0; }
   .lp-mini { background: #e7f7ef; border: none; color: #00a884; border-radius: 6px; padding: 3px 8px; font-size: 11px; cursor: pointer; font-weight: 600; }
   .lp-mini:hover { background: #d7f0e3; }
-  @media (max-width: 768px) { #lead-panel { display: none !important; } #btn-lead-panel { display: none !important; } }
+  /* SÓ vira celular em TELA DE TOQUE — no PC, janela estreita mantém tudo visível */
+  @media (max-width: 768px) and (pointer: coarse) { #lead-panel { display: none !important; } #btn-lead-panel { display: none !important; } }
   /* Computador: o menu ℹ️ é redundante (o painel de detalhes do lead já tem tudo) — só aparece no celular */
-  @media (min-width: 769px) { #btn-info { display: none !important; } }
+  @media (min-width: 769px), (pointer: fine) { #btn-info { display: none !important; } }
   #messages-area { flex: 1; overflow-y: auto; overflow-anchor: none; padding: 16px; display: flex; flex-direction: column; gap: 0; transition: background 0.2s; background-color: #efeae2; background-image: radial-gradient(rgba(0,0,0,0.028) 1px, transparent 1px); background-size: 22px 22px; }
   .msg { margin-top: 4px; }
   /* 📅 Dia FLUTUANTE no topo enquanto rola (igual WhatsApp) */
@@ -438,7 +439,7 @@
   .plist-c-phone { font-size: 13px; color: #54656f; }
   .plist-stage { font-size: 11px; font-weight: 700; color: #00a884; background: #e7f7ef; border-radius: 10px; padding: 3px 9px; white-space: nowrap; }
   .plist-c-tags { display: flex; gap: 4px; flex-wrap: wrap; min-width: 0; }
-  @media (max-width: 768px) {
+  @media (max-width: 768px) and (pointer: coarse) {
     .plist-head, .plist-row { grid-template-columns: 30px 1.3fr 100px; }
     .plist-h-phone, .plist-c-phone, .plist-h-tags, .plist-c-tags { display: none; }
   }
@@ -546,6 +547,12 @@
   /* Os botões do topo saíram de cena (agora vivem no trilho/menu "+") */
   #btn-pipeline, #btn-templates, #btn-quick-replies, #btn-accounts, #btn-bots,
   #btn-faq, #btn-tags, #btn-tasks-global, #btn-logout { display: none !important; }
+  /* 💻 PC com janela ESTREITA: nada some — o conteúdo mantém a largura mínima
+     e a janela ganha rolagem horizontal (em vez de virar layout de celular) */
+  @media (pointer: fine) and (hover: hover) {
+    body { overflow-x: auto; }
+    #topbar, #layout { min-width: 820px; }
+  }
   /* READ RECEIPTS */
   .msg-image { min-height: 120px; background: rgba(0,0,0,.05); }
   .msg-ticks { display:inline-block; margin-left:4px; font-size:13px; vertical-align:middle; }
@@ -730,8 +737,9 @@
 
 #bots-page, #bot-editor-page, #tasks-page, #faq-page { position:fixed; top:0;left:0;right:0;bottom:0; background:#ffffff; z-index:500; display:none; flex-direction:column; }
 /* Computador: o trilho de ferramentas fica SEMPRE visível, mesmo com uma tela
-   cheia aberta — o trilho sobe acima e as telas cheias começam depois dele */
-@media (min-width: 769px) {
+   cheia aberta — o trilho sobe acima e as telas cheias começam depois dele
+   (vale para QUALQUER largura de janela no PC — mouse/trackpad) */
+@media (min-width: 769px), (pointer: fine) {
   #bots-page, #bot-editor-page, #tasks-page, #faq-page { left: 68px; }
   /* TODAS as ferramentas abrem em TELA GRANDE (como o Pipeline), nada de janelinha */
   #modal-overlay, #templates-overlay, #qr-modal, #tagmgr-overlay, #cfg-overlay, #auto-overlay {
@@ -871,7 +879,7 @@
 }
 #btn-back-mobile svg { width: 22px; height: 22px; }
 
-@media (max-width: 768px) {
+@media (max-width: 768px) and (pointer: coarse) {
   /* Topbar compacto */
   #topbar {
     padding: 8px 10px; gap: 6px;
@@ -1486,7 +1494,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v170</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v171</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -2000,7 +2008,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v170</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v171</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2054,7 +2062,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 170;
+const APP_VER = 171;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
