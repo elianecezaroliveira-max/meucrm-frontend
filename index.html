@@ -1507,7 +1507,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v176</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v177</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -2022,7 +2022,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v176</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v177</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2076,7 +2076,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 176;
+const APP_VER = 177;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4520,7 +4520,10 @@ async function lpAddTask(phone){
   const title = prompt('Nova tarefa (o nome é opcional):'); if (title === null) return;
   const tt = title.trim() || 'Tarefa'; // sem texto = nasce como "Tarefa"
   const c = allContacts.find(x => x.phone === phone);
-  try { await fetch(SERVER_URL+'/tasks', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, account_id: c?.account_id || null, title: tt }) }); } catch(_){}
+  try {
+    await fetch(SERVER_URL+'/tasks', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, account_id: c?.account_id || null, title: tt }) });
+    _toast('✅ Tarefa criada!');
+  } catch(_){ alert('Erro ao criar a tarefa.'); }
   lpLoadTasks(phone);
 }
 function lpLoadMedia(phone){
@@ -6332,8 +6335,10 @@ function fmtTaskCreated(iso) {
 
 function renderTasks() {
   const list = document.getElementById('tasks-list');
-  if (!currentTasks.length) { list.innerHTML = '<p style="color:#667781;font-size:13px">Nenhuma tarefa para este lead.</p>'; return; }
-  list.innerHTML = currentTasks.map(t => {
+  // As CONCLUÍDAS não aparecem nos detalhes do lead (a pedido) — seguem na tela ✅ Tarefas
+  const abertas = (currentTasks || []).filter(t => !t.done);
+  if (!abertas.length) { list.innerHTML = '<p style="color:#667781;font-size:13px">Nenhuma tarefa em aberto para este lead.</p>'; return; }
+  list.innerHTML = abertas.map(t => {
     const due = t.due_at ? `<div style="font-size:11px;color:#f59e0b;margin-top:2px">⏰ ${fmtTaskDue(t.due_at)}</div>` : '';
     return `<div style="display:flex;align-items:flex-start;gap:10px;padding:10px;background:#ffffff;border-radius:8px;margin-bottom:8px">
       <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask('${t.id}',this.checked)" style="width:18px;height:18px;cursor:pointer;margin-top:2px">
@@ -6346,6 +6351,17 @@ function renderTasks() {
     </div>`;
   }).join('');
 }
+// 🍞 Aviso rápido no rodapé da tela (some sozinho)
+function _toast(msg) {
+  try {
+    const t = document.createElement('div');
+    t.textContent = msg;
+    t.style.cssText = 'position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:rgba(11,20,26,.92);color:#fff;font-size:13.5px;font-weight:600;padding:10px 18px;border-radius:20px;z-index:99999;box-shadow:0 4px 14px rgba(0,0,0,.35);pointer-events:none;transition:opacity .3s';
+    document.body.appendChild(t);
+    setTimeout(() => { t.style.opacity = '0'; }, 1900);
+    setTimeout(() => { try { t.remove(); } catch (_) {} }, 2300);
+  } catch (_) {}
+}
 async function addTask() {
   const title = document.getElementById('task-title').value.trim() || 'Tarefa'; // nome é OPCIONAL
   const dueRaw = document.getElementById('task-due').value;
@@ -6355,6 +6371,7 @@ async function addTask() {
       body: JSON.stringify({ phone: currentPhone, account_id: currentAccountId || null, title, due_at }) });
     document.getElementById('task-title').value = '';
     document.getElementById('task-due').value = '';
+    _toast('✅ Tarefa criada!');
     loadTasks();
   } catch(e) { alert('Erro ao adicionar tarefa.'); }
 }
