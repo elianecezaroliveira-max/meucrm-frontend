@@ -798,7 +798,9 @@
 #tasks-list-area { flex:1;overflow-y:auto;padding:20px;max-width:760px;margin:0 auto;width:100%;box-sizing:border-box; }
 .task-row { display:flex;align-items:flex-start;gap:12px;background:#ffffff;border:1px solid #e9edef;border-radius:10px;padding:12px 14px;margin-bottom:10px; }
 .task-row.overdue { border-color:#ef4444; }
-.task-check { width:22px;height:22px;border-radius:50%;border:2px solid #00a884;background:none;cursor:pointer;flex-shrink:0;color:#00a884;font-size:13px;display:flex;align-items:center;justify-content:center;margin-top:1px; }
+.task-check { width:24px;height:24px;border-radius:50%;border:2px solid #00a884;background:none;cursor:pointer;flex-shrink:0;color:#00a884;font-size:13px;display:flex;align-items:center;justify-content:center;margin-top:1px;transition:background .15s; }
+.task-check:hover { background:#e7f7ef; }
+.task-check:hover::after { content:'✓'; } /* dica visual: o círculo é o CONCLUIR */
 
 #bots-page-topbar, #bot-editor-topbar { background:#f0f2f5; padding:10px 16px; display:flex; align-items:center; gap:12px; border-bottom:1px solid #e9edef; flex-shrink:0; }
 #bots-page-topbar h2 { font-size:16px;font-weight:700;color:#131c20;flex:1; }
@@ -1505,7 +1507,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v174</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v175</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -2019,7 +2021,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v174</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v175</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2073,7 +2075,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 174;
+const APP_VER = 175;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -9031,11 +9033,14 @@ function renderTasksPage(){
   const now=Date.now();
   area.innerHTML=list.map(t=>{
     const overdue=t.due_at && !t.done && parseUTC(t.due_at)<now;
+    // Caixa de SELEÇÃO (disparo em massa) claramente separada do círculo de CONCLUIR:
+    // menor, cinza, com rótulo próprio no toque longo/hover
     const selBox=t.phone
-      ? `<input type="checkbox" class="task-sel" onclick="toggleTaskSel('${escHtml(t.phone)}')" ${_selTaskPhones.has(t.phone)?'checked':''} title="Selecionar este lead para o disparo" style="width:16px;height:16px;cursor:pointer;flex-shrink:0;margin-right:2px" />`
-      : `<span style="width:16px;flex-shrink:0;display:inline-block"></span>`;
+      ? `<label title="Selecionar para disparo em massa" style="display:flex;align-items:center;flex-shrink:0;margin-right:2px;opacity:.75;cursor:pointer"><input type="checkbox" class="task-sel" onclick="toggleTaskSel('${escHtml(t.phone)}')" ${_selTaskPhones.has(t.phone)?'checked':''} style="width:15px;height:15px;cursor:pointer;accent-color:#8696a0" /></label>`
+      : `<span style="width:17px;flex-shrink:0;display:inline-block"></span>`;
     const due=t.due_at?`<span style="color:${overdue?'#ef4444':'#667781'};font-size:12px">⏰ ${fmtTaskDue(t.due_at)}</span>`:'';
-    const lead=t.contact_name?`<span style="color:#00a884;font-size:12px;cursor:pointer" onclick="openTaskLead('${t.phone}','${escHtml(t.contact_name).replace(/'/g,"\\'")}',${t.account_id?`'${t.account_id}'`:'null'})">👤 ${escHtml(t.contact_name)}</span>`:'';
+    // Botão GRANDE e claro para abrir o lead a partir da tarefa
+    const lead=t.contact_name?`<button onclick="openTaskLead('${t.phone}','${escHtml(t.contact_name).replace(/'/g,"\\'")}',${t.account_id?`'${t.account_id}'`:'null'})" title="Abrir a conversa e os dados deste lead" style="display:inline-flex;align-items:center;gap:6px;background:#e7f7ef;border:1px solid #00a884;color:#00806a;border-radius:16px;padding:5px 12px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit">👤 ${escHtml(t.contact_name)} <span style="font-size:11px">›</span></button>`:'';
     const noteBlock = t.notes
       ? `<div style="margin-top:6px;background:#ffffff;border-left:3px solid #e9edef;border-radius:4px;padding:6px 8px;font-size:12px;color:#cdd6db;white-space:pre-wrap;word-break:break-word">${escHtml(t.notes)}</div>`
       : '';
