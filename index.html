@@ -202,6 +202,9 @@
   /* Ferramentas EM CIMA (modelo, anexo, bot, emoji) e o campo inteiro embaixo */
   #input-tools { display: flex; align-items: center; gap: 10px; }
   #input-row { display: flex; align-items: flex-end; gap: 10px; }
+  /* ✍️ Prévia da formatação (aparece só quando há *negrito*, _itálico_ ou ~riscado~) */
+  #fmt-preview { background: #ffffff; border-left: 3px solid #00a884; border-radius: 8px; margin: 0 0 6px; padding: 6px 10px; font-size: 13.5px; line-height: 1.4; color: #131c20; max-height: 74px; overflow-y: auto; pointer-events: none; word-break: break-word; }
+  body.dark #fmt-preview { background: #2a3942; color: #e9edef; }
   #input-wrap { flex: 1; display: flex; align-items: center; background: #e9edef; border-radius: 24px; overflow: hidden; min-width: 0; }
   #msg-input { flex: 1; background: transparent; border: none; color: #131c20; padding: 10px 16px; font-family: inherit; font-size: 15px; line-height: 20px; height: 40px; max-height: 120px; overflow-y: auto; resize: none; outline: none; min-width: 0; }
   #msg-input::placeholder { color: #667781; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1494,7 +1497,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v171</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v172</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1671,8 +1674,8 @@ window.addEventListener('load', initAuth);
 <!-- MODAL N8N -->
 <!-- Menu "informações do lead" (botão ℹ️ no chat) -->
 <div id="info-menu" style="display:none;position:fixed;z-index:700;background:#ffffff;border:1px solid #e9edef;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.25);min-width:230px;padding:4px">
-  <div id="info-menu-phone" style="padding:8px 14px 6px;font-size:13px;color:#667781;border-bottom:1px solid #e9edef;margin-bottom:4px"></div>
-  <div class="cm-item" onclick="menuCopyPhone(this)">📋 Copiar número</div>
+  <!-- O NÚMERO copia com um toque nele mesmo (sem botão de copiar) -->
+  <div id="info-menu-phone" onclick="menuCopyPhone(this)" title="Tocar para copiar" style="padding:8px 14px 6px;font-size:13px;color:#027eb5;text-decoration:underline;cursor:pointer;border-bottom:1px solid #e9edef;margin-bottom:4px"></div>
   <div class="cm-item" id="info-menu-pin" onclick="closeInfoMenu();togglePin(currentPhone)">📌 Fixar no topo</div>
   <div class="cm-item" id="info-menu-fav" onclick="closeInfoMenu();toggleFavorite(currentPhone)">⭐ Favoritar conversa</div>
   <div class="cm-item" id="info-menu-mute" onclick="closeInfoMenu();toggleMute(currentPhone)">🔇 Silenciar conversa</div>
@@ -2008,7 +2011,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v171</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v172</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2062,7 +2065,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 171;
+const APP_VER = 172;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2963,11 +2966,25 @@ function _recUI(on) {
 function autoGrowMsgInput(ta) {
   ta = ta || document.getElementById('msg-input');
   if (!ta) return;
+  _fmtPreviewUpd(ta); // prévia da formatação (*negrito*, _itálico_, ~riscado~) em tempo real
   // Campo VAZIO volta ao tamanho normal NA HORA (o iOS reportava altura errada
   // com o teclado aberto e o campo demorava a encolher depois do envio)
   if (!ta.value) { ta.style.height = '40px'; return; }
   ta.style.height = '40px';
   ta.style.height = Math.min(ta.scrollHeight, 120) + 'px'; // até 5 linhas visíveis
+}
+// ✍️ PRÉVIA DA FORMATAÇÃO: enquanto digita *assim*, mostra "assim" em NEGRITO
+// numa faixa acima do campo (igual você verá na bolha) — só aparece quando a
+// mensagem tem alguma formatação de verdade
+function _fmtPreviewUpd(ta) {
+  try {
+    const p = document.getElementById('fmt-preview'); if (!p) return;
+    const v = (ta && ta.value) || '';
+    const tem = /\*[^*\n]+\*|(^|[\s(])_[^_\n]+_(?=$|[\s).,!?])|~[^~\n]+~/m.test(v);
+    if (!tem) { p.style.display = 'none'; p.innerHTML = ''; return; }
+    p.innerHTML = waFormat(v).replace(/\n/g, '<br>');
+    p.style.display = 'block';
+  } catch (_) {}
 }
 
 // ── "digitando…"/"gravando áudio…" para o cliente (QR Code e API oficial) ──
@@ -3971,6 +3988,7 @@ async function selectContact(phone, name, accountId) {
         <span id="reply-preview-text"></span>
         <button onclick="cancelReply()" title="Cancelar resposta">✕</button>
       </div>
+      <div id="fmt-preview" style="display:none"></div>
       <div id="input-row">
       <div id="input-wrap">
         <div id="file-chip">
@@ -4354,7 +4372,6 @@ async function renderLeadPanel(phone){
       <div class="lp-avatar">${escHtml((c.name||phone).charAt(0).toUpperCase())}</div>
       <div style="flex:1;min-width:0">
         <div class="lp-name" title="${escHtml(c.name||phone)}">${escHtml(c.name||phone)}</div>
-        <div class="lp-sub">${escHtml(telShow)}</div>
       </div>
       <button class="lp-x" onclick="editLeadName()" title="Editar nome do lead" style="font-size:13px">✏️</button>
       <button class="lp-x" onclick="toggleLeadPanel(false)" title="Ocultar painel">✕</button>
