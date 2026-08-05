@@ -1507,7 +1507,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v180</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v181</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -2022,7 +2022,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v180</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v181</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2076,7 +2076,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 180;
+const APP_VER = 181;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4210,7 +4210,12 @@ function abrirArquivo(url, tipo, nome) {
   if (tipo === 'pdf') {
     _loadPdfJs().then(async () => {
       if (_fvDoc) { try { _fvDoc.destroy(); } catch (_) {} _fvDoc = null; }
-      const doc = await window.pdfjsLib.getDocument({ url }).promise;
+      // Baixa o arquivo INTEIRO antes de renderizar: o carregamento "por partes"
+      // do pdf.js tropeçava no proxy e dava "falha ao baixar mídia"
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const bufPdf = await resp.arrayBuffer();
+      const doc = await window.pdfjsLib.getDocument({ data: bufPdf }).promise;
       _fvDoc = doc; // fica vivo para RE-RENDERIZAR nítido quando você dá zoom
       body.innerHTML = '';
       const n = Math.min(doc.numPages, 30);
@@ -6306,7 +6311,7 @@ function renderMediaGallery() {
     content.innerHTML = imgs.length
       ? '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">' + imgs.map(m => {
           const url = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${acct}`;
-          return `<img src="${url}" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;cursor:pointer" onclick="window.open('${url}','_blank')" onerror="this.style.display='none'">`;
+          return `<img src="${url}" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;cursor:pointer" onclick="verMidia('${url}','img','Foto')" onerror="this.style.display='none'">`;
         }).join('') + '</div>'
       : '<p style="color:#667781;font-size:13px">Nenhuma foto nesta conversa.</p>';
   } else {
@@ -6314,8 +6319,12 @@ function renderMediaGallery() {
     content.innerHTML = docs.length
       ? docs.map(m => {
           const fname = (m.content || '').replace(/^\[Documento: ?/, '').replace(/\]$/, '') || 'Documento';
-          const url = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${acct}&download=1&filename=${encodeURIComponent(fname)}`;
-          return `<a href="${url}" download style="display:flex;align-items:center;gap:10px;padding:10px;background:#ffffff;border-radius:8px;margin-bottom:8px;color:#131c20;text-decoration:none">📄 <span style="flex:1;word-break:break-all">${escHtml(fname)}</span> <span style="color:#00a884">⬇</span></a>`;
+          const nomeSafe = escHtml(fname).replace(/'/g, "\\'");
+          const isPdfG = /\.pdf\s*$/i.test(fname) || String(m.media_mime_type || '').toLowerCase().includes('pdf');
+          const urlVer = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${acct}`;
+          const urlDl  = `${urlVer}&download=1&filename=${encodeURIComponent(fname)}`;
+          // Celular: abre DENTRO do app (o link antigo navegava e o app recarregava ao voltar)
+          return `<div onclick="if(window.matchMedia('(hover: none)').matches){abrirArquivo('${urlVer}','${isPdfG?'pdf':'outro'}','${nomeSafe}')}else{baixarMidia('${urlDl}','${nomeSafe}',this)}" style="display:flex;align-items:center;gap:10px;padding:10px;background:#ffffff;border-radius:8px;margin-bottom:8px;color:#131c20;cursor:pointer">📄 <span style="flex:1;word-break:break-all">${escHtml(fname)}</span> <span style="color:#00a884">⬇</span></div>`;
         }).join('')
       : '<p style="color:#667781;font-size:13px">Nenhum documento nesta conversa.</p>';
   }
