@@ -1507,7 +1507,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v181</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v182</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -2022,7 +2022,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v181</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v182</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2076,7 +2076,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 181;
+const APP_VER = 182;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -10445,17 +10445,15 @@ function renderConfigPanel(node) {
     const mode = node.config.mode || 'custom';
     const inh = _botInheritedAcct(node.id);
     const own = node.config.account_id || null;
-    const hasNum = !!(own || inh);
-    const numTxt = own ? 'Número: <span id="cfg-msg-acct-name">definido neste passo</span>'
-                 : (inh && inh.type==='rr') ? 'Número: definido pelo Round Robin'
-                 : 'Número: o mesmo do passo anterior';
+    // O campo do número fica SEMPRE visível (antes ele sumia quando havia herança
+    // do Round Robin — e ao tirar o RR você ficava presa sem onde escolher).
+    const dicaHeranca = (!own && inh)
+      ? `<div style="margin:0 0 8px;font-size:12.5px;color:#667781">📱 Sem escolha aqui, este passo usa ${inh.type==='rr' ? 'o número definido pelo Round Robin' : 'o mesmo número do passo anterior'}. Escolha abaixo para fixar um.</div>`
+      : '';
     form.innerHTML = `
-      <div id="cfg-msg-inh" style="display:${hasNum?'flex':'none'};align-items:center;gap:10px;margin:0 0 12px;font-size:12.5px;color:#111b21">
-        <span>📱 ${numTxt}</span>
-        <a href="#" onclick="document.getElementById('cfg-msg-inh').style.display='none';document.getElementById('cfg-msg-acct-wrap').style.display='block';return false" style="color:#3d7bfa;font-weight:600;text-decoration:none">trocar</a>
-      </div>
-      <div id="cfg-msg-acct-wrap" style="display:${hasNum?'none':'block'}">
-        <label class="bot-cfg-label">📱 Enviar pelo número</label>
+      ${dicaHeranca}
+      <div id="cfg-msg-acct-wrap" style="display:block">
+        <label class="bot-cfg-label">📱 Enviar pelo número${(!own && inh) ? ' <span style="font-weight:400;color:#8696a0">(opcional — já herdado)</span>' : ''}</label>
         <select class="bot-cfg-select" id="cfg-msg-account" style="margin-bottom:10px"><option value="">⏳ Carregando contas...</option></select>
       </div>
       <label class="bot-cfg-label">Tipo de mensagem</label>
