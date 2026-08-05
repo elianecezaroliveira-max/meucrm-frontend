@@ -1507,7 +1507,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v182</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v184</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1587,6 +1587,7 @@ window.addEventListener('load', initAuth);
       </button>
     </div>
     <button id="pipeline-filter-btn" onclick="togglePipelineFilter()">⚙ Filtrar</button>
+    <button id="pipeline-selall-btn" onclick="selectAllInPipeline()" title="Seleciona/desmarca TODOS os leads visíveis (respeita o filtro ativo)" style="background:#e7f7ef;border:1px solid #00a884;color:#00806a;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">☑️ Selecionar todos</button>
     <button class="pf-topbtn" onclick="openNewLead()">➕ Novo Lead</button>
     <button class="pf-topbtn" onclick="openImport()">📥 Importar</button>
     <button class="pf-topbtn" onclick="openAutomationPanel()">⚡ Automação</button>
@@ -2022,7 +2023,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v182</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v184</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2076,7 +2077,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 182;
+const APP_VER = 184;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4210,12 +4211,16 @@ function abrirArquivo(url, tipo, nome) {
   if (tipo === 'pdf') {
     _loadPdfJs().then(async () => {
       if (_fvDoc) { try { _fvDoc.destroy(); } catch (_) {} _fvDoc = null; }
-      // Baixa o arquivo INTEIRO antes de renderizar: o carregamento "por partes"
-      // do pdf.js tropeçava no proxy e dava "falha ao baixar mídia"
-      const resp = await fetch(url);
-      if (!resp.ok) throw new Error('HTTP ' + resp.status);
-      const bufPdf = await resp.arrayBuffer();
-      const doc = await window.pdfjsLib.getDocument({ data: bufPdf }).promise;
+      // Abre COMO ANTES (direto pela URL — a forma que sempre funcionou);
+      // só se falhar, tenta o plano B baixando o arquivo inteiro primeiro
+      let doc;
+      try {
+        doc = await window.pdfjsLib.getDocument({ url }).promise;
+      } catch (e1) {
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        doc = await window.pdfjsLib.getDocument({ data: await resp.arrayBuffer() }).promise;
+      }
       _fvDoc = doc; // fica vivo para RE-RENDERIZAR nítido quando você dá zoom
       body.innerHTML = '';
       const n = Math.min(doc.numPages, 30);
@@ -8307,6 +8312,16 @@ function toggleCardSelection(phone, e) {
   });
 }
 
+// ☑️ Seleciona/desmarca TODOS os leads VISÍVEIS no Pipeline — como a lista
+// desenhada já obedece ao filtro ativo, o filtro é respeitado automaticamente
+function selectAllInPipeline() {
+  const phones = Array.from(document.querySelectorAll('.kanban-card')).map(c => c.dataset.phone).filter(Boolean);
+  if (!phones.length) return;
+  const allSel = phones.every(p => selectedLeads.has(p));
+  phones.forEach(p => allSel ? selectedLeads.delete(p) : selectedLeads.add(p));
+  updateBulkBar();
+  renderKanban();
+}
 function selectAllInColumn(stageId) {
   const col = document.getElementById(`cards-${stageId}`);
   if (!col) return;
@@ -10445,15 +10460,14 @@ function renderConfigPanel(node) {
     const mode = node.config.mode || 'custom';
     const inh = _botInheritedAcct(node.id);
     const own = node.config.account_id || null;
-    // O campo do número fica SEMPRE visível (antes ele sumia quando havia herança
-    // do Round Robin — e ao tirar o RR você ficava presa sem onde escolher).
-    const dicaHeranca = (!own && inh)
-      ? `<div style="margin:0 0 8px;font-size:12.5px;color:#667781">📱 Sem escolha aqui, este passo usa ${inh.type==='rr' ? 'o número definido pelo Round Robin' : 'o mesmo número do passo anterior'}. Escolha abaixo para fixar um.</div>`
-      : '';
+    const herdando = !own && inh; // já tem número vindo de trás → NÃO pergunta de novo
     form.innerHTML = `
-      ${dicaHeranca}
-      <div id="cfg-msg-acct-wrap" style="display:block">
-        <label class="bot-cfg-label">📱 Enviar pelo número${(!own && inh) ? ' <span style="font-weight:400;color:#8696a0">(opcional — já herdado)</span>' : ''}</label>
+      ${herdando ? `<div id="cfg-msg-inh" style="display:flex;align-items:center;gap:10px;margin:0 0 12px;font-size:12.5px;color:#111b21;background:#e7f7ef;border:1px solid #b7e4d3;border-radius:8px;padding:8px 10px">
+        <span style="flex:1">📱 Este passo envia pelo ${inh.type==='rr' ? 'número definido no <b>Round Robin</b>' : '<b>mesmo número do passo anterior</b>'} — sem precisar escolher de novo.</span>
+        <button type="button" onclick="document.getElementById('cfg-msg-inh').style.display='none';document.getElementById('cfg-msg-acct-wrap').style.display='block'" style="background:#fff;border:1px solid #00a884;color:#00806a;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0">Trocar número</button>
+      </div>` : ''}
+      <div id="cfg-msg-acct-wrap" style="display:${herdando?'none':'block'}">
+        <label class="bot-cfg-label">📱 Enviar pelo número</label>
         <select class="bot-cfg-select" id="cfg-msg-account" style="margin-bottom:10px"><option value="">⏳ Carregando contas...</option></select>
       </div>
       <label class="bot-cfg-label">Tipo de mensagem</label>
