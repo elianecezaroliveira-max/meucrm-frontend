@@ -1507,7 +1507,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v177</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v178</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -2022,7 +2022,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v177</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v178</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2076,7 +2076,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 177;
+const APP_VER = 178;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4173,22 +4173,22 @@ function verMidia(url, tipo, nome) {
   else window.open(url, '_blank');
 }
 function abrirArquivo(url, tipo, nome) {
-  if (tipo !== 'img') {
-    // ARQUIVOS: visualizador NATIVO do iPhone (como era antes — qualidade e zoom
-    // perfeitos), aberto numa janela POR CIMA do app. O clique direto no link
-    // "_blank" abre o navegador embutido do iOS; tocar em "Concluído" volta
-    // para a conversa exatamente onde estava — o VETRA não recarrega.
+  if (tipo !== 'img' && tipo !== 'pdf') {
+    // Formatos que o app não renderiza (docx, xlsx…): navegador embutido do iOS
     const a = document.createElement('a');
     a.href = url; a.target = '_blank'; a.rel = 'noopener';
     document.body.appendChild(a); a.click(); a.remove();
     return;
   }
+  // FOTOS e PDFs: visualizador INTERNO — zoom nítido (re-render na resolução do
+  // zoom) e os botões ✕/compartilhar/baixar SEMPRE visíveis, mesmo com zoom
   let ov = document.getElementById('file-viewer');
   if (!ov) {
     document.body.insertAdjacentHTML('beforeend', `<div id="file-viewer" style="position:fixed;inset:0;background:#0b141a;z-index:3000;display:flex;flex-direction:column">
       <div style="display:flex;align-items:center;gap:10px;padding:calc(8px + env(safe-area-inset-top)) 14px 8px;background:#111b21;color:#e9edef;flex-shrink:0">
         <span onclick="fecharArquivo()" style="cursor:pointer;font-size:24px;padding:2px 10px;line-height:1">‹</span>
         <span id="fv-nome" style="flex:1;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+        <span id="fv-share" title="Compartilhar" style="cursor:pointer;font-size:18px;padding:2px 8px">⤴️</span>
         <span id="fv-baixar" style="cursor:pointer;font-size:18px;padding:2px 8px">⬇</span>
       </div>
       <div id="fv-body" style="flex:1;overflow:auto;-webkit-overflow-scrolling:touch;padding:10px;touch-action:pan-x pan-y">
@@ -4202,6 +4202,8 @@ function abrirArquivo(url, tipo, nome) {
   _fvZoomReset();
   document.getElementById('fv-nome').textContent = nome || 'Arquivo';
   document.getElementById('fv-baixar').onclick = () => baixarMidia(url.includes('download=1') ? url : url + '&download=1&filename=' + encodeURIComponent(nome || 'arquivo'), nome || 'arquivo');
+  const fvSh = document.getElementById('fv-share');
+  if (fvSh) fvSh.onclick = () => _fvShare(url, nome || 'arquivo');
   const body = document.getElementById('fv-zoom');
   body.innerHTML = '<span style="color:#8696a0;font-size:13px;margin-top:36px">Abrindo…</span>';
   if (tipo === 'img') { body.innerHTML = `<img src="${url}" style="max-width:100%;height:auto;border-radius:4px">`; return; }
@@ -4339,6 +4341,22 @@ function fecharArquivo() {
   clearTimeout(_fvSharpTimer);
   if (_fvDoc) { try { _fvDoc.destroy(); } catch (_) {} _fvDoc = null; }
   _fvZoomReset();
+}
+// ⤴️ Compartilhar o arquivo pela folha NATIVA do iPhone (WhatsApp, e-mail, salvar…)
+async function _fvShare(url, nome) {
+  try {
+    if (navigator.share) {
+      try {
+        const r = await fetch(url);
+        const bl = await r.blob();
+        const f = new File([bl], nome || 'arquivo', { type: bl.type || 'application/octet-stream' });
+        if (navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f] }); return; }
+      } catch (_) {}
+      await navigator.share({ url });
+      return;
+    }
+    baixarMidia(url.includes('download=1') ? url : url + '&download=1&filename=' + encodeURIComponent(nome || 'arquivo'), nome || 'arquivo');
+  } catch (_) {} // cancelou a folha de compartilhar — sem erro
 }
 
 // ⬇ Baixa o arquivo DIRETO na pasta de downloads do navegador (sem abrir aba
@@ -4537,14 +4555,18 @@ function lpLoadMedia(phone){
   if (imgs.length) {
     html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:8px">' + imgs.map(m => {
       const url = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${acct}`;
-      return `<img src="${url}" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;cursor:pointer" onclick="window.open('${url}','_blank')" onerror="this.style.display='none'">`;
+      return `<img src="${url}" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;cursor:pointer" onclick="verMidia('${url}','img','Foto')" onerror="this.style.display='none'">`;
     }).join('') + '</div>';
   }
   if (docs.length) {
     html += docs.map(m => {
       const fname = (m.content||'').replace(/^\[Documento: ?/,'').replace(/\]$/,'') || 'Documento';
-      const url = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${acct}&download=1&filename=${encodeURIComponent(fname)}`;
-      return `<a href="${url}" download style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:#f0f2f5;border-radius:6px;margin-bottom:5px;color:#131c20;text-decoration:none;font-size:12px">📄 <span style="flex:1;word-break:break-all">${escHtml(fname)}</span> ⬇</a>`;
+      const nomeSafe = escHtml(fname).replace(/'/g, "\\'");
+      const isPdfDoc = /\.pdf\s*$/i.test(fname);
+      const urlVer = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${acct}`;
+      const urlDl  = `${urlVer}&download=1&filename=${encodeURIComponent(fname)}`;
+      // Celular: abre DENTRO do app (o link com navegação recarregava o VETRA ao voltar)
+      return `<div onclick="if(window.matchMedia('(hover: none)').matches){abrirArquivo('${urlVer}','${isPdfDoc?'pdf':'outro'}','${nomeSafe}')}else{baixarMidia('${urlDl}','${nomeSafe}',this)}" style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:#f0f2f5;border-radius:6px;margin-bottom:5px;color:#131c20;font-size:12px;cursor:pointer">📄 <span style="flex:1;word-break:break-all">${escHtml(fname)}</span> ⬇</div>`;
     }).join('');
   }
   if (imgs.length || docs.length) {
