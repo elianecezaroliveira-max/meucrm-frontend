@@ -1507,7 +1507,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v179</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v180</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -2022,7 +2022,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v179</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v180</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2076,7 +2076,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 179;
+const APP_VER = 180;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4562,7 +4562,7 @@ function lpLoadMedia(phone){
     html += docs.map(m => {
       const fname = (m.content||'').replace(/^\[Documento: ?/,'').replace(/\]$/,'') || 'Documento';
       const nomeSafe = escHtml(fname).replace(/'/g, "\\'");
-      const isPdfDoc = /\.pdf\s*$/i.test(fname);
+      const isPdfDoc = /\.pdf\s*$/i.test(fname) || String(m.media_mime_type || '').toLowerCase().includes('pdf');
       const urlVer = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${acct}`;
       const urlDl  = `${urlVer}&download=1&filename=${encodeURIComponent(fname)}`;
       // Celular: abre DENTRO do app (o link com navegação recarregava o VETRA ao voltar)
@@ -5244,7 +5244,9 @@ function renderMessageContent(m) {
       const _extShow = (_ext && _ext.length <= 5) ? _ext.toUpperCase() : 'ARQ';
       const _extColors = { pdf:'#e5252a', doc:'#2b7cd3', docx:'#2b7cd3', xls:'#1e7145', xlsx:'#1e7145', csv:'#1e7145', ppt:'#d24726', pptx:'#d24726', zip:'#f0a500', rar:'#f0a500', txt:'#607d8b', jpg:'#8e44ad', jpeg:'#8e44ad', png:'#8e44ad' };
       const _extCor = _extColors[_ext] || '#607d8b';
-      const _isPdf = _ext === 'pdf';
+      // PDF pelo NOME ou pelo TIPO do arquivo (muitos vêm sem ".pdf" no nome —
+      // e caíam no navegador nativo, que esconde os botões no zoom e recarrega o app)
+      const _isPdf = _ext === 'pdf' || String(m.media_mime_type || '').toLowerCase().includes('pdf');
       return quotedHtml + `<div class="media-wrap doc-wrap" style="cursor:pointer" title="Toque para abrir"
         onclick="if(window.matchMedia('(hover: none)').matches){event.stopPropagation();abrirArquivo('${proxyUrl}','${_isPdf ? 'pdf' : 'outro'}','${escHtml(fileName).replace(/'/g, "\\'")}');}"
         ondblclick="window.open('${proxyUrl}','_blank')">
@@ -9110,10 +9112,11 @@ function renderTasksPage(){
       ${selBox}
       <button class="task-check" title="${t.done?'Reabrir':'Concluir'}" onclick="toggleTaskGlobal('${t.id}',${t.done?'false':'true'})">${t.done?'✓':''}</button>
       <div style="flex:1;min-width:0">
+        ${lead ? `<div style="margin-bottom:5px">${lead}</div>` : ''}
         <div style="color:#131c20;font-size:14px;${t.done?'text-decoration:line-through;opacity:.6':''}">${escHtml(t.title)}</div>
         ${noteBlock}
-        <div style="display:flex;gap:14px;margin-top:4px;flex-wrap:wrap;align-items:center">${lead}${due}
-          ${t.created_at ? `<span style="color:#8696a0;font-size:12px">🕘 ${fmtTaskCreatedCurto(t.created_at)}</span>` : ''}
+        <div style="display:flex;gap:14px;margin-top:4px;flex-wrap:wrap;align-items:center">${due}
+          ${t.created_at ? `<span style="color:#8696a0;font-size:12px">${fmtTaskCreatedCurto(t.created_at)}</span>` : ''}
           <span style="color:#667781;font-size:12px;cursor:pointer" onclick="editTaskTitle('${t.id}')">✏️ Editar</span>
         </div>
       </div>
