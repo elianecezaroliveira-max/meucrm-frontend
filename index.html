@@ -1587,7 +1587,8 @@ window.addEventListener('load', initAuth);
       </button>
     </div>
     <button id="pipeline-filter-btn" onclick="togglePipelineFilter()">⚙ Filtrar</button>
-    <button id="pipeline-selall-btn" onclick="selectAllInPipeline()" title="Seleciona/desmarca TODOS os leads visíveis (respeita o filtro ativo)" style="background:#e7f7ef;border:1px solid #00a884;color:#00806a;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">☑️ Selecionar todos</button>
+    <button id="pipeline-selall-btn" onclick="togglePipeSelMode()" title="Ativa o modo de seleção de leads" style="background:#e7f7ef;border:1px solid #00a884;color:#00806a;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">☑️ Selecionar</button>
+    <button id="pipeline-selall-all" onclick="selectAllInPipeline()" title="Seleciona/desmarca TODOS os leads visíveis (respeita o filtro ativo)" style="display:none;background:#e7f7ef;border:1px solid #00a884;color:#00806a;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">☑️ Selecionar todos</button>
     <button class="pf-topbtn" onclick="openNewLead()">➕ Novo Lead</button>
     <button class="pf-topbtn" onclick="openImport()">📥 Importar</button>
     <button class="pf-topbtn" onclick="openAutomationPanel()">⚡ Automação</button>
@@ -4557,14 +4558,14 @@ async function lpAddTask(phone){
 function lpLoadMedia(phone){
   const el = document.getElementById('lp-media'); if (!el) return;
   if (phone !== currentPhone) return;
-  const acct = encodeURIComponent(currentAccountId || '');
+  const _acct = m => encodeURIComponent(m.account_id || currentAccountId || ''); // conta DA mensagem
   const msgs = (typeof currentMessages !== 'undefined' && Array.isArray(currentMessages)) ? currentMessages : [];
   const imgs = msgs.filter(m => m.type === 'image' && m.media_id).slice(-9).reverse();
   const docs = msgs.filter(m => m.type === 'document' && m.media_id).slice(-5).reverse();
   let html = '';
   if (imgs.length) {
     html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:8px">' + imgs.map(m => {
-      const url = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${acct}`;
+      const url = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${_acct(m)}`;
       return `<img src="${url}" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;cursor:pointer" onclick="verMidia('${url}','img','Foto')" onerror="this.style.display='none'">`;
     }).join('') + '</div>';
   }
@@ -4573,7 +4574,7 @@ function lpLoadMedia(phone){
       const fname = (m.content||'').replace(/^\[Documento: ?/,'').replace(/\]$/,'') || 'Documento';
       const nomeSafe = escHtml(fname).replace(/'/g, "\\'");
       const isPdfDoc = /\.pdf\s*$/i.test(fname) || String(m.media_mime_type || '').toLowerCase().includes('pdf');
-      const urlVer = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${acct}`;
+      const urlVer = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${_acct(m)}${m.media_mime_type ? '&mime=' + encodeURIComponent(m.media_mime_type) : ''}`;
       const urlDl  = `${urlVer}&download=1&filename=${encodeURIComponent(fname)}`;
       // Celular: abre DENTRO do app (o link com navegação recarregava o VETRA ao voltar)
       return `<div onclick="if(window.matchMedia('(hover: none)').matches){abrirArquivo('${urlVer}','${isPdfDoc?'pdf':'outro'}','${nomeSafe}')}else{baixarMidia('${urlDl}','${nomeSafe}',this)}" style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:#f0f2f5;border-radius:6px;margin-bottom:5px;color:#131c20;font-size:12px;cursor:pointer">📄 <span style="flex:1;word-break:break-all">${escHtml(fname)}</span> ⬇</div>`;
@@ -5153,7 +5154,9 @@ function renderMessageContent(m) {
 
   const mediaTypes = ['image', 'audio', 'video', 'document', 'sticker'];
   if (mediaTypes.includes(m.type) && m.media_id) {
-    const acct = encodeURIComponent(currentAccountId || '');
+    // Conta DA MENSAGEM (não a do cabeçalho): o arquivo pertence ao número que o
+    // recebeu/enviou — usar outra conta = token errado = "Falha ao baixar mídia"
+    const acct = encodeURIComponent(m.account_id || currentAccountId || '');
     const mimeParam = m.media_mime_type ? `&mime=${encodeURIComponent(m.media_mime_type)}` : '';
     const proxyUrl  = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${acct}${mimeParam}`;
 
@@ -6310,12 +6313,12 @@ function switchMediaTab(tab) {
 function renderMediaGallery() {
   const content = document.getElementById('media-content');
   if (!content) return;
-  const acct = encodeURIComponent(currentAccountId || '');
+  const _acct = m => encodeURIComponent(m.account_id || currentAccountId || ''); // conta DA mensagem
   if (mediaTab === 'fotos') {
     const imgs = currentMessages.filter(m => m.type === 'image' && m.media_id);
     content.innerHTML = imgs.length
       ? '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">' + imgs.map(m => {
-          const url = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${acct}`;
+          const url = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${_acct(m)}`;
           return `<img src="${url}" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;cursor:pointer" onclick="verMidia('${url}','img','Foto')" onerror="this.style.display='none'">`;
         }).join('') + '</div>'
       : '<p style="color:#667781;font-size:13px">Nenhuma foto nesta conversa.</p>';
@@ -6326,7 +6329,7 @@ function renderMediaGallery() {
           const fname = (m.content || '').replace(/^\[Documento: ?/, '').replace(/\]$/, '') || 'Documento';
           const nomeSafe = escHtml(fname).replace(/'/g, "\\'");
           const isPdfG = /\.pdf\s*$/i.test(fname) || String(m.media_mime_type || '').toLowerCase().includes('pdf');
-          const urlVer = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${acct}`;
+          const urlVer = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${_acct(m)}${m.media_mime_type ? '&mime=' + encodeURIComponent(m.media_mime_type) : ''}`;
           const urlDl  = `${urlVer}&download=1&filename=${encodeURIComponent(fname)}`;
           // Celular: abre DENTRO do app (o link antigo navegava e o app recarregava ao voltar)
           return `<div onclick="if(window.matchMedia('(hover: none)').matches){abrirArquivo('${urlVer}','${isPdfG?'pdf':'outro'}','${nomeSafe}')}else{baixarMidia('${urlDl}','${nomeSafe}',this)}" style="display:flex;align-items:center;gap:10px;padding:10px;background:#ffffff;border-radius:8px;margin-bottom:8px;color:#131c20;cursor:pointer">📄 <span style="flex:1;word-break:break-all">${escHtml(fname)}</span> <span style="color:#00a884">⬇</span></div>`;
@@ -8021,7 +8024,7 @@ function renderPipelineList(contacts) {
   if (!rows.length) { el.innerHTML = '<div style="padding:24px;color:#667781;font-size:14px">Nenhum lead encontrado.</div>'; return; }
   const allSel = rows.length > 0 && rows.every(c => selectedLeads.has(c.phone));
   const header = `<div class="plist-head">
-    <span class="plist-check"><input type="checkbox" ${allSel ? 'checked' : ''} onclick="toggleAllPipelineList(this.checked)" title="Selecionar todos"></span>
+    <span class="plist-check">${_pipeSelMode ? `<input type="checkbox" ${allSel ? 'checked' : ''} onclick="toggleAllPipelineList(this.checked)" title="Selecionar todos">` : ''}</span>
     <span class="plist-h-name">Nome</span>
     <span class="plist-h-phone">Telefone</span>
     <span class="plist-h-stage">Etapa</span>
@@ -8031,7 +8034,7 @@ function renderPipelineList(contacts) {
     const tags = (c.tags || []).slice(0, 3).map((t, i) => `<span class="tag-chip tc${i % 6}" style="font-size:10px;padding:1px 6px">${escHtml(t)}</span>`).join('');
     const sel = selectedLeads.has(c.phone);
     return `<div class="plist-row${sel ? ' sel' : ''}" data-phone="${c.phone}">
-      <span class="plist-check"><input type="checkbox" ${sel ? 'checked' : ''} onclick="event.stopPropagation();togglePipelineListSel('${c.phone}',this.checked)"></span>
+      <span class="plist-check">${_pipeSelMode ? `<input type="checkbox" ${sel ? 'checked' : ''} onclick="event.stopPropagation();togglePipelineListSel('${c.phone}',this.checked)">` : ''}</span>
       <span class="plist-c-name" onclick="openLeadChat('${c.phone}','${(c.name || '').replace(/'/g, "\\'")}','${c.account_id || ''}')">${escHtml(c.name || c.phone)}</span>
       <span class="plist-c-phone">${formatPhone(c.phone)}</span>
       <span class="plist-c-stage"><span class="plist-stage">${escHtml(stName[c.stage_id] || 'Sem etapa')}</span></span>
@@ -8095,7 +8098,7 @@ function renderKanbanWith(contacts) {
           onblur="renameStage('${stage.id}', this.value)"
           onkeydown="if(event.key==='Enter')this.blur()">
         <span class="kanban-col-count">${cards.length}</span>
-        <button class="col-select-all" onclick="selectAllInColumn('${stage.id}')" title="Selecionar todos">☑</button>
+        ${_pipeSelMode ? `<button class="col-select-all" onclick="selectAllInColumn('${stage.id}')" title="Selecionar todos da coluna">☑</button>` : ''}
         ${!stage.fixed ? `<button class="kanban-col-del" onclick="deleteStage('${stage.id}')" title="Excluir coluna">✕</button>` : ''}
       </div>
       <div class="kanban-cards" id="cards-${stage.id}">
@@ -8195,7 +8198,7 @@ function cardHTML(c) {
   return `
     <div class="kanban-card${isSelected?' selected':''}" draggable="true" data-phone="${c.phone}">
       <div style="display:flex;align-items:flex-start;gap:0">
-        <div class="card-checkbox${isSelected?' checked':''}" onclick="toggleCardSelection('${c.phone}',event)" title="Selecionar"></div>
+        ${_pipeSelMode ? `<div class="card-checkbox${isSelected?' checked':''}" onclick="toggleCardSelection('${c.phone}',event)" title="Selecionar"></div>` : ''}
         <div style="flex:1;min-width:0;cursor:pointer" title="Abrir conversa" onclick="openLeadChat('${c.phone}','${(c.name||'').replace(/'/g,"\\'")}','${c.account_id||''}')">
           <div class="kanban-card-name">${c.name || c.phone}</div>
           <div class="kanban-card-phone">${formatPhone(c.phone)}</div>
@@ -8312,15 +8315,28 @@ function toggleCardSelection(phone, e) {
   });
 }
 
-// ☑️ Seleciona/desmarca TODOS os leads VISÍVEIS no Pipeline — como a lista
-// desenhada já obedece ao filtro ativo, o filtro é respeitado automaticamente
+// ── MODO DE SELEÇÃO do Pipeline (igual às Tarefas): os quadradinhos só
+// aparecem depois de clicar em "☑️ Selecionar" — aí surge o "Selecionar todos"
+let _pipeSelMode = false;
+function togglePipeSelMode() {
+  _pipeSelMode = !_pipeSelMode;
+  if (!_pipeSelMode) { selectedLeads.clear(); updateBulkBar(); } // sair limpa a seleção
+  const b = document.getElementById('pipeline-selall-btn');
+  if (b) b.textContent = _pipeSelMode ? '✕ Cancelar' : '☑️ Selecionar';
+  const all = document.getElementById('pipeline-selall-all');
+  if (all) all.style.display = _pipeSelMode ? '' : 'none';
+  applyPipelineFilter(); // re-desenha respeitando o filtro ativo
+}
+// ☑️ Seleciona/desmarca TODOS os leads VISÍVEIS — como a tela desenhada já
+// obedece ao filtro ativo, o filtro é respeitado automaticamente
 function selectAllInPipeline() {
-  const phones = Array.from(document.querySelectorAll('.kanban-card')).map(c => c.dataset.phone).filter(Boolean);
+  const sel = pipelineView === 'list' ? '#pipeline-list .plist-row' : '.kanban-card';
+  const phones = Array.from(document.querySelectorAll(sel)).map(c => c.dataset.phone).filter(Boolean);
   if (!phones.length) return;
   const allSel = phones.every(p => selectedLeads.has(p));
   phones.forEach(p => allSel ? selectedLeads.delete(p) : selectedLeads.add(p));
   updateBulkBar();
-  renderKanban();
+  applyPipelineFilter();
 }
 function selectAllInColumn(stageId) {
   const col = document.getElementById(`cards-${stageId}`);
@@ -8329,8 +8345,7 @@ function selectAllInColumn(stageId) {
   const allSelected = phones.every(p => selectedLeads.has(p));
   phones.forEach(p => allSelected ? selectedLeads.delete(p) : selectedLeads.add(p));
   updateBulkBar();
-  // Re-render to update checkboxes
-  renderKanban();
+  applyPipelineFilter(); // re-desenha os checkboxes SEM perder o filtro ativo
 }
 
 function updateBulkBar() {
@@ -9436,12 +9451,16 @@ function _botInheritedAcct(nodeId){
       if(!p) return;
       if(p.type==='message' && p.config && p.config.account_id){ achou=true; ids.add(p.config.account_id); return; }
       if(p.type==='round_robin'){
-        achou=true; viaRR=true;
+        // Só conta como herança se o RR TIVER número configurado (bots antigos);
+        // RR sem número é transparente: herda de quem vem antes dele
         const i=parseInt(e.label,10);
         const br=((p.config||{}).branches)||[];
         const b=isNaN(i)?null:br[i];
-        if(b && b.account_id) ids.add(b.account_id);
-        else br.forEach(x=>{ if(x && x.account_id) ids.add(x.account_id); });
+        const rrIds=[];
+        if(b && b.account_id) rrIds.push(b.account_id);
+        else br.forEach(x=>{ if(x && x.account_id) rrIds.push(x.account_id); });
+        if(rrIds.length){ achou=true; viaRR=true; rrIds.forEach(x=>ids.add(x)); return; }
+        fila.push(p.id);
         return;
       }
       fila.push(p.id);
@@ -10562,21 +10581,19 @@ function renderConfigPanel(node) {
   }
 
   if (node.type==='round_robin') {
-    const sel = document.getElementById('account-select');
-    const accs = sel ? Array.from(sel.options).filter(o=>o.value) : [];
     const branches = node.config.branches||[];
-    const accOpts = cur => '<option value="">(manter a conta atual)</option>' + accs.map(o=>`<option value="${o.value}" ${cur===o.value?'selected':''}>${escHtml(o.text)}</option>`).join('');
+    // SEM escolha de número aqui: o número é definido no primeiro nó
+    // "Enviar mensagem" de cada caminho (e os seguintes herdam dele)
     form.innerHTML = `
       <label class="bot-cfg-label">Opções do rodízio <span style="color:#667781">(cada lead vai para a próxima, em ciclo)</span></label>
       <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px">
-        ${branches.map((b,i)=>`<div style="display:flex;gap:6px;align-items:center">
-          <span style="font-size:12px;color:#667781;width:62px">Opção ${i+1}</span>
-          <select class="bot-cfg-select" style="flex:1" onchange="setRRBranch(${i}, this.value)">${accOpts(b.account_id||'')}</select>
+        ${branches.map((b,i)=>`<div style="display:flex;gap:6px;align-items:center;background:#f0f2f5;border-radius:8px;padding:9px 12px">
+          <span style="font-size:13px;color:#131c20;flex:1">Opção ${i+1}</span>
           <button onclick="removeRRBranch(${i})" title="Remover" style="background:none;border:none;color:#667781;cursor:pointer">✕</button>
         </div>`).join('')}
       </div>
       <button class="bot-add-option" onclick="addRRBranch()">+ Adicionar opção</button>
-      <div style="font-size:11px;color:#667781;margin-top:8px">Cada opção pode enviar por uma conta (número) diferente. Ligue a saída de cada opção ao caminho dela.</div>`;
+      <div style="font-size:11px;color:#667781;margin-top:8px">Ligue a saída de cada opção ao caminho dela. O número do disparo você define no primeiro nó "📨 Enviar mensagem" de cada caminho.</div>`;
     return;
   }
 
