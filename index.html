@@ -554,6 +554,10 @@
   .rail-sair { margin-top: auto; color: #ef4444; }
   /* Bolinha vermelha de avisos não lidos */
   .notice-dot { display: none; position: absolute; top: 6px; right: 12px; width: 9px; height: 9px; background: #ef4444; border-radius: 50%; border: 2px solid #fff; }
+  /* 🔴 Quantidade de tarefas EM ABERTO, igual aos avisos do celular */
+  .task-badge { display: none; position: absolute; top: 3px; right: 6px; min-width: 17px; height: 17px; padding: 0 4px;
+    background: #ef4444; color: #fff; border-radius: 9px; border: 2px solid #fff; font-size: 10.5px; font-weight: 700;
+    line-height: 13px; text-align: center; box-sizing: border-box; z-index: 3; }
   /* Os botões do topo saíram de cena (agora vivem no trilho/menu "+") */
   #btn-pipeline, #btn-templates, #btn-quick-replies, #btn-accounts, #btn-bots,
   #btn-faq, #btn-tags, #btn-tasks-global, #btn-logout { display: none !important; }
@@ -1518,7 +1522,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v198</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v199</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1532,7 +1536,7 @@ window.addEventListener('load', initAuth);
   <button id="btn-bots" onclick="openBotsList()">🤖 Bots</button>
   <button id="btn-faq" onclick="openFaqPage()">🧠 IA</button>
   <button id="btn-tags" onclick="openTagManager()">🏷️ Tags</button>
-  <button id="btn-tasks-global" onclick="openTasksPage()">✅ Tarefas</button>
+  <button id="btn-tasks-global" onclick="openTasksPage()" style="position:relative">✅ Tarefas<span class="task-badge" style="top:-6px;right:-6px"></span></button>
   <button id="btn-logout" onclick="logoutCRM()" title="Sair da conta">🚪 Sair</button>
 </div>
 
@@ -1549,7 +1553,7 @@ window.addEventListener('load', initAuth);
   <div class="mpm-item" onclick="mnavGo(openBotsList)">🤖 Bots</div>
   <div class="mpm-item" onclick="mnavGo(openFaqPage)">🧠 IA</div>
   <div class="mpm-item" onclick="mnavGo(openTagManager)">🏷️ Tags</div>
-  <div class="mpm-item" onclick="mnavGo(openTasksPage)">✅ Tarefas</div>
+  <div class="mpm-item" onclick="mnavGo(openTasksPage)" style="position:relative">✅ Tarefas<span class="task-badge" style="top:14px;left:96px;right:auto"></span></div>
   <div class="mpm-item" onclick="mnavGo(openNotices)" style="position:relative">🔔 Avisos<span class="notice-dot" style="top:14px;left:90px"></span></div>
   <div class="mpm-item" onclick="mnavGo(openConfigModal)">⚙️ Configurações</div>
   <div class="mpm-item" style="color:#ef4444" onclick="mnavGo(logoutCRM)">🚪 Sair</div>
@@ -1641,7 +1645,7 @@ window.addEventListener('load', initAuth);
   <button class="rail-btn" onclick="openBotsList()" title="Bots"><span class="ri">🤖</span>Bots</button>
   <button class="rail-btn" onclick="openFaqPage()" title="IA / FAQ"><span class="ri">🧠</span>IA</button>
   <button class="rail-btn" onclick="openTagManager()" title="Etiquetas"><span class="ri">🏷️</span>Tags</button>
-  <button class="rail-btn" onclick="openTasksPage()" title="Tarefas"><span class="ri">✅</span>Tarefas</button>
+  <button class="rail-btn" onclick="openTasksPage()" title="Tarefas" style="position:relative"><span class="ri">✅</span>Tarefas<span class="task-badge"></span></button>
   <button class="rail-btn" onclick="openNotices()" title="Avisos" style="position:relative"><span class="ri">🔔</span>Avisos<span class="notice-dot"></span></button>
   <button class="rail-btn" onclick="openConfigModal()" title="Configurações"><span class="ri">⚙️</span>Config.</button>
   <button class="rail-btn rail-sair" onclick="logoutCRM()" title="Sair da conta"><span class="ri">🚪</span>Sair</button>
@@ -2036,7 +2040,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v198</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v199</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2090,7 +2094,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 198;
+const APP_VER = 199;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4631,6 +4635,7 @@ async function lpLoadTasks(phone){
 async function lpToggleTask(id, done, phone){
   try { await fetch(SERVER_URL+'/tasks/'+id, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ done }) }); } catch(_){}
   lpLoadTasks(phone);
+  try { atualizaBadgeTarefas(); } catch(_){} // 🔴 a bolinha acompanha
 }
 async function lpAddTask(phone){
   const title = prompt('Nova tarefa (o nome é opcional):'); if (title === null) return;
@@ -4641,6 +4646,7 @@ async function lpAddTask(phone){
     _toast('✅ Tarefa criada!');
   } catch(_){ alert('Erro ao criar a tarefa.'); }
   lpLoadTasks(phone);
+  try { atualizaBadgeTarefas(); } catch(_){} // 🔴 a bolinha acompanha
 }
 function lpLoadMedia(phone){
   const el = document.getElementById('lp-media'); if (!el) return;
@@ -6548,14 +6554,15 @@ async function addTask() {
     document.getElementById('task-due').value = '';
     _toast('✅ Tarefa criada!');
     loadTasks();
+    atualizaBadgeTarefas(); // 🔴 a bolinha acompanha
   } catch(e) { alert('Erro ao adicionar tarefa.'); }
 }
 async function toggleTask(id, done) {
-  try { await fetch(`${SERVER_URL}/tasks/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ done }) }); loadTasks(); } catch(e){}
+  try { await fetch(`${SERVER_URL}/tasks/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ done }) }); loadTasks(); atualizaBadgeTarefas(); } catch(e){}
 }
 async function deleteTask(id) {
   if (!confirm('Excluir esta tarefa?')) return;
-  try { await fetch(`${SERVER_URL}/tasks/${id}`, { method:'DELETE' }); loadTasks(); } catch(e){}
+  try { await fetch(`${SERVER_URL}/tasks/${id}`, { method:'DELETE' }); loadTasks(); atualizaBadgeTarefas(); } catch(e){}
 }
 
 async function sendFile() {
@@ -9146,6 +9153,26 @@ function fmtTaskDue(ts){
   const iso=new Date(parseUTC(ts) - _BRT_OFFSET).toISOString();
   return iso.substring(8,10)+'/'+iso.substring(5,7)+' '+iso.substring(11,16);
 }
+// 🔴 Bolinha vermelha com a QUANTIDADE de tarefas em aberto (no botão Tarefas)
+async function atualizaBadgeTarefas(){
+  try{
+    const r = await fetch(SERVER_URL + '/tasks');
+    const lista = await r.json();
+    if (!Array.isArray(lista)) return;
+    _allTasksCache = lista; // aproveita para deixar a lista pronta
+    _pintaBadgeTarefas(lista.filter(t => !t.done).length);
+  }catch(_){}
+}
+function _pintaBadgeTarefas(n){
+  document.querySelectorAll('.task-badge').forEach(e => {
+    e.textContent = n > 99 ? '99+' : String(n);
+    e.style.display = n > 0 ? 'block' : 'none';
+  });
+}
+// Confere ao abrir o app e a cada 2 minutos (leve — só a contagem)
+setTimeout(atualizaBadgeTarefas, 2500);
+setInterval(atualizaBadgeTarefas, 120000);
+
 async function openTasksPage(){
   _closeAllScreens();
   document.getElementById('tasks-page').style.display='flex';
@@ -9157,6 +9184,7 @@ async function openTasksPage(){
     _allTasksCache=await res.json();
     if(!Array.isArray(_allTasksCache)) _allTasksCache=[];
     renderTasksPage();
+    _pintaBadgeTarefas(_allTasksCache.filter(t=>!t.done).length);
   }catch(e){ area.innerHTML='<div style="color:#ef4444;padding:20px">Erro ao carregar tarefas</div>'; }
 }
 function closeTasksPage(){ document.getElementById('tasks-page').style.display='none'; }
@@ -9318,6 +9346,7 @@ async function toggleTaskGlobal(id, done){
     await fetch(SERVER_URL+'/tasks/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({done})});
     const t=_allTasksCache.find(x=>String(x.id)===String(id)); if(t) t.done=done;
     renderTasksPage();
+    _pintaBadgeTarefas(_allTasksCache.filter(x=>!x.done).length); // 🔴 atualiza a bolinha
   }catch(e){ alert('Erro ao atualizar tarefa'); }
 }
 // ✏️ CAMPO ÚNICO: edita o próprio texto da tarefa (o "comentário" separado saiu)
@@ -9349,6 +9378,7 @@ async function deleteTaskGlobal(id){
     await fetch(SERVER_URL+'/tasks/'+id,{method:'DELETE'});
     _allTasksCache=_allTasksCache.filter(x=>String(x.id)!==String(id));
     renderTasksPage();
+    _pintaBadgeTarefas(_allTasksCache.filter(x=>!x.done).length); // 🔴 atualiza a bolinha
   }catch(e){ alert('Erro ao excluir tarefa'); }
 }
 function openTaskLead(phone, name, accountId){
