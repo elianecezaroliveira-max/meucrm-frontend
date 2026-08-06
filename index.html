@@ -1140,6 +1140,17 @@ async function _gate(session){
   _aplicaAcessoManual();
   // Respostas rápidas: recarrega o cache e a lista DA CONTA que acabou de logar
   try { if (typeof _syncQuickReplies === 'function') { _qrLoadLocal(); _syncQuickReplies(true); } } catch (_) {}
+  // 🔔 Regrava a inscrição de avisos JÁ COM O DONO logado: inscrições antigas
+  // ficaram "sem dono" e recebiam avisos de outras contas (contador errado)
+  try {
+    if ('Notification' in window && Notification.permission === 'granted' && typeof _pushRegister === 'function')
+      setTimeout(() => { try { _pushRegister(false); } catch (_) {} }, 1500);
+    // Avisa o "carteiro" (service worker) de quem é este aparelho: assim ele
+    // descarta avisos que pertencem a outra conta
+    if ('serviceWorker' in navigator) navigator.serviceWorker.ready
+      .then(reg => { try { (reg.active || navigator.serviceWorker.controller)?.postMessage({ type: 'set-owner', owner: email }); } catch (_) {} })
+      .catch(() => {});
+  } catch (_) {}
 }
 // 🔧 A adição MANUAL de conta API só aparece para as contas Google autorizadas
 function _aplicaAcessoManual(){
@@ -1507,7 +1518,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v193</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v195</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -2025,7 +2036,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v193</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v195</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2079,7 +2090,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 193;
+const APP_VER = 195;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -9236,10 +9247,21 @@ async function openBulkBotMenu(ev){
   const phones=[..._selTaskPhones];
   if(!phones.length){ alert('Tique ao menos um lead na lista (ou use "Selecionar todos") antes de disparar.'); return; }
   let bots=[];
-  try{ bots=((await (await fetch(SERVER_URL+'/bots')).json())||[]).filter(b=>b.active); }catch(_){}
-  const target=_normBot(BULK_BOT_NAME);
-  const bot = bots.find(b=>_normBot(b.name)===target) || bots.find(b=>_normBot(b.name).includes('segue simula'));
-  if(!bot){ alert('O bot "'+BULK_BOT_NAME+'" não foi encontrado ou não está ativo. Ative-o na tela de Bots.'); return; }
+  try{ bots=((await (await fetch(SERVER_URL+'/bots')).json())||[]); }catch(_){}
+  const ativos = bots.filter(b=>b.active);
+  if(!bots.length){ alert('Você ainda não tem nenhum bot criado. Crie um na tela de Bots.'); return; }
+  if(!ativos.length){ alert('Nenhum bot está ATIVO. Abra a tela de Bots e ligue o bot que quer disparar.'); return; }
+  // ESCOLHA o bot na hora (antes só disparava um bot com nome fixo — se ele
+  // estivesse desligado ou renomeado, não dava para disparar nada)
+  let bot;
+  if (ativos.length === 1) bot = ativos[0];
+  else {
+    const lista = ativos.map((b,i)=>`${i+1}) ${b.name}`).join('\n');
+    const esc = prompt(`Qual bot você quer disparar para ${phones.length} lead(s)?\n\n${lista}\n\nDigite o número:`, '1');
+    if (esc === null) return;
+    bot = ativos[parseInt(esc,10)-1];
+    if (!bot) { alert('Número inválido.'); return; }
+  }
   if(!confirm(`Disparar "${bot.name}" para ${phones.length} lead(s) selecionado(s)?`)) return;
   try{
     const r=await fetch(SERVER_URL+'/bots/'+bot.id+'/start-bulk',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phones})});
@@ -9821,10 +9843,10 @@ function renderBotList(){
     const d=document.createElement('div');
     d.textContent=text;
     // "naBorda" = rótulo colado na borda do cartão (estilo Kommo), sem fundo
-    // Letra maior e mais forte: os nomes das saídas (Opção 1, Opção 2…) ficam legíveis
+    // Letra maior, forte e PRETA: os nomes das saídas (Opção 1, Opção 2…) bem visíveis
     d.style.cssText = naBorda
-      ? `position:absolute;left:${x}px;top:${y-11}px;color:${col||'#3b4a54'};font-size:13.5px;font-weight:700;white-space:nowrap;pointer-events:none;max-width:190px;overflow:hidden;text-overflow:ellipsis;z-index:2;background:#f0f2f5;padding:1px 6px;border-radius:7px`
-      : `position:absolute;left:${x}px;top:${y-12}px;transform:translateX(-50%);background:#f0f2f5;color:${col||'#00a884'};font-size:13px;font-weight:700;padding:2px 8px;border:1px solid #e9edef;border-radius:9px;white-space:nowrap;pointer-events:none;max-width:170px;overflow:hidden;text-overflow:ellipsis;z-index:2`;
+      ? `position:absolute;left:${x}px;top:${y-11}px;color:${col||'#000000'};font-size:13.5px;font-weight:700;white-space:nowrap;pointer-events:none;max-width:190px;overflow:hidden;text-overflow:ellipsis;z-index:2;background:#f0f2f5;padding:1px 6px;border-radius:7px`
+      : `position:absolute;left:${x}px;top:${y-12}px;transform:translateX(-50%);background:#f0f2f5;color:${col||'#000000'};font-size:13px;font-weight:700;padding:2px 8px;border:1px solid #e9edef;border-radius:9px;white-space:nowrap;pointer-events:none;max-width:170px;overflow:hidden;text-overflow:ellipsis;z-index:2`;
     layer.appendChild(d);
   }
   const byId=id=>botNodes.find(n=>n.id===id);
@@ -9856,7 +9878,7 @@ function renderBotList(){
       if(to && _botColapsados.has(node.id+'::'+_botNrmLbl(slot.label))){
         const bx=sx+BOT_HG, by=sy;
         curve(sx,sy,bx,by, isFail?'#ef4444':'#00a884', true);
-        if(slot.display && !temAncora) slotPill(slot.display, sx+10, sy, isFail?'#ef4444':'#54656f', true);
+        if(slot.display && !temAncora) slotPill(slot.display, sx+10, sy, isFail?'#ef4444':'#000000', true);
         const qt=_botQtdRamo(node.id, slot.label);
         const b=document.createElement('button');
         b.textContent='+'+(qt||'');
@@ -9869,7 +9891,7 @@ function renderBotList(){
       if(to){
         const tx=to.pos_x, ty=to.pos_y+BOT_NH/2;
         curve(sx,sy,tx,ty, isFail?'#ef4444':'#94a3b8', isFail);
-        if(!temAncora) slotPill(slot.display, sx+10, sy, isFail?'#ef4444':'#54656f', true); // rótulo (só quando não está escrito no cartão)
+        if(!temAncora) slotPill(slot.display, sx+10, sy, isFail?'#ef4444':'#000000', true); // rótulo (só quando não está escrito no cartão)
         // Alça no destino: arraste para religar esta saída a outro nó
         const rh=document.createElement('div');
         rh.title='Arraste para ligar esta saída a outro nó';
@@ -9894,7 +9916,7 @@ function renderBotList(){
       } else {
         const bx=sx+BOT_HG, by=sy;
         curve(sx,sy,bx,by, isFail?'#ef4444':'#274d3d', true);
-        if(slot.display && !temAncora) slotPill(slot.display, sx+10, sy, isFail?'#ef4444':'#54656f', true); // rótulo (só quando não está escrito no cartão)
+        if(slot.display && !temAncora) slotPill(slot.display, sx+10, sy, isFail?'#ef4444':'#000000', true); // rótulo (só quando não está escrito no cartão)
         const b=document.createElement('button');
         b.textContent='+'; b.title='Clique para adicionar um passo, ou arraste até um nó para conectar';
         b.style.cssText=`position:absolute;left:${bx}px;top:${by-16}px;width:32px;height:32px;border-radius:50%;background:#e7f7ef;border:1px dashed #00a884;color:#00a884;font-size:18px;cursor:grab;display:flex;align-items:center;justify-content:center;z-index:5`;
@@ -9941,7 +9963,7 @@ function botNodeEl(node,x,y){
           const slots = botOutSlots(node);
           const btnSet = new Set(((node.config||{}).mode==='template' && Array.isArray(node.config.buttons)) ? node.config.buttons : []);
           return slots.filter(s=>!btnSet.has(s.label)).map(s=>
-            `<div class="bot-slot-anchor" data-slot="${escHtml(s.label)}" style="text-align:right;font-size:12.5px;font-weight:700;color:${s.label==='__failed__'?'#ef4444':'#54656f'};padding:7px 2px 0">${escHtml((s.display||'').replace('🔘 ',''))}</div>`
+            `<div class="bot-slot-anchor" data-slot="${escHtml(s.label)}" style="text-align:right;font-size:12.5px;font-weight:700;color:${s.label==='__failed__'?'#ef4444':'#000000'};padding:7px 2px 0">${escHtml((s.display||'').replace('🔘 ',''))}</div>`
           ).join('');
         })()}
       </div>`;
