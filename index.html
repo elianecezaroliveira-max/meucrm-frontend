@@ -1507,7 +1507,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v188</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v189</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -2025,7 +2025,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v188</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v189</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2079,7 +2079,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 188;
+const APP_VER = 189;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4560,6 +4560,9 @@ async function lpAddTask(phone){
 function lpLoadMedia(phone){
   const el = document.getElementById('lp-media'); if (!el) return;
   if (phone !== currentPhone) return;
+  // Conta gravada NA mensagem (com a do cabeçalho de reserva): pelos detalhes
+  // do lead a conta ativa pode não bater com a do arquivo — dava erro ao abrir
+  const _acct = m => encodeURIComponent(m.account_id || currentAccountId || '');
   const acct = encodeURIComponent(currentAccountId || '');
   const msgs = (typeof currentMessages !== 'undefined' && Array.isArray(currentMessages)) ? currentMessages : [];
   const imgs = msgs.filter(m => m.type === 'image' && m.media_id).slice(-9).reverse();
@@ -4567,7 +4570,7 @@ function lpLoadMedia(phone){
   let html = '';
   if (imgs.length) {
     html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:8px">' + imgs.map(m => {
-      const url = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${acct}`;
+      const url = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${_acct(m)}`;
       return `<img src="${url}" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;cursor:pointer" onclick="verMidia('${url}','img','Foto')" onerror="this.style.display='none'">`;
     }).join('') + '</div>';
   }
@@ -4576,8 +4579,8 @@ function lpLoadMedia(phone){
       const fname = (m.content||'').replace(/^\[Documento: ?/,'').replace(/\]$/,'') || 'Documento';
       const nomeSafe = escHtml(fname).replace(/'/g, "\\'");
       const isPdfDoc = /\.pdf\s*$/i.test(fname) || String(m.media_mime_type || '').toLowerCase().includes('pdf');
-      // Mesma URL do chat (com o tipo do arquivo): sem o mime o visualizador não abre
-      const urlVer = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${acct}${m.media_mime_type ? '&mime=' + encodeURIComponent(m.media_mime_type) : ''}`;
+      // Mesma URL do chat (tipo do arquivo + conta da mensagem)
+      const urlVer = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${_acct(m)}${m.media_mime_type ? '&mime=' + encodeURIComponent(m.media_mime_type) : ''}`;
       const urlDl  = `${urlVer}&download=1&filename=${encodeURIComponent(fname)}`;
       // Celular: abre DENTRO do app (o link com navegação recarregava o VETRA ao voltar)
       return `<div onclick="if(window.matchMedia('(hover: none)').matches){abrirArquivo('${urlVer}','${isPdfDoc?'pdf':'outro'}','${nomeSafe}')}else{baixarMidia('${urlDl}','${nomeSafe}',this)}" style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:#f0f2f5;border-radius:6px;margin-bottom:5px;color:#131c20;font-size:12px;cursor:pointer">📄 <span style="flex:1;word-break:break-all">${escHtml(fname)}</span> ⬇</div>`;
@@ -6314,12 +6317,13 @@ function switchMediaTab(tab) {
 function renderMediaGallery() {
   const content = document.getElementById('media-content');
   if (!content) return;
-  const acct = encodeURIComponent(currentAccountId || '');
+  // Conta gravada NA mensagem (com a do cabeçalho de reserva) — igual ao chat
+  const _acct = m => encodeURIComponent(m.account_id || currentAccountId || '');
   if (mediaTab === 'fotos') {
     const imgs = currentMessages.filter(m => m.type === 'image' && m.media_id);
     content.innerHTML = imgs.length
       ? '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">' + imgs.map(m => {
-          const url = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${acct}`;
+          const url = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${_acct(m)}`;
           return `<img src="${url}" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;cursor:pointer" onclick="verMidia('${url}','img','Foto')" onerror="this.style.display='none'">`;
         }).join('') + '</div>'
       : '<p style="color:#667781;font-size:13px">Nenhuma foto nesta conversa.</p>';
@@ -6330,8 +6334,8 @@ function renderMediaGallery() {
           const fname = (m.content || '').replace(/^\[Documento: ?/, '').replace(/\]$/, '') || 'Documento';
           const nomeSafe = escHtml(fname).replace(/'/g, "\\'");
           const isPdfG = /\.pdf\s*$/i.test(fname) || String(m.media_mime_type || '').toLowerCase().includes('pdf');
-          // Mesma URL do chat (com o tipo do arquivo): sem o mime o visualizador não abre
-          const urlVer = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${acct}${m.media_mime_type ? '&mime=' + encodeURIComponent(m.media_mime_type) : ''}`;
+          // Mesma URL do chat (tipo do arquivo + conta da mensagem)
+          const urlVer = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${_acct(m)}${m.media_mime_type ? '&mime=' + encodeURIComponent(m.media_mime_type) : ''}`;
           const urlDl  = `${urlVer}&download=1&filename=${encodeURIComponent(fname)}`;
           // Celular: abre DENTRO do app (o link antigo navegava e o app recarregava ao voltar)
           return `<div onclick="if(window.matchMedia('(hover: none)').matches){abrirArquivo('${urlVer}','${isPdfG?'pdf':'outro'}','${nomeSafe}')}else{baixarMidia('${urlDl}','${nomeSafe}',this)}" style="display:flex;align-items:center;gap:10px;padding:10px;background:#ffffff;border-radius:8px;margin-bottom:8px;color:#131c20;cursor:pointer">📄 <span style="flex:1;word-break:break-all">${escHtml(fname)}</span> <span style="color:#00a884">⬇</span></div>`;
@@ -9281,7 +9285,7 @@ async function deleteBotItem(id) {
 // ── Bot editor ──
 async function openBotEditor(id, isNew=false) {
   botEditorId = id;
-  botNodes = []; botEdges = []; selectedNodeId = null; connectingFrom = null;
+  botNodes = []; botEdges = []; selectedNodeId = null; connectingFrom = null; _botColapsados = new Set();
   canvasPan = {x:60, y:60};
   botZoom = 1; botPanX = 40; botPanY = 40;
   document.getElementById('bots-page').style.display = 'none';
@@ -9858,10 +9862,50 @@ function renderBotCanvas() {
   const container = document.getElementById('bot-canvas-nodes');
   if (!container) return;
   container.innerHTML = '';
+  const _esc = _botOcultos(); // nós escondidos por ramos recolhidos
   for (const node of botNodes) {
+    if (_esc.has(node.id)) continue;
     container.appendChild(createNodeEl(node));
   }
   renderEdges();
+}
+
+// ── 🙈 RECOLHER RAMOS: o botão − numa saída esconde tudo que vem DEPOIS dela;
+// vira +N (quantos passos estão escondidos) e um clique abre de novo
+let _botColapsados = new Set(); // 'nodeId::label' das saídas recolhidas
+function _botOcultos() {
+  const ocultos = new Set();
+  if (!_botColapsados.size) return ocultos;
+  // Visíveis = tudo que se alcança a partir das raízes SEM passar por saída recolhida.
+  // Quem só é alcançado por caminho recolhido fica escondido (caminhos duplos contam).
+  const vis = new Set();
+  const fila = [];
+  botNodes.forEach(n => { if (n.type === 'start' || !botEdges.some(e => e.to_node_id === n.id)) fila.push(n.id); });
+  while (fila.length) {
+    const id = fila.shift();
+    if (vis.has(id)) continue; vis.add(id);
+    botEdges.filter(e => e.from_node_id === id).forEach(e => {
+      if (_botColapsados.has(id + '::' + (e.label == null ? '' : e.label))) return;
+      fila.push(e.to_node_id);
+    });
+  }
+  botNodes.forEach(n => { if (!vis.has(n.id)) ocultos.add(n.id); });
+  return ocultos;
+}
+function _botQtdRamo(nodeId, label) { // quantos nós este ramo está escondendo
+  const k = nodeId + '::' + (label == null ? '' : label);
+  if (!_botColapsados.has(k)) return 0;
+  const com = _botOcultos();
+  _botColapsados.delete(k);
+  const sem = _botOcultos();
+  _botColapsados.add(k);
+  let n = 0; com.forEach(id => { if (!sem.has(id)) n++; });
+  return n;
+}
+function botToggleRamo(nodeId, label) {
+  const k = nodeId + '::' + (label == null ? '' : label);
+  if (_botColapsados.has(k)) _botColapsados.delete(k); else _botColapsados.add(k);
+  renderBotList();
 }
 
 function createNodeEl(node) {
@@ -9942,6 +9986,17 @@ function createNodeEl(node) {
       lbl.addEventListener('click', openMenu);
       item.appendChild(lbl);
       item.appendChild(port);
+      // 🙈 Esconder/mostrar o caminho desta saída (só quando tem próximo passo)
+      if (connected) {
+        const rec = _botColapsados.has(node.id + '::' + p.label);
+        const tg = document.createElement('div');
+        tg.title = rec ? 'Mostrar os passos deste caminho' : 'Esconder os passos deste caminho';
+        tg.textContent = rec ? '+' + (_botQtdRamo(node.id, p.label) || '') : '−';
+        tg.style.cssText = 'min-width:18px;height:18px;padding:0 3px;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;border-radius:9px;cursor:pointer;margin-left:4px;flex-shrink:0;' +
+          (rec ? 'background:#e7f7ef;color:#00806a;border:1px solid #00a884' : 'background:#f0f2f5;color:#667781;border:1px solid #d1d7db');
+        tg.addEventListener('click', (e) => { e.stopPropagation(); botToggleRamo(node.id, p.label); });
+        item.appendChild(tg);
+      }
       outWrap.appendChild(item);
     });
     div.appendChild(outWrap);
@@ -10253,7 +10308,9 @@ function renderEdges() {
   if (!g) return;
   g.innerHTML = '';
 
+  const _escE = _botOcultos(); // não desenha linhas de/para nós escondidos
   for (const edge of botEdges) {
+    if (_escE.has(edge.from_node_id) || _escE.has(edge.to_node_id)) continue;
     const fromNode = botNodes.find(n=>n.id===edge.from_node_id);
     const toNode   = botNodes.find(n=>n.id===edge.to_node_id);
     if (!fromNode||!toNode) continue;
