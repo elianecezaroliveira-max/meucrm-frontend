@@ -1507,7 +1507,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v184</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v186</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1589,6 +1589,7 @@ window.addEventListener('load', initAuth);
     <button id="pipeline-filter-btn" onclick="togglePipelineFilter()">⚙ Filtrar</button>
     <button id="pipeline-selall-btn" onclick="togglePipeSelMode()" title="Ativa o modo de seleção de leads" style="background:#e7f7ef;border:1px solid #00a884;color:#00806a;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">☑️ Selecionar</button>
     <button id="pipeline-selall-all" onclick="selectAllInPipeline()" title="Seleciona/desmarca TODOS os leads visíveis (respeita o filtro ativo)" style="display:none;background:#e7f7ef;border:1px solid #00a884;color:#00806a;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">☑️ Selecionar todos</button>
+    <span id="pipeline-sel-count" style="display:none;font-size:13px;font-weight:700;color:#00806a;background:#e7f7ef;border-radius:12px;padding:5px 11px;white-space:nowrap"></span>
     <button class="pf-topbtn" onclick="openNewLead()">➕ Novo Lead</button>
     <button class="pf-topbtn" onclick="openImport()">📥 Importar</button>
     <button class="pf-topbtn" onclick="openAutomationPanel()">⚡ Automação</button>
@@ -2024,7 +2025,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v184</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v186</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2078,7 +2079,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 184;
+const APP_VER = 186;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4558,14 +4559,14 @@ async function lpAddTask(phone){
 function lpLoadMedia(phone){
   const el = document.getElementById('lp-media'); if (!el) return;
   if (phone !== currentPhone) return;
-  const _acct = m => encodeURIComponent(m.account_id || currentAccountId || ''); // conta DA mensagem
+  const acct = encodeURIComponent(currentAccountId || '');
   const msgs = (typeof currentMessages !== 'undefined' && Array.isArray(currentMessages)) ? currentMessages : [];
   const imgs = msgs.filter(m => m.type === 'image' && m.media_id).slice(-9).reverse();
   const docs = msgs.filter(m => m.type === 'document' && m.media_id).slice(-5).reverse();
   let html = '';
   if (imgs.length) {
     html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:8px">' + imgs.map(m => {
-      const url = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${_acct(m)}`;
+      const url = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${acct}`;
       return `<img src="${url}" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;cursor:pointer" onclick="verMidia('${url}','img','Foto')" onerror="this.style.display='none'">`;
     }).join('') + '</div>';
   }
@@ -4574,7 +4575,7 @@ function lpLoadMedia(phone){
       const fname = (m.content||'').replace(/^\[Documento: ?/,'').replace(/\]$/,'') || 'Documento';
       const nomeSafe = escHtml(fname).replace(/'/g, "\\'");
       const isPdfDoc = /\.pdf\s*$/i.test(fname) || String(m.media_mime_type || '').toLowerCase().includes('pdf');
-      const urlVer = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${_acct(m)}${m.media_mime_type ? '&mime=' + encodeURIComponent(m.media_mime_type) : ''}`;
+      const urlVer = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${acct}`;
       const urlDl  = `${urlVer}&download=1&filename=${encodeURIComponent(fname)}`;
       // Celular: abre DENTRO do app (o link com navegação recarregava o VETRA ao voltar)
       return `<div onclick="if(window.matchMedia('(hover: none)').matches){abrirArquivo('${urlVer}','${isPdfDoc?'pdf':'outro'}','${nomeSafe}')}else{baixarMidia('${urlDl}','${nomeSafe}',this)}" style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:#f0f2f5;border-radius:6px;margin-bottom:5px;color:#131c20;font-size:12px;cursor:pointer">📄 <span style="flex:1;word-break:break-all">${escHtml(fname)}</span> ⬇</div>`;
@@ -5154,9 +5155,7 @@ function renderMessageContent(m) {
 
   const mediaTypes = ['image', 'audio', 'video', 'document', 'sticker'];
   if (mediaTypes.includes(m.type) && m.media_id) {
-    // Conta DA MENSAGEM (não a do cabeçalho): o arquivo pertence ao número que o
-    // recebeu/enviou — usar outra conta = token errado = "Falha ao baixar mídia"
-    const acct = encodeURIComponent(m.account_id || currentAccountId || '');
+    const acct = encodeURIComponent(currentAccountId || '');
     const mimeParam = m.media_mime_type ? `&mime=${encodeURIComponent(m.media_mime_type)}` : '';
     const proxyUrl  = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${acct}${mimeParam}`;
 
@@ -6313,12 +6312,12 @@ function switchMediaTab(tab) {
 function renderMediaGallery() {
   const content = document.getElementById('media-content');
   if (!content) return;
-  const _acct = m => encodeURIComponent(m.account_id || currentAccountId || ''); // conta DA mensagem
+  const acct = encodeURIComponent(currentAccountId || '');
   if (mediaTab === 'fotos') {
     const imgs = currentMessages.filter(m => m.type === 'image' && m.media_id);
     content.innerHTML = imgs.length
       ? '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">' + imgs.map(m => {
-          const url = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${_acct(m)}`;
+          const url = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${acct}`;
           return `<img src="${url}" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;cursor:pointer" onclick="verMidia('${url}','img','Foto')" onerror="this.style.display='none'">`;
         }).join('') + '</div>'
       : '<p style="color:#667781;font-size:13px">Nenhuma foto nesta conversa.</p>';
@@ -6329,7 +6328,7 @@ function renderMediaGallery() {
           const fname = (m.content || '').replace(/^\[Documento: ?/, '').replace(/\]$/, '') || 'Documento';
           const nomeSafe = escHtml(fname).replace(/'/g, "\\'");
           const isPdfG = /\.pdf\s*$/i.test(fname) || String(m.media_mime_type || '').toLowerCase().includes('pdf');
-          const urlVer = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${_acct(m)}${m.media_mime_type ? '&mime=' + encodeURIComponent(m.media_mime_type) : ''}`;
+          const urlVer = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${acct}`;
           const urlDl  = `${urlVer}&download=1&filename=${encodeURIComponent(fname)}`;
           // Celular: abre DENTRO do app (o link antigo navegava e o app recarregava ao voltar)
           return `<div onclick="if(window.matchMedia('(hover: none)').matches){abrirArquivo('${urlVer}','${isPdfG?'pdf':'outro'}','${nomeSafe}')}else{baixarMidia('${urlDl}','${nomeSafe}',this)}" style="display:flex;align-items:center;gap:10px;padding:10px;background:#ffffff;border-radius:8px;margin-bottom:8px;color:#131c20;cursor:pointer">📄 <span style="flex:1;word-break:break-all">${escHtml(fname)}</span> <span style="color:#00a884">⬇</span></div>`;
@@ -8320,7 +8319,8 @@ function toggleCardSelection(phone, e) {
 let _pipeSelMode = false;
 function togglePipeSelMode() {
   _pipeSelMode = !_pipeSelMode;
-  if (!_pipeSelMode) { selectedLeads.clear(); updateBulkBar(); } // sair limpa a seleção
+  if (!_pipeSelMode) selectedLeads.clear(); // sair limpa a seleção
+  updateBulkBar(); // atualiza barra + contador "N selecionados"
   const b = document.getElementById('pipeline-selall-btn');
   if (b) b.textContent = _pipeSelMode ? '✕ Cancelar' : '☑️ Selecionar';
   const all = document.getElementById('pipeline-selall-all');
@@ -8349,6 +8349,14 @@ function selectAllInColumn(stageId) {
 }
 
 function updateBulkBar() {
+  // Contador "N selecionados" ao lado dos botões (aparece no MODO de seleção)
+  const psc = document.getElementById('pipeline-sel-count');
+  if (psc) {
+    if (typeof _pipeSelMode !== 'undefined' && _pipeSelMode) {
+      psc.style.display = '';
+      psc.textContent = selectedLeads.size + ' selecionado' + (selectedLeads.size === 1 ? '' : 's');
+    } else psc.style.display = 'none';
+  }
   const bar = document.getElementById('bulk-action-bar');
   const count = document.getElementById('bulk-count');
   if (!bar) return;
@@ -10145,6 +10153,67 @@ function renderTmplButtonsInfo(node){
     btns.map(b=>`<span style="display:inline-block;background:#e7f7ef;border:1px solid #00a884;color:#00a884;border-radius:6px;padding:2px 8px;font-size:12px;margin:2px">🔘 ${escHtml(b)}</span>`).join('');
 }
 
+// ── Nó "Gerenciar tags": pesquisar tag existente / criar se não existir ──
+let _tagsNSug = { add: [], remove: [] }; // sugestões na tela (onclick usa o ÍNDICE — tag com aspas não quebra)
+function _tagsNodeLista(nodeId, campo) {
+  const n = botNodes.find(x => x.id === nodeId);
+  return (n && n.config && Array.isArray(n.config[campo])) ? n.config[campo] : [];
+}
+function _tagsNodeSugg(nodeId, campo) {
+  const inp = document.getElementById('tags-node-busca-' + campo);
+  const box = document.getElementById('tags-node-sugg-' + campo);
+  if (!inp || !box) return;
+  const q = inp.value.trim().toLowerCase();
+  const ja = _tagsNodeLista(nodeId, campo);
+  const achadas = (allTagsList || []).filter(t => !ja.includes(t) && (!q || t.toLowerCase().includes(q))).slice(0, 10);
+  _tagsNSug[campo] = achadas;
+  let h = achadas.map((t, i) =>
+    `<div onclick="_tagsNodePick('${nodeId}','${campo}',${i})" style="padding:7px 10px;background:#f0f2f5;border-radius:7px;font-size:13px;color:#131c20;cursor:pointer">🏷 ${escHtml(t)}</div>`).join('');
+  // Não existe? Oferece CRIAR (só no campo Adicionar — não dá para remover o que não existe)
+  const existe = (allTagsList || []).some(t => t.toLowerCase() === q);
+  if (q && !existe && campo === 'add')
+    h += `<div onclick="_tagsNodeCriar('${nodeId}','add')" style="padding:7px 10px;background:#e7f7ef;border:1px dashed #00a884;border-radius:7px;font-size:13px;color:#00806a;font-weight:600;cursor:pointer">➕ Criar tag "${escHtml(inp.value.trim())}"</div>`;
+  if (!h) h = `<div style="font-size:12px;color:#8696a0;padding:4px 2px">${q ? 'Nenhuma tag encontrada.' : 'Digite para pesquisar…'}</div>`;
+  box.innerHTML = h;
+}
+function _tagsNodePick(nodeId, campo, i) { _tagsNodeAddTag(nodeId, campo, _tagsNSug[campo][i]); }
+function _tagsNodeCriar(nodeId, campo) {
+  const inp = document.getElementById('tags-node-busca-' + campo);
+  if (!inp) return;
+  const q = inp.value.trim().toLowerCase();
+  // Enter: se a tag já existe, seleciona ela; senão cria com o texto digitado
+  const igual = (allTagsList || []).find(t => t.toLowerCase() === q);
+  _tagsNodeAddTag(nodeId, campo, igual || inp.value);
+}
+function _tagsNodeAddTag(nodeId, campo, tag) {
+  tag = String(tag || '').trim().replace(/,/g, '').slice(0, 20);
+  if (!tag) return;
+  const lst = [..._tagsNodeLista(nodeId, campo)];
+  if (!lst.includes(tag)) lst.push(tag);
+  updateNodeConfig(nodeId, { [campo]: lst });
+  if (!allTagsList.includes(tag)) { allTagsList.push(tag); allTagsList.sort((a, b) => a.localeCompare(b)); }
+  const inp = document.getElementById('tags-node-busca-' + campo);
+  if (inp) inp.value = '';
+  _tagsNodeRepinta(nodeId);
+}
+function _tagsNodeDel(nodeId, campo, idx) {
+  const lst = _tagsNodeLista(nodeId, campo).filter((_, i) => i !== idx);
+  updateNodeConfig(nodeId, { [campo]: lst });
+  _tagsNodeRepinta(nodeId);
+}
+function _tagsNodeRepinta(nodeId) {
+  ['add', 'remove'].forEach(campo => {
+    const box = document.getElementById('tags-node-' + campo + '-chips');
+    if (box) {
+      const lst = _tagsNodeLista(nodeId, campo);
+      box.innerHTML = lst.map((t, i) =>
+        `<span class="tag-chip tc${i % 6} removable" title="Clique para remover" onclick="_tagsNodeDel('${nodeId}','${campo}',${i})" style="cursor:pointer">${escHtml(t)} ×</span>`).join('')
+        || '<span style="font-size:12px;color:#8696a0">nenhuma</span>';
+    }
+    _tagsNodeSugg(nodeId, campo);
+  });
+}
+
 function getOutputPorts(node) {
   if (node.type==='message') {
     const btns = (node.config?.mode==='template' && Array.isArray(node.config.buttons)) ? node.config.buttons : [];
@@ -10165,7 +10234,7 @@ function getOutputPorts(node) {
   }
   if (node.type==='round_robin') {
     const branches = node.config?.branches||[];
-    return branches.map((b,i)=>({label:String(i), display:'Opção '+(i+1)}));
+    return branches.map((b,i)=>({label:String(i), display:(b&&b.name)||('Opção '+(i+1))}));
   }
   if (node.type==='business_hours') {
     const ports = [{label:'__open__', display:'Em expediente'}];
@@ -10587,8 +10656,10 @@ function renderConfigPanel(node) {
     form.innerHTML = `
       <label class="bot-cfg-label">Opções do rodízio <span style="color:#667781">(cada lead vai para a próxima, em ciclo)</span></label>
       <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px">
-        ${branches.map((b,i)=>`<div style="display:flex;gap:6px;align-items:center;background:#f0f2f5;border-radius:8px;padding:9px 12px">
-          <span style="font-size:13px;color:#131c20;flex:1">Opção ${i+1}</span>
+        ${branches.map((b,i)=>`<div style="display:flex;gap:6px;align-items:center;background:#f0f2f5;border-radius:8px;padding:5px 8px 5px 12px">
+          <input value="${escHtml(b.name||('Opção '+(i+1)))}" maxlength="30" placeholder="Opção ${i+1}"
+            oninput="setRRBranchName(${i}, this.value)" title="Clique para renomear esta opção"
+            style="flex:1;font-size:13px;color:#131c20;background:transparent;border:none;outline:none;padding:5px 0;font-family:inherit">
           <button onclick="removeRRBranch(${i})" title="Remover" style="background:none;border:none;color:#667781;cursor:pointer">✕</button>
         </div>`).join('')}
       </div>
@@ -10598,14 +10669,22 @@ function renderConfigPanel(node) {
   }
 
   if (node.type==='tags') {
-    const parse = v => v.split(',').map(s=>s.trim()).filter(Boolean);
+    // 🔎 Pesquisa nas tags que JÁ EXISTEM e, se não existir, oferece criar
     form.innerHTML = `
-      <label class="bot-cfg-label">Adicionar tags <span style="color:#667781">(separadas por vírgula)</span></label>
-      <input class="bot-cfg-input" id="cfg-tags-add" placeholder="quente, retornar" value="${escHtml((node.config.add||[]).join(', '))}" />
-      <label class="bot-cfg-label" style="margin-top:12px">Remover tags <span style="color:#667781">(separadas por vírgula)</span></label>
-      <input class="bot-cfg-input" id="cfg-tags-rem" placeholder="frio" value="${escHtml((node.config.remove||[]).join(', '))}" />`;
-    document.getElementById('cfg-tags-add').addEventListener('input', function(){ updateNodeConfig(node.id,{add:parse(this.value)}); });
-    document.getElementById('cfg-tags-rem').addEventListener('input', function(){ updateNodeConfig(node.id,{remove:parse(this.value)}); });
+      <label class="bot-cfg-label">Adicionar tags</label>
+      <div id="tags-node-add-chips" style="display:flex;flex-wrap:wrap;gap:5px;margin:6px 0"></div>
+      <input class="bot-cfg-input" id="tags-node-busca-add" placeholder="🔎 Pesquisar tag ou criar nova…" autocomplete="off"
+        oninput="_tagsNodeSugg('${node.id}','add')" onfocus="_tagsNodeSugg('${node.id}','add')"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();_tagsNodeCriar('${node.id}','add')}">
+      <div id="tags-node-sugg-add" style="display:flex;flex-direction:column;gap:2px;margin-top:4px;max-height:180px;overflow:auto"></div>
+      <label class="bot-cfg-label" style="margin-top:14px">Remover tags</label>
+      <div id="tags-node-remove-chips" style="display:flex;flex-wrap:wrap;gap:5px;margin:6px 0"></div>
+      <input class="bot-cfg-input" id="tags-node-busca-remove" placeholder="🔎 Pesquisar tag…" autocomplete="off"
+        oninput="_tagsNodeSugg('${node.id}','remove')" onfocus="_tagsNodeSugg('${node.id}','remove')">
+      <div id="tags-node-sugg-remove" style="display:flex;flex-direction:column;gap:2px;margin-top:4px;max-height:180px;overflow:auto"></div>`;
+    _tagsNodeRepinta(node.id);
+    // Atualiza a lista de tags existentes (pode ter tag nova criada no chat)
+    loadAllTags().then(() => { if (document.getElementById('tags-node-busca-add')) _tagsNodeRepinta(node.id); }).catch(()=>{});
     return;
   }
 
@@ -10670,6 +10749,14 @@ function removeRRBranch(idx) {
   const branches = (node.config.branches||[]).filter((_,i)=>i!==idx);
   updateNodeConfig(node.id, {branches});
   renderConfigPanel(node); _rerenderBotNode(node);
+}
+// ✏️ Renomeia uma opção do rodízio (o nome aparece na saída do nó no quadro)
+function setRRBranchName(idx, nome) {
+  const node = botNodes.find(n=>n.id===selectedNodeId); if(!node) return;
+  const branches = [...(node.config.branches||[])];
+  nome = String(nome||'').trim();
+  branches[idx] = {...(branches[idx]||{}), name: nome || undefined}; // vazio = volta ao padrão "Opção N"
+  updateNodeConfig(node.id, {branches}); // NÃO re-desenha o painel: o cursor fica no campo
 }
 function setRRBranch(idx, accId) {
   const node = botNodes.find(n=>n.id===selectedNodeId); if(!node) return;
