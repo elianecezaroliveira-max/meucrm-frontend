@@ -1507,7 +1507,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v189</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v190</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -2025,7 +2025,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v189</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v190</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2079,7 +2079,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 189;
+const APP_VER = 190;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -9333,10 +9333,36 @@ async function openBotEditor(id, isNew=false) {
   if(!(_s && _s.config && _s.config._manual)) seedBotPositions(true);
   renderBotList();
   setTimeout(botZoomFit, 30);
+  _botSnap = _botEstadoAtual(); // 📸 retrato do bot recém-aberto (para avisar se sair sem salvar)
+}
+
+// 📸 Detecta alterações não salvas: compara o bot de agora com o retrato
+// tirado ao abrir (e atualizado a cada salvar)
+let _botSnap = '';
+function _botEstadoAtual() {
+  try {
+    return JSON.stringify({
+      n: botNodes, e: botEdges,
+      nome: (document.getElementById('bot-name-input') || {}).value || '',
+      at: !!((document.getElementById('bot-active-check') || {}).checked)
+    });
+  } catch (_) { return ''; }
 }
 
 function closeBotEditor() {
   try { _closeNodeEditing(false); } catch (_) {} // recolhe edição pendente antes de sair
+  // Alterou algo e não salvou? Pergunta antes de sair (OK = salva e sai)
+  try {
+    if (_botSnap && _botEstadoAtual() !== _botSnap) {
+      if (confirm('Você fez alterações que ainda NÃO foram salvas.\n\nOK = salvar e sair\nCancelar = sair SEM salvar')) {
+        saveBotFlow().then(() => {
+          document.getElementById('bot-editor-page').style.display = 'none';
+          openBotsList();
+        }).catch(() => alert('Não consegui salvar — confira a internet e tente o 💾 Salvar.'));
+        return;
+      }
+    }
+  } catch (_) {}
   document.getElementById('bot-editor-page').style.display = 'none';
   openBotsList();
 }
@@ -9370,6 +9396,7 @@ async function saveBotFlow() {
       btn.textContent = '✅ Salvo!';
       window._botSaveT = setTimeout(() => { btn.textContent = '💾 Salvar'; }, 2000);
     }
+    _botSnap = _botEstadoAtual(); // salvo = novo retrato (sair agora não pergunta)
   } else {
     alert('Erro ao salvar: '+(data.error||''));
   }
@@ -9873,6 +9900,7 @@ function renderBotCanvas() {
 // ── 🙈 RECOLHER RAMOS: o botão − numa saída esconde tudo que vem DEPOIS dela;
 // vira +N (quantos passos estão escondidos) e um clique abre de novo
 let _botColapsados = new Set(); // 'nodeId::label' das saídas recolhidas
+function _botNrmLbl(v) { return (v == null || v === 'default') ? '' : String(v); } // rótulo pode vir número/null/'default'
 function _botOcultos() {
   const ocultos = new Set();
   if (!_botColapsados.size) return ocultos;
@@ -9885,7 +9913,7 @@ function _botOcultos() {
     const id = fila.shift();
     if (vis.has(id)) continue; vis.add(id);
     botEdges.filter(e => e.from_node_id === id).forEach(e => {
-      if (_botColapsados.has(id + '::' + (e.label == null ? '' : e.label))) return;
+      if (_botColapsados.has(id + '::' + _botNrmLbl(e.label))) return;
       fila.push(e.to_node_id);
     });
   }
@@ -9893,7 +9921,7 @@ function _botOcultos() {
   return ocultos;
 }
 function _botQtdRamo(nodeId, label) { // quantos nós este ramo está escondendo
-  const k = nodeId + '::' + (label == null ? '' : label);
+  const k = nodeId + '::' + _botNrmLbl(label);
   if (!_botColapsados.has(k)) return 0;
   const com = _botOcultos();
   _botColapsados.delete(k);
@@ -9903,7 +9931,7 @@ function _botQtdRamo(nodeId, label) { // quantos nós este ramo está escondendo
   return n;
 }
 function botToggleRamo(nodeId, label) {
-  const k = nodeId + '::' + (label == null ? '' : label);
+  const k = nodeId + '::' + _botNrmLbl(label);
   if (_botColapsados.has(k)) _botColapsados.delete(k); else _botColapsados.add(k);
   renderBotList();
 }
@@ -9963,8 +9991,11 @@ function createNodeEl(node) {
     outWrap.className = 'bot-port-out-wrap';
 
     const ports = getOutputPorts(node);
+    // Rótulo da ligação pode vir como número, null ou 'default' — normaliza
+    // para o botão − (esconder ramo) reconhecer as saídas já conectadas
+    const _nrm = v => (v == null || v === 'default') ? '' : String(v);
     ports.forEach(p => {
-      const connected = botEdges.some(e=>e.from_node_id===node.id && e.label===p.label);
+      const connected = botEdges.some(e=>e.from_node_id===node.id && (_nrm(e.label)===_nrm(p.label)));
       const item = document.createElement('div');
       item.className = 'bot-port-out-item';
       const lbl = document.createElement('div');
@@ -9988,7 +10019,7 @@ function createNodeEl(node) {
       item.appendChild(port);
       // 🙈 Esconder/mostrar o caminho desta saída (só quando tem próximo passo)
       if (connected) {
-        const rec = _botColapsados.has(node.id + '::' + p.label);
+        const rec = _botColapsados.has(node.id + '::' + _botNrmLbl(p.label));
         const tg = document.createElement('div');
         tg.title = rec ? 'Mostrar os passos deste caminho' : 'Esconder os passos deste caminho';
         tg.textContent = rec ? '+' + (_botQtdRamo(node.id, p.label) || '') : '−';
