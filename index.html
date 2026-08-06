@@ -1507,7 +1507,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v191</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v193</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -2025,7 +2025,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v191</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v193</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2079,7 +2079,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 191;
+const APP_VER = 193;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4172,7 +4172,9 @@ async function _fillPdfPreviews() {
 // 👁️ VISUALIZADOR INTERNO: abre foto/PDF dentro do próprio app (ao fechar,
 // volta para a conversa exatamente onde estava — sem recarregar o VETRA)
 function verMidia(url, tipo, nome) {
-  if (window.matchMedia('(hover: none)').matches) abrirArquivo(url, tipo, nome);
+  // FOTOS abrem sempre no visualizador do app (é ele que tem o ‹ › para
+  // passar para a foto seguinte/anterior da conversa)
+  if (tipo === 'img' || window.matchMedia('(hover: none)').matches) abrirArquivo(url, tipo, nome);
   else window.open(url, '_blank');
 }
 function abrirArquivo(url, tipo, nome) {
@@ -4210,7 +4212,15 @@ function abrirArquivo(url, tipo, nome) {
   if (fvSh) fvSh.onclick = () => _fvShare(url, nome || 'arquivo');
   const body = document.getElementById('fv-zoom');
   body.innerHTML = '<span style="color:#8696a0;font-size:13px;margin-top:36px">Abrindo…</span>';
-  if (tipo === 'img') { body.innerHTML = `<img src="${url}" style="max-width:100%;height:auto;border-radius:4px">`; return; }
+  if (tipo !== 'img') { _fvFotos = []; _fvIdx = -1; } // navegação ‹ › é só para fotos
+  if (tipo === 'img') {
+    // Lista das fotos DESTA conversa para navegar com ‹ › (e setas do teclado)
+    const semR = u => String(u).split('&_r=')[0];
+    _fvFotos = _fvListaFotos();
+    _fvIdx = _fvFotos.findIndex(f => semR(f.url) === semR(url));
+    _fvPintaFoto(url);
+    return;
+  }
   if (tipo === 'pdf') {
     _loadPdfJs().then(async () => {
       if (_fvDoc) { try { _fvDoc.destroy(); } catch (_) {} _fvDoc = null; }
@@ -4257,6 +4267,62 @@ function abrirArquivo(url, tipo, nome) {
   // Outros formatos: tenta exibir; se o aparelho não suportar, o ⬇ resolve
   body.innerHTML = `<iframe src="${url}" style="width:100%;height:78vh;border:none;background:#fff;border-radius:4px"></iframe>`;
 }
+// 🔁 Foto do álbum que não carregou: tenta de novo (até 2x) — várias fotos
+// pedidas ao mesmo tempo faziam algumas voltarem vazias (quadrado em branco)
+function _albRetry(img) {
+  try {
+    const t = parseInt(img.dataset.try || '0', 10);
+    if (t >= 2) { img.style.background = 'rgba(0,0,0,.06)'; return; }
+    img.dataset.try = String(t + 1);
+    const base = img.dataset.fullsrc || img.src.split('&_r=')[0];
+    setTimeout(() => { img.src = base + '&_r=' + Date.now(); }, 400 * (t + 1));
+  } catch (_) {}
+}
+
+// ◀ ▶ Navegar entre as fotos da conversa dentro do visualizador
+let _fvFotos = [], _fvIdx = -1;
+function _fvListaFotos() {
+  try {
+    const acct = encodeURIComponent(currentAccountId || '');
+    return (currentMessages || []).filter(m => m.type === 'image' && m.media_id).map(m => ({
+      url: `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${acct}${m.media_mime_type ? '&mime=' + encodeURIComponent(m.media_mime_type) : ''}`,
+      nome: 'Foto'
+    }));
+  } catch (_) { return []; }
+}
+function _fvPintaFoto(url) {
+  const body = document.getElementById('fv-zoom'); if (!body) return;
+  const tem = _fvFotos.length > 1 && _fvIdx >= 0;
+  const seta = (lado, dir, mostra) => mostra
+    ? `<span onclick="event.stopPropagation();_fvNav(${dir})" style="position:fixed;${lado}:6px;top:50%;transform:translateY(-50%);width:40px;height:40px;border-radius:50%;background:rgba(0,0,0,.45);color:#fff;font-size:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:5;user-select:none">${dir < 0 ? '‹' : '›'}</span>`
+    : '';
+  body.innerHTML =
+    `<img src="${url}" style="max-width:100%;height:auto;border-radius:4px">` +
+    seta('left', -1, tem && _fvIdx > 0) +
+    seta('right', 1, tem && _fvIdx < _fvFotos.length - 1) +
+    (tem ? `<span style="position:fixed;bottom:calc(10px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:rgba(0,0,0,.45);color:#fff;font-size:12px;border-radius:12px;padding:3px 10px;z-index:5">${_fvIdx + 1} de ${_fvFotos.length}</span>` : '');
+}
+function _fvNav(dir) {
+  if (!_fvFotos.length) return;
+  const novo = _fvIdx + dir;
+  if (novo < 0 || novo >= _fvFotos.length) return;
+  _fvIdx = novo;
+  _fvZoomReset();
+  const f = _fvFotos[_fvIdx];
+  const nm = document.getElementById('fv-nome'); if (nm) nm.textContent = f.nome || 'Foto';
+  const bx = document.getElementById('fv-baixar');
+  if (bx) bx.onclick = () => baixarMidia(f.url + '&download=1&filename=' + encodeURIComponent('imagem.jpg'), 'imagem.jpg');
+  const sh = document.getElementById('fv-share'); if (sh) sh.onclick = () => _fvShare(f.url, 'imagem.jpg');
+  _fvPintaFoto(f.url);
+}
+// Teclado (PC) e arrastar o dedo para o lado (celular) também trocam de foto
+document.addEventListener('keydown', (e) => {
+  const ov = document.getElementById('file-viewer');
+  if (!ov || ov.style.display === 'none' || !_fvFotos.length) return;
+  if (e.key === 'ArrowLeft') _fvNav(-1);
+  else if (e.key === 'ArrowRight') _fvNav(1);
+});
+
 // 🔍 Zoom de pinça dentro do visualizador (igual WhatsApp): dois dedos aproximam/afastam,
 // toque duplo alterna 1x ↔ 2,2x, e com zoom o arrasto navega pela página
 let _fvS = 1, _fvDoc = null, _fvSharpTimer = null, _fvSharpBusy = false;
@@ -4317,7 +4383,9 @@ async function _fvSharpen() {
 function _fvGestos() {
   const b = document.getElementById('fv-body'); if (!b) return;
   let d0 = 0, s0 = 1, pinca = false, tapT = 0, tapX = 0, tapY = 0;
+  let swX = 0, swY = 0, swT = 0; // arrastar o dedo para o lado troca de foto
   b.addEventListener('touchstart', e => {
+    if (e.touches.length === 1) { swX = e.touches[0].clientX; swY = e.touches[0].clientY; swT = Date.now(); }
     if (e.touches.length === 2) {
       pinca = true; s0 = _fvS;
       d0 = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY) || 1;
@@ -4338,6 +4406,11 @@ function _fvGestos() {
     if (e.touches.length) return;
     const ch = e.changedTouches && e.changedTouches[0]; if (!ch) return;
     const agora = Date.now();
+    // Deslizou para o lado (sem zoom, movimento mais horizontal que vertical) → outra foto
+    if (_fvFotos.length > 1 && _fvS <= 1.05 && swT && (agora - swT) < 600) {
+      const dx = ch.clientX - swX, dy = ch.clientY - swY;
+      if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.6) { _fvNav(dx < 0 ? 1 : -1); tapT = 0; return; }
+    }
     if (agora - tapT < 300 && Math.abs(ch.clientX - tapX) < 30 && Math.abs(ch.clientY - tapY) < 30) {
       const r = b.getBoundingClientRect();
       _fvAplicaZoom(_fvS > 1.2 ? 1 : 2.2, ch.clientX - r.left, ch.clientY - r.top);
@@ -5540,8 +5613,16 @@ async function loadMessages(phone, scroll = true) {
           const tiles = vis.map((g, gi) => {
             const mp = g.media_mime_type ? `&mime=${encodeURIComponent(g.media_mime_type)}` : '';
             const u = `${SERVER_URL}/media-proxy/${encodeURIComponent(g.media_id)}?account_id=${acctA}${mp}`;
-            const extra = (gi === 3 && sobra > 0) ? `<span style="position:absolute;inset:0;background:rgba(11,20,26,.55);color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:600;border-radius:6px">+${sobra}</span>` : '';
-            return `<span style="position:relative;display:block"><img src="${u}" loading="lazy" onclick="verMidia('${u}','img','Foto')" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;display:block;cursor:pointer;background:rgba(0,0,0,.06)">${extra}</span>`;
+            const kA = String(g.media_id || g.id || '').replace(/['"<>]/g, '');
+            const srcA = _thumbGet(kA) || u; // miniatura local = aparece na hora
+            // O selo +N não pode "comer" o toque (antes o clique nele não abria a foto)
+            const extra = (gi === 3 && sobra > 0) ? `<span style="position:absolute;inset:0;background:rgba(11,20,26,.55);color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:600;border-radius:6px;pointer-events:none">+${sobra}</span>` : '';
+            // Foto em branco: era o carregamento falhando sem nova tentativa —
+            // agora tenta de novo (2x) antes de desistir
+            return `<span style="position:relative;display:block;cursor:pointer" onclick="verMidia('${u}','img','Foto')"><img src="${srcA}" loading="lazy" decoding="async" data-fullsrc="${u}" data-try="0"
+              onload="_thumbSave('${kA}',this)"
+              onerror="_albRetry(this)"
+              style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;display:block;background:rgba(0,0,0,.06)">${extra}</span>`;
           }).join('');
           const tk = (ult.direction === 'outbound')
             ? (ult.status === 'read' ? '<span class="msg-ticks read">' + TICK_TWO + '</span>' : ult.status === 'delivered' ? '<span class="msg-ticks delivered">' + TICK_TWO + '</span>' : '<span class="msg-ticks sent">' + TICK_ONE + '</span>') : '';
@@ -9506,7 +9587,7 @@ function onCanvasWheel(e) {
 // ── Render do fluxo como CANVAS horizontal estilo n8n (auto-layout) ──
 let botZoom = 1, botPanX = 40, botPanY = 40, _botPanInit = false, _botBounds = null;
 const BOT_NW = 190, BOT_NH = 66, BOT_HG = 90, BOT_VG = 26;
-const BOT_SP = 30; // espaçamento vertical entre as saídas de um mesmo nó
+const BOT_SP = 52; // espaçamento vertical entre as saídas de um mesmo nó (bolinhas verdes sem grudar)
 // Tamanho REAL de cada nó medido na tela (nós de mensagem são maiores que os demais)
 const _botNodeSizes = {};
 function _bnW(id){ const t=_botNodeSizes[id]; return (t&&t.w)||BOT_NW; }
@@ -9740,9 +9821,10 @@ function renderBotList(){
     const d=document.createElement('div');
     d.textContent=text;
     // "naBorda" = rótulo colado na borda do cartão (estilo Kommo), sem fundo
+    // Letra maior e mais forte: os nomes das saídas (Opção 1, Opção 2…) ficam legíveis
     d.style.cssText = naBorda
-      ? `position:absolute;left:${x}px;top:${y-8}px;color:${col||'#54656f'};font-size:10.5px;font-weight:600;white-space:nowrap;pointer-events:none;max-width:150px;overflow:hidden;text-overflow:ellipsis;z-index:2;background:#f0f2f5;padding:0 5px;border-radius:6px`
-      : `position:absolute;left:${x}px;top:${y-9}px;transform:translateX(-50%);background:#f0f2f5;color:${col||'#00a884'};font-size:10px;font-weight:600;padding:1px 6px;border:1px solid #e9edef;border-radius:8px;white-space:nowrap;pointer-events:none;max-width:120px;overflow:hidden;text-overflow:ellipsis;z-index:2`;
+      ? `position:absolute;left:${x}px;top:${y-11}px;color:${col||'#3b4a54'};font-size:13.5px;font-weight:700;white-space:nowrap;pointer-events:none;max-width:190px;overflow:hidden;text-overflow:ellipsis;z-index:2;background:#f0f2f5;padding:1px 6px;border-radius:7px`
+      : `position:absolute;left:${x}px;top:${y-12}px;transform:translateX(-50%);background:#f0f2f5;color:${col||'#00a884'};font-size:13px;font-weight:700;padding:2px 8px;border:1px solid #e9edef;border-radius:9px;white-space:nowrap;pointer-events:none;max-width:170px;overflow:hidden;text-overflow:ellipsis;z-index:2`;
     layer.appendChild(d);
   }
   const byId=id=>botNodes.find(n=>n.id===id);
@@ -9859,7 +9941,7 @@ function botNodeEl(node,x,y){
           const slots = botOutSlots(node);
           const btnSet = new Set(((node.config||{}).mode==='template' && Array.isArray(node.config.buttons)) ? node.config.buttons : []);
           return slots.filter(s=>!btnSet.has(s.label)).map(s=>
-            `<div class="bot-slot-anchor" data-slot="${escHtml(s.label)}" style="text-align:right;font-size:10.5px;font-weight:600;color:${s.label==='__failed__'?'#ef4444':'#8696a0'};padding:5px 2px 0">${escHtml((s.display||'').replace('🔘 ',''))}</div>`
+            `<div class="bot-slot-anchor" data-slot="${escHtml(s.label)}" style="text-align:right;font-size:12.5px;font-weight:700;color:${s.label==='__failed__'?'#ef4444':'#54656f'};padding:7px 2px 0">${escHtml((s.display||'').replace('🔘 ',''))}</div>`
           ).join('');
         })()}
       </div>`;
