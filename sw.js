@@ -1,4 +1,4 @@
-// VETRA Service Worker v27 — SÓ NOTIFICAÇÕES PUSH.
+// VETRA Service Worker v28 — SÓ NOTIFICAÇÕES PUSH.
 // SEM cache de página e SEM interceptar requisições: o navegador busca o site
 // direto do servidor em todo carregamento — a versão nova SEMPRE aparece.
 
@@ -20,9 +20,40 @@ self.addEventListener('activate', (event) => {
 // ── NOTIFICAÇÕES PUSH ──
 // IMPORTANTE (iOS): todo push DEVE exibir notificação visível dentro de event.waitUntil,
 // senão o iOS cancela a inscrição após 3 pushes "silenciosos".
+// Dono (e-mail) logado NESTE aparelho — o app avisa a cada abertura.
+// Serve para descartar avisos que pertencem a OUTRA conta (contador errado).
+let _swOwner = null;
+async function _leDono() {
+  if (_swOwner) return _swOwner;
+  try {
+    const c = await caches.open('vetra-cfg');
+    const r = await c.match('/dono');
+    if (r) _swOwner = (await r.text()) || null;
+  } catch (_) {}
+  return _swOwner;
+}
+self.addEventListener('message', (event) => {
+  const d = event.data || {};
+  if (d.type === 'set-owner') {
+    _swOwner = d.owner || null;
+    event.waitUntil((async () => {
+      try { const c = await caches.open('vetra-cfg'); await c.put('/dono', new Response(_swOwner || '')); } catch (_) {}
+    })());
+  }
+});
+
 self.addEventListener('push', (event) => {
   let data = {};
   try { data = event.data ? event.data.json() : {}; } catch (_) {}
+  // Aviso de OUTRA conta? Ignora (não mostra nem mexe no contador do ícone)
+  event.waitUntil((async () => {
+    const dono = await _leDono();
+    if (data.owner && dono && String(data.owner).toLowerCase() !== String(dono).toLowerCase()) return;
+    return _mostraPush(data);
+  })());
+});
+
+function _mostraPush(data) {
   const tasks = [
     self.registration.showNotification(data.title || 'VETRA', {
       body: data.body || 'Nova mensagem recebida',
@@ -36,8 +67,8 @@ self.addEventListener('push', (event) => {
   if (typeof data.badge === 'number' && 'setAppBadge' in self.navigator) {
     tasks.push(data.badge > 0 ? self.navigator.setAppBadge(data.badge) : self.navigator.clearAppBadge());
   }
-  event.waitUntil(Promise.all(tasks));
-});
+  return Promise.all(tasks);
+}
 
 // Clique na notificação: foca o app (abrindo a conversa) ou abre uma janela nova
 self.addEventListener('notificationclick', (event) => {
