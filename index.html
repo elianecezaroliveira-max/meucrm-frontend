@@ -1507,7 +1507,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v190</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v191</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -2025,7 +2025,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v190</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v191</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2079,7 +2079,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 190;
+const APP_VER = 191;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4560,10 +4560,9 @@ async function lpAddTask(phone){
 function lpLoadMedia(phone){
   const el = document.getElementById('lp-media'); if (!el) return;
   if (phone !== currentPhone) return;
-  // Conta gravada NA mensagem (com a do cabeçalho de reserva): pelos detalhes
-  // do lead a conta ativa pode não bater com a do arquivo — dava erro ao abrir
-  const _acct = m => encodeURIComponent(m.account_id || currentAccountId || '');
+  // URL IDÊNTICA à do chat (que abre certo): mesma conta e mesmo mime
   const acct = encodeURIComponent(currentAccountId || '');
+  const _acct = () => acct;
   const msgs = (typeof currentMessages !== 'undefined' && Array.isArray(currentMessages)) ? currentMessages : [];
   const imgs = msgs.filter(m => m.type === 'image' && m.media_id).slice(-9).reverse();
   const docs = msgs.filter(m => m.type === 'document' && m.media_id).slice(-5).reverse();
@@ -6051,6 +6050,7 @@ async function sendMessage() {
       const _a = document.getElementById('messages-area');
       if (_a) _a.scrollTop = _a.scrollHeight;
     }
+    _voltaTopoCel(); // cabeçalho (nome do cliente + ‹ voltar) de volta à vista
   } catch(e) {
     if (tempEl) tempEl.remove();
     input.value = savedMessage; // restaura mensagem se erro de rede
@@ -6062,6 +6062,30 @@ async function sendMessage() {
 function handleKey(e) {
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
 }
+
+// 📱 No celular, o teclado às vezes "empurra" a página e o cabeçalho da conversa
+// (nome do cliente e ‹ voltar) sai da tela. Isto traz a página de volta ao topo.
+function _voltaTopoCel() {
+  try {
+    if (!window.matchMedia('(hover: none)').matches) return;
+    const volta = () => {
+      if (window.scrollY !== 0) window.scrollTo(0, 0);
+      const l = document.getElementById('layout');
+      if (l && l.scrollTop) l.scrollTop = 0;
+      if (document.body.scrollTop) document.body.scrollTop = 0;
+      if (document.documentElement.scrollTop) document.documentElement.scrollTop = 0;
+    };
+    volta();
+    setTimeout(volta, 60);
+    setTimeout(volta, 260); // depois que o teclado termina de se acomodar
+  } catch (_) {}
+}
+// O mesmo cuidado quando o teclado fecha (a tela costuma ficar deslocada)
+try {
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', () => {
+    if (document.body.classList.contains('mobile-chat-open')) _voltaTopoCel();
+  });
+} catch (_) {}
 
 // ── EMOJI PICKER ──
 let emojiPickerInstance = null;
@@ -6317,8 +6341,9 @@ function switchMediaTab(tab) {
 function renderMediaGallery() {
   const content = document.getElementById('media-content');
   if (!content) return;
-  // Conta gravada NA mensagem (com a do cabeçalho de reserva) — igual ao chat
-  const _acct = m => encodeURIComponent(m.account_id || currentAccountId || '');
+  // URL IDÊNTICA à do chat (que abre certo): mesma conta e mesmo mime
+  const acct = encodeURIComponent(currentAccountId || '');
+  const _acct = () => acct;
   if (mediaTab === 'fotos') {
     const imgs = currentMessages.filter(m => m.type === 'image' && m.media_id);
     content.innerHTML = imgs.length
@@ -9373,19 +9398,26 @@ function onBotTriggerChange() {
 }
 
 async function saveBotFlow() {
+  // Resposta IMEDIATA: o botão avisa que está salvando (antes ficava mudo
+  // até o servidor responder e parecia travado)
+  const _btn = document.getElementById('bot-editor-topbar')?.querySelector('.btn-primary');
+  if (_btn) { clearTimeout(window._botSaveT); _btn.textContent = '⏳ Salvando…'; }
   const name = document.getElementById('bot-name-input').value.trim() || 'Novo Bot';
   const trigger_type = document.getElementById('bot-trigger-select').value;
   const trigger_stage_id = trigger_type==='stage_enter' ? document.getElementById('bot-trigger-stage-select').value : null;
   const active = document.getElementById('bot-active-check').checked;
 
-  await fetch(SERVER_URL+'/bots/'+botEditorId, {
-    method:'PUT', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({name, trigger_type, trigger_stage_id, active})
-  });
-  const res = await fetch(SERVER_URL+'/bots/'+botEditorId+'/flow', {
-    method:'PUT', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({nodes: botNodes, edges: botEdges})
-  });
+  // As duas gravações vão JUNTAS (antes eram uma depois da outra, dobrando a espera)
+  const [, res] = await Promise.all([
+    fetch(SERVER_URL+'/bots/'+botEditorId, {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({name, trigger_type, trigger_stage_id, active})
+    }),
+    fetch(SERVER_URL+'/bots/'+botEditorId+'/flow', {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({nodes: botNodes, edges: botEdges})
+    })
+  ]);
   const data = await res.json();
   if (data.success) {
     const btn = document.getElementById('bot-editor-topbar')?.querySelector('.btn-primary');
@@ -9716,13 +9748,15 @@ function renderBotList(){
   const byId=id=>botNodes.find(n=>n.id===id);
 
   // NÓS PRIMEIRO — para medir onde ficam os botões/saídas de cada cartão
-  botNodes.forEach(node=> layer.appendChild(botNodeEl(node,node.pos_x,node.pos_y)));
+  const _oc = _botOcultos(); // 🙈 nós escondidos por caminhos recolhidos
+  botNodes.forEach(node=>{ if(_oc.has(node.id)) return; layer.appendChild(botNodeEl(node,node.pos_x,node.pos_y)); });
   // Mede o tamanho REAL de cada nó (o Organizar e as linhas usam isso)
   botNodes.forEach(n=>{ const _e=layer.querySelector('[data-node-id="'+n.id+'"]'); if(_e) _botNodeSizes[n.id]={w:_e.offsetWidth,h:_e.offsetHeight}; });
 
   // arestas + alças de reconexão + botões "+" (fios nascem na ALTURA de cada botão/saída)
   botNodes.forEach(node=>{
     if(node.type==='end') return;
+    if(_oc.has(node.id)) return; // nó escondido: nem fio nem botão
     const slots=botOutSlots(node), n=slots.length;
     const nodeEl = layer.querySelector('[data-node-id="'+node.id+'"]');
     const anchors = nodeEl ? Array.from(nodeEl.querySelectorAll('.bot-slot-anchor')) : [];
@@ -9736,6 +9770,20 @@ function renderBotList(){
       const isFail=slot.label==='__failed__';
       const edge=botChildEdge(node.id, slot.label);
       const to=edge?byId(edge.to_node_id):null;
+      // 🙈 Caminho RECOLHIDO: no lugar dos passos aparece um botão +N para reabrir
+      if(to && _botColapsados.has(node.id+'::'+_botNrmLbl(slot.label))){
+        const bx=sx+BOT_HG, by=sy;
+        curve(sx,sy,bx,by, isFail?'#ef4444':'#00a884', true);
+        if(slot.display && !temAncora) slotPill(slot.display, sx+10, sy, isFail?'#ef4444':'#54656f', true);
+        const qt=_botQtdRamo(node.id, slot.label);
+        const b=document.createElement('button');
+        b.textContent='+'+(qt||'');
+        b.title='Mostrar os '+(qt||'')+' passos escondidos deste caminho';
+        b.style.cssText=`position:absolute;left:${bx}px;top:${by-16}px;min-width:32px;height:32px;padding:0 6px;border-radius:16px;background:#e7f7ef;border:1px solid #00a884;color:#00806a;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:6`;
+        b.addEventListener('click',(e)=>{ e.stopPropagation(); botToggleRamo(node.id, slot.label); });
+        layer.appendChild(b);
+        return;
+      }
       if(to){
         const tx=to.pos_x, ty=to.pos_y+BOT_NH/2;
         curve(sx,sy,tx,ty, isFail?'#ef4444':'#94a3b8', isFail);
@@ -9746,6 +9794,13 @@ function renderBotList(){
         rh.style.cssText=`position:absolute;left:${tx-7}px;top:${ty-7}px;width:14px;height:14px;border-radius:50%;background:#fff;border:2px solid #00a884;cursor:grab;z-index:6`;
         rh.addEventListener('mousedown',(e)=>beginPortDrag(e, node.id, slot.label, sx, sy));
         layer.appendChild(rh);
+        // 🙈 Esconder este caminho (tudo que vem depois desta saída)
+        const esc=document.createElement('button');
+        esc.textContent='−';
+        esc.title='Esconder os passos deste caminho';
+        esc.style.cssText=`position:absolute;left:${sx+4}px;top:${sy-10}px;width:20px;height:20px;border-radius:50%;background:#fff;border:1px solid #94a3b8;color:#54656f;font-size:13px;font-weight:700;line-height:1;cursor:pointer;z-index:7;display:flex;align-items:center;justify-content:center;padding:0`;
+        esc.addEventListener('click',(e)=>{ e.stopPropagation(); botToggleRamo(node.id, slot.label); });
+        layer.appendChild(esc);
         // ✕ no meio da linha: DESPRENDE a ligação (os dois passos continuam no fluxo)
         const ux=(sx+tx)/2, uy=(sy+ty)/2;
         const unl=document.createElement('button');
