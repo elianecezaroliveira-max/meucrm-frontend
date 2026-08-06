@@ -1522,7 +1522,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v199</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v200</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -2040,7 +2040,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v199</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v200</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2094,7 +2094,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 199;
+const APP_VER = 200;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3046,7 +3046,8 @@ function updateSendMicButtons() {
   const mic  = document.getElementById('mic-btn');
   if (!send || !mic) return;
   const hasContent = (inp && inp.value.trim().length > 0) ||
-    (typeof selectedFile !== 'undefined' && selectedFile);
+    (typeof selectedFile !== 'undefined' && selectedFile) ||
+    (typeof _botPendente !== 'undefined' && !!_botPendente); // bot no rascunho = mostra ENVIAR
   send.style.display = hasContent ? '' : 'none';
   mic.style.display  = hasContent ? 'none' : '';
 }
@@ -3998,6 +3999,7 @@ async function selectContact(phone, name, accountId) {
         multiple onchange="if(this.files&&this.files.length)handleFilesSelect(this.files);this.value='';" />
       <input type="file" id="camera-input" accept="image/*" capture="environment" style="display:none"
         onchange="if(this.files&&this.files[0])handleFileSelect(this.files[0]);this.value='';" />
+      <button class="btn-template-icon" id="btn-nota" onclick="toggleNotaModo()" title="Nota interna (só você vê)" style="font-size:16px;line-height:1">📝</button>
       <label id="attach-btn" title="Anexar" onclick="toggleAttachMenu(event)" style="cursor:pointer">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
       </label>
@@ -4022,6 +4024,11 @@ async function selectContact(phone, name, accountId) {
       <div id="reply-bar">
         <span id="reply-preview-text"></span>
         <button onclick="cancelReply()" title="Cancelar resposta">✕</button>
+      </div>
+      <!-- 🤖 Bot escolhido, esperando você tocar em ENVIAR (igual a um rascunho) -->
+      <div id="bot-draft-bar" style="display:none;align-items:center;gap:8px;background:#e7f7ef;border-left:3px solid #00a884;border-radius:6px;padding:7px 10px;margin-bottom:6px">
+        <span style="flex:1;font-size:13px;color:#00806a"><b>🤖 <span id="bot-draft-name"></span></b> — toque em enviar para disparar</span>
+        <button onclick="cancelBotDraft()" title="Cancelar" style="background:none;border:none;color:#667781;cursor:pointer;font-size:15px;padding:2px 4px">✕</button>
       </div>
       <div id="input-row">
       <div id="input-wrap">
@@ -5651,6 +5658,17 @@ async function loadMessages(phone, scroll = true) {
           </div>` });
           continue;
         }
+        // 📝 NOTA INTERNA: bolha amarela, só para você (nunca foi para o lead)
+        if (m.type === 'note') {
+          _prevDir = null;
+          parts.push({ key: 'm-' + safeId, html: `<div class="msg outbound nota" style="position:relative;background:#fff6d5;border:1px solid #f2e08a"
+            data-key="m-${safeId}" data-msg-id="${safeId}" data-msg-content="${dataCont}" data-msg-dir="outbound" data-msg-type="note">
+            <div style="font-size:11px;color:#a07c00;font-weight:700;margin-bottom:3px">🔒 Nota interna — o cliente não vê</div>
+            <div style="color:#131c20">${waFormat(m.content || '')}</div>
+            <div class="time" style="color:#a07c00">${timeStr}<span onclick="deleteNota('${safeId}')" title="Apagar nota" style="cursor:pointer;margin-left:8px">🗑</span></div>
+          </div>` });
+          continue;
+        }
         const _grp = _prevDir === safeDir; _prevDir = safeDir;
         parts.push({ key: 'm-' + safeId, html: `<div class="msg ${safeDir}${_grp ? ' grp' : ''}" style="position:relative${m.reaction?';margin-bottom:14px':''}"
           data-key="m-${safeId}" data-msg-id="${safeId}" data-msg-content="${dataCont}" data-msg-dir="${safeDir}" data-msg-wamid="${safeWamid}" data-msg-ts="${escHtml(String(m.timestamp || ''))}" data-msg-type="${escHtml(String(m.type || 'text'))}">
@@ -6104,11 +6122,16 @@ function _clearUnreadMark() {
 }
 async function sendMessage() {
   _clearUnreadMark(); // você respondeu → a divisória de não lidas some na hora
+  // 📝 NOTA INTERNA: fica só para você (não vai para o lead)
+  if (_notaModo) { await _enviaNotaInterna(); return; }
   // Se há arquivo pendente, envia o arquivo (com ou sem legenda)
   if (selectedFile) { await sendFile(); return; }
   const input = document.getElementById('msg-input');
   const message = input.value.trim();
+  // 🤖 Bot no rascunho e nada digitado → o ENVIAR dispara o bot
+  if (!message && _botPendente) { await _disparaBotPendente(); return; }
   if (!message || !currentPhone) return;
+  const _botDepois = _botPendente; // digitou E escolheu bot: manda o texto e depois dispara
   const savedMessage = message; // guarda antes de limpar
   input.value = '';
   autoGrowMsgInput(input); // campo volta à altura normal
@@ -6150,6 +6173,7 @@ async function sendMessage() {
       if (_a) _a.scrollTop = _a.scrollHeight;
     }
     _voltaTopoCel(); // cabeçalho (nome do cliente + ‹ voltar) de volta à vista
+    if (_botDepois) await _disparaBotPendente(); // o bot escolhido entra depois do texto
   } catch(e) {
     if (tempEl) tempEl.remove();
     input.value = savedMessage; // restaura mensagem se erro de rede
@@ -10586,6 +10610,35 @@ function renderEdges() {
   }
 }
 
+// 📷 Envia a foto do passo do bot para o cofre e guarda o link no nó
+async function subirBotFoto(nodeId, input) {
+  const f = input && input.files && input.files[0];
+  if (!f) return;
+  const box = document.getElementById('cfg-msg-foto-box');
+  if (box) box.innerHTML = '<span style="font-size:12px;color:#667781">⏳ Enviando a foto…</span>';
+  try {
+    const b64 = await new Promise((ok, err) => { const r = new FileReader(); r.onload = () => ok(String(r.result)); r.onerror = err; r.readAsDataURL(f); });
+    const r = await fetch(SERVER_URL + '/bot-media', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: b64, mime: f.type || 'image/jpeg', filename: f.name || 'foto' })
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.url) throw new Error(d.error || 'falha no envio');
+    updateNodeConfig(nodeId, { image_url: d.url });
+    const node = botNodes.find(n => n.id === nodeId);
+    if (node) renderConfigPanel(node); // redesenha mostrando a miniatura
+  } catch (e) {
+    alert('Não consegui anexar a foto: ' + (e.message || ''));
+    const node = botNodes.find(n => n.id === nodeId);
+    if (node) renderConfigPanel(node);
+  }
+}
+function removeBotFoto(nodeId) {
+  updateNodeConfig(nodeId, { image_url: null });
+  const node = botNodes.find(n => n.id === nodeId);
+  if (node) renderConfigPanel(node);
+}
+
 // ── Port interaction ──
 function portClicked(nodeId, portLabel, portType) {
   if (portType === 'out') {
@@ -10852,6 +10905,20 @@ function renderConfigPanel(node) {
           <button type="button" onclick="insertMsgVar('{notas}')" style="background:#e7f7ef;border:1px solid #00a884;color:#00a884;border-radius:6px;padding:3px 10px;font-size:12px;cursor:pointer">+ {notas}</button>
         </div>
         <textarea class="bot-cfg-textarea" id="cfg-msg-text" placeholder="Olá, {nome}! Como posso ajudar?">${escHtml(node.config.text||'')}</textarea>
+        <!-- 📷 FOTO opcional: vai junto, com o texto acima virando legenda -->
+        <label class="bot-cfg-label" style="margin-top:12px">📷 Foto <span style="color:#667781">(opcional — o texto acima vira a legenda)</span></label>
+        <div id="cfg-msg-foto-box" style="margin-top:4px">
+          ${node.config.image_url
+            ? `<div style="display:flex;gap:8px;align-items:center;background:#f0f2f5;border-radius:8px;padding:8px">
+                 <img src="${escHtml(node.config.image_url)}" style="width:56px;height:56px;object-fit:cover;border-radius:6px">
+                 <span style="flex:1;font-size:12px;color:#667781">Foto anexada</span>
+                 <button type="button" onclick="removeBotFoto('${node.id}')" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:13px">🗑 Remover</button>
+               </div>`
+            : `<label style="display:inline-flex;align-items:center;gap:6px;background:#e7f7ef;border:1px dashed #00a884;color:#00806a;border-radius:8px;padding:8px 12px;font-size:13px;cursor:pointer">
+                 📷 Escolher foto
+                 <input type="file" accept="image/*" style="display:none" onchange="subirBotFoto('${node.id}', this)">
+               </label>`}
+        </div>
       </div>
       <div id="cfg-msg-template" style="display:${mode==='template'?'block':'none'}">
         <label class="bot-cfg-label" style="margin-top:12px">Modelo</label>
@@ -11132,20 +11199,82 @@ async function openBotLauncher() {
   } catch(e) { listEl.innerHTML='<div style="padding:6px 8px;color:#ef4444;font-size:12px">Erro</div>'; }
 }
 
-async function launchBot(botId, botName) {
-  document.getElementById('bot-launcher-menu').style.display='none';
-  if (!currentPhone) return;
+// ── 📝 NOTA INTERNA: escrita no mesmo campo do chat, mas NÃO vai para o lead ──
+let _notaModo = false;
+function toggleNotaModo() {
+  _notaModo = !_notaModo;
+  const inp = document.getElementById('msg-input');
+  const bt  = document.getElementById('btn-nota');
+  const wrap = document.getElementById('input-wrap');
+  if (bt) { bt.style.background = _notaModo ? '#fff2b8' : ''; bt.style.borderRadius = '8px'; }
+  if (inp) {
+    inp.placeholder = _notaModo ? '📝 Nota interna — só você vê' : 'Digite uma mensagem';
+    inp.style.background = _notaModo ? '#fffbe6' : '';
+    inp.focus();
+  }
+  if (wrap) wrap.style.boxShadow = _notaModo ? '0 0 0 2px #f2e08a inset' : '';
+  updateSendMicButtons();
+}
+async function deleteNota(id) {
+  if (!confirm('Apagar esta nota?')) return;
   try {
-    const r = await fetch(SERVER_URL+'/bots/'+botId+'/start', {
+    await fetch(SERVER_URL + '/messages/id/' + id, { method: 'DELETE' });
+    _lastMsgsSig = '';
+    await loadMessages(currentPhone, false);
+  } catch (_) { alert('Erro ao apagar a nota.'); }
+}
+async function _enviaNotaInterna() {
+  const inp = document.getElementById('msg-input');
+  const txt = (inp.value || '').trim();
+  if (!txt || !currentPhone) return;
+  inp.value = ''; autoGrowMsgInput(inp); updateSendMicButtons();
+  try {
+    const r = await fetch(SERVER_URL + '/notes', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: currentPhone, content: txt, account_id: currentAccountId || null })
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || d.error) { inp.value = txt; autoGrowMsgInput(inp); alert('Erro ao salvar a nota: ' + (d.error || '')); return; }
+    _lastMsgsSig = '';
+    await loadMessages(currentPhone, false);
+    const a = document.getElementById('messages-area'); if (a) a.scrollTop = a.scrollHeight;
+  } catch (_) { inp.value = txt; autoGrowMsgInput(inp); alert('Erro de rede ao salvar a nota.'); }
+}
+
+// 🤖 Escolher o bot NÃO dispara na hora: ele fica no rascunho, e o disparo
+// acontece quando você toca em ENVIAR (igual a uma mensagem digitada)
+let _botPendente = null;
+function launchBot(botId, botName) {
+  const menu = document.getElementById('bot-launcher-menu');
+  if (menu) menu.style.display = 'none';
+  if (!currentPhone) return;
+  _botPendente = { id: botId, name: botName || 'Bot' };
+  const bar = document.getElementById('bot-draft-bar');
+  const nm = document.getElementById('bot-draft-name');
+  if (nm) nm.textContent = _botPendente.name;
+  if (bar) bar.style.display = 'flex';
+  updateSendMicButtons();
+  const inp = document.getElementById('msg-input'); if (inp) inp.focus();
+}
+function cancelBotDraft() {
+  _botPendente = null;
+  const bar = document.getElementById('bot-draft-bar');
+  if (bar) bar.style.display = 'none';
+  updateSendMicButtons();
+}
+// Dispara de verdade o bot que estava no rascunho
+async function _disparaBotPendente() {
+  const b = _botPendente;
+  if (!b || !currentPhone) return;
+  cancelBotDraft();
+  try {
+    const r = await fetch(SERVER_URL+'/bots/'+b.id+'/start', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body:JSON.stringify({phone:currentPhone, account_id:currentAccountId||null})
     });
     const d = await r.json();
-    if (d.success) {
-      checkActiveBotRun(currentPhone);
-    } else {
-      alert('Erro ao iniciar bot: '+(d.error||''));
-    }
+    if (d.success) { _toast('🤖 ' + b.name + ' disparado!'); checkActiveBotRun(currentPhone); }
+    else alert('Erro ao iniciar bot: '+(d.error||''));
   } catch(e) { alert('Erro ao iniciar bot'); }
 }
 
