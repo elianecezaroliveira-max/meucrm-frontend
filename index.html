@@ -1522,7 +1522,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v207</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v208</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -2040,7 +2040,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v207</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v208</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2094,7 +2094,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 207;
+const APP_VER = 208;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4538,7 +4538,9 @@ async function renderLeadPanel(phone){
   const c = allContacts.find(x => x.phone === phone);
   if (!c) { p.classList.add('lp-hidden'); p.innerHTML = ''; return; }
   p.classList.toggle('lp-hidden', !_leadPanelVisible);
-  const b = document.getElementById('btn-lead-panel'); if (b) b.style.color = _leadPanelVisible ? '#00a884' : '#667781';
+  // Painel já nasce aberto: o botão 👤 do cabeçalho fica escondido (só o ✕ fecha)
+  const b = document.getElementById('btn-lead-panel');
+  if (b) { b.style.color = _leadPanelVisible ? '#00a884' : '#667781'; b.style.display = _leadPanelVisible ? 'none' : ''; }
   // Garante que as etapas do pipeline estejam carregadas (senão o seletor fica vazio)
   if (!Array.isArray(pipelineStages) || !pipelineStages.length) {
     try { const ss = await (await fetch(SERVER_URL + '/pipeline/stages')).json(); if (Array.isArray(ss)) pipelineStages = ss; } catch(_){}
