@@ -1522,7 +1522,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v205</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v207</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -2040,7 +2040,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v205</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v207</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2094,7 +2094,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 205;
+const APP_VER = 207;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2856,6 +2856,38 @@ function renderContacts(contacts) {
   }).join('');
   if (window._selChats) _selPinta(); // re-render da lista mantém as seleções visíveis
   updateAppBadge(); // mantém o número no ícone do app em dia
+  _instalaToqueLongoLista(); // 📱 celular: segurar o dedo abre o menu da conversa
+}
+
+// 📱 No celular não existe o "⋯" (que só aparece com o mouse): SEGURAR O DEDO
+// por meio segundo sobre a conversa abre o mesmo menu (fixar/desafixar, silenciar…)
+function _instalaToqueLongoLista() {
+  const lista = document.getElementById('contacts-list');
+  if (!lista || lista._toqueLongoOn) return;
+  lista._toqueLongoOn = true;
+  let t = null, x0 = 0, y0 = 0, alvo = null;
+  const cancela = () => { clearTimeout(t); t = null; alvo = null; };
+  lista.addEventListener('touchstart', (e) => {
+    if (document.body.classList.contains('sel-mode')) return; // no modo seleção não atrapalha
+    const it = e.target.closest && e.target.closest('.contact-swipe-wrap');
+    if (!it) return;
+    const to = e.touches[0];
+    x0 = to.clientX; y0 = to.clientY; alvo = it;
+    clearTimeout(t);
+    t = setTimeout(() => {
+      const fone = alvo && alvo.dataset.phone;
+      if (!fone) return;
+      try { if (navigator.vibrate) navigator.vibrate(12); } catch (_) {}
+      openContactMenu({ clientX: x0, clientY: y0, stopPropagation() {} }, fone);
+      cancela();
+    }, 480);
+  }, { passive: true });
+  lista.addEventListener('touchmove', (e) => {
+    if (!t) return;
+    const to = e.touches[0];
+    if (Math.abs(to.clientX - x0) > 10 || Math.abs(to.clientY - y0) > 10) cancela(); // rolou/arrastou
+  }, { passive: true });
+  ['touchend', 'touchcancel', 'scroll'].forEach(ev => lista.addEventListener(ev, cancela, { passive: true }));
 }
 
 // ── Aviso flutuante de novas mensagens (estilo WhatsApp) ──
@@ -4118,7 +4150,9 @@ function toggleLeadPanel(force){
   _leadPanelVisible = show;
   p.classList.toggle('lp-hidden', !show);
   const b = document.getElementById('btn-lead-panel');
-  if (b) b.style.color = show ? '#00a884' : '#667781';
+  // Com o painel ABERTO existe só UMA forma de fechar (o ✕ do próprio painel):
+  // o botão 👤 do cabeçalho some para não ficarem duas opções iguais
+  if (b) { b.style.color = show ? '#00a884' : '#667781'; b.style.display = show ? 'none' : ''; }
   if (show) { const nt = document.getElementById('lp-notes'); if (nt) { nt.style.height = 'auto'; nt.style.height = nt.scrollHeight + 'px'; } }
 }
 // 📄 Prévia da 1ª página dos PDFs no chat (igual WhatsApp) — desenhada uma vez e guardada
