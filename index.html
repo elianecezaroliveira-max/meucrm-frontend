@@ -1522,7 +1522,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v215</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v216</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -2040,7 +2040,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v215</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v216</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2094,7 +2094,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 215;
+const APP_VER = 216;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -6291,13 +6291,21 @@ function _voltaTopoCel() {
     };
     volta();
     setTimeout(volta, 60);
-    setTimeout(volta, 260); // depois que o teclado termina de se acomodar
+    setTimeout(volta, 260);
+    setTimeout(volta, 650); // o iOS às vezes desloca DE NOVO depois que o teclado assenta
   } catch (_) {}
 }
-// O mesmo cuidado quando o teclado fecha (a tela costuma ficar deslocada)
+// O mesmo cuidado quando o teclado abre/fecha OU quando o iOS desloca a página
+// (era o que cortava o nome do cliente atrás do relógio do celular)
 try {
-  if (window.visualViewport) window.visualViewport.addEventListener('resize', () => {
-    if (document.body.classList.contains('mobile-chat-open')) _voltaTopoCel();
+  if (window.visualViewport) {
+    const _vvAjuste = () => { if (document.body.classList.contains('mobile-chat-open')) _voltaTopoCel(); };
+    window.visualViewport.addEventListener('resize', _vvAjuste);
+    window.visualViewport.addEventListener('scroll', _vvAjuste);
+  }
+  // Teclado abrindo (campo focado) também dispara a correção
+  document.addEventListener('focusin', (e) => {
+    if (e.target && e.target.id === 'msg-input') _voltaTopoCel();
   });
 } catch (_) {}
 
