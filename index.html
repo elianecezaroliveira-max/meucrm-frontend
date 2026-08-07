@@ -1522,7 +1522,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v212</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v213</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -2040,7 +2040,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v212</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v213</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2094,7 +2094,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 212;
+const APP_VER = 213;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3858,6 +3858,7 @@ function _saveDrafts() { try { localStorage.setItem('vetra_drafts', JSON.stringi
 // Celular: o iOS pode suspender o app a qualquer momento — salva em TODOS os avisos de saída
 function _persistDraftNow() {
   try {
+    if (window._enviandoTexto) return; // no meio de um envio: não regrava o rascunho
     const i = document.getElementById('msg-input');
     if (i && currentPhone) { if (i.value.trim()) _drafts[currentPhone] = i.value; else delete _drafts[currentPhone]; }
     _saveDrafts();
@@ -6175,6 +6176,20 @@ function appendPendingBubble(text) {
 function _clearUnreadMark() {
   if (window._unreadMark) { window._unreadMark = null; _lastMsgsSig = ''; }
 }
+// Confere na própria conversa se o texto JÁ foi enviado (últimos 2 minutos).
+// Evita o caso "mandei e ficou como rascunho" quando a resposta do servidor falha.
+async function _jaFoiEnviada(texto) {
+  try {
+    await loadMessages(currentPhone, false);
+    const lim = Date.now() - 120000;
+    const achou = (currentMessages || []).some(m =>
+      m.direction === 'outbound' && String(m.content || '').trim() === String(texto).trim() &&
+      parseUTC(m.timestamp) >= lim);
+    if (achou) { delete _drafts[currentPhone]; _saveDrafts(); renderContacts(allContacts); }
+    return achou;
+  } catch (_) { return false; }
+}
+
 async function sendMessage() {
   _clearUnreadMark(); // você respondeu → a divisória de não lidas some na hora
   // 📝 NOTA INTERNA: fica só para você (não vai para o lead)
@@ -6188,6 +6203,7 @@ async function sendMessage() {
   if (!message || !currentPhone) return;
   const _botDepois = _botPendente; // digitou E escolheu bot: manda o texto e depois dispara
   const savedMessage = message; // guarda antes de limpar
+  window._enviandoTexto = true; // trava o "salvar rascunho" durante o envio
   input.value = '';
   autoGrowMsgInput(input); // campo volta à altura normal
   updateSendMicButtons();  // troca enviar→mic NA HORA (o botão alto não segura mais a linha crescida)
@@ -6212,8 +6228,12 @@ async function sendMessage() {
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       if (tempEl) tempEl.remove();
+      // Pode ter saído mesmo assim (falha só na resposta): confere antes de
+      // devolver o texto ao campo — senão a mensagem enviada vira "rascunho"
+      if (await _jaFoiEnviada(savedMessage)) return;
       input.value = savedMessage;
       autoGrowMsgInput(input);
+      _drafts[currentPhone] = savedMessage; _saveDrafts();
       alert('Erro ao enviar: ' + (data.error || 'Tente novamente'));
       return;
     }
@@ -6231,9 +6251,15 @@ async function sendMessage() {
     if (_botDepois) await _disparaBotPendente(); // o bot escolhido entra depois do texto
   } catch(e) {
     if (tempEl) tempEl.remove();
+    // Internet oscilou DEPOIS do envio? A mensagem pode ter ido. Só devolve o
+    // texto (e o rascunho) se ela realmente não estiver na conversa.
+    if (await _jaFoiEnviada(savedMessage)) return;
     input.value = savedMessage; // restaura mensagem se erro de rede
     autoGrowMsgInput(input);
+    _drafts[currentPhone] = savedMessage; _saveDrafts();
     alert('Erro ao enviar mensagem.');
+  } finally {
+    window._enviandoTexto = false; // libera o salvamento de rascunho
   }
 }
 
