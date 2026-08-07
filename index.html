@@ -1522,7 +1522,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v203</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v205</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -2040,7 +2040,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v203</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v205</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2094,7 +2094,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 203;
+const APP_VER = 205;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3954,6 +3954,13 @@ async function selectContact(phone, name, accountId) {
           <polyline points="15 18 9 12 15 6"/>
         </svg>
       </button>
+      <!-- 👤 Detalhes do lead: agora à ESQUERDA, logo depois do voltar -->
+      <button id="btn-lead-panel" title="Mostrar/ocultar detalhes do lead" onclick="toggleLeadPanel()"
+        style="background:none;border:none;color:#667781;cursor:pointer;padding:6px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+        </svg>
+      </button>
       <div class="info">
         <div class="name"><span id="chat-name-text">${name || phone}</span></div>
         <div class="phone" id="chat-presence" style="display:none;color:#00a884"></div>
@@ -3961,12 +3968,6 @@ async function selectContact(phone, name, accountId) {
       <button id="btn-chat-search" title="Pesquisar na conversa" onclick="toggleChatSearch()"
         style="background:none;border:none;color:#667781;cursor:pointer;padding:6px;border-radius:50%;margin-left:auto;flex-shrink:0;display:flex;align-items:center;justify-content:center">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
-      </button>
-      <button id="btn-lead-panel" title="Mostrar/ocultar detalhes do lead" onclick="toggleLeadPanel()"
-        style="background:none;border:none;color:#667781;cursor:pointer;padding:6px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-        </svg>
       </button>
       <button id="btn-info" title="Informações do lead" onclick="openInfoMenu(event)"
         style="background:none;border:none;color:#667781;cursor:pointer;padding:6px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center">
@@ -11178,6 +11179,15 @@ async function checkActiveBotRun(phone) {
     }
   } catch(e) { if(banner) banner.classList.remove('visible'); }
 }
+
+// A faixa "bot em andamento" se confere sozinha a cada 15s: quando o bot chega
+// ao fim enquanto a conversa está aberta, ela some sem precisar reabrir o chat
+setInterval(() => {
+  try {
+    const b = document.getElementById('bot-run-banner');
+    if (b && b.classList.contains('visible') && currentPhone) checkActiveBotRun(currentPhone);
+  } catch (_) {}
+}, 15000);
 
 async function stopActiveBotRun() {
   if (!_activeBotRun) return;
