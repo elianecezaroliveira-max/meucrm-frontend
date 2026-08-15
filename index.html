@@ -1522,7 +1522,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v217</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v218</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -2040,7 +2040,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v217</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v218</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2094,7 +2094,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 217;
+const APP_VER = 218;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -7744,15 +7744,70 @@ function renderTemplateList(templates) {
     const preview = body?.text || '';
     const catLabel = { MARKETING: 'Marketing', UTILITY: 'Utilidade', AUTHENTICATION: 'Autenticação' }[t.category] || t.category;
     return `
-      <div class="tmpl-item">
+      <div class="tmpl-item" style="cursor:pointer" title="Toque para ver os detalhes" onclick="verModelo('${escHtml(t.id)}')">
         <div class="tmpl-info">
           <div class="tmpl-name">${t.name}</div>
           <div class="tmpl-meta">${catLabel} · ${t.language} · <span class="tmpl-status ${t.status}">${t.status}</span></div>
           ${preview ? `<div class="tmpl-preview">${preview}</div>` : ''}
         </div>
-        <button class="btn-delete" onclick="deleteTemplate('${t.name}','${t.id}','${accountId}')" title="Excluir modelo">🗑️</button>
+        <button class="btn-delete" onclick="event.stopPropagation();deleteTemplate('${t.name}','${t.id}','${accountId}')" title="Excluir modelo">🗑️</button>
       </div>`;
   }).join('');
+}
+
+// 👁️ DETALHE DO MODELO: clique no modelo abre a prévia estilo celular (como no
+// site da Meta) — nome, status, idioma, corpo, rodapé e botões
+function verModelo(tmplId) {
+  const t = (allTemplates || []).find(x => String(x.id) === String(tmplId));
+  if (!t) return;
+  const body   = (t.components || []).find(c => c.type === 'BODY');
+  const footer = (t.components || []).find(c => c.type === 'FOOTER');
+  const header = (t.components || []).find(c => c.type === 'HEADER');
+  const btns   = ((t.components || []).find(c => c.type === 'BUTTONS')?.buttons || []).map(b => b.text).filter(Boolean);
+  const catLabel = { MARKETING: 'Marketing', UTILITY: 'Categoria de Utilidade', AUTHENTICATION: 'Autenticação' }[t.category] || t.category;
+  const stTxt = { APPROVED: 'Aprovado', PENDING: 'Em análise', REJECTED: 'Reprovado', PAUSED: 'Pausado' }[t.status] || t.status;
+  const now = new Date(Date.now() - _BRT_OFFSET);
+  const hhmm = String(now.getUTCHours()).padStart(2, '0') + ':' + String(now.getUTCMinutes()).padStart(2, '0');
+  let inner = '';
+  if (header && header.format === 'TEXT' && header.text) inner += `<div style="font-weight:700;margin-bottom:5px">${fmtTemplatePreview(header.text)}</div>`;
+  else if (header && ['IMAGE','VIDEO','DOCUMENT'].includes(header.format)) inner += `<div style="background:#dfe5e7;color:#54656f;border-radius:6px;padding:20px;text-align:center;margin-bottom:5px;font-size:12px">${header.format==='IMAGE'?'🖼️ Imagem':header.format==='VIDEO'?'🎬 Vídeo':'📄 Documento'}</div>`;
+  inner += `<div>${fmtTemplatePreview(body?.text || '')}</div>`;
+  if (footer?.text) inner += `<div style="color:#667781;font-size:11px;margin-top:5px">${escHtml(footer.text)}</div>`;
+  const btnsHtml = btns.map(b => `<div style="background:#fff;color:#00a5f4;text-align:center;padding:9px;border-radius:8px;font-size:13px;margin-top:5px;box-shadow:0 1px 1px rgba(0,0,0,.13);font-weight:500">${escHtml(b)}</div>`).join('');
+  let ov = document.getElementById('tmpl-detail-overlay');
+  if (!ov) {
+    document.body.insertAdjacentHTML('beforeend', `<div id="tmpl-detail-overlay" onclick="if(event.target===this)this.style.display='none'"
+      style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:300;align-items:center;justify-content:center;padding:16px">
+      <div style="background:#fff;border-radius:14px;max-width:400px;width:100%;max-height:88vh;overflow:auto;padding:16px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <b id="tmpl-det-nome" style="flex:1;font-size:16px;color:#131c20;word-break:break-all"></b>
+          <span onclick="document.getElementById('tmpl-detail-overlay').style.display='none'" style="cursor:pointer;font-size:20px;color:#667781;padding:2px 8px">✕</span>
+        </div>
+        <div id="tmpl-det-meta" style="font-size:12px;color:#667781;margin-bottom:12px"></div>
+        <div id="tmpl-det-tela"></div>
+      </div>
+    </div>`);
+    ov = document.getElementById('tmpl-detail-overlay');
+  }
+  document.getElementById('tmpl-det-nome').textContent = t.name;
+  document.getElementById('tmpl-det-meta').innerHTML = `<span class="tmpl-status ${t.status}">${stTxt}</span> &nbsp;${catLabel} · ${t.language}`;
+  document.getElementById('tmpl-det-tela').innerHTML = `
+    <div style="border-radius:12px;overflow:hidden;border:1px solid #e9edef">
+      <div style="background:#075e54;color:#fff;padding:7px 10px;display:flex;align-items:center;gap:7px;font-size:12px">
+        <span style="font-size:16px;line-height:1">‹</span>
+        <div style="width:22px;height:22px;border-radius:50%;background:#9fb3ba"></div>
+        <span style="font-weight:600">Cliente</span>
+        <span style="margin-left:auto;font-size:13px">📹&nbsp;&nbsp;📞</span>
+      </div>
+      <div style="background:#e5ddd5;padding:12px 10px">
+        <div style="background:#fff;border-radius:8px;border-top-left-radius:2px;padding:7px 9px;font-size:13px;line-height:1.45;color:#131c20;box-shadow:0 1px 1px rgba(0,0,0,.18);word-break:break-word">
+          ${inner}
+          <div style="text-align:right;font-size:10px;color:#667781;margin-top:3px">${hhmm}</div>
+        </div>
+        ${btnsHtml}
+      </div>
+    </div>`;
+  ov.style.display = 'flex';
 }
 
 async function deleteTemplate(templateName, templateId, accountId) {
