@@ -1537,7 +1537,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v220</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v221</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -2055,7 +2055,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v220</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v221</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2109,7 +2109,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 220;
+const APP_VER = 221;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -11164,6 +11164,8 @@ function renderConfigPanel(node) {
           <button type="button" onclick="insertMsgVar('{telefone}')" style="background:#e7f7ef;border:1px solid #00a884;color:#00a884;border-radius:6px;padding:3px 10px;font-size:12px;cursor:pointer">+ {telefone}</button>
           <button type="button" onclick="insertMsgVar('{notas}')" style="background:#e7f7ef;border:1px solid #00a884;color:#00a884;border-radius:6px;padding:3px 10px;font-size:12px;cursor:pointer">+ {notas}</button>
         </div>
+        <!-- ⚡ RESPOSTA RÁPIDA: escolhe uma das suas respostas e o texto entra na mensagem -->
+        <select class="bot-cfg-select" id="cfg-msg-qr" style="margin-bottom:6px"><option value="">⚡ Usar uma resposta rápida…</option></select>
         <textarea class="bot-cfg-textarea" id="cfg-msg-text" placeholder="Olá, {nome}! Como posso ajudar?">${escHtml(node.config.text||'')}</textarea>
         <!-- 📷 FOTO opcional: vai junto, com o texto acima virando legenda -->
         <label class="bot-cfg-label" style="margin-top:12px">📷 Foto <span style="color:#667781">(opcional — o texto acima vira a legenda)</span></label>
@@ -11195,6 +11197,32 @@ function renderConfigPanel(node) {
       document.getElementById('cfg-msg-template').style.display = this.value==='template'?'block':'none';
     });
     document.getElementById('cfg-msg-text').addEventListener('input', function(){ updateNodeConfig(node.id,{text:this.value}); });
+    // ⚡ Respostas rápidas no bot: preenche o seletor com as suas respostas (fixadas primeiro)
+    const _qrSel = document.getElementById('cfg-msg-qr');
+    const _fillQrSel = () => {
+      if (!_qrSel) return;
+      const ordered = [...(quickReplies||[])].sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0));
+      _qrSel.innerHTML = '<option value="">⚡ Usar uma resposta rápida…</option>' +
+        (ordered.length
+          ? ordered.map(r => `<option value="${escHtml(String(quickReplies.indexOf(r)))}">${r.pinned?'📌 ':''}${escHtml(r.title||'(sem título)')}</option>`).join('')
+          : '<option value="" disabled>Nenhuma resposta rápida — crie no menu ⚡ Respostas</option>');
+    };
+    _fillQrSel();
+    _syncQuickReplies().then(_fillQrSel);
+    if (_qrSel) _qrSel.addEventListener('change', function(){
+      const r = quickReplies[parseInt(this.value,10)];
+      this.value = '';
+      if (!r) return;
+      const ta = document.getElementById('cfg-msg-text'); if (!ta) return;
+      // Se já tem texto, pergunta se substitui ou acrescenta embaixo
+      if (ta.value.trim() && !confirm('Substituir o texto atual pela resposta rápida "' + (r.title||'') + '"?\n(Cancelar = acrescentar embaixo)')) {
+        ta.value = ta.value.replace(/\s+$/,'') + '\n\n' + (r.message||'');
+      } else {
+        ta.value = r.message || '';
+      }
+      updateNodeConfig(node.id, {text: ta.value});
+      ta.focus();
+    });
     window.insertMsgVar = function(v){
       const ta=document.getElementById('cfg-msg-text'); if(!ta) return;
       const s=ta.selectionStart||ta.value.length, e=ta.selectionEnd||ta.value.length;
