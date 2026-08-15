@@ -1537,7 +1537,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v221</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v223</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -2055,7 +2055,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v221</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v223</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2109,7 +2109,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 221;
+const APP_VER = 223;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -8013,15 +8013,26 @@ async function createTemplate() {
     if (buttons.length) components.push({ type: 'BUTTONS', buttons });
   }
 
+  // ⏳ A Meta demora alguns segundos para receber o modelo: mostra que está
+  // enviando (botão travado) para não parecer que a tela congelou nem clicar 2x
+  const btnEnviar = document.querySelector('#tmpl-create-view .tmpl-actions .btn-save');
+  const btnTxt0 = btnEnviar ? btnEnviar.textContent : '';
+  if (btnEnviar) { btnEnviar.disabled = true; btnEnviar.style.opacity = '.7'; btnEnviar.textContent = '⏳ Enviando para análise…'; }
+  const _restauraBtn = () => { if (btnEnviar) { btnEnviar.disabled = false; btnEnviar.style.opacity = ''; btnEnviar.textContent = btnTxt0 || 'Enviar para análise'; } };
   try {
+    const ctrl = new AbortController();
+    const tmr = setTimeout(() => ctrl.abort(), 45000);
     const res = await fetch(SERVER_URL + '/templates', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ account_id: accountId, name, category, language, components })
+      body: JSON.stringify({ account_id: accountId, name, category, language, components }),
+      signal: ctrl.signal
     });
+    clearTimeout(tmr);
     const data = await res.json();
+    _restauraBtn();
     if (!res.ok) return alert('Erro: ' + (data.error || 'Tente novamente'));
-    alert('✅ Modelo enviado para análise! O Meta leva alguns minutos para aprovar.');
+    alert('✅ Modelo enviado para análise!\n\nA Meta pode levar de alguns minutos a mais de um dia para responder. O status aparece na lista de modelos (Em análise → Aprovado/Reprovado).');
     document.getElementById('tmpl-name').value = '';
     document.getElementById('tmpl-body-text').value = '';
     document.getElementById('tmpl-footer-text').value = '';
@@ -8031,7 +8042,10 @@ async function createTemplate() {
     document.getElementById('var-labels-area').style.display = 'none';
     buttonCount = 0; varCounter = 0;
     switchTmplTab('list');
-  } catch(e) { alert('Erro ao criar modelo.'); }
+  } catch(e) {
+    _restauraBtn();
+    alert(e && e.name === 'AbortError' ? 'A Meta demorou demais para responder. Confira na lista se o modelo apareceu antes de tentar de novo.' : 'Erro ao criar modelo.');
+  }
 }
 
 // ── ENVIAR TEMPLATE NO CHAT ──
@@ -9721,6 +9735,18 @@ async function openBotEditor(id, isNew=false) {
   botNodes = []; botEdges = []; selectedNodeId = null; connectingFrom = null; _botColapsados = new Set();
   canvasPan = {x:60, y:60};
   botZoom = 1; botPanX = 40; botPanY = 40;
+  _botSnap = ''; // sem retrato até o bot certo carregar (não compara com o anterior)
+  // 🧹 Limpa a tela ANTES de mostrar o editor: sem isso, o desenho do bot anterior
+  // (ou uma edição não salva) aparecia por alguns segundos até o novo carregar
+  try {
+    document.getElementById('bot-nodes-layer').innerHTML = '';
+    document.getElementById('bot-edges-svg').innerHTML = '';
+    document.getElementById('bot-name-input').value = '';
+    document.getElementById('bot-trigger-select').value = 'manual';
+    document.getElementById('bot-active-check').checked = true;
+    _closeNodeEditing && _closeNodeEditing(false);
+  } catch (_) {}
+  try { showConfigPlaceholder(); } catch (_) {}
   document.getElementById('bots-page').style.display = 'none';
   document.getElementById('bot-editor-page').style.display = 'flex';
 
