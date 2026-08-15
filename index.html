@@ -1329,6 +1329,21 @@ window.addEventListener('load', initAuth);
       </div>
       <!-- CRIAR -->
       <div id="tmpl-create-view" style="display:none">
+       <!-- 👁️ MODO VISUALIZAÇÃO: o mesmo formulário de criação, só leitura, com o apelido do CRM -->
+       <div id="tmpl-view-bar" style="display:none;background:#f0f2f5;border-radius:10px;padding:10px 12px;margin-bottom:14px">
+         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+           <span style="font-size:13px;color:#131c20;font-weight:600">👁️ Visualizando modelo</span>
+           <span style="font-size:12px;color:#667781">(somente leitura — a Meta não permite alterar o conteúdo por aqui)</span>
+           <button type="button" class="btn-cancel" onclick="switchTmplTab('list')" style="margin-left:auto;padding:5px 12px">‹ Voltar</button>
+         </div>
+         <div style="display:flex;gap:8px;align-items:flex-end;margin-top:10px;flex-wrap:wrap">
+           <div class="tmpl-form-group" style="flex:1;min-width:220px;margin:0">
+             <label>Nome no CRM <span style="font-size:11px;color:#667781">(apelido só para você — não vai para a Meta)</span></label>
+             <input type="text" id="tmpl-alias-input" placeholder="Ex.: Boas-vindas SIAPE" maxlength="60"/>
+           </div>
+           <button type="button" class="btn-save" onclick="salvarApelidoModelo()" style="padding:9px 14px">Salvar</button>
+         </div>
+       </div>
        <div style="display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap">
         <div style="flex:1;min-width:300px">
         <div class="tmpl-form-group">
@@ -1522,7 +1537,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v218</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v219</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -2040,7 +2055,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v218</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v219</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2094,7 +2109,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 218;
+const APP_VER = 219;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -7597,13 +7612,17 @@ function openTemplates() {
   _closeAllScreens();
   document.getElementById('templates-overlay').classList.add('open');
   populateTmplAccounts();
-  switchTmplTab('list');
+  carregarApelidosModelos().then(() => switchTmplTab('list'));
 }
 function closeTemplates() { document.getElementById('templates-overlay').classList.remove('open'); }
 
-function switchTmplTab(tab) {
+function switchTmplTab(tab, opts) {
+  const _view = !!(opts && opts.view);
+  // Saindo do modo visualização (voltar à lista ou abrir "Criar" de verdade): limpa o formulário
+  if (_tmplViewMode && !_view) _sairVisualizacaoModelo();
   document.getElementById('tab-list').classList.toggle('active', tab === 'list');
   document.getElementById('tab-create').classList.toggle('active', tab === 'create');
+  document.getElementById('tab-create').textContent = _view ? '👁️ Visualizar modelo' : '+ Criar Modelo';
   document.getElementById('tmpl-list-view').style.display = tab === 'list' ? 'block' : 'none';
   document.getElementById('tmpl-create-view').style.display = tab === 'create' ? 'block' : 'none';
   if (tab === 'list') loadTemplates();
@@ -7746,8 +7765,8 @@ function renderTemplateList(templates) {
     return `
       <div class="tmpl-item" style="cursor:pointer" title="Toque para ver os detalhes" onclick="verModelo('${escHtml(t.id)}')">
         <div class="tmpl-info">
-          <div class="tmpl-name">${t.name}</div>
-          <div class="tmpl-meta">${catLabel} · ${t.language} · <span class="tmpl-status ${t.status}">${t.status}</span></div>
+          <div class="tmpl-name">${escHtml(tmplNome(t))}</div>
+          <div class="tmpl-meta">${_tmplAlias[t.id] ? '<span title="Nome na Meta">' + escHtml(t.name) + '</span> · ' : ''}${catLabel} · ${t.language} · <span class="tmpl-status ${t.status}">${t.status}</span></div>
           ${preview ? `<div class="tmpl-preview">${preview}</div>` : ''}
         </div>
         <button class="btn-delete" onclick="event.stopPropagation();deleteTemplate('${t.name}','${t.id}','${accountId}')" title="Excluir modelo">🗑️</button>
@@ -7755,59 +7774,135 @@ function renderTemplateList(templates) {
   }).join('');
 }
 
-// 👁️ DETALHE DO MODELO: clique no modelo abre a prévia estilo celular (como no
-// site da Meta) — nome, status, idioma, corpo, rodapé e botões
+// ═══ APELIDO DOS MODELOS (nome só no CRM) ═══
+// A Meta obriga nome em minúsculas/underscore e não deixa renomear. Aqui você dá
+// o nome que quiser: fica salvo por conta (settings tmpl_alias::owner) e aparece na
+// lista, no "Enviar modelo" e no editor de bots. Na Meta continua o nome original.
+let _tmplAlias = {};
+let _tmplAliasCarregado = false;
+let _tmplViewMode = false, _tmplViewId = null;
+async function carregarApelidosModelos(force) {
+  if (_tmplAliasCarregado && !force) return _tmplAlias;
+  try {
+    const r = await fetch(SERVER_URL + '/settings/tmpl_alias');
+    const j = await r.json();
+    _tmplAlias = j && j.value ? (JSON.parse(j.value) || {}) : {};
+  } catch (_) { _tmplAlias = _tmplAlias || {}; }
+  _tmplAliasCarregado = true;
+  return _tmplAlias;
+}
+function tmplNome(t) { return (t && _tmplAlias[t.id]) ? _tmplAlias[t.id] : (t ? t.name : ''); }
+async function salvarApelidoModelo() {
+  if (!_tmplViewId) return;
+  const v = (document.getElementById('tmpl-alias-input').value || '').trim();
+  if (v) _tmplAlias[_tmplViewId] = v; else delete _tmplAlias[_tmplViewId];
+  try {
+    const r = await fetch(SERVER_URL + '/settings/tmpl_alias', { method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value: JSON.stringify(_tmplAlias) }) });
+    if (!r.ok) throw new Error('falha');
+    const b = document.querySelector('#tmpl-view-bar .btn-save');
+    if (b) { const t0 = b.textContent; b.textContent = '✓ Salvo'; setTimeout(() => { b.textContent = t0; }, 1500); }
+  } catch (_) { alert('Não foi possível salvar o nome. Tente de novo.'); }
+}
+
+// 👁️ DETALHE DO MODELO: clique no modelo abre o MESMO formulário de criação,
+// preenchido e somente leitura (nome, categoria, idioma, cabeçalho, corpo,
+// exemplos das variáveis, rodapé, botões) + a prévia estilo celular ao lado.
+function _setTmplFormReadonly(on) {
+  const cv = document.getElementById('tmpl-create-view');
+  cv.querySelectorAll('input, select, textarea').forEach(el => {
+    if (el.id === 'tmpl-alias-input') return;
+    el.disabled = on;
+  });
+  // some o que só faz sentido ao criar
+  cv.querySelectorAll('.tmpl-actions, #add-btn-row, .btn-remove, .tmpl-hint').forEach(el => { el.style.display = on ? 'none' : ''; });
+  const varsBar = document.querySelector('#tmpl-body-text + div'); // barra "Inserir variável"
+  if (varsBar) varsBar.style.display = on ? 'none' : '';
+  document.getElementById('tmpl-view-bar').style.display = on ? 'block' : 'none';
+}
+function _sairVisualizacaoModelo() {
+  _tmplViewMode = false; _tmplViewId = null;
+  _setTmplFormReadonly(false);
+  // limpa o formulário para uma criação nova começar do zero
+  ['tmpl-name','tmpl-body-text','tmpl-footer-text','tmpl-header-text','tmpl-header-media','tmpl-alias-input'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+  const ht = document.getElementById('tmpl-header-type'); if (ht) { ht.value = 'NONE'; onHeaderTypeChange(); }
+  document.getElementById('btn-list').innerHTML = '';
+  document.getElementById('var-labels-list').innerHTML = '';
+  document.getElementById('var-labels-area').style.display = 'none';
+  buttonCount = 0; varCounter = 0;
+}
+function _garanteOpcao(sel, valor, rotulo) {
+  if (!sel || !valor) return;
+  if (![...sel.options].some(o => o.value === valor)) sel.add(new Option(rotulo || valor, valor));
+  sel.value = valor;
+}
 function verModelo(tmplId) {
   const t = (allTemplates || []).find(x => String(x.id) === String(tmplId));
   if (!t) return;
-  const body   = (t.components || []).find(c => c.type === 'BODY');
-  const footer = (t.components || []).find(c => c.type === 'FOOTER');
-  const header = (t.components || []).find(c => c.type === 'HEADER');
-  const btns   = ((t.components || []).find(c => c.type === 'BUTTONS')?.buttons || []).map(b => b.text).filter(Boolean);
-  const catLabel = { MARKETING: 'Marketing', UTILITY: 'Categoria de Utilidade', AUTHENTICATION: 'Autenticação' }[t.category] || t.category;
+  const comps  = t.components || [];
+  const body   = comps.find(c => c.type === 'BODY');
+  const footer = comps.find(c => c.type === 'FOOTER');
+  const header = comps.find(c => c.type === 'HEADER');
+  const btns   = (comps.find(c => c.type === 'BUTTONS')?.buttons || []);
   const stTxt = { APPROVED: 'Aprovado', PENDING: 'Em análise', REJECTED: 'Reprovado', PAUSED: 'Pausado' }[t.status] || t.status;
-  const now = new Date(Date.now() - _BRT_OFFSET);
-  const hhmm = String(now.getUTCHours()).padStart(2, '0') + ':' + String(now.getUTCMinutes()).padStart(2, '0');
-  let inner = '';
-  if (header && header.format === 'TEXT' && header.text) inner += `<div style="font-weight:700;margin-bottom:5px">${fmtTemplatePreview(header.text)}</div>`;
-  else if (header && ['IMAGE','VIDEO','DOCUMENT'].includes(header.format)) inner += `<div style="background:#dfe5e7;color:#54656f;border-radius:6px;padding:20px;text-align:center;margin-bottom:5px;font-size:12px">${header.format==='IMAGE'?'🖼️ Imagem':header.format==='VIDEO'?'🎬 Vídeo':'📄 Documento'}</div>`;
-  inner += `<div>${fmtTemplatePreview(body?.text || '')}</div>`;
-  if (footer?.text) inner += `<div style="color:#667781;font-size:11px;margin-top:5px">${escHtml(footer.text)}</div>`;
-  const btnsHtml = btns.map(b => `<div style="background:#fff;color:#00a5f4;text-align:center;padding:9px;border-radius:8px;font-size:13px;margin-top:5px;box-shadow:0 1px 1px rgba(0,0,0,.13);font-weight:500">${escHtml(b)}</div>`).join('');
-  let ov = document.getElementById('tmpl-detail-overlay');
-  if (!ov) {
-    document.body.insertAdjacentHTML('beforeend', `<div id="tmpl-detail-overlay" onclick="if(event.target===this)this.style.display='none'"
-      style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:300;align-items:center;justify-content:center;padding:16px">
-      <div style="background:#fff;border-radius:14px;max-width:400px;width:100%;max-height:88vh;overflow:auto;padding:16px">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
-          <b id="tmpl-det-nome" style="flex:1;font-size:16px;color:#131c20;word-break:break-all"></b>
-          <span onclick="document.getElementById('tmpl-detail-overlay').style.display='none'" style="cursor:pointer;font-size:20px;color:#667781;padding:2px 8px">✕</span>
-        </div>
-        <div id="tmpl-det-meta" style="font-size:12px;color:#667781;margin-bottom:12px"></div>
-        <div id="tmpl-det-tela"></div>
-      </div>
-    </div>`);
-    ov = document.getElementById('tmpl-detail-overlay');
-  }
-  document.getElementById('tmpl-det-nome').textContent = t.name;
-  document.getElementById('tmpl-det-meta').innerHTML = `<span class="tmpl-status ${t.status}">${stTxt}</span> &nbsp;${catLabel} · ${t.language}`;
-  document.getElementById('tmpl-det-tela').innerHTML = `
-    <div style="border-radius:12px;overflow:hidden;border:1px solid #e9edef">
-      <div style="background:#075e54;color:#fff;padding:7px 10px;display:flex;align-items:center;gap:7px;font-size:12px">
-        <span style="font-size:16px;line-height:1">‹</span>
-        <div style="width:22px;height:22px;border-radius:50%;background:#9fb3ba"></div>
-        <span style="font-weight:600">Cliente</span>
-        <span style="margin-left:auto;font-size:13px">📹&nbsp;&nbsp;📞</span>
-      </div>
-      <div style="background:#e5ddd5;padding:12px 10px">
-        <div style="background:#fff;border-radius:8px;border-top-left-radius:2px;padding:7px 9px;font-size:13px;line-height:1.45;color:#131c20;box-shadow:0 1px 1px rgba(0,0,0,.18);word-break:break-word">
-          ${inner}
-          <div style="text-align:right;font-size:10px;color:#667781;margin-top:3px">${hhmm}</div>
-        </div>
-        ${btnsHtml}
-      </div>
-    </div>`;
-  ov.style.display = 'flex';
+
+  _tmplViewMode = true; _tmplViewId = String(t.id);
+  switchTmplTab('create', { view: true });
+  _setTmplFormReadonly(false); // habilita para preencher; trava no fim
+
+  // conta / nome / categoria / idioma
+  const accId = document.getElementById('tmpl-list-account-id')?.value || '';
+  const accSel = document.getElementById('tmpl-account-id'); if (accSel && accId) accSel.value = accId;
+  document.getElementById('tmpl-name').value = t.name;
+  _garanteOpcao(document.getElementById('tmpl-category'), t.category);
+  _garanteOpcao(document.getElementById('tmpl-language'), t.language);
+
+  // cabeçalho
+  const ht = document.getElementById('tmpl-header-type');
+  const fmt = header ? (header.format || 'TEXT') : 'NONE';
+  ht.value = ['TEXT','IMAGE','VIDEO','DOCUMENT'].includes(fmt) ? fmt : 'NONE';
+  onHeaderTypeChange();
+  document.getElementById('tmpl-header-text').value = (header && header.format === 'TEXT') ? (header.text || '') : '';
+  document.getElementById('tmpl-header-media').value = (header && header.example && header.example.header_handle && header.example.header_handle[0]) || '';
+
+  // corpo + exemplos das variáveis
+  document.getElementById('tmpl-body-text').value = body?.text || '';
+  updateVarLabels();
+  const exemplos = (body && body.example && body.example.body_text && body.example.body_text[0]) || [];
+  document.querySelectorAll('#var-labels-list .var-label-row').forEach((row, i) => {
+    const inp = row.querySelector('.var-example'); if (inp) inp.value = exemplos[i] || '';
+  });
+
+  // rodapé
+  document.getElementById('tmpl-footer-text').value = footer?.text || '';
+
+  // botões (mesma linha do formulário, só leitura)
+  const bl = document.getElementById('btn-list'); bl.innerHTML = ''; buttonCount = 0;
+  btns.forEach(b => {
+    buttonCount++;
+    const id = 'btn-view-' + buttonCount;
+    const tipo = b.type === 'URL' ? 'URL' : b.type === 'PHONE_NUMBER' ? 'PHONE_NUMBER' : 'QUICK_REPLY';
+    const val = b.url || b.phone_number || '';
+    const div = document.createElement('div');
+    div.className = 'btn-item'; div.id = id;
+    div.innerHTML = `
+      <select><option value="QUICK_REPLY"${tipo==='QUICK_REPLY'?' selected':''}>Resposta rápida</option><option value="URL"${tipo==='URL'?' selected':''}>URL</option><option value="PHONE_NUMBER"${tipo==='PHONE_NUMBER'?' selected':''}>Telefone</option></select>
+      <input type="text" class="btn-text" value="${escHtml(b.text || '')}"/>
+      <input type="text" class="btn-value" value="${escHtml(val)}" style="display:${tipo==='QUICK_REPLY'?'none':'block'}"/>
+      <button class="btn-remove">×</button>`;
+    bl.appendChild(div);
+  });
+
+  // apelido + status na barra
+  document.getElementById('tmpl-alias-input').value = _tmplAlias[t.id] || '';
+  const bar = document.getElementById('tmpl-view-bar');
+  let st = bar.querySelector('.tmpl-view-status');
+  if (!st) { st = document.createElement('span'); st.className = 'tmpl-view-status'; bar.firstElementChild.insertBefore(st, bar.firstElementChild.children[1]); }
+  st.innerHTML = `<span class="tmpl-status ${t.status}">${stTxt}</span>`;
+
+  _setTmplFormReadonly(true);
+  updateTemplatePreview();
+  const tb = document.querySelector('#templates-modal .tmpl-body'); if (tb) tb.scrollTop = 0;
 }
 
 async function deleteTemplate(templateName, templateId, accountId) {
@@ -7954,6 +8049,7 @@ async function loadApprovedTemplates() {
   const el = document.getElementById('tmpl-select-list');
   el.innerHTML = '<p style="color:#667781;font-size:13px">⏳ Carregando...</p>';
   try {
+    await carregarApelidosModelos();
     const res = await fetch(SERVER_URL + '/templates?account_id=' + currentAccountId);
     const templates = await res.json();
     const approved = templates.filter(t => t.status === 'APPROVED');
@@ -7964,8 +8060,8 @@ async function loadApprovedTemplates() {
     el.innerHTML = approved.map(t => {
       const body = t.components?.find(c => c.type === 'BODY');
       return `<div class="tmpl-select-item" onclick="selectTemplate(this,'${t.id}','${t.name}','${t.language}',${JSON.stringify(t.components).replace(/"/g,'&quot;')})">
-        <div class="tmpl-select-name">${t.name}</div>
-        <div class="tmpl-select-lang">${t.language} · ${t.category}</div>
+        <div class="tmpl-select-name">${escHtml(tmplNome(t))}</div>
+        <div class="tmpl-select-lang">${_tmplAlias[t.id] ? escHtml(t.name) + ' · ' : ''}${t.language} · ${t.category}</div>
         ${body ? `<div class="tmpl-select-preview">${body.text}</div>` : ''}
       </div>`;
     }).join('');
@@ -10539,6 +10635,7 @@ async function loadBotTmplOptions(node){
       apiAccs = chos.filter(a=>a.type!=='evolution');
     }
     if(!apiAccs.length){ sel.innerHTML='<option value="">Nenhuma conta da API disponível</option>'; return; }
+    await carregarApelidosModelos();
     const results = await Promise.all(apiAccs.map(async a=>{
       try{
         const list = await (await fetch(SERVER_URL+'/templates?account_id='+a.id)).json();
@@ -10564,7 +10661,7 @@ async function loadBotTmplOptions(node){
       const { t, accounts } = merged[key];
       const selAttr = (node.config.template_name===t.name && (node.config.language||'pt_BR')===t.language) ? 'selected' : '';
       const nums = accounts.length>1 ? ` · ${accounts.length} números` : ` · ${accounts[0]}`;
-      return `<option value="${escHtml(key)}" ${selAttr}>${escHtml(t.name)} (${t.language})${escHtml(nums)}</option>`;
+      return `<option value="${escHtml(key)}" ${selAttr}>${escHtml(tmplNome(t))} (${t.language})${escHtml(nums)}</option>`;
     }).join('');
     // Auto-detecta os botões do modelo já configurado (sem precisar re-escolher)
     if(node.config.template_name){
