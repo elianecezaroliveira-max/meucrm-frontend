@@ -1551,7 +1551,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v239</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v245</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -2103,7 +2103,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v239</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v245</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2157,7 +2157,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 239;
+const APP_VER = 245;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5116,6 +5116,18 @@ function toggleAttachMenu(ev) {
 }
 function closeAttachMenu() { const m = document.getElementById('attach-menu'); if (m) m.style.display = 'none'; }
 document.addEventListener('click', e => { if (!e.target.closest('#attach-menu') && !e.target.closest('#attach-btn')) closeAttachMenu(); });
+// 🛡️ Janelas não fecham por "arrastão": ao selecionar um texto dentro de uma
+// janela e soltar o mouse fora dela (no fundo escuro), o navegador dispara um
+// "click" no fundo — e a janela fechava. Só conta como clique no fundo se o
+// mouse foi PRESSIONADO e SOLTO no fundo.
+let _mouseDownAlvo = null;
+document.addEventListener('mousedown', e => { _mouseDownAlvo = e.target; }, true);
+document.addEventListener('click', e => {
+  const t = e.target;
+  if (!t || t === _mouseDownAlvo || !_mouseDownAlvo) return;
+  const ehFundo = (t.id && /-overlay$/.test(t.id)) || /event\.target\s*===\s*this/.test(t.getAttribute && (t.getAttribute('onclick') || ''));
+  if (ehFundo && t.contains(_mouseDownAlvo)) { e.stopImmediatePropagation(); e.preventDefault(); }
+}, true);
 function _parseLatLng(txt) {
   if (!txt) return null;
   const m = txt.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) || txt.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/) || txt.match(/^\s*(-?\d+[.,]\d+)\s*,\s*(-?\d+[.,]\d+)\s*$/);
@@ -8581,7 +8593,7 @@ function dripRender() {
       st = `<span style="color:#b45309">◔ Aguardando o horário</span> · fora da janela agora (${_dripAgora || 'agora'} Brasília) — roda ${dias}${r.hora_ini ? ' a partir das ' + r.hora_ini : ''}${r.hora_fim ? ' até ' + r.hora_fim : ''}${l.phone ? ' · último: ' + escHtml(l.name || l.phone) : ''}`;
     } else if (r.ativo) {
       const nx = r.next_at ? new Date(r.next_at) : null;
-      st = `<span style="color:#00806a">● ${r.manual ? 'Rodando agora (manual)' : 'Ativa'}</span> · ${l.phone ? 'último: ' + escHtml(l.name || l.phone) + ' às ' + new Date(l.quando).toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}) + ' · ' : ''}${nx && nx > new Date() ? 'próximo ' + nx.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}) : (rest === 0 ? 'fila vazia' : 'próximo em instantes')}${l.erro ? ' · <span style="color:#ef4444">' + escHtml(l.erro) + '</span>' : ''}`;
+      st = `<span style="color:#00806a">● ${r.manual ? 'Rodando agora (manual)' : 'Ativa'}</span> · ${l.phone ? 'último: ' + escHtml(l.name || l.phone) + ' às ' + new Date(l.quando).toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit',second:'2-digit'}) + ' · ' : ''}${nx && nx > new Date() ? 'próximo ' + nx.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit',second:'2-digit'}) : (rest === 0 ? 'fila vazia' : 'próximo em instantes')}${l.erro ? ' · <span style="color:#ef4444">' + escHtml(l.erro) + '</span>' : ''}`;
     } else st = feitos ? `<span style="color:#8696a0">○ Pausada</span>${l.phone ? ' · parou depois de ' + escHtml(l.name || l.phone) : ''}` : '<span style="color:#8696a0">○ Parada</span>';
     return `<div style="background:#f7f8fa;border:1px solid #e9edef;border-radius:8px;padding:7px 10px;margin-bottom:6px;font-size:12.5px">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -8590,8 +8602,8 @@ function dripRender() {
         <b style="color:#131c20">${escHtml(r.nome || 'Regra ' + (i + 1))}</b>
         <span style="color:#54656f">${escHtml(stName[r.de] || '?')} → <b>${escHtml(stName[r.para] || '?')}</b> · 1 lead a cada ${Math.round(r.min_seg / 60 * 10) / 10}–${Math.round(r.max_seg / 60 * 10) / 10} min${r.dias && r.dias.length && r.dias.length < 7 ? ' · ' + r.dias.map(d => ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d]).join(', ') : ''}${r.hora_ini || r.hora_fim ? ' · ' + (r.hora_ini || '00:00') + '–' + (r.hora_fim || 'até esvaziar') : ''}</span>
         <span style="flex:1;color:#667781;font-size:11.5px">${st}</span>
-        <button onclick="dripEditar(${i})" title="Editar" style="background:none;border:none;cursor:pointer;font-size:14px">✏️</button>
-        <button onclick="dripRemover(${i})" title="Remover" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:14px">✕</button>
+        <button onclick="dripEditar(${i})" title="Editar" style="background:#fff;border:1px solid #e9edef;border-radius:8px;padding:5px 9px;cursor:pointer;font-size:13px;margin-left:6px">✏️</button>
+        <button onclick="dripRemover(${i})" title="Remover" style="background:#fff;border:1px solid #f1b0a7;border-radius:8px;padding:5px 9px;color:#ef4444;cursor:pointer;font-size:13px;margin-left:8px">✕</button>
       </div>
       <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
         <div style="flex:1;height:8px;background:#e9edef;border-radius:6px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${r.ativo ? '#00a884' : '#b0bec5'};border-radius:6px;transition:width .5s"></div></div>
@@ -8601,7 +8613,15 @@ function dripRender() {
   }).join('');
 }
 // Atualiza a lista sozinha enquanto o painel de automação estiver aberto
-setInterval(() => { const ov = document.getElementById('auto-overlay'); if (ov && ov.style.display !== 'none' && !document.getElementById('drip-edit-overlay')) dripCarregar(); }, 10000);
+// (a cada 2 s se alguma regra estiver rodando, senão a cada 10 s — assim o contador anda de 1 em 1)
+let _dripRefreshN = 0;
+setInterval(() => {
+  const ov = document.getElementById('auto-overlay');
+  if (!ov || ov.style.display === 'none' || document.getElementById('drip-edit-overlay')) return;
+  _dripRefreshN++;
+  const rodando = (_dripRegras || []).some(r => r.ativo && _dripJanela[r.id] !== false);
+  if (rodando || _dripRefreshN % 5 === 0) dripCarregar();
+}, 2000);
 // ⏹ Parar = encerra o disparo atual: desliga, sai do modo manual e zera o progresso (nenhum lead volta)
 function dripParar(i) { const r = _dripRegras[i]; if (!r) return; if (!confirm(`Parar o gotejamento "${r.nome || 'Regra ' + (i + 1)}"?\n\nEle desliga e o progresso é zerado (os leads já movidos ficam onde estão). Para continuar depois de onde parou, use Pausar.`)) return; r.ativo = false; r.manual = false; r.movidos = 0; r.zerar_movidos = true; dripSalvar(); }
 async function dripSalvar() {
@@ -8636,15 +8656,14 @@ function dripEditar(i) {
         <div class="tmpl-form-group"><label>Intervalo máximo (seg)</label><input id="drip-max" type="number" min="1" value="${r.max_seg || 300}"></div>
       </div>
       <div class="tmpl-form-group"><label>Dias da semana</label>
-        <div style="display:flex;gap:4px;flex-wrap:wrap">${['D','S','T','Q','Q','S','S'].map((d, k) => `<label title="${['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'][k]}" style="display:flex;align-items:center;gap:3px;background:#f0f2f5;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer"><input type="checkbox" class="drip-dia" value="${k}" ${(!r.dias || !r.dias.length || r.dias.includes(k)) ? 'checked' : ''}>${['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][k]}</label>`).join('')}</div>
+        <div style="display:flex;gap:3px;flex-wrap:nowrap">${['D','S','T','Q','Q','S','S'].map((d, k) => `<label title="${['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'][k]}" style="display:flex;align-items:center;gap:2px;background:#f0f2f5;border-radius:6px;padding:5px 5px;font-size:11.5px;cursor:pointer;flex:1;justify-content:center;white-space:nowrap"><input type="checkbox" class="drip-dia" value="${k}" ${(!r.dias || !r.dias.length || r.dias.includes(k)) ? 'checked' : ''}>${['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][k]}</label>`).join('')}</div>
       </div>
       <div class="tmpl-row">
         <div class="tmpl-form-group"><label>Começa às</label><input id="drip-hi" type="time" value="${escHtml(r.hora_ini || '')}"></div>
         <div class="tmpl-form-group"><label>Para às</label><input id="drip-hf" type="time" value="${escHtml(r.hora_fim || '')}"></div>
       </div>
       <p class="tmpl-hint" style="margin:-6px 0 10px">"Para às" vazio = segue até esvaziar a fila.</p>
-      <label style="font-size:13px;color:#131c20;display:flex;gap:6px;align-items:center;margin:4px 0 12px"><input type="checkbox" id="drip-ativo" ${r.ativo ? 'checked' : ''}> Ativa (segue os dias e horários acima)</label>
-      <p class="tmpl-hint" style="margin:0 0 12px">A cada intervalo, UM lead da fila vai para a etapa de destino — e as automações dessa etapa (bots) disparam para ele. Dias/horários valem para o início automático; o botão <b>▶ Iniciar/Retomar</b> na lista começa na hora, ignorando o horário. Horário de Brasília.</p>
+      <div style="height:6px"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn-cancel" onclick="document.getElementById('drip-edit-overlay').remove()">Cancelar</button><button class="btn-save" onclick="dripConfirmar(${i})">Salvar</button></div>
     </div></div>`);
 }
@@ -8654,7 +8673,7 @@ function dripConfirmar(i) {
   if (de === para) return alert('Origem e destino não podem ser a mesma etapa.');
   const mn = parseInt(document.getElementById('drip-min').value, 10) || 210, mx = parseInt(document.getElementById('drip-max').value, 10) || 300;
   const r = { id: (i >= 0 && _dripRegras[i]) ? _dripRegras[i].id : undefined, nome: document.getElementById('drip-nome').value.trim(), de, para,
-    min_seg: Math.min(mn, mx), max_seg: Math.max(mn, mx), ativo: document.getElementById('drip-ativo').checked,
+    min_seg: Math.min(mn, mx), max_seg: Math.max(mn, mx), ativo: (i >= 0 && _dripRegras[i]) ? !!_dripRegras[i].ativo : false,
     hora_ini: document.getElementById('drip-hi').value, hora_fim: document.getElementById('drip-hf').value,
     dias: (() => { const d = Array.from(document.querySelectorAll('.drip-dia:checked')).map(x => parseInt(x.value, 10)); return d.length === 7 ? [] : d; })() };
   if (!r.dias.length && !document.querySelectorAll('.drip-dia:checked').length) return alert('Marque ao menos um dia da semana.');
@@ -10452,6 +10471,15 @@ function computeBotLayout(){
         const y=cursorY; cursorY+=BOT_NH+BOT_VG;
         loops.push({x:x+w+BOT_HG, y, fromId:id, label:slot.label, display:slot.display});
         centers.push(y+BOT_NH/2);
+      } else if(edge && pos[edge.to_node_id]){
+        // Nó COMPARTILHADO (várias saídas/caminhos chegam nele): já foi colocado
+        // pelo primeiro caminho — não coloca de novo (antes ele era "arrastado"
+        // para o último caminho e ficava torto, com linhas cruzando tudo).
+        // Só empurra para a direita se este caminho estiver mais fundo.
+        const pj=pos[edge.to_node_id];
+        const xNovo=x+w+BOT_HG;
+        if(xNovo>pj.x) _deslocaSubarvore(edge.to_node_id, xNovo-pj.x, new Set());
+        centers.push(pj.y+_bnH(edge.to_node_id)/2);
       } else if(edge){
         const c=place(edge.to_node_id, x+w+BOT_HG, v2);
         if(c!=null) centers.push(c);
@@ -10469,6 +10497,15 @@ function computeBotLayout(){
     pos[id]={x,y,node};
     cursorY=Math.max(cursorY, y+h+BOT_VG); // reserva TODA a altura deste nó
     return y+h/2;
+  }
+  // Empurra um nó (e tudo que vem depois dele) para a direita
+  function _deslocaSubarvore(id, dx, seen){
+    if(seen.has(id) || !pos[id]) return; seen.add(id);
+    pos[id].x+=dx;
+    const node=botNodes.find(n=>n.id===id); if(!node) return;
+    botOutSlots(node).forEach(slot=>{ const e=botChildEdge(id, slot.label); if(e) _deslocaSubarvore(e.to_node_id, dx, seen); });
+    adds.forEach(a=>{ if(a.fromId===id) a.x+=dx; });
+    loops.forEach(l=>{ if(l.fromId===id) l.x+=dx; });
   }
   const start=botNodes.find(n=>n.type==='start');
   if(start) place(start.id,0,new Set());
