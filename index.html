@@ -1551,7 +1551,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v245</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v247</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1765,9 +1765,11 @@ window.addEventListener('load', initAuth);
     </div>
 
     <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
-      <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">🆔 IDs das etapas (automações)</div>
-      <p style="font-size:12px;color:#667781;margin:0 0 8px">Use estes números nas planilhas/fluxos do n8n. Toque no ID para copiar; no ✏️ para trocar.</p>
-      <div id="cfg-stage-ids" style="font-size:13px;color:#54656f">Carregando...</div>
+      <div onclick="const b=document.getElementById('cfg-stage-ids-wrap');const ab=b.style.display!=='none';b.style.display=ab?'none':'block';document.getElementById('cfg-stage-ids-arrow').textContent=ab?'▸':'▾'" style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px;cursor:pointer;display:flex;align-items:center;gap:6px;user-select:none"><span id="cfg-stage-ids-arrow" style="font-size:12px;color:#667781">▸</span>🆔 IDs das etapas (automações)</div>
+      <div id="cfg-stage-ids-wrap" style="display:none">
+        <p style="font-size:12px;color:#667781;margin:0 0 8px">Use estes números nas planilhas/fluxos do n8n. Toque no ID para copiar; no ✏️ para trocar.</p>
+        <div id="cfg-stage-ids" style="font-size:13px;color:#54656f">Carregando...</div>
+      </div>
     </div>
 
     <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
@@ -2103,7 +2105,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v245</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v247</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2157,7 +2159,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 245;
+const APP_VER = 247;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -8587,18 +8589,24 @@ function dripRender() {
     const rest = _dripCont[r.de];
     const feitos = r.movidos || 0, total = (rest === undefined ? 0 : rest) + feitos;
     const pct = total ? Math.round(feitos / total * 100) : 0;
+    const naJanela = _dripJanela[r.id] !== false;
+    const rodando = !!r.manual || (!!r.agendado && naJanela);
+    const hh = d => new Date(d).toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    const nx = r.next_at ? new Date(r.next_at) : null;
+    const dias = (r.dias && r.dias.length && r.dias.length < 7) ? r.dias.map(d => ['dom','seg','ter','qua','qui','sex','sáb'][d]).join('/') : 'todo dia';
     let st = '';
-    if (r.ativo && _dripJanela[r.id] === false) {
-      const dias = (r.dias && r.dias.length && r.dias.length < 7) ? r.dias.map(d => ['dom','seg','ter','qua','qui','sex','sáb'][d]).join('/') : 'todo dia';
-      st = `<span style="color:#b45309">◔ Aguardando o horário</span> · fora da janela agora (${_dripAgora || 'agora'} Brasília) — roda ${dias}${r.hora_ini ? ' a partir das ' + r.hora_ini : ''}${r.hora_fim ? ' até ' + r.hora_fim : ''}${l.phone ? ' · último: ' + escHtml(l.name || l.phone) : ''}`;
-    } else if (r.ativo) {
-      const nx = r.next_at ? new Date(r.next_at) : null;
-      st = `<span style="color:#00806a">● ${r.manual ? 'Rodando agora (manual)' : 'Ativa'}</span> · ${l.phone ? 'último: ' + escHtml(l.name || l.phone) + ' às ' + new Date(l.quando).toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit',second:'2-digit'}) + ' · ' : ''}${nx && nx > new Date() ? 'próximo ' + nx.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit',second:'2-digit'}) : (rest === 0 ? 'fila vazia' : 'próximo em instantes')}${l.erro ? ' · <span style="color:#ef4444">' + escHtml(l.erro) + '</span>' : ''}`;
-    } else st = feitos ? `<span style="color:#8696a0">○ Pausada</span>${l.phone ? ' · parou depois de ' + escHtml(l.name || l.phone) : ''}` : '<span style="color:#8696a0">○ Parada</span>';
+    if (r.manual) st = `<span style="color:#00806a">● Rodando agora (manual)</span>`;
+    else if (r.agendado && naJanela) st = `<span style="color:#00806a">● Rodando (automático)</span>`;
+    else if (r.agendado) st = `<span style="color:#b45309">◔ Automático — aguardando o horário</span> · agora ${_dripAgora || ''} Brasília · roda ${dias}${r.hora_ini ? ' a partir das ' + r.hora_ini : ''}${r.hora_fim ? ' até ' + r.hora_fim : ''}`;
+    else st = feitos ? `<span style="color:#8696a0">○ Pausada</span>` : '<span style="color:#8696a0">○ Parada</span>';
+    if (rodando) st += ` · ${l.phone ? 'último: ' + escHtml(l.name || l.phone) + ' às ' + hh(l.quando) + ' · ' : ''}${nx && nx > new Date() ? 'próximo ' + hh(nx) : (rest === 0 ? 'fila vazia' : 'próximo em instantes')}`;
+    else if (l.phone) st += ` · parou depois de ${escHtml(l.name || l.phone)}`;
+    if (l.erro) st += ` · <span style="color:#ef4444">${escHtml(l.erro)}</span>`;
     return `<div style="background:#f7f8fa;border:1px solid #e9edef;border-radius:8px;padding:7px 10px;margin-bottom:6px;font-size:12.5px">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <button onclick="dripToggle(${i}, ${r.ativo ? 'false' : 'true'})" title="${r.ativo ? 'Pausar (o progresso fica guardado; Retomar continua de onde parou)' : (feitos ? 'Retomar de onde parou' : 'Iniciar agora')}" style="background:${r.ativo ? '#fff' : '#00a884'};color:${r.ativo ? '#b45309' : '#fff'};border:1px solid ${r.ativo ? '#f0c27a' : '#00a884'};border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">${r.ativo ? '⏸ Pausar' : (feitos ? '▶ Retomar' : '▶ Iniciar')}</button>
-        ${(r.ativo || feitos) ? `<button onclick="dripParar(${i})" title="Parar: encerra este disparo e zera o progresso (nenhum lead volta)" style="background:#fff;color:#c0392b;border:1px solid #f1b0a7;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">⏹ Parar</button>` : ''}
+        <button onclick="dripToggle(${i}, ${r.manual ? 'false' : 'true'})" title="${r.manual ? 'Pausar (o progresso fica guardado; Retomar continua de onde parou)' : (feitos ? 'Retomar agora, de onde parou (ignora dia/horário)' : 'Iniciar agora (ignora dia/horário)')}" style="background:${r.manual ? '#fff' : '#00a884'};color:${r.manual ? '#b45309' : '#fff'};border:1px solid ${r.manual ? '#f0c27a' : '#00a884'};border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">${r.manual ? '⏸ Pausar' : (feitos ? '▶ Retomar' : '▶ Iniciar')}</button>
+        ${(r.manual || feitos) ? `<button onclick="dripParar(${i})" title="Parar: encerra o disparo manual e zera o progresso (nenhum lead volta)" style="background:#fff;color:#c0392b;border:1px solid #f1b0a7;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">⏹ Parar</button>` : ''}
+        <button onclick="dripAuto(${i}, ${r.agendado ? 'false' : 'true'})" title="${r.agendado ? 'Desligar o disparo automático (dias/horários)' : 'Ligar o disparo automático nos dias/horários da regra'}" style="background:${r.agendado ? '#e7f7ef' : '#fff'};color:${r.agendado ? '#00806a' : '#667781'};border:1px solid ${r.agendado ? '#00a884' : '#d1d7db'};border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">🕐 Automático: ${r.agendado ? 'ligado' : 'desligado'}</button>
         <b style="color:#131c20">${escHtml(r.nome || 'Regra ' + (i + 1))}</b>
         <span style="color:#54656f">${escHtml(stName[r.de] || '?')} → <b>${escHtml(stName[r.para] || '?')}</b> · 1 lead a cada ${Math.round(r.min_seg / 60 * 10) / 10}–${Math.round(r.max_seg / 60 * 10) / 10} min${r.dias && r.dias.length && r.dias.length < 7 ? ' · ' + r.dias.map(d => ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d]).join(', ') : ''}${r.hora_ini || r.hora_fim ? ' · ' + (r.hora_ini || '00:00') + '–' + (r.hora_fim || 'até esvaziar') : ''}</span>
         <span style="flex:1;color:#667781;font-size:11.5px">${st}</span>
@@ -8606,7 +8614,7 @@ function dripRender() {
         <button onclick="dripRemover(${i})" title="Remover" style="background:#fff;border:1px solid #f1b0a7;border-radius:8px;padding:5px 9px;color:#ef4444;cursor:pointer;font-size:13px;margin-left:8px">✕</button>
       </div>
       <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
-        <div style="flex:1;height:8px;background:#e9edef;border-radius:6px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${r.ativo ? '#00a884' : '#b0bec5'};border-radius:6px;transition:width .5s"></div></div>
+        <div style="flex:1;height:8px;background:#e9edef;border-radius:6px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${rodando ? '#00a884' : '#b0bec5'};border-radius:6px;transition:width .5s"></div></div>
         <span style="font-size:11.5px;color:#54656f;white-space:nowrap"><b>${feitos}</b> movidos · <b>${rest === undefined ? '?' : rest}</b> na fila${total ? ' · ' + pct + '%' : ''}</span>
       </div>
     </div>`;
@@ -8619,11 +8627,13 @@ setInterval(() => {
   const ov = document.getElementById('auto-overlay');
   if (!ov || ov.style.display === 'none' || document.getElementById('drip-edit-overlay')) return;
   _dripRefreshN++;
-  const rodando = (_dripRegras || []).some(r => r.ativo && _dripJanela[r.id] !== false);
+  const rodando = (_dripRegras || []).some(r => r.manual || (r.agendado && _dripJanela[r.id] !== false));
   if (rodando || _dripRefreshN % 5 === 0) dripCarregar();
 }, 2000);
 // ⏹ Parar = encerra o disparo atual: desliga, sai do modo manual e zera o progresso (nenhum lead volta)
-function dripParar(i) { const r = _dripRegras[i]; if (!r) return; if (!confirm(`Parar o gotejamento "${r.nome || 'Regra ' + (i + 1)}"?\n\nEle desliga e o progresso é zerado (os leads já movidos ficam onde estão). Para continuar depois de onde parou, use Pausar.`)) return; r.ativo = false; r.manual = false; r.movidos = 0; r.zerar_movidos = true; dripSalvar(); }
+function dripParar(i) { const r = _dripRegras[i]; if (!r) return; if (!confirm(`Parar o gotejamento "${r.nome || 'Regra ' + (i + 1)}"?\n\nO disparo manual encerra e o progresso é zerado (os leads já movidos ficam onde estão). Para continuar depois de onde parou, use Pausar.`)) return; r.manual = false; r.movidos = 0; r.zerar_movidos = true; dripSalvar(); }
+// 🕐 Liga/desliga o disparo AUTOMÁTICO (dias e horários da regra)
+function dripAuto(i, on) { if (_dripRegras[i]) { _dripRegras[i].agendado = !!on; dripSalvar(); } }
 async function dripSalvar() {
   try {
     const r = await fetch(SERVER_URL + '/drip', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ regras: _dripRegras }) });
@@ -8634,7 +8644,7 @@ async function dripSalvar() {
   dripCarregar();
 }
 // ▶ à mão = começa AGORA, ignorando dia/horário (o agendamento continua valendo para as próximas vezes)
-function dripToggle(i, on) { if (_dripRegras[i]) { _dripRegras[i].ativo = on; _dripRegras[i].manual = !!on; dripSalvar(); } }
+function dripToggle(i, on) { if (_dripRegras[i]) { _dripRegras[i].manual = !!on; dripSalvar(); } }
 function dripRemover(i) { const r = _dripRegras[i]; if (!r) return; if (!confirm(`Remover a regra "${r.nome || 'Regra ' + (i + 1)}"?`)) return; _dripRegras.splice(i, 1); dripSalvar(); }
 function dripNovaRegra() { dripEditar(-1); }
 function dripEditar(i) {
@@ -8673,12 +8683,11 @@ function dripConfirmar(i) {
   if (de === para) return alert('Origem e destino não podem ser a mesma etapa.');
   const mn = parseInt(document.getElementById('drip-min').value, 10) || 210, mx = parseInt(document.getElementById('drip-max').value, 10) || 300;
   const r = { id: (i >= 0 && _dripRegras[i]) ? _dripRegras[i].id : undefined, nome: document.getElementById('drip-nome').value.trim(), de, para,
-    min_seg: Math.min(mn, mx), max_seg: Math.max(mn, mx), ativo: (i >= 0 && _dripRegras[i]) ? !!_dripRegras[i].ativo : false,
+    min_seg: Math.min(mn, mx), max_seg: Math.max(mn, mx),
     hora_ini: document.getElementById('drip-hi').value, hora_fim: document.getElementById('drip-hf').value,
     dias: (() => { const d = Array.from(document.querySelectorAll('.drip-dia:checked')).map(x => parseInt(x.value, 10)); return d.length === 7 ? [] : d; })() };
   if (!r.dias.length && !document.querySelectorAll('.drip-dia:checked').length) return alert('Marque ao menos um dia da semana.');
-  r.manual = false; // editar recoloca a regra no modo agendado
-  if (i >= 0) _dripRegras[i] = Object.assign({}, _dripRegras[i], r); else _dripRegras.push(r);
+  if (i >= 0) _dripRegras[i] = Object.assign({}, _dripRegras[i], r); else _dripRegras.push(Object.assign({ manual: false, agendado: false }, r));
   document.getElementById('drip-edit-overlay').remove();
   dripSalvar();
 }
