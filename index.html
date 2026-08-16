@@ -1551,7 +1551,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v227</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v228</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1779,10 +1779,13 @@ window.addEventListener('load', initAuth);
         <input id="cfg-sheets-aba" placeholder="Nome da aba (ex.: DISPARO)" style="background:#f0f2f5;border:1px solid #e9edef;border-radius:6px;padding:8px 10px;font-size:12px;color:#131c20;min-width:0">
         <label style="font-size:12px;color:#131c20;display:flex;gap:6px;align-items:center"><input type="checkbox" id="cfg-sheets-auto"> Sincronizar sozinho a cada hora</label>
         <label style="font-size:12px;color:#131c20;display:flex;gap:6px;align-items:center"><input type="checkbox" id="cfg-sheets-upd"> Atualizar a etapa de leads que já existem <span style="color:#667781">(desligado = só entra lead novo; quem já está no pipeline não volta de etapa)</span></label>
+        <label style="font-size:12px;color:#131c20;display:flex;gap:6px;align-items:center;flex-wrap:wrap">⏳ Ao entrarem leads novos, ligar o gotejamento:
+          <select id="cfg-sheets-drip" style="background:#f0f2f5;border:1px solid #e9edef;border-radius:6px;padding:5px 8px;font-size:12px;color:#131c20"><option value="">— não ligar nada —</option></select>
+        </label>
       </div>
       <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
         <button class="pf-topbtn" onclick="salvarSheetsCfg()">💾 Salvar</button>
-        <button class="pf-topbtn" id="btn-sheets-sync" onclick="sincronizarSheets()">🔄 Sincronizar agora</button>
+        <button class="pf-topbtn" id="btn-sheets-sync" onclick="preverSheets()">👀 Prévia e importar</button>
       </div>
       <div id="cfg-sheets-status" style="font-size:12px;color:#54656f;margin-top:6px;min-height:14px"></div>
     </div>
@@ -2103,7 +2106,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v227</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v228</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2157,7 +2160,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 227;
+const APP_VER = 228;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -7270,6 +7273,8 @@ async function carregarSheetsStatus() {
     document.getElementById('cfg-sheets-aba').value = d.sheet_name || 'DISPARO';
     document.getElementById('cfg-sheets-auto').checked = !!d.auto;
     document.getElementById('cfg-sheets-upd').checked = !!d.atualizar_etapa;
+    const ds = document.getElementById('cfg-sheets-drip');
+    if (ds) ds.innerHTML = '<option value="">— não ligar nada —</option>' + (d.regras_drip || []).map(r => `<option value="${escHtml(r.id)}" ${r.id === d.drip_rule_id ? 'selected' : ''}>${escHtml(r.nome || r.id)}${r.ativo ? ' (já ativa)' : ''}</option>`).join('');
     if (st) st.textContent = _sheetsLastTxt(d.last);
   } catch (_) { robo.textContent = 'Não consegui carregar o status.'; }
 }
@@ -7277,26 +7282,72 @@ async function salvarSheetsCfg() {
   const st = document.getElementById('cfg-sheets-status');
   try {
     const body = { spreadsheet: document.getElementById('cfg-sheets-url').value.trim(), sheet_name: document.getElementById('cfg-sheets-aba').value.trim() || 'DISPARO',
-      auto: document.getElementById('cfg-sheets-auto').checked, atualizar_etapa: document.getElementById('cfg-sheets-upd').checked };
+      auto: document.getElementById('cfg-sheets-auto').checked, atualizar_etapa: document.getElementById('cfg-sheets-upd').checked,
+      drip_rule_id: (document.getElementById('cfg-sheets-drip') || {}).value || '' };
     const r = await fetch(SERVER_URL + '/sheets/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     const j = await r.json();
     if (!r.ok) throw new Error(j.error || 'falha');
     if (st) st.textContent = '✅ Configuração salva.';
   } catch (e) { if (st) st.textContent = '❌ ' + (e.message || e); }
 }
-async function sincronizarSheets() {
+// 👀 Prévia da planilha antes de importar (nada é gravado até você confirmar)
+async function preverSheets() {
   const st = document.getElementById('cfg-sheets-status'), b = document.getElementById('btn-sheets-sync');
   await salvarSheetsCfg();
-  if (b) { b.disabled = true; b.textContent = '⏳ Sincronizando…'; }
+  if (b) { b.disabled = true; b.textContent = '⏳ Lendo a planilha…'; }
+  try {
+    const r = await fetch(SERVER_URL + '/sheets/preview');
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || 'falha');
+    const cor = { novo: '#00a884', existe: '#8696a0', invalido: '#ef4444', repetido: '#b45309' };
+    const rot = { novo: 'Novo', existe: 'Já existe', invalido: 'Telefone inválido', repetido: 'Repetido na planilha' };
+    const linhas = (j.itens || []).map(it => `<tr style="border-bottom:1px solid #f0f2f5">
+        <td style="padding:5px 6px;color:#8696a0;font-size:11px">${it.linha}</td>
+        <td style="padding:5px 6px">${escHtml(it.name)}</td>
+        <td style="padding:5px 6px;font-family:monospace;font-size:12px">${escHtml(it.phone)}</td>
+        <td style="padding:5px 6px">${escHtml(it.etapa)}${it.situacao === 'existe' && it.etapa_atual ? `<div style="font-size:10.5px;color:#8696a0">hoje em: ${escHtml(it.etapa_atual)}${j.atualizar_etapa ? ' → vai mudar' : ' (não muda)'}</div>` : ''}</td>
+        <td style="padding:5px 6px;color:${cor[it.situacao] || '#131c20'};font-weight:600;white-space:nowrap">${rot[it.situacao] || it.situacao}</td>
+      </tr>`).join('');
+    const old = document.getElementById('sheets-prev-overlay'); if (old) old.remove();
+    document.body.insertAdjacentHTML('beforeend', `<div id="sheets-prev-overlay" onclick="if(event.target===this)this.remove()" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9700;display:flex;align-items:center;justify-content:center;padding:14px">
+      <div style="background:#fff;border-radius:12px;max-width:760px;width:100%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 12px 40px rgba(0,0,0,.35)">
+        <div style="display:flex;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid #e9edef">
+          <b style="flex:1;font-size:15px;color:#131c20">👀 Prévia da importação</b>
+          <span onclick="document.getElementById('sheets-prev-overlay').remove()" style="cursor:pointer;font-size:20px;color:#667781">✕</span>
+        </div>
+        <div style="padding:10px 16px;font-size:13px;color:#131c20;background:#f7f8fa;border-bottom:1px solid #e9edef">
+          <b>${j.total}</b> linha(s) na planilha · <span style="color:#00a884;font-weight:700">${j.novos} novos</span> · <span style="color:#8696a0">${j.ja_existem} já existem${j.atualizar_etapa ? ' (terão a etapa atualizada)' : ' (não serão mexidos)'}</span>${j.invalidos ? ` · <span style="color:#ef4444">${j.invalidos} telefone(s) inválido(s)</span>` : ''}${j.sem_etapa ? ` · <span style="color:#b45309">${j.sem_etapa} com ID de etapa não encontrado (entram sem etapa)</span>` : ''}${j.truncado ? ' · mostrando as primeiras 500' : ''}
+        </div>
+        <div style="overflow:auto;flex:1">
+          <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+            <thead><tr style="background:#f0f2f5;position:sticky;top:0"><th style="text-align:left;padding:6px;font-size:11px;color:#667781">#</th><th style="text-align:left;padding:6px;font-size:11px;color:#667781">Nome</th><th style="text-align:left;padding:6px;font-size:11px;color:#667781">Telefone</th><th style="text-align:left;padding:6px;font-size:11px;color:#667781">Etapa (pelo ID)</th><th style="text-align:left;padding:6px;font-size:11px;color:#667781">Situação</th></tr></thead>
+            <tbody>${linhas || '<tr><td colspan="5" style="padding:14px;color:#667781">A planilha está vazia.</td></tr>'}</tbody>
+          </table>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;padding:12px 16px;border-top:1px solid #e9edef">
+          <button class="btn-cancel" onclick="document.getElementById('sheets-prev-overlay').remove()">Cancelar</button>
+          <button class="btn-save" id="btn-sheets-confirm" onclick="sincronizarSheets(true)" ${(j.novos + (j.atualizar_etapa ? j.ja_existem : 0)) ? '' : 'disabled'}>✅ Confirmar e importar ${j.novos ? j.novos + ' novo(s)' : ''}</button>
+        </div>
+      </div></div>`);
+    if (st) st.textContent = '';
+  } catch (e) { if (st) st.textContent = '❌ ' + (e.message || e); }
+  finally { if (b) { b.disabled = false; b.textContent = '👀 Prévia e importar'; } }
+}
+async function sincronizarSheets(confirmado) {
+  const st = document.getElementById('cfg-sheets-status'), b = document.getElementById('btn-sheets-sync');
+  if (!confirmado) return preverSheets();
+  const bc = document.getElementById('btn-sheets-confirm'); if (bc) { bc.disabled = true; bc.textContent = '⏳ Importando…'; }
+  if (b) { b.disabled = true; b.textContent = '⏳ Importando…'; }
   if (st) st.textContent = '⏳ Lendo a planilha…';
   try {
     const r = await fetch(SERVER_URL + '/sheets/sync', { method: 'POST' });
     const j = await r.json();
     if (!r.ok || !j.ok) throw new Error(j.erro || j.error || 'falha');
-    if (st) st.textContent = _sheetsLastTxt(j);
+    if (st) st.textContent = _sheetsLastTxt(j) + (j.gotejamento_ativado ? ' ⏳ Gotejamento "' + j.gotejamento_ativado + '" ligado.' : '');
+    const ov = document.getElementById('sheets-prev-overlay'); if (ov) ov.remove();
     try { if (typeof loadPipelineData === 'function') loadPipelineData(); } catch (_) {}
-  } catch (e) { if (st) st.textContent = '❌ ' + (e.message || e); }
-  finally { if (b) { b.disabled = false; b.textContent = '🔄 Sincronizar agora'; } }
+  } catch (e) { if (st) st.textContent = '❌ ' + (e.message || e); const bc2 = document.getElementById('btn-sheets-confirm'); if (bc2) { bc2.disabled = false; bc2.textContent = '✅ Confirmar e importar'; } }
+  finally { if (b) { b.disabled = false; b.textContent = '👀 Prévia e importar'; } }
 }
 
 async function openConfigModal() {
