@@ -615,7 +615,15 @@
   body.dark .contact-item, body.dark .contact-swipe-wrap > .contact-item { background: #111b21; border-color: #222d34; }
   body.dark .contact-item:hover { background: #202c33; }
   body.dark .contact-item.active { background: #2a3942; }
-  body.dark .contact-swipe-wrap > .contact-item.is-fav { background: #1c2a24; }
+  body.dark .contact-swipe-wrap > .contact-item.is-fav { background: #17211d; }
+  body.dark #search-box { background: #111b21; }
+  body.dark #search-box input, body.dark #search-input { background: #202c33 !important; color: #e9edef !important; border-color: #2a3942 !important; }
+  body.dark #search-box input::placeholder { color: #8696a0; }
+  body.dark #search-box button, body.dark #filter-toggle-btn { background: #202c33 !important; color: #aebac1 !important; border-color: #2a3942 !important; }
+  body.dark .contact-item { border-color: #1f2a30; }
+  body.dark .contact-info { box-shadow: none; }
+  body.dark #contacts-list, body.dark #chat-list, body.dark .msg-hit-list, body.dark .msg-hit { background: #111b21; border-color: #1f2a30; }
+  body.dark .msg-hit-name { color: #e9edef; } body.dark .msg-hit:hover { background: #202c33; }
   body.dark { --av-bg: #6a7175; --av-fg: #e9edef; } /* avatar cinza-médio, como o WhatsApp escuro */
   body.dark .contact-avatar { background: #6a7175; color: #e9edef; }
   body.dark .lp-avatar { background: #6a7175 !important; color: #e9edef !important; }
@@ -1136,8 +1144,11 @@
   .bulk-btn-delete { color: var(--v-red) !important; }
   #btn-close-pipeline, .lp-x, .tmpl-header .btn-cancel { border: none !important; background: transparent !important; box-shadow: none; }
   #btn-close-pipeline:hover, .lp-x:hover { background: var(--v-bg) !important; }
-  /* Botões-ícone do topo do pipeline (kanban/lista) */
-  .pv-btn { border-radius: 8px !important; }
+  /* Botões-ícone do topo do pipeline (kanban/lista) — mesma altura dos demais */
+  .pv-btn { border-radius: 8px !important; height: 34px !important; min-width: 36px !important; }
+  #pview-toggle { height: 36px; align-items: stretch; }
+  #pipe-more-btn { height: 36px !important; min-width: 40px !important; }
+  #pipeline-topbar .btn-primary, #pipeline-topbar .pf-topbtn, #pipeline-filter-btn, #pipeline-selall-btn, #pipeline-selall-all { height: 36px !important; }
   /* ── Campos de formulário ── */
   .tmpl-form-group input, .tmpl-form-group select, .tmpl-form-group textarea, .bot-cfg-input, .bot-cfg-textarea, .bot-cfg-select,
   .pf-input, .lp-input, .lp-textarea, .lp-select, #cfg-sheets-url, #cfg-sheets-aba, #cfg-token, .import-input, #wp-answer, #wp-tag, #wp-triggers {
@@ -1158,6 +1169,8 @@
   .v-toast { pointer-events: auto; background: #202c33; color: #fff; padding: 11px 16px; border-radius: 12px; font-size: 13.5px; line-height: 1.4; box-shadow: 0 8px 26px rgba(0,0,0,.28); display: flex; gap: 10px; align-items: flex-start; max-width: 100%; animation: vToastIn .18s ease-out; white-space: pre-wrap; word-break: break-word; }
   .v-toast.ok { background: #0f6b57; } .v-toast.err { background: #b3261e; } .v-toast.warn { background: #8a5a00; }
   .v-toast .v-toast-x { margin-left: auto; opacity: .7; cursor: pointer; font-size: 15px; line-height: 1; padding-left: 6px; }
+  .v-toast-act { background: #fff; color: #111b21; border: none; border-radius: 8px; padding: 5px 10px; font-size: 12.5px; font-weight: 700; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+  .kanban-col-del { font-size: 18px !important; opacity: .55 !important; }
   .v-toast.out { animation: vToastOut .18s ease-in forwards; }
   @keyframes vToastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
   @keyframes vToastOut { to { opacity: 0; transform: translateY(8px); } }
@@ -1713,7 +1726,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v255</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v256</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px">🔔 Ativar avisos</button>
@@ -1922,7 +1935,7 @@ window.addEventListener('load', initAuth);
       <button onclick="closeConfigModal()" style="background:none;border:none;font-size:20px;color:#667781;cursor:pointer">✕</button>
     </div>
     <div id="cfg-shell">
-      <div id="cfg-nav"><button class="cfg-tab on" data-pane="integ" onclick="cfgTab('integ')">🔗 Integração</button><button class="cfg-tab" data-pane="ids" onclick="cfgTab('ids')">🆔 IDs das etapas</button><button class="cfg-tab" data-pane="sheets" onclick="cfgTab('sheets')">📊 Planilha Google</button><button class="cfg-tab" data-pane="dup" onclick="cfgTab('dup')">🔗 Chats duplicados</button><button class="cfg-tab" data-pane="bill" onclick="cfgTab('bill')">💳 Faturamento</button><button class="cfg-tab" data-pane="apar" onclick="cfgTab('apar')">🌙 Aparência</button></div>
+      <div id="cfg-nav"><button class="cfg-tab on" data-pane="integ" onclick="cfgTab('integ')">🔗 Integração</button><button class="cfg-tab" data-pane="ids" onclick="cfgTab('ids')">🆔 IDs das etapas</button><button class="cfg-tab" data-pane="sheets" onclick="cfgTab('sheets')">📊 Planilha Google</button><button class="cfg-tab" data-pane="dup" onclick="cfgTab('dup')">🔗 Chats duplicados</button><button class="cfg-tab" data-pane="bill" onclick="cfgTab('bill')">💳 Faturamento</button><button class="cfg-tab" data-pane="pipe" onclick="cfgTab('pipe')">📊 Pipeline</button><button class="cfg-tab" data-pane="apar" onclick="cfgTab('apar')">🌙 Aparência</button></div>
       <div id="cfg-panes">
 <div class="cfg-pane on" data-pane="integ">
     <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
@@ -1975,6 +1988,13 @@ window.addEventListener('load', initAuth);
     <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
       <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">💳 Faturamento</div>
       <div id="cfg-billing" style="font-size:13px;color:#54656f">Carregando...</div>
+    </div>
+</div>
+<div class="cfg-pane" data-pane="pipe">
+    <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
+      <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">🗑 Colunas excluídas / recuperação</div>
+      <p style="font-size:12px;color:#667781;margin:0 0 8px">Excluiu uma coluna sem querer? Aqui ela pode voltar com os leads e com os vínculos (bots, gotejamento, ID externo).</p>
+      <div id="cfg-stage-trash" style="font-size:13px;color:#54656f">—</div>
     </div>
 </div>
 <div class="cfg-pane" data-pane="apar">
@@ -2289,7 +2309,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v255</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v256</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2343,7 +2363,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 255;
+const APP_VER = 256;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2880,7 +2900,7 @@ function toggleFilterTag(tag) {
 let searchResults = null; // null = sem busca ativa
 let searchTimer = null;
 // 🍞 Toasts no lugar do alert() do navegador (mesma chamada, visual do sistema)
-function showToast(msg, tipo, ms) {
+function showToast(msg, tipo, ms, acao) {
   try {
     let box = document.getElementById('v-toasts');
     if (!box) { box = document.createElement('div'); box.id = 'v-toasts'; document.body.appendChild(box); }
@@ -2888,9 +2908,10 @@ function showToast(msg, tipo, ms) {
     const m = String(msg == null ? '' : msg);
     const auto = tipo || (/^(✅|✔|✓)/.test(m) ? 'ok' : /^(❌|⛔|🚫)|^erro|não consegui|não foi possível|falh/i.test(m) ? 'err' : /^(⚠️|⏳)/.test(m) ? 'warn' : '');
     t.className = 'v-toast' + (auto ? ' ' + auto : '');
-    t.innerHTML = `<span style="flex:1">${escHtml(m)}</span><span class="v-toast-x" title="Fechar">✕</span>`;
+    t.innerHTML = `<span style="flex:1">${escHtml(m)}</span>${acao && acao.label ? `<button class="v-toast-act">${escHtml(acao.label)}</button>` : ''}<span class="v-toast-x" title="Fechar">✕</span>`;
     const fecha = () => { t.classList.add('out'); setTimeout(() => t.remove(), 200); };
     t.querySelector('.v-toast-x').onclick = fecha;
+    if (acao && acao.fn) { const ab = t.querySelector('.v-toast-act'); if (ab) ab.onclick = () => { fecha(); try { acao.fn(); } catch (_) {} }; }
     box.appendChild(t);
     while (box.children.length > 4) box.firstChild.remove();
     setTimeout(fecha, ms || (auto === 'err' ? 7000 : (m.length > 120 ? 6500 : 4200)));
@@ -7644,6 +7665,7 @@ function cfgTab(k) {
   document.querySelectorAll('#cfg-nav .cfg-tab').forEach(b => b.classList.toggle('on', b.dataset.pane === k));
   document.querySelectorAll('#cfg-panes .cfg-pane').forEach(p => p.classList.toggle('on', p.dataset.pane === k));
   if (k === 'ids') { const w = document.getElementById('cfg-stage-ids-wrap'); if (w) w.style.display = 'block'; const a = document.getElementById('cfg-stage-ids-arrow'); if (a) a.textContent = '▾'; }
+  if (k === 'pipe') carregarLixeiraColunas();
 }
 async function openConfigModal() {
   _closeAllScreens();
@@ -9234,7 +9256,7 @@ function renderKanbanWith(contacts) {
           onkeydown="if(event.key==='Enter')this.blur()">
         <span class="kanban-col-count">${cards.length}</span>
         ${_pipeSelMode ? `<button class="col-select-all" onclick="selectAllInColumn('${stage.id}')" title="Selecionar todos da coluna">☑</button>` : ''}
-        ${!stage.fixed ? `<button class="kanban-col-del" onclick="deleteStage('${stage.id}')" title="Excluir coluna">✕</button>` : ''}
+        ${!stage.fixed ? `<button class="kanban-col-del" onclick="event.stopPropagation();abrirMenuColuna(event,'${stage.id}')" title="Opções da coluna">⋯</button>` : ''}
       </div>
       <div class="kanban-cards" id="cards-${stage.id}">
         ${cards.length ? cards.map(c => cardHTML(c)).join('') : '<div class="kanban-empty">Arraste leads para cá</div>'}
@@ -9406,20 +9428,75 @@ async function renameStage(id, name) {
   } catch(e) {}
 }
 
+// Menu "⋯" da coluna: renomear ou excluir (a exclusão pede o NOME da coluna, para
+// não sair por um clique errado; e dá para DESFAZER pela lixeira)
+function abrirMenuColuna(ev, id) {
+  const stage = pipelineStages.find(s => s.id === id); if (!stage) return;
+  document.getElementById('col-menu')?.remove();
+  const m = document.createElement('div'); m.id = 'col-menu';
+  m.style.cssText = 'position:fixed;z-index:9999;background:#fff;border:1px solid #e9edef;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);padding:6px;min-width:210px';
+  m.innerHTML = `
+    <div class="cm-item" onclick="document.getElementById('col-menu').remove();const i=document.querySelector('.kanban-col[data-stage-id=&quot;${id}&quot;] .kanban-col-name');if(i){i.focus();i.select();}">✏️ Renomear coluna</div>
+    <div class="cm-item" onclick="document.getElementById('col-menu').remove();togglePipeSelMode();selectAllInColumn('${id}')">☑️ Selecionar todos os leads</div>
+    <div class="cm-item" style="color:#ef4444" onclick="document.getElementById('col-menu').remove();deleteStage('${id}')">🗑 Excluir coluna…</div>`;
+  document.body.appendChild(m);
+  const x = Math.min(ev.clientX, window.innerWidth - 230), y = Math.min(ev.clientY, window.innerHeight - 150);
+  m.style.left = x + 'px'; m.style.top = y + 'px';
+  if (document.body.classList.contains('dark')) { m.style.background = '#233138'; m.style.borderColor = '#3b4a54'; }
+  setTimeout(() => document.addEventListener('click', () => m.remove(), { once: true }), 0);
+}
 async function deleteStage(id) {
   const stage = pipelineStages.find(s => s.id === id);
   if (!stage) return;
   const inStage = pipelineContacts.filter(c => c.stage_id === id).length;
-  const msg = inStage > 0
-    ? `A coluna "${stage.name}" tem ${inStage} lead(s). Eles vão para "Sem status". Confirma?`
-    : `Excluir coluna "${stage.name}"?`;
-  if (!confirm(msg)) return;
+  const digitado = prompt(`⚠️ Excluir a COLUNA "${stage.name}" (${inStage} lead(s) vão para "Sem status").\n\nIsso NÃO exclui leads. Para confirmar, digite o nome da coluna:`);
+  if (digitado === null) return;
+  if (digitado.trim().toLowerCase() !== String(stage.name).trim().toLowerCase()) { alert('Nome não confere — a coluna NÃO foi excluída.'); return; }
   try {
-    await fetch(`${SERVER_URL}/pipeline/stages/${id}`, { method: 'DELETE' });
+    const r = await fetch(`${SERVER_URL}/pipeline/stages/${id}`, { method: 'DELETE' });
+    if (!r.ok) throw new Error('falha');
     pipelineStages = pipelineStages.filter(s => s.id !== id);
     pipelineContacts.forEach(c => { if (c.stage_id === id) c.stage_id = null; });
     renderKanban();
+    showToast(`🗑 Coluna "${stage.name}" excluída${inStage ? ' — ' + inStage + ' lead(s) foram para "Sem status"' : ''}.`, '', 12000, { label: '↩ Desfazer', fn: () => restaurarColuna(id) });
   } catch(e) { alert('Erro ao excluir coluna'); }
+}
+async function restaurarColuna(id) {
+  try {
+    const r = await fetch(SERVER_URL + '/pipeline/stages/restore', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || 'falha');
+    showToast(`♻️ Coluna "${j.stage.name}" restaurada (${j.leads_devolvidos} lead(s) de volta).`, 'ok', 4000);
+    try { await loadPipeline(); } catch (_) {}
+    try { carregarLixeiraColunas(); } catch (_) {}
+  } catch (e) { alert('Não consegui restaurar: ' + (e.message || e)); }
+}
+// Lixeira / recuperação de colunas (Configurações → Pipeline)
+async function carregarLixeiraColunas() {
+  const box = document.getElementById('cfg-stage-trash'); if (!box) return;
+  box.innerHTML = '<span style="color:#8696a0">Carregando…</span>';
+  try {
+    const [lixo, orf] = await Promise.all([(await fetch(SERVER_URL + '/pipeline/stages/trash')).json(), (await fetch(SERVER_URL + '/pipeline/stages/orphans')).json()]);
+    let h = '';
+    if (Array.isArray(lixo) && lixo.length) {
+      h += '<div style="font-size:12px;color:#667781;margin:6px 0 4px">Colunas excluídas recentemente (podem voltar com os leads):</div>' + lixo.map(x => `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f0f2f5;font-size:13px"><b style="flex:1">${escHtml(x.name)}</b><span style="color:#8696a0;font-size:12px">${x.leads} lead(s) · ${new Date(x.deleted_at).toLocaleString('pt-BR')}</span><button class="pf-topbtn" onclick="restaurarColuna('${escHtml(x.id)}')">↩ Restaurar</button></div>`).join('');
+    }
+    if (Array.isArray(orf) && orf.length) {
+      h += '<div style="font-size:12px;color:#667781;margin:10px 0 4px">Colunas que sumiram mas ainda são usadas por bots/automações (recriar com o mesmo vínculo):</div>' + orf.map(o => `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f0f2f5;font-size:13px;flex-wrap:wrap"><span style="flex:1;color:#54656f">${o.pistas.map(escHtml).join(' · ')}</span><input placeholder="Nome da coluna" id="orf-nome-${escHtml(o.id)}" style="width:150px"><input placeholder="ID externo (opcional)" id="orf-ext-${escHtml(o.id)}" style="width:150px"><button class="pf-topbtn" onclick="recuperarColuna('${escHtml(o.id)}')">🩹 Recriar</button></div>`).join('');
+    }
+    box.innerHTML = h || '<span style="color:#8696a0">Nenhuma coluna excluída ou perdida. 👍</span>';
+  } catch (e) { box.innerHTML = '<span style="color:#ef4444">Não consegui carregar.</span>'; }
+}
+async function recuperarColuna(id) {
+  const nome = (document.getElementById('orf-nome-' + id) || {}).value || '';
+  const ext = (document.getElementById('orf-ext-' + id) || {}).value || '';
+  if (!nome.trim()) return alert('Digite o nome da coluna.');
+  try {
+    const r = await fetch(SERVER_URL + '/pipeline/stages/recover', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, name: nome, external_id: ext }) });
+    const j = await r.json(); if (!r.ok) throw new Error(j.error || 'falha');
+    showToast(`✅ Coluna "${nome}" recriada com o mesmo vínculo. Agora mova os leads de "Sem status" para ela.`, 'ok', 6000);
+    carregarLixeiraColunas(); try { await loadPipeline(); } catch (_) {}
+  } catch (e) { alert('Não consegui recriar: ' + (e.message || e)); }
 }
 
 async function moveCard(phone, stageId) {
