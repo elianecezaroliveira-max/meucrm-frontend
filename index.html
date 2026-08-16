@@ -1551,7 +1551,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v248</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v249</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -2105,7 +2105,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v248</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v249</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2159,7 +2159,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 248;
+const APP_VER = 249;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2211,7 +2211,12 @@ async function init(url) {
 }
 
 // ── POLLING ──
+let _pollBusy = false;
 async function _pollTick() {
+  if (_pollBusy) return; _pollBusy = true;
+  try { await _pollTickInner(); } finally { _pollBusy = false; }
+}
+async function _pollTickInner() {
   // Snapshot unread counts antes de atualizar
   const prevUnreads = {};
   allContacts.forEach(c => { prevUnreads[c.phone] = c.unread_count || 0; });
@@ -2887,6 +2892,8 @@ function filterContacts() { applyFilters(); }
 const _BRT_OFFSET = 3 * 60 * 60 * 1000; // 3 horas em ms
 
 // Escapa caracteres HTML para inserir conteúdo de usuário com segurança em templates
+// Valor seguro para dentro de onclick="fn('...')": escapa \ e ' para o JS e depois o HTML
+function _jsAttr(v) { return escHtml(String(v == null ? '' : v).replace(/\\/g, '\\\\').replace(/'/g, "\\'")); }
 function escHtml(s) {
   return String(s == null ? '' : s)
     .replace(/&/g, '&amp;')
@@ -3019,7 +3026,7 @@ function renderContacts(contacts) {
     const timeStr = formatContactTime(c.last_message_at);
     const preview = String(c.last_message_preview || c.phone).replace(/\s+/g, ' ').trim();
     const mediaPrev = waPreviewHtml(preview);
-    const shownPrev = (mediaPrev !== null) ? mediaPrev : preview;
+    const shownPrev = (mediaPrev !== null) ? mediaPrev : escHtml(preview);
     const isOut = c.last_message_direction === 'outbound';
     // Tiques de confirmação na prévia (igual WhatsApp): ✓ enviada, ✓✓ entregue, ✓✓ azul lida
     const stTick = {
@@ -3042,11 +3049,11 @@ function renderContacts(contacts) {
     return `<div class="contact-swipe-wrap" data-phone="${c.phone}">
       <div class="swipe-action read">📖<span>Lida</span></div>
       <div class="swipe-action fav">${isFav?'☆':'⭐'}<span>${isFav?'Remover':'Favoritar'}</span></div>
-      <div class="contact-item${c.phone===currentPhone?' active':''}${hasUnread}${isFav?' is-fav':''}" onclick="selectContact('${c.phone}','${(c.name||'').replace(/'/g,"\\'")}','${c.account_id||''}')">
-      <div class="contact-avatar">${(c.name||'?')[0].toUpperCase()}${c.avatar ? `<img src="${SERVER_URL}/avatar/${encodeURIComponent(String(c.avatar).split('/').pop())}" loading="lazy" alt="" onerror="this.remove()">` : ''}</div>
+      <div class="contact-item${c.phone===currentPhone?' active':''}${hasUnread}${isFav?' is-fav':''}" onclick="selectContact('${c.phone}','${_jsAttr(c.name||'')}','${c.account_id||''}')">
+      <div class="contact-avatar">${escHtml((c.name||'?')[0].toUpperCase())}${c.avatar ? `<img src="${SERVER_URL}/avatar/${encodeURIComponent(String(c.avatar).split('/').pop())}" loading="lazy" alt="" onerror="this.remove()">` : ''}</div>
       <div class="contact-info">
         <div class="contact-row-top">
-          <div class="contact-name">${c.name||c.phone}${c.pinned?'<span style="font-size:11px;margin-left:3px">📌</span>':''}${c.muted?'<span style="font-size:12px;margin-left:3px;opacity:.6">🔇</span>':''}${isFav?'<span class="fav-star">★</span>':''}</div>
+          <div class="contact-name">${escHtml(c.name||c.phone)}${c.pinned?'<span style="font-size:11px;margin-left:3px">📌</span>':''}${c.muted?'<span style="font-size:12px;margin-left:3px;opacity:.6">🔇</span>':''}${isFav?'<span class="fav-star">★</span>':''}</div>
           <div class="contact-time">${timeStr}</div>
         </div>
         <div class="contact-preview-row">
@@ -4228,7 +4235,7 @@ async function selectContact(phone, name, accountId) {
         </svg>
       </button>
       <div class="info">
-        <div class="name"><span id="chat-name-text">${name || phone}</span></div>
+        <div class="name"><span id="chat-name-text">${escHtml(name || phone)}</span></div>
         <div class="phone" id="chat-presence" style="display:none;color:#00a884"></div>
       </div>
       <button id="btn-chat-search" title="Pesquisar na conversa" onclick="toggleChatSearch()"
@@ -4440,7 +4447,7 @@ async function _fillPdfPreviews() {
     if (cch && cch.d) { _pintaPdfPrev(el, cch); continue; }
     try {
       await _loadPdfJs();
-      const doc = await window.pdfjsLib.getDocument({ url: el.dataset.pdf }).promise;
+      const doc = await window.pdfjsLib.getDocument({ url: el.dataset.pdf, isEvalSupported: false }).promise;
       const pg = await doc.getPage(1);
       const vp0 = pg.getViewport({ scale: 1 });
       // 2x em telas Retina: a miniatura do PDF fica nítida no celular
@@ -4520,11 +4527,11 @@ function abrirArquivo(url, tipo, nome) {
       // só se falhar, tenta o plano B baixando o arquivo inteiro primeiro
       let doc;
       try {
-        doc = await window.pdfjsLib.getDocument({ url }).promise;
+        doc = await window.pdfjsLib.getDocument({ url, isEvalSupported: false }).promise;
       } catch (e1) {
         const resp = await fetch(url);
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
-        doc = await window.pdfjsLib.getDocument({ data: await resp.arrayBuffer() }).promise;
+        doc = await window.pdfjsLib.getDocument({ data: await resp.arrayBuffer(), isEvalSupported: false }).promise;
       }
       _fvDoc = doc; // fica vivo para RE-RENDERIZAR nítido quando você dá zoom
       body.innerHTML = '';
@@ -4787,7 +4794,6 @@ async function renderLeadPanel(phone){
   const c = await _achaLead(phone);
   if (currentPhone !== phone) return; // trocou de conversa enquanto buscava
   if (!c) { p.classList.add('lp-hidden'); p.innerHTML = ''; return; }
-  if (!(allContacts || []).find(x => x.phone === phone)) { try { renderTagManager(c); } catch (_) {} }
   p.classList.toggle('lp-hidden', !_leadPanelVisible);
   // Painel já nasce aberto: o botão 👤 do cabeçalho fica escondido (só o ✕ fecha)
   const b = document.getElementById('btn-lead-panel');
@@ -5507,8 +5513,8 @@ let _lpCache = {};
 try { _lpCache = JSON.parse(localStorage.getItem('vetra_lp') || '{}'); } catch (_) { _lpCache = {}; }
 function _lpCardHtml(u, d) {
   if (!d || (!d.title && !d.image)) return '';
-  return `<a href="${u}" target="_blank" rel="noopener" style="display:flex;gap:9px;text-decoration:none;color:inherit;background:rgba(0,0,0,.055);border-radius:8px;padding:8px;margin-bottom:5px;align-items:center;max-width:300px;height:68px;box-sizing:border-box;overflow:hidden">
-      ${d.image ? `<img src="${d.image}" style="width:52px;height:52px;object-fit:cover;border-radius:6px;flex-shrink:0" onerror="this.style.visibility='hidden'">` : ''}
+  return `<a href="${escHtml(u)}" target="_blank" rel="noopener" style="display:flex;gap:9px;text-decoration:none;color:inherit;background:rgba(0,0,0,.055);border-radius:8px;padding:8px;margin-bottom:5px;align-items:center;max-width:300px;height:68px;box-sizing:border-box;overflow:hidden">
+      ${d.image && /^https?:\/\//i.test(d.image) ? `<img src="${escHtml(d.image)}" style="width:52px;height:52px;object-fit:cover;border-radius:6px;flex-shrink:0" onerror="this.style.visibility='hidden'">` : ''}
       <span style="min-width:0"><span style="display:block;font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(d.title || d.site || '')}</span>
       ${d.desc ? `<span style="display:block;font-size:11.5px;color:#54656f;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(d.desc)}</span>` : ''}
       ${d.site ? `<span style="display:block;font-size:11px;color:#8696a0">${escHtml(d.site)}</span>` : ''}</span></a>`;
@@ -5665,7 +5671,7 @@ function renderMessageContent(m) {
       // e caíam no navegador nativo, que esconde os botões no zoom e recarrega o app)
       const _isPdf = _ext === 'pdf' || String(m.media_mime_type || '').toLowerCase().includes('pdf');
       return quotedHtml + `<div class="media-wrap doc-wrap" style="cursor:pointer" title="Toque para abrir"
-        onclick="if(window.matchMedia('(hover: none)').matches){event.stopPropagation();abrirArquivo('${proxyUrl}','${_isPdf ? 'pdf' : 'outro'}','${escHtml(fileName).replace(/'/g, "\\'")}');}"
+        onclick="if(window.matchMedia('(hover: none)').matches){event.stopPropagation();abrirArquivo('${proxyUrl}','${_isPdf ? 'pdf' : 'outro'}','${_jsAttr(fileName)}');}"
         ondblclick="window.open('${proxyUrl}','_blank')">
         ${(() => { if (!_isPdf) return '';
           const _pK = String(m.media_id || m.id || '');
@@ -5683,7 +5689,7 @@ function renderMessageContent(m) {
               return `<span class="pdf-pgs" style="font-size:11.5px;color:#8696a0;display:block;margin-top:1px;height:15px;line-height:15px;overflow:hidden">${_tx}</span>`; })()}
           </span>
         </div>
-        <a href="#" class="media-dl-link" onclick="event.preventDefault();event.stopPropagation();baixarMidia('${dlUrl}','${escHtml(fileName).replace(/'/g, "\\'")}',this)">⬇ Baixar arquivo</a>
+        <a href="#" class="media-dl-link" onclick="event.preventDefault();event.stopPropagation();baixarMidia('${dlUrl}','${_jsAttr(fileName)}',this)">⬇ Baixar arquivo</a>
       </div>`;
     }
   }
@@ -5800,9 +5806,10 @@ async function loadMessages(phone, scroll = true) {
     // fica parada; a real entra de uma vez quando o envio termina — sem piscar)
     if (!scroll && window._enviandoMidia) return;
     _ensurePresenceWatch();
-    const res = await fetch(SERVER_URL + '/messages/' + phone);
+    const res = await fetch(SERVER_URL + '/messages/' + encodeURIComponent(phone));
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const msgs = await res.json();
+    if (phone !== currentPhone) return; // trocou de conversa enquanto carregava — não mistura
     const area = document.getElementById('messages-area');
     if (!area) return;
     if (!Array.isArray(msgs)) {
@@ -9086,14 +9093,14 @@ function cardHTML(c) {
   const date = _cDt
     ? new Date(_cDt).toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit'})
     : '';
-  const tags = (c.tags||[]).map((t,i)=>`<span class="tag-chip tc${i%6}" style="font-size:10px;padding:1px 6px">${t}</span>`).join('');
+  const tags = (c.tags||[]).map((t,i)=>`<span class="tag-chip tc${i%6}" style="font-size:10px;padding:1px 6px">${escHtml(t)}</span>`).join('');
   const isSelected = selectedLeads.has(c.phone);
   return `
     <div class="kanban-card${isSelected?' selected':''}" draggable="true" data-phone="${c.phone}">
       <div style="display:flex;align-items:flex-start;gap:0">
         ${_pipeSelMode ? `<div class="card-checkbox${isSelected?' checked':''}" onclick="toggleCardSelection('${c.phone}',event)" title="Selecionar"></div>` : ''}
-        <div style="flex:1;min-width:0;cursor:pointer" title="Abrir conversa" onclick="openLeadChat('${c.phone}','${(c.name||'').replace(/'/g,"\\'")}','${c.account_id||''}')">
-          <div class="kanban-card-name">${c.name || c.phone}</div>
+        <div style="flex:1;min-width:0;cursor:pointer" title="Abrir conversa" onclick="openLeadChat('${c.phone}','${_jsAttr(c.name||'')}','${c.account_id||''}')">
+          <div class="kanban-card-name">${escHtml(c.name || c.phone)}</div>
           <div class="kanban-card-phone">${formatPhone(c.phone)}</div>
           ${tags ? `<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:5px">${tags}</div>` : ''}
           ${date ? `<div class="kanban-card-date">📅 ${date}</div>` : ''}
