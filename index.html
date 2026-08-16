@@ -1551,7 +1551,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v235</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v237</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -2103,7 +2103,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v235</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v237</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2157,7 +2157,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 235;
+const APP_VER = 237;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -8585,12 +8585,12 @@ function dripRender() {
     } else st = `<span style="color:#8696a0">○ Pausada</span>${l.phone ? ' · parou depois de ' + escHtml(l.name || l.phone) : ''}`;
     return `<div style="background:#f7f8fa;border:1px solid #e9edef;border-radius:8px;padding:7px 10px;margin-bottom:6px;font-size:12.5px">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <button onclick="dripToggle(${i}, ${r.ativo ? 'false' : 'true'})" title="${r.ativo ? 'Pausar o gotejamento (o progresso fica guardado)' : (feitos ? 'Retomar de onde parou' : 'Iniciar o gotejamento')}" style="background:${r.ativo ? '#fff' : '#00a884'};color:${r.ativo ? '#b45309' : '#fff'};border:1px solid ${r.ativo ? '#f0c27a' : '#00a884'};border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">${r.ativo ? '⏸ Pausar' : (feitos ? '▶ Retomar' : '▶ Iniciar')}</button>
+        <button onclick="dripToggle(${i}, ${r.ativo ? 'false' : 'true'})" title="${r.ativo ? 'Pausar (o progresso fica guardado; Retomar continua de onde parou)' : (feitos ? 'Retomar de onde parou' : 'Iniciar agora')}" style="background:${r.ativo ? '#fff' : '#00a884'};color:${r.ativo ? '#b45309' : '#fff'};border:1px solid ${r.ativo ? '#f0c27a' : '#00a884'};border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">${r.ativo ? '⏸ Pausar' : (feitos ? '▶ Retomar' : '▶ Iniciar')}</button>
+        ${(r.ativo || feitos) ? `<button onclick="dripParar(${i})" title="Parar: encerra este disparo e zera o progresso (nenhum lead volta)" style="background:#fff;color:#c0392b;border:1px solid #f1b0a7;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">⏹ Parar</button>` : ''}
         <b style="color:#131c20">${escHtml(r.nome || 'Regra ' + (i + 1))}</b>
         <span style="color:#54656f">${escHtml(stName[r.de] || '?')} → <b>${escHtml(stName[r.para] || '?')}</b> · 1 lead a cada ${Math.round(r.min_seg / 60 * 10) / 10}–${Math.round(r.max_seg / 60 * 10) / 10} min${r.dias && r.dias.length && r.dias.length < 7 ? ' · ' + r.dias.map(d => ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d]).join(', ') : ''}${r.hora_ini || r.hora_fim ? ' · ' + (r.hora_ini || '00:00') + '–' + (r.hora_fim || 'até esvaziar') : ''}</span>
         <span style="flex:1;color:#667781;font-size:11.5px">${st}</span>
         <button onclick="dripEditar(${i})" title="Editar" style="background:none;border:none;cursor:pointer;font-size:14px">✏️</button>
-        <button onclick="dripZerar(${i})" title="Zerar a contagem de movidos" style="background:none;border:none;color:#8696a0;cursor:pointer;font-size:13px">↺</button>
         <button onclick="dripRemover(${i})" title="Remover" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:14px">✕</button>
       </div>
       <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
@@ -8602,7 +8602,8 @@ function dripRender() {
 }
 // Atualiza a lista sozinha enquanto o painel de automação estiver aberto
 setInterval(() => { const ov = document.getElementById('auto-overlay'); if (ov && ov.style.display !== 'none' && !document.getElementById('drip-edit-overlay')) dripCarregar(); }, 10000);
-function dripZerar(i) { const r = _dripRegras[i]; if (!r) return; if (!confirm('Zerar a contagem de movidos desta regra? (Só o contador da barra — nenhum lead volta.)')) return; r.movidos = 0; r.zerar_movidos = true; dripSalvar(); }
+// ⏹ Parar = encerra o disparo atual: desliga, sai do modo manual e zera o progresso (nenhum lead volta)
+function dripParar(i) { const r = _dripRegras[i]; if (!r) return; if (!confirm(`Parar o gotejamento "${r.nome || 'Regra ' + (i + 1)}"?\n\nEle desliga e o progresso é zerado (os leads já movidos ficam onde estão). Para continuar depois de onde parou, use Pausar.`)) return; r.ativo = false; r.manual = false; r.movidos = 0; r.zerar_movidos = true; dripSalvar(); }
 async function dripSalvar() {
   try {
     const r = await fetch(SERVER_URL + '/drip', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ regras: _dripRegras }) });
@@ -8639,8 +8640,9 @@ function dripEditar(i) {
       </div>
       <div class="tmpl-row">
         <div class="tmpl-form-group"><label>Começa às</label><input id="drip-hi" type="time" value="${escHtml(r.hora_ini || '')}"></div>
-        <div class="tmpl-form-group"><label>Para às <span style="font-size:11px;color:#667781">(vazio = até esvaziar a fila)</span></label><input id="drip-hf" type="time" value="${escHtml(r.hora_fim || '')}"></div>
+        <div class="tmpl-form-group"><label>Para às</label><input id="drip-hf" type="time" value="${escHtml(r.hora_fim || '')}"></div>
       </div>
+      <p class="tmpl-hint" style="margin:-6px 0 10px">"Para às" vazio = segue até esvaziar a fila.</p>
       <label style="font-size:13px;color:#131c20;display:flex;gap:6px;align-items:center;margin:4px 0 12px"><input type="checkbox" id="drip-ativo" ${r.ativo ? 'checked' : ''}> Ativa (segue os dias e horários acima)</label>
       <p class="tmpl-hint" style="margin:0 0 12px">A cada intervalo, UM lead da fila vai para a etapa de destino — e as automações dessa etapa (bots) disparam para ele. Dias/horários valem para o início automático; o botão <b>▶ Iniciar/Retomar</b> na lista começa na hora, ignorando o horário. Horário de Brasília.</p>
       <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn-cancel" onclick="document.getElementById('drip-edit-overlay').remove()">Cancelar</button><button class="btn-save" onclick="dripConfirmar(${i})">Salvar</button></div>
