@@ -1551,7 +1551,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v230</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v231</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -2103,7 +2103,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v230</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v231</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2157,7 +2157,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 230;
+const APP_VER = 231;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2735,9 +2735,16 @@ function _snippet(texto, q) {
   const i = t.toLowerCase().indexOf(String(q).toLowerCase());
   const ini = Math.max(0, i - 30);
   let s = (ini > 0 ? '…' : '') + t.slice(ini, ini + 90) + (ini + 90 < t.length ? '…' : '');
-  const esc = escHtml(s);
-  const re = new RegExp(String(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig');
-  return esc.replace(re, m0 => '<mark>' + m0 + '</mark>');
+  // marca as ocorrências ANTES de escapar (senão &amp; / &lt; quebravam no meio)
+  const ql = String(q).toLowerCase(), sl = s.toLowerCase();
+  let out = '', pos = 0;
+  while (ql) {
+    const k = sl.indexOf(ql, pos);
+    if (k < 0) break;
+    out += escHtml(s.slice(pos, k)) + '<mark>' + escHtml(s.slice(k, k + ql.length)) + '</mark>';
+    pos = k + ql.length;
+  }
+  return out + escHtml(s.slice(pos));
 }
 function renderMsgHits() {
   const list = document.getElementById('contacts-list');
@@ -2764,7 +2771,7 @@ async function abrirMensagemBusca(phone, name, accountId, msgId) {
   // espera as mensagens desenharem e pula até a mensagem (destaque verde)
   let tent = 0;
   const tenta = () => {
-    const el = document.querySelector(`#messages-area [data-msg-id="${msgId}"]`);
+    const el = document.querySelector(`#messages-area [data-msg-id="${(window.CSS && CSS.escape) ? CSS.escape(String(msgId)) : String(msgId).replace(/["\\]/g, '')}"]`);
     if (el) {
       el.scrollIntoView({ block: 'center', behavior: 'smooth' });
       el.classList.remove('msg-jump'); void el.offsetWidth; el.classList.add('msg-jump');
@@ -2787,11 +2794,9 @@ async function exportarLeads() {
   const t0 = btn ? btn.textContent : '';
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Exportando…'; }
   try {
-    let url = SERVER_URL + '/contacts/export?x=1';
-    const acc = document.getElementById('account-select')?.value; if (acc) url += '&account_id=' + encodeURIComponent(acc);
-    if (phones.length && phones.length <= 1500) url += '&phones=' + encodeURIComponent(phones.join(','));
-    let r = await fetch(url);
-    if (!r.ok && phones.length) { r = await fetch(url.replace(/&phones=[^&]*/, '')); } // URL grande demais → exporta tudo
+    const acc = document.getElementById('account-select')?.value || '';
+    const r = await fetch(SERVER_URL + '/contacts/export', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ account_id: acc || undefined, phones: phones.length ? phones : undefined }) });
     if (!r.ok) throw new Error(await r.text());
     const blob = await r.blob();
     const a = document.createElement('a');
@@ -7374,7 +7379,7 @@ async function sincronizarSheets(confirmado) {
     const res = ult && ult.resultado;
     if (res && res.ok) {
       if (st) st.textContent = _sheetsLastTxt(res);
-      try { if (typeof loadPipelineData === 'function') loadPipelineData(); } catch (_) {}
+      try { if (typeof loadPipeline === 'function' && document.getElementById('pipeline-page') && document.getElementById('pipeline-page').style.display !== 'none') loadPipeline(); } catch (_) {}
       setTimeout(() => { const o = document.getElementById('sheets-prev-overlay'); if (o) o.remove(); }, 2500);
     } else if (res) { if (st) st.textContent = '❌ ' + (res.erro || 'falha'); }
   } catch (e) { if (st) st.textContent = '❌ ' + (e.message || e); const bc2 = document.getElementById('btn-sheets-confirm'); if (bc2) { bc2.disabled = false; bc2.textContent = '✅ Confirmar e importar'; } }
@@ -8550,22 +8555,34 @@ function dripRender() {
   if (!_dripRegras.length) { el.innerHTML = '<div style="font-size:12px;color:#8696a0">Nenhuma regra. Ex.: da etapa "SIAPE3 fila" para "SIAPE3", 1 lead a cada 3,5–5 min.</div>'; return; }
   el.innerHTML = _dripRegras.map((r, i) => {
     const l = r.last || {};
+    const rest = _dripCont[r.de];
+    const feitos = r.movidos || 0, total = (rest === undefined ? 0 : rest) + feitos;
+    const pct = total ? Math.round(feitos / total * 100) : 0;
     let st = '';
     if (r.ativo) {
       const nx = r.next_at ? new Date(r.next_at) : null;
-      const rest = _dripCont[r.de];
-      st = `<span style="color:#00806a">● Ativa</span> · ${rest === undefined ? '' : rest + ' na fila · '}${l.phone ? 'último: ' + escHtml(l.name || l.phone) + ' às ' + new Date(l.quando).toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}) + ' · ' : ''}${nx && nx > new Date() ? 'próximo ' + nx.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}) : (rest === 0 ? 'fila vazia' : 'próximo em instantes')}${l.erro ? ' · <span style="color:#ef4444">' + escHtml(l.erro) + '</span>' : ''}`;
-    } else st = '<span style="color:#8696a0">○ Pausada</span>';
-    return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#f7f8fa;border:1px solid #e9edef;border-radius:8px;padding:7px 10px;margin-bottom:6px;font-size:12.5px">
-      <button onclick="dripToggle(${i}, ${r.ativo ? 'false' : 'true'})" title="${r.ativo ? 'Pausar o gotejamento' : 'Ativar o gotejamento'}" style="background:${r.ativo ? '#fff' : '#00a884'};color:${r.ativo ? '#b45309' : '#fff'};border:1px solid ${r.ativo ? '#f0c27a' : '#00a884'};border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">${r.ativo ? '⏸ Pausar' : '▶ Ativar'}</button>
-      <b style="color:#131c20">${escHtml(r.nome || 'Regra ' + (i + 1))}</b>
-      <span style="color:#54656f">${escHtml(stName[r.de] || '?')} → <b>${escHtml(stName[r.para] || '?')}</b> · 1 lead a cada ${Math.round(r.min_seg / 60 * 10) / 10}–${Math.round(r.max_seg / 60 * 10) / 10} min${r.dias && r.dias.length && r.dias.length < 7 ? ' · ' + r.dias.map(d => ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d]).join(', ') : ''}${r.hora_ini || r.hora_fim ? ' · ' + (r.hora_ini || '00:00') + '–' + (r.hora_fim || 'até esvaziar') : ''}${r.movidos ? ' · ' + r.movidos + ' movidos' : ''}</span>
-      <span style="flex:1;color:#667781;font-size:11.5px">${st}</span>
-      <button onclick="dripEditar(${i})" title="Editar" style="background:none;border:none;cursor:pointer;font-size:14px">✏️</button>
-      <button onclick="dripRemover(${i})" title="Remover" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:14px">✕</button>
+      st = `<span style="color:#00806a">● Ativa</span> · ${l.phone ? 'último: ' + escHtml(l.name || l.phone) + ' às ' + new Date(l.quando).toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}) + ' · ' : ''}${nx && nx > new Date() ? 'próximo ' + nx.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}) : (rest === 0 ? 'fila vazia' : 'próximo em instantes')}${l.erro ? ' · <span style="color:#ef4444">' + escHtml(l.erro) + '</span>' : ''}`;
+    } else st = `<span style="color:#8696a0">○ Pausada</span>${l.phone ? ' · parou depois de ' + escHtml(l.name || l.phone) : ''}`;
+    return `<div style="background:#f7f8fa;border:1px solid #e9edef;border-radius:8px;padding:7px 10px;margin-bottom:6px;font-size:12.5px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <button onclick="dripToggle(${i}, ${r.ativo ? 'false' : 'true'})" title="${r.ativo ? 'Pausar o gotejamento (o progresso fica guardado)' : (feitos ? 'Retomar de onde parou' : 'Iniciar o gotejamento')}" style="background:${r.ativo ? '#fff' : '#00a884'};color:${r.ativo ? '#b45309' : '#fff'};border:1px solid ${r.ativo ? '#f0c27a' : '#00a884'};border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">${r.ativo ? '⏸ Pausar' : (feitos ? '▶ Retomar' : '▶ Iniciar')}</button>
+        <b style="color:#131c20">${escHtml(r.nome || 'Regra ' + (i + 1))}</b>
+        <span style="color:#54656f">${escHtml(stName[r.de] || '?')} → <b>${escHtml(stName[r.para] || '?')}</b> · 1 lead a cada ${Math.round(r.min_seg / 60 * 10) / 10}–${Math.round(r.max_seg / 60 * 10) / 10} min${r.dias && r.dias.length && r.dias.length < 7 ? ' · ' + r.dias.map(d => ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d]).join(', ') : ''}${r.hora_ini || r.hora_fim ? ' · ' + (r.hora_ini || '00:00') + '–' + (r.hora_fim || 'até esvaziar') : ''}</span>
+        <span style="flex:1;color:#667781;font-size:11.5px">${st}</span>
+        <button onclick="dripEditar(${i})" title="Editar" style="background:none;border:none;cursor:pointer;font-size:14px">✏️</button>
+        <button onclick="dripZerar(${i})" title="Zerar a contagem de movidos" style="background:none;border:none;color:#8696a0;cursor:pointer;font-size:13px">↺</button>
+        <button onclick="dripRemover(${i})" title="Remover" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:14px">✕</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+        <div style="flex:1;height:8px;background:#e9edef;border-radius:6px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${r.ativo ? '#00a884' : '#b0bec5'};border-radius:6px;transition:width .5s"></div></div>
+        <span style="font-size:11.5px;color:#54656f;white-space:nowrap"><b>${feitos}</b> movidos · <b>${rest === undefined ? '?' : rest}</b> na fila${total ? ' · ' + pct + '%' : ''}</span>
+      </div>
     </div>`;
   }).join('');
 }
+// Atualiza a lista sozinha enquanto o painel de automação estiver aberto
+setInterval(() => { const ov = document.getElementById('auto-overlay'); if (ov && ov.style.display !== 'none' && !document.getElementById('drip-edit-overlay')) dripCarregar(); }, 10000);
+function dripZerar(i) { const r = _dripRegras[i]; if (!r) return; if (!confirm('Zerar a contagem de movidos desta regra? (Só o contador da barra — nenhum lead volta.)')) return; r.movidos = 0; r.zerar_movidos = true; dripSalvar(); }
 async function dripSalvar() {
   try {
     const r = await fetch(SERVER_URL + '/drip', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ regras: _dripRegras }) });
