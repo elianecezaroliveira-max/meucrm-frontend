@@ -75,8 +75,10 @@
   /* TOPBAR */
   #topbar { background: #f0f2f5; padding: 10px 16px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #e9edef; }
   #topbar h1 { font-size: 18px; font-weight: 700; color: #00a884; flex: 1; }
-  #server-status { font-size: 11px; color: #667781; }
-  #server-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #667781; margin-right: 4px; }
+  #server-status { font-size: 11px; color: #667781; display: inline-flex; align-items: center; cursor: default; }
+  #server-url-label { display: none; } /* URL técnica sai do topo — fica no tooltip */
+  #server-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #c0392b; margin-right: 4px; box-shadow: 0 0 0 3px rgba(192,57,43,.15); }
+  #server-dot.online { background: #00a884; box-shadow: 0 0 0 3px rgba(0,168,132,.18); }
   #server-dot.online { background: #00a884; }
   #btn-accounts { background: #e9edef; border: none; color: #131c20; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; }
   #btn-accounts:hover { background: #d1d7db; }
@@ -126,12 +128,14 @@
   .contact-swipe-wrap > .contact-item.is-fav:hover { background: #f8eed2; }
   .fav-star { color: #f0b400; font-size: 13px; margin-left: 5px; flex-shrink: 0; }
   /* Menu "⋯" do item da conversa (aparece ao passar o mouse — computador) */
-  .contact-menu-btn { display: none; position: absolute; right: 10px; bottom: 8px; z-index: 2;
+  .contact-menu-btn { display: none; position: absolute; right: 8px; top: 8px; z-index: 2;
     background: #ffffff; border: 1px solid #e9edef; border-radius: 6px; color: #667781;
-    font-size: 16px; line-height: 1; padding: 2px 8px; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,.12); }
-  /* Só em aparelho com mouse — no celular o hover simulado exigia 2 toques para abrir a conversa */
+    font-size: 15px; line-height: 1; padding: 1px 7px; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+  /* Só em aparelho com mouse — no celular o hover simulado exigia 2 toques para abrir a conversa.
+     Aparece no lugar do horário (como a setinha do WhatsApp), sem cobrir a prévia. */
   @media (hover: hover) and (pointer: fine) {
     .contact-item:hover .contact-menu-btn { display: block; }
+    .contact-item:hover .contact-time { visibility: hidden; }
   }
   .cm-item { padding: 9px 14px; font-size: 14px; cursor: pointer; border-radius: 6px; white-space: nowrap; }
   @media (hover: hover) { .cm-item:hover { background: #f0f2f5; } } /* só no mouse — no toque nada fica pré-selecionado */
@@ -189,7 +193,7 @@
   .msg.inbound.grp { border-top-left-radius: 8px; }
   .msg.outbound.grp { border-top-right-radius: 8px; }
   #messages-area.drag-over { background: rgba(0,168,132,0.08); outline: 2px dashed #00a884; outline-offset: -6px; }
-  .msg { max-width: 65%; padding: 8px 12px; border-radius: 8px; font-size: 14px; line-height: 1.4; position: relative; word-wrap: break-word; color: #131c20; }
+  .msg { max-width: min(65%, 720px); padding: 8px 12px; border-radius: 8px; font-size: 14px; line-height: 1.4; position: relative; word-wrap: break-word; color: #131c20; }
   .msg.inbound { background: #ffffff; align-self: flex-start; border-top-left-radius: 0; box-shadow: 0 1px 1px rgba(0,0,0,.08); }
   .msg.outbound { background: #d9fdd3; align-self: flex-end; border-top-right-radius: 0; box-shadow: 0 1px 1px rgba(0,0,0,.08); }
   /* Horário IGUAL ao WhatsApp: flutua na MESMA linha do fim do texto (à direita);
@@ -272,8 +276,16 @@
     width: 352px;
     height: 400px;
   }
-  #no-chat { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #667781; gap: 12px; }
-  #no-chat svg { width: 64px; height: 64px; opacity: 0.3; }
+  #no-chat { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #667781; gap: 10px; text-align: center; padding: 24px; }
+  #no-chat svg { width: 92px; height: 92px; opacity: 0.22; margin-bottom: 6px; }
+  #no-chat p { font-size: 20px; font-weight: 300; color: #41525d; margin: 0; }
+  #no-chat span { max-width: 380px; line-height: 1.5; }
+  #lp-notes { min-height: 110px !important; max-height: 50vh !important; }
+  .kanban-empty { margin: 8px 4px; padding: 22px 10px; border: 2px dashed #e1e6ea; border-radius: 10px; color: #a3adb5; font-size: 12px; text-align: center; pointer-events: none; }
+  .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 60px 20px; color: #667781; text-align: center; }
+  .empty-state .es-ico { width: 72px; height: 72px; border-radius: 50%; background: #f0f2f5; display: flex; align-items: center; justify-content: center; font-size: 34px; margin-bottom: 4px; }
+  .empty-state b { font-size: 16px; color: #41525d; font-weight: 500; }
+  .empty-state span { font-size: 13px; max-width: 360px; line-height: 1.5; }
   /* MODAL CONTAS */
   #modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center; }
   #modal-overlay.open { display: flex; }
@@ -562,10 +574,16 @@
     background: #ffffff; border-right: 1px solid #e9edef; padding: 10px 4px; overflow-y: auto; box-sizing: border-box; }
   /* Todo o conteúdo começa depois do trilho (o Pipeline já usa left:68px) */
   #topbar, #layout { margin-left: 68px; }
-  .rail-btn { background: none; border: none; cursor: pointer; color: #54656f; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 10px; font-weight: 600; padding: 8px 2px; border-radius: 8px; width: 60px; }
+  .rail-btn { background: none; border: none; cursor: pointer; color: #54656f; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10px; font-weight: 600; padding: 8px 2px; border-radius: 10px; width: 60px; transition: background .12s, color .12s; }
   .rail-btn:hover { background: #f0f2f5; color: #131c20; }
-  .rail-btn .ri { font-size: 19px; }
+  .rail-btn .ri { width: 22px; height: 22px; display: block; }
+  .rail-btn .ri svg { width: 22px; height: 22px; display: block; }
+  /* Ícone ativo em verde com "pastilha" clara, igual às abas do WhatsApp */
+  .rail-btn.is-on { color: #00806a; }
+  .rail-btn.is-on .ri { background: #d9fdd3; border-radius: 12px; padding: 4px 10px; width: auto; height: auto; }
+  .rail-btn.is-on .ri svg { width: 22px; height: 22px; }
   .rail-sair { margin-top: auto; color: #ef4444; }
+  .rail-sair:hover { background: #fdecec; color: #c0392b; }
   /* Bolinha vermelha de avisos não lidos */
   .notice-dot { display: none; position: absolute; top: 6px; right: 12px; width: 9px; height: 9px; background: #ef4444; border-radius: 50%; border: 2px solid #fff; }
   /* 🔴 Quantidade de tarefas EM ABERTO, igual aos avisos do celular */
@@ -1551,10 +1569,10 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v249</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v250</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
-    style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
+    style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px">🔔 Ativar avisos</button>
   <button id="btn-pipeline" onclick="openPipeline()">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="5" height="18" rx="1"/><rect x="10" y="3" width="5" height="12" rx="1"/><rect x="17" y="3" width="5" height="15" rx="1"/></svg>
     Pipeline
@@ -1667,18 +1685,18 @@ window.addEventListener('load', initAuth);
 <!-- LAYOUT -->
 <!-- TRILHO LATERAL (computador): ferramentas SEMPRE visíveis, à esquerda de tudo -->
 <div id="side-rail">
-  <button class="rail-btn" onclick="goToChat()" title="Conversas"><span class="ri">💬</span>Chat</button>
-  <button class="rail-btn" onclick="openPipeline()" title="Pipeline"><span class="ri">📊</span>Pipeline</button>
-  <button class="rail-btn" onclick="openTemplates()" title="Modelos"><span class="ri">📋</span>Modelos</button>
-  <button class="rail-btn" onclick="openQRManager()" title="Respostas rápidas"><span class="ri">⚡</span>Respostas</button>
-  <button class="rail-btn" onclick="openModal()" title="Contas de WhatsApp"><span class="ri">📱</span>Contas</button>
-  <button class="rail-btn" onclick="openBotsList()" title="Bots"><span class="ri">🤖</span>Bots</button>
-  <button class="rail-btn" onclick="openFaqPage()" title="IA / FAQ"><span class="ri">🧠</span>IA</button>
-  <button class="rail-btn" onclick="openTagManager()" title="Etiquetas"><span class="ri">🏷️</span>Tags</button>
-  <button class="rail-btn" onclick="openTasksPage()" title="Tarefas" style="position:relative"><span class="ri">✅</span>Tarefas<span class="task-badge"></span></button>
-  <button class="rail-btn" onclick="openNotices()" title="Avisos" style="position:relative"><span class="ri">🔔</span>Avisos<span class="notice-dot"></span></button>
-  <button class="rail-btn" onclick="openConfigModal()" title="Configurações"><span class="ri">⚙️</span>Config.</button>
-  <button class="rail-btn rail-sair" onclick="logoutCRM()" title="Sair da conta"><span class="ri">🚪</span>Sair</button>
+  <button class="rail-btn is-on" data-rail="chat" onclick="railOn(this);goToChat()" title="Conversas"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.3 8.7 8.7 0 0 1-3.8-.9L3 20l1.1-4.6A8.2 8.2 0 0 1 3 11.5 8.4 8.4 0 0 1 11.5 3.2h.5a8.4 8.4 0 0 1 9 8.3z"/></svg></span>Chat</button>
+  <button class="rail-btn" data-rail="pipe" onclick="railOn(this);openPipeline()" title="Pipeline"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="5" height="18" rx="1.2"/><rect x="10" y="3" width="5" height="12" rx="1.2"/><rect x="17" y="3" width="4" height="15" rx="1.2"/></svg></span>Pipeline</button>
+  <button class="rail-btn" data-rail="tmpl" onclick="railOn(this);openTemplates()" title="Modelos"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></span>Modelos</button>
+  <button class="rail-btn" data-rail="quick" onclick="railOn(this);openQRManager()" title="Respostas rápidas"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></svg></span>Respostas</button>
+  <button class="rail-btn" data-rail="acc" onclick="railOn(this);openModal()" title="Contas de WhatsApp"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2.2"/><path d="M11 18h2"/></svg></span>Contas</button>
+  <button class="rail-btn" data-rail="bots" onclick="railOn(this);openBotsList()" title="Bots"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="2.5"/><path d="M12 8V4M8 4h8"/><circle cx="9" cy="14" r="1.2" fill="currentColor" stroke="none"/><circle cx="15" cy="14" r="1.2" fill="currentColor" stroke="none"/></svg></span>Bots</button>
+  <button class="rail-btn" data-rail="ia" onclick="railOn(this);openFaqPage()" title="IA / FAQ"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a4 4 0 0 0-4 4v1a3.5 3.5 0 0 0-2 6.3V16a4 4 0 0 0 4 4h4a4 4 0 0 0 4-4v-1.7A3.5 3.5 0 0 0 16 8V7a4 4 0 0 0-4-4z"/><path d="M12 3v17"/></svg></span>IA</button>
+  <button class="rail-btn" data-rail="tags" onclick="railOn(this);openTagManager()" title="Etiquetas"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.4" fill="currentColor" stroke="none"/></svg></span>Tags</button>
+  <button class="rail-btn" data-rail="tasks" onclick="railOn(this);openTasksPage()" title="Tarefas" style="position:relative"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m8 12 3 3 5-6"/></svg></span>Tarefas<span class="task-badge"></span></button>
+  <button class="rail-btn" data-rail="notice" onclick="railOn(this);openNotices()" title="Avisos" style="position:relative"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 16V11a6 6 0 1 0-12 0v5l-2 2h16l-2-2z"/><path d="M10 21a2 2 0 0 0 4 0"/></svg></span>Avisos<span class="notice-dot"></span></button>
+  <button class="rail-btn" data-rail="cfg" onclick="railOn(this);openConfigModal()" title="Configurações"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></span>Config.</button>
+  <button class="rail-btn rail-sair" onclick="logoutCRM()" title="Sair da conta"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg></span>Sair</button>
 </div>
 
 <div id="layout">
@@ -1724,7 +1742,7 @@ window.addEventListener('load', initAuth);
     <div id="no-chat">
       <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" fill="currentColor"/></svg>
       <p>Selecione uma conversa</p>
-      <span style="font-size:13px">Suas mensagens do WhatsApp aparecerão aqui</span>
+      <span style="font-size:13px">Escolha um contato à esquerda, ou use a busca para achar uma pessoa ou uma mensagem. As conversas dos seus números do WhatsApp aparecem aqui.</span>
     </div>
   </div>
 </div>
@@ -2105,7 +2123,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v249</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v250</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2159,7 +2177,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 249;
+const APP_VER = 250;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2195,6 +2213,7 @@ function saveServer() {
 async function init(url) {
   SERVER_URL = url;
   document.getElementById('server-url-label').textContent = url.replace('https://', '');
+  const _ss = document.getElementById('server-status'); if (_ss) _ss.title = 'Servidor conectado: ' + url.replace('https://', '');
   document.getElementById('setup-overlay').classList.remove('open');
   try {
     await fetch(url + '/');
@@ -2694,6 +2713,8 @@ function toggleFilterTag(tag) {
 // Busca no servidor (nome, telefone E conteúdo das mensagens), com debounce
 let searchResults = null; // null = sem busca ativa
 let searchTimer = null;
+// Marca o botão ativo do trilho (pastilha verde)
+function railOn(btn) { try { document.querySelectorAll('#side-rail .rail-btn').forEach(b => b.classList.toggle('is-on', b === btn)); } catch (_) {} }
 function onSearchInput() {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(runSearch, 350);
@@ -4291,7 +4312,7 @@ async function selectContact(phone, name, accountId) {
       <button id="emoji-btn" onclick="toggleEmojiPicker(event)" title="Emojis">😊</button>
       <div id="emoji-picker-wrap"></div>
       <select id="chat-account-select" onchange="currentAccountId=this.value" title="Enviar pelo número"
-        style="margin-left:auto;max-width:44%;min-width:0;background:#e9edef;border:none;border-radius:14px;padding:5px 10px;font-size:12.5px;color:#54656f;font-family:inherit;outline:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+        style="margin-left:auto;max-width:44%;min-width:0;background:#e7f7ef;border:1px solid #b7e4d3;border-radius:14px;padding:5px 10px 5px 24px;font-size:12.5px;font-weight:600;color:#00806a;font-family:inherit;outline:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2300806a%22 stroke-width=%222.2%22 stroke-linecap=%22round%22><rect x=%227%22 y=%222%22 width=%2210%22 height=%2220%22 rx=%222.2%22/><path d=%22M11 18h2%22/></svg>');background-repeat:no-repeat;background-position:8px center;background-size:13px 13px">
         ${accountOptions}
       </select>
       </div>
@@ -9002,7 +9023,7 @@ function renderKanbanWith(contacts) {
         ${!stage.fixed ? `<button class="kanban-col-del" onclick="deleteStage('${stage.id}')" title="Excluir coluna">✕</button>` : ''}
       </div>
       <div class="kanban-cards" id="cards-${stage.id}">
-        ${cards.map(c => cardHTML(c)).join('')}
+        ${cards.length ? cards.map(c => cardHTML(c)).join('') : '<div class="kanban-empty">Arraste leads para cá</div>'}
       </div>
     `;
     board.appendChild(col);
@@ -9100,7 +9121,7 @@ function cardHTML(c) {
       <div style="display:flex;align-items:flex-start;gap:0">
         ${_pipeSelMode ? `<div class="card-checkbox${isSelected?' checked':''}" onclick="toggleCardSelection('${c.phone}',event)" title="Selecionar"></div>` : ''}
         <div style="flex:1;min-width:0;cursor:pointer" title="Abrir conversa" onclick="openLeadChat('${c.phone}','${_jsAttr(c.name||'')}','${c.account_id||''}')">
-          <div class="kanban-card-name">${escHtml(c.name || c.phone)}</div>
+          <div class="kanban-card-name">${_leadSemNome(c) ? '<span style="color:#8696a0;font-weight:500">Sem nome</span>' : escHtml(c.name)}</div>
           <div class="kanban-card-phone">${formatPhone(c.phone)}</div>
           ${tags ? `<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:5px">${tags}</div>` : ''}
           ${date ? `<div class="kanban-card-date">📅 ${date}</div>` : ''}
@@ -9110,10 +9131,16 @@ function cardHTML(c) {
 }
 
 function formatPhone(p) {
+  p = String(p || '').replace(/\D/g, '');
   if (!p) return '';
-  if (p.length === 13) return `+${p.slice(0,2)} (${p.slice(2,4)}) ${p.slice(4,9)}-${p.slice(9)}`;
-  return p;
+  if (p.startsWith('55') && p.length === 13) return `+55 (${p.slice(2,4)}) ${p.slice(4,9)}-${p.slice(9)}`;
+  if (p.startsWith('55') && p.length === 12) return `+55 (${p.slice(2,4)}) ${p.slice(4,8)}-${p.slice(8)}`;
+  if (p.length === 11) return `(${p.slice(0,2)}) ${p.slice(2,7)}-${p.slice(7)}`;
+  if (p.length === 10) return `(${p.slice(0,2)}) ${p.slice(2,6)}-${p.slice(6)}`;
+  return '+' + p;
 }
+// Lead sem nome de verdade (nome vazio, igual ao telefone ou só números)
+function _leadSemNome(c) { const n = String(c && c.name || '').trim(); return !n || n === c.phone || /^\+?[\d\s()-]+$/.test(n); }
 
 function stageColor(id) {
   const colors = ['#00a884','#3b82f6','#f59e0b','#ef4444','#8b5cf6','#ec4899','#10b981','#f97316'];
@@ -9325,7 +9352,7 @@ async function deleteConversation(phone) {
     <div id="no-chat">
       <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z" fill="currentColor"/></svg>
       <p>Selecione uma conversa</p>
-      <span style="font-size:13px">Suas mensagens do WhatsApp aparecerão aqui</span>
+      <span style="font-size:13px">Escolha um contato à esquerda, ou use a busca para achar uma pessoa ou uma mensagem. As conversas dos seus números do WhatsApp aparecem aqui.</span>
     </div>`;
       document.getElementById('layout')?.classList.remove('mobile-chat-open'); // celular: volta para a lista
       document.body.classList.remove('mobile-chat-open');
@@ -10074,7 +10101,7 @@ function renderTasksPage(){
   const showDone=document.getElementById('tasks-show-done')?.checked;
   let list=_allTasksCache.slice();
   if(!showDone) list=list.filter(t=>!t.done);
-  if(!list.length){ area.innerHTML=`<div style="color:#667781;padding:40px;text-align:center">Nenhuma tarefa ${showDone?'':'ativa'}. 🎉</div>`; const sc0=document.getElementById('tasks-sel-count'); if(sc0) sc0.textContent=''; const sa0=document.getElementById('tasks-select-all'); if(sa0) sa0.checked=false; return; }
+  if(!list.length){ area.innerHTML=`<div class="empty-state"><div class="es-ico">✅</div><b>Nenhuma tarefa ${showDone?'':'em aberto'}</b><span>${showDone ? 'Nada por aqui ainda.' : 'Crie tarefas pelo painel do lead (👤 → Tarefas → + Nova) ou por um bot com o passo "Criar tarefa". Elas aparecem aqui com prazo e lembrete.'}</span></div>`; const sc0=document.getElementById('tasks-sel-count'); if(sc0) sc0.textContent=''; const sa0=document.getElementById('tasks-select-all'); if(sa0) sa0.checked=false; return; }
   const now=Date.now();
   area.innerHTML=list.map(t=>{
     const overdue=t.due_at && !t.done && parseUTC(t.due_at)<now;
