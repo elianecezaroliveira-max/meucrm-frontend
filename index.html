@@ -1551,7 +1551,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v229</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v230</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1779,9 +1779,6 @@ window.addEventListener('load', initAuth);
         <input id="cfg-sheets-aba" placeholder="Nome da aba (ex.: DISPARO)" style="background:#f0f2f5;border:1px solid #e9edef;border-radius:6px;padding:8px 10px;font-size:12px;color:#131c20;min-width:0">
         <label style="font-size:12px;color:#131c20;display:flex;gap:6px;align-items:center"><input type="checkbox" id="cfg-sheets-auto"> Sincronizar sozinho a cada hora</label>
         <label style="font-size:12px;color:#131c20;display:flex;gap:6px;align-items:center"><input type="checkbox" id="cfg-sheets-upd"> Atualizar a etapa de leads que já existem <span style="color:#667781">(desligado = só entra lead novo; quem já está no pipeline não volta de etapa)</span></label>
-        <label style="font-size:12px;color:#131c20;display:flex;gap:6px;align-items:center;flex-wrap:wrap">⏳ Ao entrarem leads novos, ligar o gotejamento:
-          <select id="cfg-sheets-drip" style="background:#f0f2f5;border:1px solid #e9edef;border-radius:6px;padding:5px 8px;font-size:12px;color:#131c20"><option value="">— não ligar nada —</option></select>
-        </label>
       </div>
       <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
         <button class="pf-topbtn" onclick="salvarSheetsCfg()">💾 Salvar</button>
@@ -2106,7 +2103,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v229</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v230</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2160,7 +2157,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 229;
+const APP_VER = 230;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -7273,8 +7270,6 @@ async function carregarSheetsStatus() {
     document.getElementById('cfg-sheets-aba').value = d.sheet_name || 'DISPARO';
     document.getElementById('cfg-sheets-auto').checked = !!d.auto;
     document.getElementById('cfg-sheets-upd').checked = !!d.atualizar_etapa;
-    const ds = document.getElementById('cfg-sheets-drip');
-    if (ds) ds.innerHTML = '<option value="">— não ligar nada —</option>' + (d.regras_drip || []).map(r => `<option value="${escHtml(r.id)}" ${r.id === d.drip_rule_id ? 'selected' : ''}>${escHtml(r.nome || r.id)}${r.ativo ? ' (já ativa)' : ''}</option>`).join('');
     if (st) st.textContent = _sheetsLastTxt(d.last);
   } catch (_) { robo.textContent = 'Não consegui carregar o status.'; }
 }
@@ -7282,8 +7277,7 @@ async function salvarSheetsCfg() {
   const st = document.getElementById('cfg-sheets-status');
   try {
     const body = { spreadsheet: document.getElementById('cfg-sheets-url').value.trim(), sheet_name: document.getElementById('cfg-sheets-aba').value.trim() || 'DISPARO',
-      auto: document.getElementById('cfg-sheets-auto').checked, atualizar_etapa: document.getElementById('cfg-sheets-upd').checked,
-      drip_rule_id: (document.getElementById('cfg-sheets-drip') || {}).value || '' };
+      auto: document.getElementById('cfg-sheets-auto').checked, atualizar_etapa: document.getElementById('cfg-sheets-upd').checked, drip_rule_id: '' };
     const r = await fetch(SERVER_URL + '/sheets/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     const j = await r.json();
     if (!r.ok) throw new Error(j.error || 'falha');
@@ -7379,7 +7373,7 @@ async function sincronizarSheets(confirmado) {
     const foot = document.getElementById('sheets-prog-foot'); if (foot) foot.style.display = 'flex';
     const res = ult && ult.resultado;
     if (res && res.ok) {
-      if (st) st.textContent = _sheetsLastTxt(res) + (res.gotejamento_ativado ? ' ⏳ Gotejamento "' + res.gotejamento_ativado + '" ligado.' : '');
+      if (st) st.textContent = _sheetsLastTxt(res);
       try { if (typeof loadPipelineData === 'function') loadPipelineData(); } catch (_) {}
       setTimeout(() => { const o = document.getElementById('sheets-prev-overlay'); if (o) o.remove(); }, 2500);
     } else if (res) { if (st) st.textContent = '❌ ' + (res.erro || 'falha'); }
@@ -8563,7 +8557,7 @@ function dripRender() {
       st = `<span style="color:#00806a">● Ativa</span> · ${rest === undefined ? '' : rest + ' na fila · '}${l.phone ? 'último: ' + escHtml(l.name || l.phone) + ' às ' + new Date(l.quando).toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}) + ' · ' : ''}${nx && nx > new Date() ? 'próximo ' + nx.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}) : (rest === 0 ? 'fila vazia' : 'próximo em instantes')}${l.erro ? ' · <span style="color:#ef4444">' + escHtml(l.erro) + '</span>' : ''}`;
     } else st = '<span style="color:#8696a0">○ Pausada</span>';
     return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#f7f8fa;border:1px solid #e9edef;border-radius:8px;padding:7px 10px;margin-bottom:6px;font-size:12.5px">
-      <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" ${r.ativo ? 'checked' : ''} onchange="dripToggle(${i}, this.checked)"> </label>
+      <button onclick="dripToggle(${i}, ${r.ativo ? 'false' : 'true'})" title="${r.ativo ? 'Pausar o gotejamento' : 'Ativar o gotejamento'}" style="background:${r.ativo ? '#fff' : '#00a884'};color:${r.ativo ? '#b45309' : '#fff'};border:1px solid ${r.ativo ? '#f0c27a' : '#00a884'};border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">${r.ativo ? '⏸ Pausar' : '▶ Ativar'}</button>
       <b style="color:#131c20">${escHtml(r.nome || 'Regra ' + (i + 1))}</b>
       <span style="color:#54656f">${escHtml(stName[r.de] || '?')} → <b>${escHtml(stName[r.para] || '?')}</b> · 1 lead a cada ${Math.round(r.min_seg / 60 * 10) / 10}–${Math.round(r.max_seg / 60 * 10) / 10} min${r.dias && r.dias.length && r.dias.length < 7 ? ' · ' + r.dias.map(d => ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d]).join(', ') : ''}${r.hora_ini || r.hora_fim ? ' · ' + (r.hora_ini || '00:00') + '–' + (r.hora_fim || 'até esvaziar') : ''}${r.movidos ? ' · ' + r.movidos + ' movidos' : ''}</span>
       <span style="flex:1;color:#667781;font-size:11.5px">${st}</span>
