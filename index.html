@@ -1551,7 +1551,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v238</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v239</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -2103,7 +2103,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v238</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v239</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2157,7 +2157,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 238;
+const APP_VER = 239;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -8632,8 +8632,8 @@ function dripEditar(i) {
         <div class="tmpl-form-group"><label>Para a etapa</label><select id="drip-para">${opts(r.para)}</select></div>
       </div>
       <div class="tmpl-row">
-        <div class="tmpl-form-group"><label>Intervalo mínimo (seg)</label><input id="drip-min" type="number" min="5" value="${r.min_seg || 210}"></div>
-        <div class="tmpl-form-group"><label>Intervalo máximo (seg)</label><input id="drip-max" type="number" min="5" value="${r.max_seg || 300}"></div>
+        <div class="tmpl-form-group"><label>Intervalo mínimo (seg)</label><input id="drip-min" type="number" min="1" value="${r.min_seg || 210}"></div>
+        <div class="tmpl-form-group"><label>Intervalo máximo (seg)</label><input id="drip-max" type="number" min="1" value="${r.max_seg || 300}"></div>
       </div>
       <div class="tmpl-form-group"><label>Dias da semana</label>
         <div style="display:flex;gap:4px;flex-wrap:wrap">${['D','S','T','Q','Q','S','S'].map((d, k) => `<label title="${['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'][k]}" style="display:flex;align-items:center;gap:3px;background:#f0f2f5;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer"><input type="checkbox" class="drip-dia" value="${k}" ${(!r.dias || !r.dias.length || r.dias.includes(k)) ? 'checked' : ''}>${['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][k]}</label>`).join('')}</div>
