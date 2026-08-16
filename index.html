@@ -1551,7 +1551,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v237</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v238</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -2103,7 +2103,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v237</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v238</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2157,7 +2157,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 237;
+const APP_VER = 238;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -8582,7 +8582,7 @@ function dripRender() {
     } else if (r.ativo) {
       const nx = r.next_at ? new Date(r.next_at) : null;
       st = `<span style="color:#00806a">● ${r.manual ? 'Rodando agora (manual)' : 'Ativa'}</span> · ${l.phone ? 'último: ' + escHtml(l.name || l.phone) + ' às ' + new Date(l.quando).toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}) + ' · ' : ''}${nx && nx > new Date() ? 'próximo ' + nx.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}) : (rest === 0 ? 'fila vazia' : 'próximo em instantes')}${l.erro ? ' · <span style="color:#ef4444">' + escHtml(l.erro) + '</span>' : ''}`;
-    } else st = `<span style="color:#8696a0">○ Pausada</span>${l.phone ? ' · parou depois de ' + escHtml(l.name || l.phone) : ''}`;
+    } else st = feitos ? `<span style="color:#8696a0">○ Pausada</span>${l.phone ? ' · parou depois de ' + escHtml(l.name || l.phone) : ''}` : '<span style="color:#8696a0">○ Parada</span>';
     return `<div style="background:#f7f8fa;border:1px solid #e9edef;border-radius:8px;padding:7px 10px;margin-bottom:6px;font-size:12.5px">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <button onclick="dripToggle(${i}, ${r.ativo ? 'false' : 'true'})" title="${r.ativo ? 'Pausar (o progresso fica guardado; Retomar continua de onde parou)' : (feitos ? 'Retomar de onde parou' : 'Iniciar agora')}" style="background:${r.ativo ? '#fff' : '#00a884'};color:${r.ativo ? '#b45309' : '#fff'};border:1px solid ${r.ativo ? '#f0c27a' : '#00a884'};border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">${r.ativo ? '⏸ Pausar' : (feitos ? '▶ Retomar' : '▶ Iniciar')}</button>
