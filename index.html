@@ -346,6 +346,20 @@
   .tmpl-name { font-size: 14px; font-weight: 600; color: #131c20; margin-bottom: 4px; }
   .tmpl-meta { font-size: 12px; color: #667781; margin-bottom: 6px; }
   .tmpl-preview { font-size: 12px; color: #54656f; background: #f0f2f5; padding: 8px 10px; border-radius: 6px; line-height: 1.5; max-height: 60px; overflow: hidden; }
+  .vp-transcript { font-size: 13px; color: #3b4a54; line-height: 1.4; margin: 6px 4px 2px; padding-top: 6px; border-top: 1px solid rgba(0,0,0,.08); white-space: pre-wrap; word-break: break-word; }
+  .vp-transcript-btn { font-size: 12px; color: #667781; margin: 4px 4px 0; }
+  .vp-transcript-btn span { cursor: pointer; }
+  .vp-transcript-btn span:hover { color: #00a884; text-decoration: underline; }
+  .msg-hit-list { border-top: 1px solid #e9edef; }
+  .msg-hit-title { font-size: 11px; color: #667781; text-transform: uppercase; letter-spacing: .5px; padding: 10px 14px 4px; }
+  .msg-hit { display: flex; flex-direction: column; gap: 2px; padding: 9px 14px; cursor: pointer; border-bottom: 1px solid #f0f2f5; }
+  .msg-hit:hover { background: #f5f6f6; }
+  .msg-hit-name { font-size: 14px; color: #131c20; display: flex; justify-content: space-between; gap: 8px; }
+  .msg-hit-time { font-size: 11px; color: #667781; white-space: nowrap; }
+  .msg-hit-snip { font-size: 13px; color: #667781; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .msg-hit-snip mark { background: #d9fdd3; color: #075e54; border-radius: 2px; padding: 0 1px; }
+  .msg-jump { animation: msgJump 2.2s ease-out; }
+  @keyframes msgJump { 0%,40% { box-shadow: 0 0 0 3px #00a884; } 100% { box-shadow: 0 0 0 0 rgba(0,0,0,0); } }
   .tmpl-status { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; display: inline-block; }
   .tmpl-status.APPROVED { background: #e7f7ef; color: #00a884; }
   .tmpl-status.PENDING { background: #fbefe2; color: #b45309; }
@@ -1537,7 +1551,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v223</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v224</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -1622,6 +1636,7 @@ window.addEventListener('load', initAuth);
     <span id="pipeline-sel-count" style="display:none;font-size:13px;font-weight:700;color:#00806a;background:#e7f7ef;border-radius:12px;padding:5px 11px;white-space:nowrap"></span>
     <button class="pf-topbtn" onclick="openNewLead()">➕ Novo Lead</button>
     <button class="pf-topbtn" onclick="openImport()">📥 Importar</button>
+    <button class="pf-topbtn" id="btn-export-leads" onclick="exportarLeads()" title="Baixa em CSV (Excel): os selecionados, ou os leads visíveis com o filtro atual">⬇ Exportar</button>
     <button class="pf-topbtn" onclick="openAutomationPanel()">⚡ Automação</button>
     <button id="btn-add-stage" onclick="addStage()">+ Nova coluna</button>
     <button id="btn-close-pipeline" onclick="closePipeline()" title="Fechar">✕</button>
@@ -1753,6 +1768,13 @@ window.addEventListener('load', initAuth);
       <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">🆔 IDs das etapas (automações)</div>
       <p style="font-size:12px;color:#667781;margin:0 0 8px">Use estes números nas planilhas/fluxos do n8n. Toque no ID para copiar; no ✏️ para trocar.</p>
       <div id="cfg-stage-ids" style="font-size:13px;color:#54656f">Carregando...</div>
+    </div>
+
+    <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
+      <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">🔗 Chats duplicados</div>
+      <p style="font-size:12px;color:#667781;margin:0 0 8px">Junta conversas do mesmo número que apareceram duas vezes (com e sem o nono dígito). Só mexe na sua conta.</p>
+      <button class="pf-topbtn" onclick="verificarDuplicados()">🔍 Procurar e unificar</button>
+      <div id="cfg-dup-status" style="font-size:12px;color:#54656f;margin-top:6px;min-height:14px"></div>
     </div>
 
     <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
@@ -2055,7 +2077,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v223</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v224</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2109,7 +2131,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 223;
+const APP_VER = 224;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2643,9 +2665,143 @@ function onSearchInput() {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(runSearch, 350);
 }
+
+// 📝 TRANSCRIÇÃO DE ÁUDIO: pede ao servidor (Groq Whisper) e mostra embaixo do player
+async function transcreverAudio(msgId, aid) {
+  const box = document.getElementById('tr-' + aid);
+  if (!msgId || !box) return;
+  box.innerHTML = '<span style="color:#667781">⏳ Transcrevendo…</span>';
+  try {
+    const r = await fetch(SERVER_URL + '/transcribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message_id: msgId }) });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || 'falha');
+    if (j.vazio || !j.transcript) { box.innerHTML = '<span style="color:#667781">(sem fala reconhecível)</span>'; return; }
+    box.className = 'vp-transcript';
+    box.textContent = j.transcript;
+    const m = (currentMessages || []).find(x => String(x.id) === String(msgId)); if (m) m.transcript = j.transcript;
+    if (j.aviso) console.warn(j.aviso);
+  } catch (e) {
+    box.className = 'vp-transcript-btn';
+    box.innerHTML = `<span onclick="event.stopPropagation();transcreverAudio('${msgId}','${aid}')" title="${escHtml(e.message||'')}">📝 Transcrever (tentar de novo)</span>`;
+    alert(e.message || 'Não consegui transcrever.');
+  }
+}
+
+// 🔎 BUSCA DENTRO DAS MENSAGENS: além das conversas, lista as mensagens que
+// contêm o termo; clicar abre a conversa e pula até a mensagem
+let _msgHits = [], _msgHitsQ = '';
+async function buscarMensagens(q) {
+  _msgHitsQ = q;
+  if (!q || q.length < 2) { _msgHits = []; renderMsgHits(); return; }
+  try {
+    const accountId = document.getElementById('account-select').value;
+    let url = `${SERVER_URL}/search/messages?q=${encodeURIComponent(q)}`;
+    if (accountId) url += `&account_id=${accountId}`;
+    const r = await fetch(url);
+    const data = await r.json();
+    if (_msgHitsQ !== q) return; // resposta atrasada de outra busca
+    _msgHits = Array.isArray(data) ? data : [];
+  } catch (_) { _msgHits = []; }
+  renderMsgHits();
+}
+function _snippet(texto, q) {
+  const t = String(texto || '').replace(/\s+/g, ' ');
+  const i = t.toLowerCase().indexOf(String(q).toLowerCase());
+  const ini = Math.max(0, i - 30);
+  let s = (ini > 0 ? '…' : '') + t.slice(ini, ini + 90) + (ini + 90 < t.length ? '…' : '');
+  const esc = escHtml(s);
+  const re = new RegExp(String(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'ig');
+  return esc.replace(re, m0 => '<mark>' + m0 + '</mark>');
+}
+function renderMsgHits() {
+  const list = document.getElementById('contacts-list');
+  if (!list) return;
+  const old = document.getElementById('msg-hits'); if (old) old.remove();
+  if (!_msgHits.length || !_msgHitsQ) return;
+  const q = _msgHitsQ;
+  const html = `<div id="msg-hits" class="msg-hit-list">
+    <div class="msg-hit-title">Mensagens (${_msgHits.length})</div>
+    ${_msgHits.map(h => {
+      const txt = (h.content && h.content.toLowerCase().includes(q.toLowerCase())) ? h.content : (h.transcript || h.content || '');
+      const nome = h.name || h.phone;
+      const acc = h.account_id || h.contact_account_id || '';
+      return `<div class="msg-hit" onclick="abrirMensagemBusca('${escHtml(h.phone)}','${escHtml((nome||'').replace(/'/g,'’'))}','${escHtml(acc)}','${escHtml(String(h.id))}')">
+        <div class="msg-hit-name"><span>${escHtml(nome)}</span><span class="msg-hit-time">${formatContactTime(h.timestamp)}</span></div>
+        <div class="msg-hit-snip">${h.direction === 'outbound' ? 'Você: ' : ''}${h.transcript && !(h.content||'').toLowerCase().includes(q.toLowerCase()) ? '🎤 ' : ''}${_snippet(txt, q)}</div>
+      </div>`;
+    }).join('')}
+  </div>`;
+  list.insertAdjacentHTML('beforeend', html);
+}
+async function abrirMensagemBusca(phone, name, accountId, msgId) {
+  try { await selectContact(phone, name, accountId || ''); } catch (_) {}
+  // espera as mensagens desenharem e pula até a mensagem (destaque verde)
+  let tent = 0;
+  const tenta = () => {
+    const el = document.querySelector(`#messages-area [data-msg-id="${msgId}"]`);
+    if (el) {
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      el.classList.remove('msg-jump'); void el.offsetWidth; el.classList.add('msg-jump');
+      return;
+    }
+    if (++tent < 25) setTimeout(tenta, 200);
+  };
+  setTimeout(tenta, 250);
+}
+
+// ⬇ EXPORTAR LEADS (CSV para Excel): selecionados > visíveis (com filtro) > todos
+async function exportarLeads() {
+  let phones = [];
+  if (typeof _pipeSelMode !== 'undefined' && _pipeSelMode && selectedLeads && selectedLeads.size) phones = [...selectedLeads];
+  else {
+    const sel = pipelineView === 'list' ? '#pipeline-list .plist-row' : '.kanban-card';
+    phones = Array.from(document.querySelectorAll(sel)).map(c => c.dataset.phone).filter(Boolean);
+  }
+  const btn = document.getElementById('btn-export-leads');
+  const t0 = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Exportando…'; }
+  try {
+    let url = SERVER_URL + '/contacts/export?x=1';
+    const acc = document.getElementById('account-select')?.value; if (acc) url += '&account_id=' + encodeURIComponent(acc);
+    if (phones.length && phones.length <= 1500) url += '&phones=' + encodeURIComponent(phones.join(','));
+    let r = await fetch(url);
+    if (!r.ok && phones.length) { r = await fetch(url.replace(/&phones=[^&]*/, '')); } // URL grande demais → exporta tudo
+    if (!r.ok) throw new Error(await r.text());
+    const blob = await r.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'leads_' + new Date().toISOString().slice(0, 10) + '.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  } catch (e) { alert('Não consegui exportar: ' + (e.message || e)); }
+  finally { if (btn) { btn.disabled = false; btn.textContent = t0 || '⬇ Exportar'; } }
+}
+
+// 🔗 UNIFICAR CHATS DUPLICADOS (nono dígito) — só na conta logada
+async function verificarDuplicados() {
+  const box = document.getElementById('cfg-dup-status');
+  if (box) box.textContent = '⏳ Procurando…';
+  try {
+    const r = await fetch(SERVER_URL + '/contacts/duplicates');
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || 'falha');
+    if (!j.grupos) { if (box) box.textContent = '✅ Nenhum chat duplicado nesta conta.'; return; }
+    const ex = (j.exemplos || []).slice(0, 5).map(g => `${g.somem.map(x => x.phone).join(', ')} → ${g.fica.phone}${g.fica.name ? ' (' + g.fica.name + ')' : ''}`).join('\n');
+    if (box) box.innerHTML = `Encontrei <b>${j.grupos}</b> grupo(s) — ${j.contatos_a_remover} chat(s) duplicado(s) serão juntados ao principal.`;
+    if (confirm(`Encontrei ${j.grupos} grupo(s) de chats duplicados (${j.contatos_a_remover} serão unificados).\n\nExemplos:\n${ex}\n\nAs mensagens dos dois passam para um único chat (fica o que tem a conversa mais recente). Nada é apagado das conversas. Só a sua conta é afetada.\n\nUnificar agora?`)) {
+      if (box) box.textContent = '⏳ Unificando…';
+      const r2 = await fetch(SERVER_URL + '/contacts/unify-duplicates', { method: 'POST' });
+      const j2 = await r2.json();
+      if (!r2.ok) throw new Error(j2.error || 'falha');
+      if (box) box.innerHTML = `✅ ${j2.unificados} chat(s) unificados, ${j2.mensagens_movidas} mensagens reunidas.${j2.erros && j2.erros.length ? ' ⚠️ ' + j2.erros.length + ' erro(s).' : ''}`;
+      try { loadContacts && loadContacts(); } catch (_) {}
+    }
+  } catch (e) { if (box) box.textContent = '❌ ' + (e.message || e); }
+}
 async function runSearch() {
   const q = (document.getElementById('search-input')?.value || '').trim();
-  if (!q) { searchResults = null; applyFilters(); return; }
+  if (!q) { searchResults = null; _msgHits = []; _msgHitsQ = ''; applyFilters(); renderMsgHits(); return; }
+  buscarMensagens(q);
   try {
     const accountId = document.getElementById('account-select').value;
     let url = `${SERVER_URL}/search?q=${encodeURIComponent(q)}`;
@@ -2655,6 +2811,7 @@ async function runSearch() {
     searchResults = Array.isArray(data) ? sortContacts(data) : [];
   } catch(e) { searchResults = []; }
   applyFilters();
+  renderMsgHits();
 }
 
 function applyFilters() {
@@ -5417,6 +5574,9 @@ function renderMessageContent(m) {
             onplay="voiceUI('${aid}',true)" onpause="voiceUI('${aid}',false)" onended="voiceEnded('${aid}')"
             onwaiting="voiceLoading('${aid}',true)" onplaying="voiceLoading('${aid}',false)" onstalled="voiceLoading('${aid}',true)"></audio>
         </div>
+        ${m.transcript
+          ? `<div class="vp-transcript" id="tr-${aid}">${escHtml(m.transcript)}</div>`
+          : `<div class="vp-transcript-btn" id="tr-${aid}"><span onclick="event.stopPropagation();transcreverAudio('${String(m.id||'').replace(/['"<>]/g,'')}','${aid}')">📝 Transcrever</span></div>`}
       </div>`;
 
     } else if (m.type === 'video') {
@@ -5598,7 +5758,7 @@ async function loadMessages(phone, scroll = true) {
     // carregamento dos vídeos e fecha a tela cheia. Só re-renderiza se algo mudou
     // e se nenhuma mídia estiver tocando ou em tela cheia.
     const sig = phone + '::' + msgs.map(m =>
-      `${m.id}|${m.status || ''}|${m.reaction || ''}|${m.error_info ? 1 : 0}|${m.starred ? 1 : 0}${m.pinned ? 1 : 0}${m.edited ? 1 : 0}${m.forwarded ? 1 : 0}|${(m.content || '').length}.${String(m.content || '').slice(0, 16)}`).join(';');
+      `${m.id}|${m.status || ''}|${m.reaction || ''}|${m.error_info ? 1 : 0}|${m.starred ? 1 : 0}${m.pinned ? 1 : 0}${m.edited ? 1 : 0}${m.forwarded ? 1 : 0}${m.transcript ? 1 : 0}|${(m.content || '').length}.${String(m.content || '').slice(0, 16)}`).join(';');
     if (!scroll) {
       if (sig === _lastMsgsSig) return; // nada mudou — não mexe no DOM
       const mediaEls = area.querySelectorAll('video, audio');
