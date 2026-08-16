@@ -1165,6 +1165,55 @@
   .auto-tabs { display: flex; gap: 4px; padding: 8px 18px 0; background: #fff; border-bottom: 1px solid var(--v-line); }
   .auto-tab { background: none; border: none; border-bottom: 2px solid transparent; padding: 8px 12px 10px; font-size: 13.5px; font-weight: 600; color: var(--v-ink-3); cursor: pointer; }
   .auto-tab.on { color: var(--v-green-d); border-bottom-color: var(--v-green); }
+  /* ── Bots: cartões v2 ── */
+  #bots-list-area { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; padding: 18px 20px; align-content: start; }
+  .bot-card.v2 { width: auto !important; padding: 14px 16px 12px !important; border-radius: 14px !important; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+  .bot-card.v2:hover { background: #fff !important; box-shadow: 0 6px 18px rgba(0,0,0,.10); border-color: #d1d7db; }
+  .bot-card.v2.off { opacity: .8; }
+  .bot-card-top { display: flex; gap: 10px; align-items: center; }
+  .bot-card-ico { width: 40px; height: 40px; border-radius: 12px; background: var(--v-green-l); display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+  .bot-card.v2 .bot-card-name { margin: 0 !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bot-card-trig { font-size: 12px; color: var(--v-ink-3); margin-top: 2px; }
+  .bot-card-stats { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--v-ink-3); background: var(--v-bg); border-radius: 10px; padding: 8px 10px; }
+  .bot-card-foot { display: flex; align-items: center; gap: 6px; }
+  .bot-pill { font-size: 11.5px; font-weight: 700; color: var(--v-ink-3); background: var(--v-bg); border-radius: 12px; padding: 3px 9px; }
+  .bot-pill.on { color: var(--v-green-d); background: var(--v-green-l); }
+  .bot-act { background: #fff; border: 1px solid #e1e6ea; border-radius: 8px; padding: 5px 9px; font-size: 12px; color: var(--v-ink-2); cursor: pointer; }
+  .bot-act:hover { background: var(--v-bg); }
+  .bot-act.del { color: var(--v-red); border-color: #f1b0a7; } .bot-act.del:hover { background: var(--v-red-l); }
+  /* Interruptor */
+  .v-switch { position: relative; display: inline-block; width: 40px; height: 22px; flex-shrink: 0; cursor: pointer; }
+  .v-switch input { opacity: 0; width: 0; height: 0; }
+  .v-switch span { position: absolute; inset: 0; background: #cfd6da; border-radius: 22px; transition: background .15s; }
+  .v-switch span::before { content: ''; position: absolute; width: 18px; height: 18px; left: 2px; top: 2px; background: #fff; border-radius: 50%; transition: transform .15s; box-shadow: 0 1px 2px rgba(0,0,0,.25); }
+  .v-switch input:checked + span { background: var(--v-green); }
+  .v-switch input:checked + span::before { transform: translateX(18px); }
+  /* Esqueleto de carregamento */
+  .v-skel-wrap { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; width: 100%; }
+  .v-skel-card { background: #fff; border: 1px solid var(--v-line); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .v-skel { height: 12px; border-radius: 6px; background: linear-gradient(90deg, #eef1f3 25%, #f7f8f9 50%, #eef1f3 75%); background-size: 400% 100%; animation: vSkel 1.2s ease-in-out infinite; }
+  .v-skel.l { width: 60%; height: 16px; } .v-skel.s { width: 40%; } .v-skel.m { width: 85%; height: 32px; border-radius: 10px; }
+  @keyframes vSkel { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+  .contact-skel { display: flex; gap: 12px; padding: 12px 14px; align-items: center; border-bottom: 1px solid #f0f2f5; }
+  .contact-skel i { width: 49px; height: 49px; border-radius: 50%; flex-shrink: 0; }
+  /* ── Modo escuro nas novidades ── */
+  body.dark #side-rail { background: #202c33; border-color: #2a3942; }
+  body.dark .rail-btn { color: #aebac1; } body.dark .rail-btn:hover { background: #2a3942; color: #e9edef; }
+  body.dark .rail-btn.is-on { color: #00a884; } body.dark .rail-btn.is-on .ri { background: rgba(0,168,132,.18); }
+  body.dark .btn-cancel, body.dark .btn-secondary, body.dark .pf-topbtn, body.dark #pipeline-filter-btn, body.dark .btn-rename, body.dark .bot-act { background: #2a3942 !important; color: #e9edef !important; border-color: #3b4a54 !important; }
+  body.dark .btn-cancel:hover, body.dark .btn-secondary:hover, body.dark .pf-topbtn:hover, body.dark .bot-act:hover { background: #33444f !important; }
+  body.dark .tmpl-form-group input, body.dark .tmpl-form-group select, body.dark .tmpl-form-group textarea, body.dark .bot-cfg-input, body.dark .bot-cfg-textarea, body.dark .bot-cfg-select,
+  body.dark .pf-input, body.dark .lp-input, body.dark .lp-textarea, body.dark .lp-select, body.dark #cfg-sheets-url, body.dark #cfg-sheets-aba, body.dark #cfg-token { background: #2a3942 !important; color: #e9edef !important; border-color: #3b4a54 !important; }
+  body.dark div[id$="-overlay"] > div:first-child, body.dark #templates-modal, body.dark #send-tmpl-modal, body.dark #modal, body.dark #pipe-more-menu, body.dark .v-skel-card { background: #202c33 !important; color: #e9edef; border-color: #2a3942 !important; }
+  body.dark .cfg-tab { color: #aebac1; } body.dark .cfg-tab:hover { background: #2a3942; } body.dark .cfg-tab.on { background: rgba(0,168,132,.18); color: #00a884; }
+  body.dark #cfg-nav, body.dark .auto-tabs { border-color: #2a3942; } body.dark .auto-tabs { background: #202c33; }
+  body.dark .bot-card.v2 { background: #202c33 !important; border-color: #2a3942 !important; } body.dark .bot-card.v2:hover { background: #202c33 !important; }
+  body.dark .bot-card-stats, body.dark .bot-pill { background: #2a3942; color: #aebac1; } body.dark .bot-card-ico { background: rgba(0,168,132,.18); }
+  body.dark .bot-card.v2 .bot-card-name, body.dark #cfg-panes, body.dark #cfg-panes b, body.dark #cfg-panes h3 { color: #e9edef !important; }
+  body.dark .kanban-empty { border-color: #3b4a54; color: #8696a0; }
+  body.dark #auto-drip, body.dark #auto-drip > div, body.dark #auto-drip-list > div { background: #202c33 !important; color: #e9edef; border-color: #2a3942 !important; }
+  body.dark .v-skel { background: linear-gradient(90deg, #2a3942 25%, #33444f 50%, #2a3942 75%); background-size: 400% 100%; }
+  body.dark .contact-skel { border-color: #2a3942; }
 </style>
 </head>
 <body>
@@ -1636,7 +1685,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v251</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v252</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px">🔔 Ativar avisos</button>
@@ -1719,11 +1768,16 @@ window.addEventListener('load', initAuth);
     <button id="pipeline-selall-btn" onclick="togglePipeSelMode()" title="Ativa o modo de seleção de leads" style="background:#e7f7ef;border:1px solid #00a884;color:#00806a;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">☑️ Selecionar</button>
     <button id="pipeline-selall-all" onclick="selectAllInPipeline()" title="Seleciona/desmarca TODOS os leads visíveis (respeita o filtro ativo)" style="display:none;background:#e7f7ef;border:1px solid #00a884;color:#00806a;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">☑️ Selecionar todos</button>
     <span id="pipeline-sel-count" style="display:none;font-size:13px;font-weight:700;color:#00806a;background:#e7f7ef;border-radius:12px;padding:5px 11px;white-space:nowrap"></span>
-    <button class="pf-topbtn" onclick="openNewLead()">➕ Novo Lead</button>
+    <button class="btn-primary" onclick="openNewLead()">＋ Novo lead</button>
     <button class="pf-topbtn" onclick="openImport()">📥 Importar</button>
-    <button class="pf-topbtn" id="btn-export-leads" onclick="exportarLeads()" title="Baixa em CSV (Excel): os selecionados, ou os leads visíveis com o filtro atual">⬇ Exportar</button>
     <button class="pf-topbtn" onclick="openAutomationPanel()">⚡ Automação</button>
-    <button id="btn-add-stage" onclick="addStage()">+ Nova coluna</button>
+    <div style="position:relative">
+      <button class="pf-topbtn" id="pipe-more-btn" onclick="event.stopPropagation();const m=document.getElementById('pipe-more-menu');m.style.display=m.style.display==='block'?'none':'block'" title="Mais ações" style="padding:8px 10px !important">⋯</button>
+      <div id="pipe-more-menu" style="display:none;position:absolute;right:0;top:calc(100% + 6px);background:#fff;border:1px solid #e9edef;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.16);min-width:220px;padding:6px;z-index:50">
+        <button class="cm-item" style="width:100%;text-align:left;background:none;border:none;font-family:inherit;color:#131c20" id="btn-export-leads" onclick="document.getElementById('pipe-more-menu').style.display='none';exportarLeads()" title="Baixa em CSV (Excel): os selecionados, ou os leads visíveis com o filtro atual">⬇ Exportar leads (CSV)</button>
+        <button class="cm-item" style="width:100%;text-align:left;background:none;border:none;font-family:inherit;color:#131c20" onclick="document.getElementById('pipe-more-menu').style.display='none';addStage()">＋ Nova coluna</button>
+      </div>
+    </div>
     <button id="btn-close-pipeline" onclick="closePipeline()" title="Fechar">✕</button>
   </div>
   <div id="pipeline-filter-panel">
@@ -2205,7 +2259,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v251</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v252</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2259,7 +2313,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 251;
+const APP_VER = 252;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2817,7 +2871,13 @@ window.alert = function (m) { showToast(m); };
 // Marca o botão ativo do trilho (pastilha verde)
 // Cor de avatar estável por nome (paleta suave, letra escura da mesma família)
 const _AV_PAL = [['#d9fdd3','#0f6b57'],['#dbeafe','#1d4ed8'],['#fde68a','#92400e'],['#fbcfe8','#9d174d'],['#e9d5ff','#6b21a8'],['#cffafe','#0e7490'],['#fed7aa','#9a3412'],['#e5e7eb','#374151'],['#fecaca','#991b1b'],['#d1fae5','#065f46']];
-function _avatarCor(nome) { let h = 0; const s = String(nome || ''); for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; const [bg, fg] = _AV_PAL[h % _AV_PAL.length]; return `background:${bg};color:${fg}`; }
+// Padrão WhatsApp: avatar cinza-claro com a inicial em cinza-escuro (discreto).
+// Se um dia quiser cor por nome, troque _AV_MODO para 'cores'.
+const _AV_MODO = 'neutro';
+function _avatarCor(nome) {
+  if (_AV_MODO !== 'cores') return 'background:#dfe5e7;color:#54656f';
+  let h = 0; const s = String(nome || ''); for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; const [bg, fg] = _AV_PAL[h % _AV_PAL.length]; return `background:${bg};color:${fg}`;
+}
 function railOn(btn) { try { document.querySelectorAll('#side-rail .rail-btn').forEach(b => b.classList.toggle('is-on', b === btn)); } catch (_) {} }
 function onSearchInput() {
   clearTimeout(searchTimer);
@@ -3139,7 +3199,7 @@ function renderContacts(contacts) {
   if (!contacts.length) {
     list.innerHTML = window._contactsLoaded
       ? '<div id="empty-contacts">Nenhuma conversa ainda.<br>Envie uma mensagem pelo WhatsApp para o número de teste.</div>'
-      : ''; // ainda carregando: a tela de abertura cobre
+      : '<div class="contact-skel"><i class="v-skel"></i><div style="flex:1"><div class="v-skel l" style="margin-bottom:8px"></div><div class="v-skel" style="width:70%"></div></div></div>'.repeat(8); // esqueleto enquanto carrega
     return;
   }
   list.innerHTML = contacts.map(c => {
@@ -5249,6 +5309,7 @@ function toggleAttachMenu(ev) {
 }
 function closeAttachMenu() { const m = document.getElementById('attach-menu'); if (m) m.style.display = 'none'; }
 document.addEventListener('click', e => { if (!e.target.closest('#attach-menu') && !e.target.closest('#attach-btn')) closeAttachMenu(); });
+document.addEventListener('click', e => { const m = document.getElementById('pipe-more-menu'); if (m && m.style.display === 'block' && !e.target.closest('#pipe-more-menu') && !e.target.closest('#pipe-more-btn')) m.style.display = 'none'; });
 // 🛡️ Janelas não fecham por "arrastão": ao selecionar um texto dentro de uma
 // janela e soltar o mouse fora dela (no fundo escuro), o navegador dispara um
 // "click" no fundo — e a janela fechava. Só conta como clique no fundo se o
@@ -9674,12 +9735,29 @@ async function openBotsList() {
   const area = document.getElementById('bots-list-area');
   area.innerHTML = '<div style="color:#667781;font-size:13px;padding:20px">Carregando...</div>';
   try {
-    const res = await fetch(SERVER_URL+'/bots');
+    area.innerHTML = '<div class="v-skel-wrap">' + '<div class="v-skel-card"><div class="v-skel l"></div><div class="v-skel s"></div><div class="v-skel m"></div></div>'.repeat(4) + '</div>';
+    const [res, sr] = await Promise.all([fetch(SERVER_URL+'/bots?stats=1'), fetch(SERVER_URL + '/pipeline/stages').catch(() => null)]);
     const bots = await res.json();
+    try { const ss = sr ? await sr.json() : null; if (Array.isArray(ss)) pipelineStages = ss; } catch (_) {}
     renderBotsList(bots);
   } catch(e) {
     area.innerHTML = '<div style="color:#ef4444;padding:20px">Erro ao carregar bots</div>';
   }
+}
+async function toggleBotAtivo(id, on, el) {
+  try {
+    const r = await fetch(SERVER_URL + '/bots/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ active: !!on }) });
+    if (!r.ok) throw new Error('falha');
+    showToast(on ? '✅ Bot ativado' : 'Bot desativado', on ? 'ok' : '', 2200);
+    openBotsList();
+  } catch (_) { alert('Não consegui alterar o bot.'); if (el) el.checked = !on; }
+}
+function _tempoRel(iso) {
+  if (!iso) return 'nunca';
+  const d = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (d < 60) return 'agora há pouco'; if (d < 3600) return 'há ' + Math.floor(d / 60) + ' min';
+  if (d < 86400) return 'há ' + Math.floor(d / 3600) + ' h'; if (d < 86400 * 30) return 'há ' + Math.floor(d / 86400) + ' d';
+  return new Date(iso).toLocaleDateString('pt-BR');
 }
 
 function closeBotsList() {
@@ -10308,23 +10386,38 @@ function renderBotsList(bots) {
     </div>`;
     return;
   }
-  const trigLabels = { manual:'Manual', stage_enter:'Ao entrar em etapa' };
-  area.innerHTML = bots.map(b => `
-    <div class="bot-card" onclick="openBotEditor('${b.id}')">
-      <div class="bot-card-name">${escHtml(b.name)}</div>
-      <div class="bot-card-meta">
-        <span class="bot-status-dot ${b.active?'active':'inactive'}"></span>
-        <span>${b.active?'Ativo':'Inativo'}</span>
-        <span>•</span>
-        <span>${trigLabels[b.trigger_type]||b.trigger_type}</span>
+  const stName = {}; (pipelineStages || []).forEach(s => stName[s.id] = s.name);
+  const trig = b => b.trigger_type === 'stage_enter'
+    ? `🎯 Ao entrar em <b>${escHtml(stName[b.trigger_stage_id] || 'etapa')}</b>`
+    : '👆 Disparo manual';
+  area.innerHTML = bots.map(b => {
+    const st = b._stats || {};
+    return `
+    <div class="bot-card v2${b.active ? '' : ' off'}" onclick="openBotEditor('${b.id}')">
+      <div class="bot-card-top">
+        <div class="bot-card-ico">🤖</div>
+        <div style="flex:1;min-width:0">
+          <div class="bot-card-name" title="${escHtml(b.name)}">${escHtml(b.name)}</div>
+          <div class="bot-card-trig">${trig(b)}</div>
+        </div>
+        <label class="v-switch" title="${b.active ? 'Ativo — clique para desativar' : 'Inativo — clique para ativar'}" onclick="event.stopPropagation()">
+          <input type="checkbox" ${b.active ? 'checked' : ''} onchange="toggleBotAtivo('${b.id}', this.checked, this)"><span></span>
+        </label>
       </div>
-      <div class="bot-card-actions">
-        <button onclick="event.stopPropagation();openBotEditor('${b.id}')" title="Editar">✏️</button>
-        <button onclick="event.stopPropagation();duplicateBot('${b.id}')" title="Duplicar">📋</button>
-        <button onclick="event.stopPropagation();deleteBotItem('${b.id}')" title="Excluir">🗑</button>
+      <div class="bot-card-stats">
+        <span title="Execuções registradas"><b>${st.execucoes || 0}</b> execuções</span>
+        <span title="Leads aguardando resposta neste bot agora">${st.andamento ? '<b style="color:#00806a">' + st.andamento + '</b> em andamento' : 'nenhum em andamento'}</span>
+        <span title="Última execução">última: ${_tempoRel(st.ultima)}</span>
       </div>
-    </div>
-  `).join('');
+      <div class="bot-card-foot">
+        <span class="bot-pill ${b.active ? 'on' : ''}">${b.active ? '● Ativo' : '○ Inativo'}</span>
+        <span style="flex:1"></span>
+        <button class="bot-act" onclick="event.stopPropagation();openBotEditor('${b.id}')" title="Editar">✏️ Editar</button>
+        <button class="bot-act" onclick="event.stopPropagation();duplicateBot('${b.id}')" title="Duplicar">📋</button>
+        <button class="bot-act del" onclick="event.stopPropagation();deleteBotItem('${b.id}')" title="Excluir">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 async function createNewBot() {
