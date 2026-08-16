@@ -1551,7 +1551,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v226</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v227</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -2103,7 +2103,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v226</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v227</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2157,7 +2157,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 226;
+const APP_VER = 227;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -8477,7 +8477,7 @@ function dripRender() {
     return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#f7f8fa;border:1px solid #e9edef;border-radius:8px;padding:7px 10px;margin-bottom:6px;font-size:12.5px">
       <label style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" ${r.ativo ? 'checked' : ''} onchange="dripToggle(${i}, this.checked)"> </label>
       <b style="color:#131c20">${escHtml(r.nome || 'Regra ' + (i + 1))}</b>
-      <span style="color:#54656f">${escHtml(stName[r.de] || '?')} → <b>${escHtml(stName[r.para] || '?')}</b> · 1 lead a cada ${Math.round(r.min_seg / 60 * 10) / 10}–${Math.round(r.max_seg / 60 * 10) / 10} min${r.hora_ini || r.hora_fim ? ' · ' + (r.hora_ini || '00:00') + '–' + (r.hora_fim || '24:00') : ''}${r.movidos ? ' · ' + r.movidos + ' movidos' : ''}</span>
+      <span style="color:#54656f">${escHtml(stName[r.de] || '?')} → <b>${escHtml(stName[r.para] || '?')}</b> · 1 lead a cada ${Math.round(r.min_seg / 60 * 10) / 10}–${Math.round(r.max_seg / 60 * 10) / 10} min${r.dias && r.dias.length && r.dias.length < 7 ? ' · ' + r.dias.map(d => ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d]).join(', ') : ''}${r.hora_ini || r.hora_fim ? ' · ' + (r.hora_ini || '00:00') + '–' + (r.hora_fim || 'até esvaziar') : ''}${r.movidos ? ' · ' + r.movidos + ' movidos' : ''}</span>
       <span style="flex:1;color:#667781;font-size:11.5px">${st}</span>
       <button onclick="dripEditar(${i})" title="Editar" style="background:none;border:none;cursor:pointer;font-size:14px">✏️</button>
       <button onclick="dripRemover(${i})" title="Remover" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:14px">✕</button>
@@ -8514,9 +8514,12 @@ function dripEditar(i) {
         <div class="tmpl-form-group"><label>Intervalo mínimo (seg)</label><input id="drip-min" type="number" min="5" value="${r.min_seg || 210}"></div>
         <div class="tmpl-form-group"><label>Intervalo máximo (seg)</label><input id="drip-max" type="number" min="5" value="${r.max_seg || 300}"></div>
       </div>
+      <div class="tmpl-form-group"><label>Dias da semana</label>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">${['D','S','T','Q','Q','S','S'].map((d, k) => `<label title="${['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'][k]}" style="display:flex;align-items:center;gap:3px;background:#f0f2f5;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer"><input type="checkbox" class="drip-dia" value="${k}" ${(!r.dias || !r.dias.length || r.dias.includes(k)) ? 'checked' : ''}>${['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][k]}</label>`).join('')}</div>
+      </div>
       <div class="tmpl-row">
-        <div class="tmpl-form-group"><label>Só a partir de (opcional)</label><input id="drip-hi" type="time" value="${escHtml(r.hora_ini || '')}"></div>
-        <div class="tmpl-form-group"><label>Só até (opcional)</label><input id="drip-hf" type="time" value="${escHtml(r.hora_fim || '')}"></div>
+        <div class="tmpl-form-group"><label>Começa às</label><input id="drip-hi" type="time" value="${escHtml(r.hora_ini || '')}"></div>
+        <div class="tmpl-form-group"><label>Para às <span style="font-size:11px;color:#667781">(vazio = até esvaziar a fila)</span></label><input id="drip-hf" type="time" value="${escHtml(r.hora_fim || '')}"></div>
       </div>
       <label style="font-size:13px;color:#131c20;display:flex;gap:6px;align-items:center;margin:4px 0 12px"><input type="checkbox" id="drip-ativo" ${r.ativo ? 'checked' : ''}> Ativa</label>
       <p class="tmpl-hint" style="margin:0 0 12px">A cada intervalo, UM lead da fila vai para a etapa de destino — e as automações dessa etapa (bots) disparam para ele. Horário de Brasília.</p>
@@ -8530,7 +8533,9 @@ function dripConfirmar(i) {
   const mn = parseInt(document.getElementById('drip-min').value, 10) || 210, mx = parseInt(document.getElementById('drip-max').value, 10) || 300;
   const r = { id: (i >= 0 && _dripRegras[i]) ? _dripRegras[i].id : undefined, nome: document.getElementById('drip-nome').value.trim(), de, para,
     min_seg: Math.min(mn, mx), max_seg: Math.max(mn, mx), ativo: document.getElementById('drip-ativo').checked,
-    hora_ini: document.getElementById('drip-hi').value, hora_fim: document.getElementById('drip-hf').value };
+    hora_ini: document.getElementById('drip-hi').value, hora_fim: document.getElementById('drip-hf').value,
+    dias: (() => { const d = Array.from(document.querySelectorAll('.drip-dia:checked')).map(x => parseInt(x.value, 10)); return d.length === 7 ? [] : d; })() };
+  if (!r.dias.length && !document.querySelectorAll('.drip-dia:checked').length) return alert('Marque ao menos um dia da semana.');
   if (i >= 0) _dripRegras[i] = Object.assign({}, _dripRegras[i], r); else _dripRegras.push(r);
   document.getElementById('drip-edit-overlay').remove();
   dripSalvar();
