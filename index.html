@@ -1551,7 +1551,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v228</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v229</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#00a884;color:#fff;border:none;border-radius:6px;font-weight:600">🔔 Ativar avisos</button>
@@ -2106,7 +2106,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v228</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v229</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2160,7 +2160,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 228;
+const APP_VER = 229;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -7333,19 +7333,56 @@ async function preverSheets() {
   } catch (e) { if (st) st.textContent = '❌ ' + (e.message || e); }
   finally { if (b) { b.disabled = false; b.textContent = '👀 Prévia e importar'; } }
 }
+// 📈 Importação com barra de progresso: o servidor roda em segundo plano e o
+// app acompanha (a prévia vira a tela de progresso)
+function _sheetsProgressoHtml(p) {
+  const total = p.total || 0, feitos = Math.min(p.feitos || 0, total || p.feitos || 0);
+  const pct = total ? Math.round(feitos / total * 100) : (p.fase === 'lendo' ? 5 : 0);
+  const fase = p.fase === 'lendo' ? 'Lendo a planilha no Google…' : p.fase === 'importando' ? `Importando leads… ${feitos} de ${total}` : p.fase === 'concluido' ? 'Concluído!' : p.fase === 'erro' ? 'Falhou' : 'Aguardando…';
+  return `<div style="padding:26px 24px;text-align:center">
+    <div style="font-size:40px;line-height:1;margin-bottom:10px">${p.fase === 'concluido' ? '✅' : p.fase === 'erro' ? '❌' : '📥'}</div>
+    <div style="font-size:15px;font-weight:700;color:#131c20;margin-bottom:12px">${fase}</div>
+    <div style="height:14px;background:#e9edef;border-radius:8px;overflow:hidden;max-width:420px;margin:0 auto">
+      <div style="height:100%;width:${p.fase === 'lendo' ? 100 : pct}%;background:${p.fase === 'erro' ? '#ef4444' : '#00a884'};border-radius:8px;transition:width .4s ease;${p.fase === 'lendo' ? 'background-image:linear-gradient(45deg,rgba(255,255,255,.35) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.35) 50%,rgba(255,255,255,.35) 75%,transparent 75%);background-size:28px 28px;animation:qrbar 1s linear infinite' : ''}"></div>
+    </div>
+    <div style="font-size:12px;color:#667781;margin-top:10px">${total ? pct + '%' : ''}${p.importados ? ' · <span style="color:#00a884;font-weight:600">' + p.importados + ' novo(s)</span>' : ''}${p.pulados ? ' · ' + p.pulados + ' já existiam' : ''}${p.erros ? ' · <span style="color:#ef4444">' + p.erros + ' erro(s)</span>' : ''}</div>
+    ${p.done && p.resultado && !p.resultado.ok ? `<div style="font-size:12.5px;color:#ef4444;margin-top:8px">${escHtml(p.resultado.erro || '')}</div>` : ''}
+  </div>`;
+}
 async function sincronizarSheets(confirmado) {
   const st = document.getElementById('cfg-sheets-status'), b = document.getElementById('btn-sheets-sync');
   if (!confirmado) return preverSheets();
-  const bc = document.getElementById('btn-sheets-confirm'); if (bc) { bc.disabled = true; bc.textContent = '⏳ Importando…'; }
+  const ov = document.getElementById('sheets-prev-overlay');
+  const card = ov ? ov.firstElementChild : null;
   if (b) { b.disabled = true; b.textContent = '⏳ Importando…'; }
-  if (st) st.textContent = '⏳ Lendo a planilha…';
   try {
-    const r = await fetch(SERVER_URL + '/sheets/sync', { method: 'POST' });
+    const r = await fetch(SERVER_URL + '/sheets/sync?bg=1', { method: 'POST' });
     const j = await r.json();
-    if (!r.ok || !j.ok) throw new Error(j.erro || j.error || 'falha');
-    if (st) st.textContent = _sheetsLastTxt(j) + (j.gotejamento_ativado ? ' ⏳ Gotejamento "' + j.gotejamento_ativado + '" ligado.' : '');
-    const ov = document.getElementById('sheets-prev-overlay'); if (ov) ov.remove();
-    try { if (typeof loadPipelineData === 'function') loadPipelineData(); } catch (_) {}
+    if (!r.ok) throw new Error(j.error || j.erro || 'falha');
+    // troca a prévia pela tela de progresso
+    if (card) {
+      card.innerHTML = `<div style="display:flex;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid #e9edef"><b style="flex:1;font-size:15px;color:#131c20">📥 Importando da planilha</b></div>
+        <div id="sheets-prog-body">${_sheetsProgressoHtml({ fase: 'lendo' })}</div>
+        <div id="sheets-prog-foot" style="display:none;gap:8px;justify-content:flex-end;padding:12px 16px;border-top:1px solid #e9edef"><button class="btn-save" onclick="document.getElementById('sheets-prev-overlay').remove()">Fechar</button></div>`;
+      if (!document.getElementById('qrbar-anim')) document.head.insertAdjacentHTML('beforeend', '<style id="qrbar-anim">@keyframes qrbar{from{background-position:0 0}to{background-position:28px 0}}</style>');
+    }
+    // acompanha o progresso
+    let ult = null;
+    for (let i = 0; i < 1800; i++) {
+      await new Promise(rs => setTimeout(rs, 600));
+      let p = null;
+      try { p = await (await fetch(SERVER_URL + '/sheets/sync/status')).json(); } catch (_) { continue; }
+      ult = p;
+      const body = document.getElementById('sheets-prog-body'); if (body) body.innerHTML = _sheetsProgressoHtml(p);
+      if (p.done) break;
+    }
+    const foot = document.getElementById('sheets-prog-foot'); if (foot) foot.style.display = 'flex';
+    const res = ult && ult.resultado;
+    if (res && res.ok) {
+      if (st) st.textContent = _sheetsLastTxt(res) + (res.gotejamento_ativado ? ' ⏳ Gotejamento "' + res.gotejamento_ativado + '" ligado.' : '');
+      try { if (typeof loadPipelineData === 'function') loadPipelineData(); } catch (_) {}
+      setTimeout(() => { const o = document.getElementById('sheets-prev-overlay'); if (o) o.remove(); }, 2500);
+    } else if (res) { if (st) st.textContent = '❌ ' + (res.erro || 'falha'); }
   } catch (e) { if (st) st.textContent = '❌ ' + (e.message || e); const bc2 = document.getElementById('btn-sheets-confirm'); if (bc2) { bc2.disabled = false; bc2.textContent = '✅ Confirmar e importar'; } }
   finally { if (b) { b.disabled = false; b.textContent = '👀 Prévia e importar'; } }
 }
