@@ -615,7 +615,10 @@
   body.dark .contact-item, body.dark .contact-swipe-wrap > .contact-item { background: #111b21; border-color: #222d34; }
   body.dark .contact-item:hover { background: #202c33; }
   body.dark .contact-item.active { background: #2a3942; }
-  body.dark .contact-swipe-wrap > .contact-item.is-fav { background: #263528; }
+  body.dark .contact-swipe-wrap > .contact-item.is-fav { background: #1c2a24; }
+  body.dark { --av-bg: #6a7175; --av-fg: #e9edef; } /* avatar cinza-médio, como o WhatsApp escuro */
+  body.dark .contact-avatar { background: #6a7175; color: #e9edef; }
+  body.dark .lp-avatar { background: #6a7175 !important; color: #e9edef !important; }
   body.dark .contact-info { box-shadow: inset 0 -1px 0 #222d34; }
   body.dark #messages-area { background-color: #0b141a; background-image: none; }
   body.dark .msg.inbound { background: #202c33; color: #e9edef; }
@@ -1685,7 +1688,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v252</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v253</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px">🔔 Ativar avisos</button>
@@ -2259,7 +2262,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v252</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v253</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2313,7 +2316,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 252;
+const APP_VER = 253;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2875,7 +2878,7 @@ const _AV_PAL = [['#d9fdd3','#0f6b57'],['#dbeafe','#1d4ed8'],['#fde68a','#92400e
 // Se um dia quiser cor por nome, troque _AV_MODO para 'cores'.
 const _AV_MODO = 'neutro';
 function _avatarCor(nome) {
-  if (_AV_MODO !== 'cores') return 'background:#dfe5e7;color:#54656f';
+  if (_AV_MODO !== 'cores') return 'background:var(--av-bg,#dfe5e7);color:var(--av-fg,#54656f)';
   let h = 0; const s = String(nome || ''); for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; const [bg, fg] = _AV_PAL[h % _AV_PAL.length]; return `background:${bg};color:${fg}`;
 }
 function railOn(btn) { try { document.querySelectorAll('#side-rail .rail-btn').forEach(b => b.classList.toggle('is-on', b === btn)); } catch (_) {} }
