@@ -1070,6 +1070,13 @@
     max-height: 70vh; overflow-y: auto;
   }
   #mobile-plus-menu.open { display: block; }
+  /* Fundo escurecido enquanto o menu "+" está aberto: tocar fora fecha; o "+" vira "✕" */
+  #mobile-plus-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 54; }
+  #mobile-plus-backdrop.open { display: block; }
+  #mnav-plus.open { background: #54656f; font-size: 26px; }
+  .mpm-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 8px 8px 16px; font-size: 12px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #667781; border-bottom: 1px solid #f0f2f5; margin-bottom: 4px; }
+  .mpm-head button { background: #f0f2f5; border: none; width: 30px; height: 30px; border-radius: 50%; font-size: 15px; color: #54656f; cursor: pointer; }
+  body.dark .mpm-head { color: #aebac1; border-color: #2a3942; } body.dark .mpm-head button { background: #2a3942; color: #e9edef; }
   .mpm-item { padding: 13px 16px; font-size: 15px; color: #131c20; border-radius: 8px; cursor: pointer; }
   .mpm-item:active { background: #f0f2f5; }
   /* Os botões do topo foram para o "+" — some com eles no celular */
@@ -1080,6 +1087,7 @@
 
   /* Pipeline: topo quebra em linhas no celular (botões não ficam cortados) */
   #pipeline-topbar { flex-wrap: wrap; gap: 6px; }
+  #pipeline-selall-btn, #pipeline-selall-all { padding: 6px 10px !important; font-size: 12px !important; }
   #pipeline-topbar h2 { font-size: 15px; }
   /* Página de Tarefas: opções do topo quebram em linhas (não ficam cortadas) */
   #tasks-page-topbar { flex-wrap: wrap; gap: 8px; padding: 10px 12px; }
@@ -1168,6 +1176,12 @@
   .auto-tabs { display: flex; gap: 4px; padding: 8px 18px 0; background: #fff; border-bottom: 1px solid var(--v-line); }
   .auto-tab { background: none; border: none; border-bottom: 2px solid transparent; padding: 8px 12px 10px; font-size: 13.5px; font-weight: 600; color: var(--v-ink-3); cursor: pointer; }
   .auto-tab.on { color: var(--v-green-d); border-bottom-color: var(--v-green); }
+  /* Modo seleção do pipeline: botões compactos, contador em pílula */
+  #pipeline-selall-btn, #pipeline-selall-all { padding: 6px 10px !important; font-size: 12px !important; background: #fff !important; color: var(--v-ink-2) !important; border: 1px solid #d1d7db !important; border-radius: 10px !important; }
+  #pipeline-selall-btn:hover, #pipeline-selall-all:hover { background: var(--v-bg) !important; }
+  #pipeline-sel-count { font-size: 12px !important; padding: 5px 10px !important; }
+  /* Configurações em tela cheia: conteúdo com largura de leitura */
+  #cfg-panes { max-width: 780px; }
   /* ── Bots: cartões v2 ── */
   #bots-list-area { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; padding: 18px 20px; align-content: start; }
   .bot-card.v2 { width: auto !important; padding: 14px 16px 12px !important; border-radius: 14px !important; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
@@ -1212,7 +1226,18 @@
   body.dark #cfg-nav, body.dark .auto-tabs { border-color: #2a3942; } body.dark .auto-tabs { background: #202c33; }
   body.dark .bot-card.v2 { background: #202c33 !important; border-color: #2a3942 !important; } body.dark .bot-card.v2:hover { background: #202c33 !important; }
   body.dark .bot-card-stats, body.dark .bot-pill { background: #2a3942; color: #aebac1; } body.dark .bot-card-ico { background: rgba(0,168,132,.18); }
-  body.dark .bot-card.v2 .bot-card-name, body.dark #cfg-panes, body.dark #cfg-panes b, body.dark #cfg-panes h3 { color: #e9edef !important; }
+  body.dark .bot-card.v2 .bot-card-name, body.dark #cfg-panes, body.dark #cfg-panes b, body.dark #cfg-panes h3, body.dark #cfg-overlay h3, body.dark #cfg-panes > div div[style*="font-weight:700"], body.dark .cfg-pane label { color: #e9edef !important; }
+  body.dark #cfg-panes p, body.dark #cfg-panes span:not(.tmpl-status), body.dark #cfg-billing, body.dark #cfg-stage-ids, body.dark #cfg-sheets-robo, body.dark #cfg-sheets-status, body.dark #cfg-dup-status { color: #aebac1; }
+  body.dark #cfg-panes input[type="checkbox"] { accent-color: #00a884; }
+  body.dark #bots-page, body.dark #tasks-page, body.dark #faq-page, body.dark #pipeline-page, body.dark #kanban-board, body.dark #pipeline-list { background: #111b21; color: #e9edef; }
+  body.dark #bots-page-topbar, body.dark #tasks-page-topbar, body.dark #faq-page-topbar { background: #202c33; border-color: #2a3942; }
+  body.dark #bots-page-topbar h2, body.dark #tasks-page-topbar h2, body.dark #faq-page-topbar h2, body.dark #pipeline-topbar h2 { color: #e9edef; }
+  body.dark .kanban-col, body.dark .kanban-card, body.dark .plist-row { background: #202c33 !important; border-color: #2a3942 !important; color: #e9edef; }
+  body.dark .kanban-card-name, body.dark .kanban-col-header, body.dark .kanban-col-title { color: #e9edef !important; }
+  body.dark .kanban-card-phone, body.dark .kanban-card-date { color: #8696a0 !important; }
+  body.dark .empty-state b { color: #e9edef; } body.dark .empty-state .es-ico { background: #2a3942; }
+  body.dark #no-chat p { color: #aebac1; }
+  body.dark .v-toast { box-shadow: 0 8px 26px rgba(0,0,0,.5); }
   body.dark .kanban-empty { border-color: #3b4a54; color: #8696a0; }
   body.dark #auto-drip, body.dark #auto-drip > div, body.dark #auto-drip-list > div { background: #202c33 !important; color: #e9edef; border-color: #2a3942 !important; }
   body.dark .v-skel { background: linear-gradient(90deg, #2a3942 25%, #33444f 50%, #2a3942 75%); background-size: 400% 100%; }
@@ -1688,7 +1713,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v253</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v255</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px">🔔 Ativar avisos</button>
@@ -1710,7 +1735,9 @@ window.addEventListener('load', initAuth);
 <div id="mobile-nav">
   <button id="mnav-plus" onclick="toggleMobilePlus(event)" title="Ferramentas">＋</button>
 </div>
+<div id="mobile-plus-backdrop" onclick="closeMobilePlus()"></div>
 <div id="mobile-plus-menu">
+  <div class="mpm-head"><span>Ferramentas</span><button type="button" onclick="closeMobilePlus()" aria-label="Fechar">✕</button></div>
   <div class="mpm-item" onclick="mnavGo(openNewLead)">👤 Adicionar contato</div>
   <div class="mpm-item" onclick="mnavGo(openPipeline)">📊 Pipeline</div>
   <div class="mpm-item" onclick="mnavGo(openTemplates)">📋 Modelos</div>
@@ -2262,7 +2289,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v253</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v255</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2316,7 +2343,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 253;
+const APP_VER = 255;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -7697,11 +7724,17 @@ function goToChat() { _closeAllScreens(); }
 function toggleMobilePlus(ev) {
   if (ev) ev.stopPropagation();
   const m = document.getElementById('mobile-plus-menu');
-  if (m) m.classList.toggle('open');
+  if (!m) return;
+  const abrir = !m.classList.contains('open');
+  m.classList.toggle('open', abrir);
+  const bd = document.getElementById('mobile-plus-backdrop'); if (bd) bd.classList.toggle('open', abrir);
+  const b = document.getElementById('mnav-plus'); if (b) { b.classList.toggle('open', abrir); b.textContent = abrir ? '✕' : '＋'; b.title = abrir ? 'Fechar' : 'Ferramentas'; }
 }
 function closeMobilePlus() {
   const m = document.getElementById('mobile-plus-menu');
   if (m) m.classList.remove('open');
+  const bd = document.getElementById('mobile-plus-backdrop'); if (bd) bd.classList.remove('open');
+  const b = document.getElementById('mnav-plus'); if (b) { b.classList.remove('open'); b.textContent = '＋'; b.title = 'Ferramentas'; }
 }
 function mnavGo(fn) { closeMobilePlus(); try { fn(); } catch (_) {} }
 document.addEventListener('click', e => {
@@ -9488,6 +9521,13 @@ function clearBulkSelection() {
   updateBulkBar();
   renderKanban();
 }
+// Depois de uma ação em massa (mover, excluir, tags, disparar), volta ao modo normal
+function _sairSelecaoPipeline() {
+  selectedLeads.clear();
+  if (typeof _pipeSelMode !== 'undefined' && _pipeSelMode) { try { togglePipeSelMode(); return; } catch (_) {} }
+  updateBulkBar();
+  try { applyPipelineFilter(); } catch (_) { renderKanban(); }
+}
 
 async function bulkMoveStage(stageId) {
   if (!stageId || selectedLeads.size === 0) return;
@@ -9501,9 +9541,8 @@ async function bulkMoveStage(stageId) {
     const c = pipelineContacts.find(x => x.phone === p);
     if (c) c.stage_id = stageId;
   });
-  selectedLeads.clear();
-  updateBulkBar();
-  renderKanban();
+  _sairSelecaoPipeline();
+  showToast(`✅ ${phones.length} lead(s) movido(s) para "${stageName}"`, 'ok', 2500);
   try {
     await fetch(`${SERVER_URL}/contacts/bulk-stage`, {
       method: 'PUT',
@@ -9550,10 +9589,9 @@ async function bulkDeleteLeads() {
   if (!confirm(`Excluir ${phones.length} lead(s)? Esta ação não pode ser desfeita.`)) return;
   pipelineContacts = pipelineContacts.filter(c => !selectedLeads.has(c.phone));
   allContacts = allContacts.filter(c => !selectedLeads.has(c.phone));
-  selectedLeads.clear();
-  updateBulkBar();
-  renderKanban();
+  _sairSelecaoPipeline();
   renderContacts(allContacts);
+  showToast(`🗑 ${phones.length} lead(s) excluído(s)`, '', 2500);
   try {
     await fetch(`${SERVER_URL}/contacts/bulk-delete`, {
       method: 'DELETE',
@@ -9577,8 +9615,9 @@ async function bulkEditTags() {
     if (ac) ac.tags = merged;
     if (pc) pc.tags = merged;
   });
-  renderKanban();
+  _sairSelecaoPipeline();
   renderContacts(allContacts);
+  showToast(`✅ Tags adicionadas a ${phones.length} lead(s)`, 'ok', 2500);
   try {
     await fetch(`${SERVER_URL}/contacts/bulk-tags`, {
       method: 'PUT',
@@ -10289,7 +10328,7 @@ async function openBulkBotMenu(ev){
   try{
     const r=await fetch(SERVER_URL+'/bots/'+bot.id+'/start-bulk',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phones})});
     const d=await r.json();
-    if(d.success){ alert(`✅ Disparo iniciado para ${d.total} lead(s).`); _selTaskPhones.clear(); renderTasksPage(); }
+    if(d.success){ alert(`✅ Disparo iniciado para ${d.total} lead(s).`); _selTaskPhones.clear(); if (typeof _taskSelMode !== 'undefined' && _taskSelMode) toggleTaskSelMode(); else renderTasksPage(); }
     else alert('Erro: '+(d.error||'tente novamente'));
   }catch(e){ alert('Erro ao disparar o bot em massa.'); }
 }
@@ -10416,8 +10455,8 @@ function renderBotsList(bots) {
         <span class="bot-pill ${b.active ? 'on' : ''}">${b.active ? '● Ativo' : '○ Inativo'}</span>
         <span style="flex:1"></span>
         <button class="bot-act" onclick="event.stopPropagation();openBotEditor('${b.id}')" title="Editar">✏️ Editar</button>
-        <button class="bot-act" onclick="event.stopPropagation();duplicateBot('${b.id}')" title="Duplicar">📋</button>
-        <button class="bot-act del" onclick="event.stopPropagation();deleteBotItem('${b.id}')" title="Excluir">🗑</button>
+        <button class="bot-act" onclick="event.stopPropagation();duplicateBot('${b.id}')" title="Duplicar">Duplicar</button>
+        <button class="bot-act del" onclick="event.stopPropagation();deleteBotItem('${b.id}')" title="Excluir">Excluir</button>
       </div>
     </div>`;
   }).join('');
