@@ -1768,7 +1768,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v273</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v275</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px">🔔 Ativar avisos</button>
@@ -2347,7 +2347,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v273</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v275</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2401,7 +2401,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 273;
+const APP_VER = 275;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3519,9 +3519,15 @@ function autoGrowMsgInput(ta) {
   if (!ta) return;
   // Campo VAZIO volta ao tamanho normal NA HORA (o iOS reportava altura errada
   // com o teclado aberto e o campo demorava a encolher depois do envio)
-  if (!ta.value) { ta.style.height = '40px'; _fmtInline(ta); return; }
-  ta.style.height = '40px';
-  ta.style.height = Math.min(ta.scrollHeight, 120) + 'px'; // até 5 linhas visíveis
+  if (!ta.value) { ta.style.height = '40px'; ta._lastLen = 0; _fmtInline(ta); return; }
+  // Sem "encolhe-e-cresce" a cada tecla (no celular isso fazia o campo tremer):
+  // só volta a 40px para medir quando o texto DIMINUIU; ao crescer mede direto
+  const encurtou = ta.value.length < (ta._lastLen || 0);
+  ta._lastLen = ta.value.length;
+  if (encurtou) ta.style.height = '40px';
+  const alvo = Math.min(Math.max(40, Math.ceil(ta.scrollHeight)), 120); // até 5 linhas visíveis
+  const atual = parseFloat(ta.style.height) || 40;
+  if (Math.abs(atual - alvo) >= 1) ta.style.height = alvo + 'px';
   _fmtInline(ta); // negrito/riscado NO CAMPO enquanto digita
 }
 // ✍️ NEGRITO/RISCADO no PRÓPRIO campo enquanto digita (igual WhatsApp):
@@ -4354,7 +4360,24 @@ async function toggleFavorite(phone) {
 // ✏️ RASCUNHO por conversa (igual WhatsApp): o texto digitado fica guardado
 let _drafts = {};
 try { _drafts = JSON.parse(localStorage.getItem('vetra_drafts') || '{}'); } catch (_) {}
-function _saveDrafts() { try { localStorage.setItem('vetra_drafts', JSON.stringify(_drafts)); } catch (_) {} }
+// Grava SÓ o rascunho da conversa atual, mesclando com o que está no disco.
+// Antes gravava o objeto inteiro da memória: um segundo app aberto (aba antiga,
+// PWA + navegador) com memória velha "ressuscitava" o rascunho de uma mensagem
+// que já tinha sido enviada.
+function _saveDrafts(phone) {
+  try {
+    const p = phone || currentPhone;
+    let disco = {}; try { disco = JSON.parse(localStorage.getItem('vetra_drafts') || '{}') || {}; } catch (_) { disco = {}; }
+    if (p) { if (_drafts[p] && String(_drafts[p]).trim()) disco[p] = _drafts[p]; else delete disco[p]; }
+    localStorage.setItem('vetra_drafts', JSON.stringify(disco));
+    _drafts = disco; // memória passa a refletir o disco (inclui rascunhos de outra aba)
+  } catch (_) {}
+}
+// Voltou para o app? Relê os rascunhos do disco (outra aba pode ter mudado) e atualiza a lista
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) return;
+  try { const d = JSON.parse(localStorage.getItem('vetra_drafts') || '{}') || {}; _drafts = d; if (typeof renderContacts === 'function' && Array.isArray(allContacts) && allContacts.length) renderContacts(sortContacts(allContacts)); } catch (_) {}
+});
 // Celular: o iOS pode suspender o app a qualquer momento — salva em TODOS os avisos de saída
 function _persistDraftNow() {
   try {
