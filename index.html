@@ -1768,7 +1768,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v269</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v271</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px">🔔 Ativar avisos</button>
@@ -2347,7 +2347,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v269</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v271</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2401,7 +2401,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 269;
+const APP_VER = 271;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -7523,7 +7523,10 @@ function showQRPopup(filter, fromSearch) {
 }
 
 function hideQRPopup() {
-  document.getElementById('qr-popup').style.display = 'none';
+  const p = document.getElementById('qr-popup');
+  if (p) p.style.display = 'none';
+  // Se sobrou só a "/" da busca no campo, limpa (não vira rascunho nem mensagem)
+  try { const ta = document.getElementById('msg-input'); if (ta && ta.value === '/') { ta.value = ''; if (currentPhone) { delete _drafts[currentPhone]; _saveDrafts(); } if (typeof updateSendMicButtons === 'function') updateSendMicButtons(); } } catch (_) {}
 }
 
 function insertQRReply(index) {
@@ -7848,7 +7851,15 @@ function openComposerTool() {
   if (window.matchMedia('(max-width: 768px)').matches) {
     const p = document.getElementById('qr-popup');
     if (p && p.style.display === 'block') { hideQRPopup(); return; } // 2º toque fecha
-    showQRPopup('');
+    // Celular: o ⚡ funciona como digitar "/" — coloca a barra no campo, abre o
+    // teclado e mostra a lista; o que você digitar depois filtra (igual ao PC)
+    const ta = document.getElementById('msg-input');
+    if (ta) {
+      if (!ta.value.startsWith('/')) ta.value = '/' + ta.value;
+      ta.focus();
+      try { ta.setSelectionRange(ta.value.length, ta.value.length); } catch (_) {}
+      showQRPopup(ta.value.slice(1));
+    } else showQRPopup('');
   } else {
     openSendTemplate();
   }
@@ -9915,6 +9926,17 @@ function clearPipelineFilter() {
 // ── INICIALIZAÇÃO ──
 const DEFAULT_SERVER = 'https://meucrm-backend-production-d4f4.up.railway.app';
 
+// Tela marcada na URL abre ANTES de qualquer chamada de rede (só Modelos espera as contas)
+document.addEventListener('DOMContentLoaded', () => {
+  try {
+    const h = String(location.hash || '').replace(/^#/, '');
+    if (h && !h.startsWith('chat=') && h !== 'modelos' && !window._telaRestaurada) {
+      SERVER_URL = SERVER_URL || DEFAULT_SERVER; // as telas já podem buscar seus dados
+      window._telaRestaurada = true;
+      _restaurarTela();
+    }
+  } catch (_) {}
+});
 window.onload = () => {
   // Sempre usa o servidor correto, ignorando localStorage desatualizado
   localStorage.setItem('meucrm_server', DEFAULT_SERVER);
