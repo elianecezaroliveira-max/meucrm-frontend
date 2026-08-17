@@ -1785,7 +1785,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v285</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v286</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px">🔔 Ativar avisos</button>
@@ -2121,8 +2121,8 @@ window.addEventListener('load', initAuth);
     </div>
     <div id="mp-holder" style="flex:1;min-height:120px;display:flex;align-items:center;justify-content:center;background:#0b141a;overflow:hidden"></div>
     <div style="display:flex;gap:8px;padding:10px 12px;align-items:center">
-      <input id="mp-caption" placeholder="Adicione uma legenda…" onkeydown="if(event.key==='Enter'){event.preventDefault();confirmMediaSend()}"
-        style="flex:1;background:#f0f2f5;border:1px solid #e9edef;border-radius:999px;padding:11px 15px;font-size:14px;outline:none;font-family:inherit;min-width:0">
+      <textarea id="mp-caption" rows="1" placeholder="Adicione uma legenda…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();confirmMediaSend()}" oninput="_mpCaptionGrow(this)"
+        style="flex:1;background:#f0f2f5;border:1px solid #e9edef;border-radius:22px;padding:11px 15px;font-size:14px;line-height:20px;height:42px;max-height:120px;overflow-y:auto;resize:none;outline:none;font-family:inherit;min-width:0"></textarea>
       <button onclick="confirmMediaSend()" title="Enviar" style="width:46px;height:46px;border-radius:50%;background:#00a884;color:#fff;border:none;font-size:18px;cursor:pointer;flex-shrink:0">➤</button>
     </div>
   </div>
@@ -2364,7 +2364,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v285</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v286</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2418,7 +2418,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 285;
+const APP_VER = 286;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -6859,6 +6859,15 @@ function _tiraTempQuandoChegar(tempEl, texto, tent) {
   if ((tent || 0) >= 25) { tempEl.remove(); return; } // ~15s: desiste (o polling já terá mostrado a real)
   setTimeout(() => _tiraTempQuandoChegar(tempEl, texto, (tent || 0) + 1), 600);
 }
+// Legenda da foto/arquivo cresce com o texto (Shift+Enter = nova linha; Enter = enviar)
+function _mpCaptionGrow(ta) {
+  ta = ta || document.getElementById('mp-caption'); if (!ta) return;
+  if (!ta.value) { ta.style.height = '42px'; return; }
+  const enc = ta.value.length < (ta._lastLen || 0); ta._lastLen = ta.value.length;
+  if (enc) ta.style.height = '42px';
+  const alvo = Math.min(Math.max(42, Math.ceil(ta.scrollHeight)), 120);
+  if (Math.abs((parseFloat(ta.style.height) || 42) - alvo) >= 1) ta.style.height = alvo + 'px';
+}
 async function sendMessage() {
   _clearUnreadMark(); // você respondeu → a divisória de não lidas some na hora
   // 📝 NOTA INTERNA: fica só para você (não vai para o lead)
@@ -7126,7 +7135,7 @@ function _renderMediaPreview() {
           ${f.type.startsWith('video/') ? '<span style="position:absolute;bottom:6px;left:6px;font-size:14px">🎬</span>' : ''}</div>`;
       }).join('') + `</div>`;
   }
-  if (cp && ov.style.display !== 'flex') cp.value = '';
+  if (cp && ov.style.display !== 'flex') cp.value = ''; cp.style.height = '42px'; cp._lastLen = 0;
   ov.style.display = 'flex';
 }
 function _rmPreview(i) { _previewList.splice(i, 1); _renderMediaPreview(); }
