@@ -981,10 +981,6 @@
   }
   #messages-area { overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; }
   #chat-header, #input-area { flex-shrink: 0; }
-  #volta-tarefas-bar { flex-shrink: 0; background: #e7f7ef; border-bottom: 1px solid #c8ecd9; padding: 6px 12px; display: flex; }
-  #volta-tarefas-bar button { background: #ffffff; border: 1px solid #00a884; color: #00806a; border-radius: 16px; padding: 5px 14px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; }
-  body.dark #volta-tarefas-bar { background: #1f2c33; border-color: #2a3942; }
-  body.dark #volta-tarefas-bar button { background: #2a3942; color: #7fd8b8; border-color: #00a884; }
 
   /* Chat aberto: TELA INTEIRA — some a barra "VETRA" e o cabeçalho respeita a câmera */
   body.mobile-chat-open #topbar { display: none; }
@@ -1782,7 +1778,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v280</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v281</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px">🔔 Ativar avisos</button>
@@ -2361,7 +2357,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v280</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v281</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2415,7 +2411,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 280;
+const APP_VER = 281;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4498,8 +4494,7 @@ async function saveWaProfile() {
 
 // ── CHAT ──
 async function selectContact(phone, name, accountId) {
-  if (!window._veioDasTarefas) { try { document.getElementById('volta-tarefas-bar')?.remove(); } catch(_){} }
-  window._veioDasTarefas = false; // a barra é recolocada por openTaskLead depois de abrir
+  window._veioDasTarefas = false; // openTaskLead marca de novo logo depois
   _telaAtual('chat=' + phone);
   // Modo SELEÇÃO EM MASSA: o toque marca/desmarca em vez de abrir a conversa
   if (window._selChats) {
@@ -5331,8 +5326,8 @@ function lpLoadMedia(phone){
 
 // Volta para sidebar no mobile
 function goBackToSidebar() {
-  if (document.getElementById('volta-tarefas-bar')) { // veio da tela de Tarefas: volta para lá
-    document.getElementById('volta-tarefas-bar')?.remove();
+  if (window._veioDasTarefas) { // veio da tela de Tarefas: volta para lá
+    window._veioDasTarefas = false;
     document.getElementById('layout').classList.remove('mobile-chat-open');
     document.body.classList.remove('mobile-chat-open');
     openTasksPage();
@@ -10730,24 +10725,7 @@ async function deleteTaskGlobal(id){
 function openTaskLead(phone, name, accountId){
   closeTasksPage();
   const pr = Promise.resolve(selectContact(phone, name, accountId||null)); // (selectContact zera a marca ao começar)
-  window._veioDasTarefas = true;
-  pr.then(() => _mostraVoltarTarefas()).catch(() => {});
-}
-// ‹ Barra "Voltar às tarefas" no topo da conversa aberta a partir da tela ✅ Tarefas
-function _mostraVoltarTarefas(){
-  if (!window._veioDasTarefas) return;
-  const hdr = document.getElementById('chat-header'); if (!hdr) return;
-  document.getElementById('volta-tarefas-bar')?.remove();
-  const bar = document.createElement('div');
-  bar.id = 'volta-tarefas-bar';
-  bar.innerHTML = '<button onclick="voltarParaTarefas()">‹ Voltar às tarefas</button>';
-  hdr.insertAdjacentElement('afterend', bar);
-}
-function voltarParaTarefas(){
-  window._veioDasTarefas = false;
-  document.getElementById('volta-tarefas-bar')?.remove();
-  try { if (document.getElementById('layout').classList.contains('mobile-chat-open')) goBackToSidebar(); } catch(_){}
-  openTasksPage();
+  window._veioDasTarefas = true; // a setinha ‹ do celular volta para as Tarefas
 }
 
 function renderBotsList(bots) {
