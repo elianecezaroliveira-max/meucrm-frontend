@@ -208,7 +208,7 @@
   /* Ferramentas EM CIMA (modelo, anexo, bot, emoji) e o campo inteiro embaixo */
   #input-tools { display: flex; align-items: center; gap: 10px; }
   #input-row { display: flex; align-items: flex-end; gap: 10px; }
-  #input-wrap { flex: 1; display: flex; align-items: center; background: #e9edef; border-radius: 24px; overflow: hidden; min-width: 0; position: relative; }
+  #input-wrap { flex: 1; display: flex; align-items: center; background: #ffffff; border: 1px solid #e3e6ea; border-radius: 24px; overflow: hidden; min-width: 0; position: relative; }
   /* ✍️ NEGRITO NO PRÓPRIO CAMPO (igual WhatsApp): camada-espelho atrás do campo.
      O "negrito" é feito com sombra do texto (engrossa SEM mudar a largura das
      letras) — o cursor e a digitação continuam perfeitamente alinhados. */
@@ -639,7 +639,7 @@
   body.dark .msg.inbound { background: #202c33; color: #e9edef; }
   body.dark .msg.outbound { background: #005c4b; color: #e9edef; }
   body.dark .msg .time, body.dark .contact-preview, body.dark .contact-preview-row, body.dark .contact-time { color: #8696a0; }
-  body.dark #input-wrap, body.dark #msg-input { background: #2a3942; color: #e9edef; }
+  body.dark #input-wrap, body.dark #msg-input { background: #2a3942; border-color: #2a3942; color: #e9edef; }
   body.dark #msg-input::placeholder { color: #8696a0; }
   body.dark input, body.dark select, body.dark textarea { background: #2a3942; color: #e9edef; border-color: #3b4a54; }
   body.dark #msg-menu, body.dark #contact-menu, body.dark #info-menu, body.dark #attach-menu, body.dark #bot-launcher-menu, body.dark #mobile-plus-menu, body.dark #qr-popup { background: #233138; border-color: #3b4a54; color: #e9edef; }
@@ -1768,7 +1768,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v275</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v276</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px">🔔 Ativar avisos</button>
@@ -2347,7 +2347,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v275</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v276</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2401,7 +2401,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 275;
+const APP_VER = 276;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5567,6 +5567,31 @@ function _ensurePresenceWatch() {
   window.visualViewport.addEventListener('scroll', pin);
   window.addEventListener('scroll', pin, { passive: true });
   fitH();
+})();
+
+// 📐 Quando o rodapé (campo de mensagem, prévia de resposta, ferramentas) CRESCE,
+// as mensagens sobem o mesmo tanto — o texto que você digita nunca cobre a conversa.
+(function () {
+  if (!window.ResizeObserver) return;
+  let prevAlt = 0, obsAtual = null, alvoAtual = null;
+  function liga() {
+    const ia = document.getElementById('input-area');
+    if (!ia || ia === alvoAtual) return; // já observando este rodapé
+    if (obsAtual) obsAtual.disconnect();
+    alvoAtual = ia; prevAlt = ia.getBoundingClientRect().height;
+    obsAtual = new ResizeObserver(() => {
+      const a = document.getElementById('messages-area');
+      const h = ia.getBoundingClientRect().height, d = h - prevAlt; prevAlt = h;
+      if (a && d > 0) a.scrollTop += d;
+    });
+    obsAtual.observe(ia);
+  }
+  window._ligaAncoraRodape = liga; // o rodapé é recriado a cada conversa aberta
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', liga); else liga();
+  // Reengata sozinho quando o rodapé for recriado
+  const mo = new MutationObserver(() => liga());
+  const start = () => { const ca = document.getElementById('chat-area') || document.body; mo.observe(ca, { childList: true, subtree: false }); liga(); };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();
 
 // A tela NUNCA vai contra o seu dedo: rastreia toque e rolagem manual para cima
