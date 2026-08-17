@@ -1775,7 +1775,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v277</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v278</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px">🔔 Ativar avisos</button>
@@ -2354,7 +2354,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v277</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v278</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2408,7 +2408,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 277;
+const APP_VER = 278;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2489,7 +2489,20 @@ async function _pollTickInner() {
   }
 
   if (currentPhone) await loadMessages(currentPhone, false);
+
+  // 🤖 Tarefas criadas pelo BOT (ou em outro aparelho) aparecem sozinhas nos
+  // detalhes do lead / janela de tarefas — a cada ~9s, só repinta se mudou
+  _pollN = (_pollN || 0) + 1;
+  if (_pollN % 3 === 0) {
+    try {
+      const lp = document.getElementById('lp-tasks');
+      if (lp && window._lpPhone) lpLoadTasks(window._lpPhone);
+      const ov = document.getElementById('tasks-overlay');
+      if (ov && ov.style.display !== 'none' && currentPhone) loadTasks();
+    } catch (_) {}
+  }
 }
+let _pollN = 0;
 
 function startPolling() {
   if (pollInterval) clearInterval(pollInterval);
@@ -5239,6 +5252,9 @@ async function lpLoadTasks(phone){
   let tasks = [];
   try { tasks = (await (await fetch(SERVER_URL+'/tasks')).json()) || []; } catch(_){}
   const mine = (Array.isArray(tasks)?tasks:[]).filter(t => t.phone === phone && !t.done);
+  const ass = JSON.stringify(mine.map(t => [t.id, t.title, t.due_at, t.done]));
+  if (el.dataset.ass === ass && el.dataset.phone === phone) return; // nada mudou: não repinta
+  el.dataset.ass = ass; el.dataset.phone = phone;
   el.innerHTML = mine.length ? mine.map(t => `
     <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:7px">
       <button onclick="lpToggleTask('${t.id}',${t.done?'false':'true'},'${phone}')" title="${t.done?'Reabrir':'Concluir'}" style="width:18px;height:18px;border-radius:50%;border:2px solid #00a884;background:${t.done?'#00a884':'transparent'};color:#fff;cursor:pointer;flex-shrink:0;font-size:11px;line-height:14px;padding:0">${t.done?'✓':''}</button>
@@ -7192,10 +7208,14 @@ function openTasks() {
 function closeTasks() { document.getElementById('tasks-overlay').style.display = 'none'; }
 async function loadTasks() {
   const list = document.getElementById('tasks-list');
-  list.innerHTML = '<p style="color:#667781;font-size:13px">Carregando...</p>';
+  if (list.dataset.phone !== currentPhone) list.innerHTML = '<p style="color:#667781;font-size:13px">Carregando...</p>';
   try {
     const r = await fetch(`${SERVER_URL}/tasks?phone=${encodeURIComponent(currentPhone)}`);
-    currentTasks = await r.json();
+    const novas = await r.json();
+    const ass = JSON.stringify((Array.isArray(novas)?novas:[]).map(t => [t.id, t.title, t.due_at, t.done]));
+    if (list.dataset.ass === ass && list.dataset.phone === currentPhone) return; // nada mudou
+    list.dataset.ass = ass; list.dataset.phone = currentPhone;
+    currentTasks = novas;
     renderTasks();
   } catch(e) { list.innerHTML = '<p style="color:#ef4444;font-size:13px">Erro ao carregar tarefas.</p>'; }
 }
