@@ -1004,6 +1004,10 @@
      (sem isso o iOS "engole" o gesto de voltar arrastando para a direita) */
   #messages-area { touch-action: pan-y; }
 
+  /* Celular: a conversa aberta NÃO fica sombreada na lista (igual WhatsApp do celular) */
+  .contact-item.active, .contact-swipe-wrap > .contact-item.active, .contact-swipe-wrap > .contact-item.is-fav.active,
+  body.dark .contact-item.active, body.dark .contact-swipe-wrap > .contact-item.active { background: transparent !important; }
+
   /* (a barra "Enviar de:" virou um seletor compacto dentro da linha de ferramentas) */
 
   /* Emoji picker menor no mobile */
@@ -1354,9 +1358,12 @@ function _hideLogin(){ const o=document.getElementById('login-overlay'); if(o) o
 async function loginGoogle(){
   if(!_supaAuth) return;
   document.getElementById('login-msg').textContent = 'Abrindo o Google...';
-  await _supaAuth.auth.signInWithOAuth({ provider:'google', options:{ redirectTo: window.location.origin } });
+  await _supaAuth.auth.signInWithOAuth({ provider:'google', options:{ redirectTo: window.location.origin, queryParams: { prompt: 'select_account' } } }); // sempre PERGUNTA qual conta Google
 }
-async function logoutCRM(){ if(_supaAuth){ await _supaAuth.auth.signOut({ scope: 'local' }); _showLogin(); } } // sai SÓ deste aparelho (o padrão derrubava todos)
+async function logoutCRM(){
+  if(!_supaAuth) return;
+  if(!confirm('Sair da sua conta do VETRA neste aparelho?')) return; // pergunta antes
+  await _supaAuth.auth.signOut({ scope: 'local' }); _showLogin(); } // sai SÓ deste aparelho (o padrão derrubava todos)
 function _emailAllowed(email){
   if(!AUTH_ALLOWED.length) return true; // lista vazia = libera geral
   return AUTH_ALLOWED.map(e=>e.toLowerCase()).includes(String(email||'').toLowerCase());
@@ -1768,7 +1775,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v276</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v277</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px">🔔 Ativar avisos</button>
@@ -2347,7 +2354,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v276</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v277</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2401,7 +2408,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 276;
+const APP_VER = 277;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5093,6 +5100,7 @@ async function _achaLead(phone) {
   return _leadsExtras[phone] || null;
 }
 async function renderLeadPanel(phone){
+  window._lpPhone = phone; // conversa cujos detalhes estão abertos
   const p = document.getElementById('lead-panel');
   if (!p) return;
   const c = await _achaLead(phone);
@@ -5237,10 +5245,18 @@ async function lpLoadTasks(phone){
       <div style="flex:1;min-width:0;font-size:13px;color:#131c20;${t.done?'text-decoration:line-through;opacity:.6':''}">${escHtml(t.title)}${t.due_at?`<div style="font-size:11px;color:#667781">⏰ ${fmtTaskDue(t.due_at)}</div>`:''}${t.created_at?`<div style="font-size:11px;color:#8696a0">🕘 Criada ${fmtTaskCreated(t.created_at)}</div>`:''}</div>
     </div>`).join('') : '<div style="color:#8696a0;font-size:12px">Nenhuma tarefa</div>';
 }
+// 🔄 Depois de criar/concluir/excluir uma tarefa em QUALQUER lugar, todos os
+// lugares que a mostram atualizam NA HORA: detalhes do lead (painel), janela de
+// tarefas do chat, tela ✅ Tarefas e a bolinha do menu
+function _sincTarefas(phone, semPagina){
+  try { if (window._lpPhone && document.getElementById('lp-tasks') && (!phone || phone === window._lpPhone)) lpLoadTasks(window._lpPhone); } catch(_){}
+  try { const ov = document.getElementById('tasks-overlay'); if (ov && ov.style.display !== 'none' && (!phone || phone === currentPhone)) loadTasks(); } catch(_){}
+  try { const tp = document.getElementById('tasks-page'); if (!semPagina && tp && tp.style.display !== 'none' && typeof openTasksPage === 'function') openTasksPage(); } catch(_){}
+  try { atualizaBadgeTarefas(); } catch(_){}
+}
 async function lpToggleTask(id, done, phone){
   try { await fetch(SERVER_URL+'/tasks/'+id, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ done }) }); } catch(_){}
-  lpLoadTasks(phone);
-  try { atualizaBadgeTarefas(); } catch(_){} // 🔴 a bolinha acompanha
+  lpLoadTasks(phone); _sincTarefas(phone);
 }
 async function lpAddTask(phone){
   const title = prompt('Nova tarefa (o nome é opcional):'); if (title === null) return;
@@ -5249,9 +5265,8 @@ async function lpAddTask(phone){
   try {
     await fetch(SERVER_URL+'/tasks', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, account_id: c?.account_id || null, title: tt }) });
     _toast('✅ Tarefa criada!');
-  } catch(_){ alert('Erro ao criar a tarefa.'); }
-  lpLoadTasks(phone);
-  try { atualizaBadgeTarefas(); } catch(_){} // 🔴 a bolinha acompanha
+  } catch(_){ _toast('❌ Erro ao criar a tarefa.'); }
+  lpLoadTasks(phone); _sincTarefas(phone);
 }
 function lpLoadMedia(phone){
   const el = document.getElementById('lp-media'); if (!el) return;
@@ -7251,15 +7266,15 @@ async function addTask() {
     document.getElementById('task-due').value = '';
     _toast('✅ Tarefa criada!');
     loadTasks();
-    atualizaBadgeTarefas(); // 🔴 a bolinha acompanha
-  } catch(e) { alert('Erro ao adicionar tarefa.'); }
+    _sincTarefas(currentPhone); // detalhes do lead mostram a tarefa NA HORA
+  } catch(e) { _toast('❌ Erro ao adicionar tarefa.'); }
 }
 async function toggleTask(id, done) {
-  try { await fetch(`${SERVER_URL}/tasks/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ done }) }); loadTasks(); atualizaBadgeTarefas(); } catch(e){}
+  try { await fetch(`${SERVER_URL}/tasks/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ done }) }); loadTasks(); _sincTarefas(currentPhone); } catch(e){}
 }
 async function deleteTask(id) {
   if (!confirm('Excluir esta tarefa?')) return;
-  try { await fetch(`${SERVER_URL}/tasks/${id}`, { method:'DELETE' }); loadTasks(); atualizaBadgeTarefas(); } catch(e){}
+  try { await fetch(`${SERVER_URL}/tasks/${id}`, { method:'DELETE' }); loadTasks(); _sincTarefas(currentPhone); } catch(e){}
 }
 
 async function sendFile() {
@@ -10640,6 +10655,7 @@ async function toggleTaskGlobal(id, done){
     const t=_allTasksCache.find(x=>String(x.id)===String(id)); if(t) t.done=done;
     renderTasksPage();
     _pintaBadgeTarefas(_allTasksCache.filter(x=>!x.done).length); // 🔴 atualiza a bolinha
+    _sincTarefas(t?.phone, true); // detalhes do lead (se abertos) acompanham
   }catch(e){ alert('Erro ao atualizar tarefa'); }
 }
 // ✏️ CAMPO ÚNICO: edita o próprio texto da tarefa (o "comentário" separado saiu)
@@ -10651,7 +10667,7 @@ async function editTaskTitle(id){
   try{
     await fetch(SERVER_URL+'/tasks/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:novo})});
     if(t) t.title=novo;
-    renderTasksPage();
+    renderTasksPage(); _sincTarefas(t?.phone, true);
   }catch(e){ alert('Erro ao salvar a tarefa'); }
 }
 async function editTaskNote(id){
@@ -10672,6 +10688,7 @@ async function deleteTaskGlobal(id){
     _allTasksCache=_allTasksCache.filter(x=>String(x.id)!==String(id));
     renderTasksPage();
     _pintaBadgeTarefas(_allTasksCache.filter(x=>!x.done).length); // 🔴 atualiza a bolinha
+    _sincTarefas(null, true);
   }catch(e){ alert('Erro ao excluir tarefa'); }
 }
 function openTaskLead(phone, name, accountId){
