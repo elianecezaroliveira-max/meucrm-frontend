@@ -256,6 +256,13 @@
   #notes-status { font-size: 11px; color: #667781; margin-top: 5px; text-align: right; min-height: 14px; }
   #emoji-picker-wrap { position: absolute; bottom: calc(100% + 8px); left: 12px; z-index: 200; display: none; filter: drop-shadow(0 8px 24px rgba(0,0,0,0.5)); }
   #emoji-picker-wrap.open { display: block; }
+  #emoji-recentes { display: flex; align-items: center; gap: 2px; background: #f0f2f5; border: 1px solid #e9edef; border-top: none; border-radius: 0 0 12px 12px; padding: 6px 8px; margin-top: -1px; }
+  #emoji-recentes .er-lab { font-size: 11px; color: #667781; margin-right: 6px; white-space: nowrap; }
+  #emoji-recentes button { background: none; border: none; font-size: 1.45rem; line-height: 1; padding: 4px 5px; border-radius: 8px; cursor: pointer; }
+  #emoji-recentes button:hover { background: #e9edef; }
+  #emoji-picker-wrap.open emoji-picker { --border-radius: 12px 12px 0 0; }
+  body.dark #emoji-recentes { background: #233138; border-color: #2a3942; }
+  body.dark #emoji-recentes button:hover { background: #2a3942; }
   emoji-picker {
     --background: #f0f2f5;
     --border-color: #e9edef;
@@ -1778,7 +1785,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v282</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v283</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px">🔔 Ativar avisos</button>
@@ -2357,7 +2364,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v282</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v283</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2411,7 +2418,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 282;
+const APP_VER = 283;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -6954,22 +6961,45 @@ function toggleEmojiPicker(e) {
     emojiPickerInstance = document.createElement('emoji-picker');
     emojiPickerInstance.setAttribute('locale', 'pt');
     emojiPickerInstance.setAttribute('skin-tone-emoji', '👋');
-    emojiPickerInstance.addEventListener('emoji-click', (evt) => {
-      const emoji = evt.detail.unicode;
-      const ta = document.getElementById('msg-input');
-      if (!ta) return;
-      const s = ta.selectionStart, en = ta.selectionEnd;
-      ta.value = ta.value.substring(0, s) + emoji + ta.value.substring(en);
-      ta.selectionStart = ta.selectionEnd = s + emoji.length;
-      ta.focus();
-      // Emoji entra por código (sem evento de digitação) — reavalia o botão ➤/🎤
-      try { updateSendMicButtons(); autoGrowMsgInput(ta); } catch (_) {}
-      // Não fecha o picker automaticamente — usuário pode escolher mais
-    });
+    emojiPickerInstance.addEventListener('emoji-click', (evt) => { _insereEmoji(evt.detail.unicode); });
+    // A barra de "favoritos" própria do seletor (por frequência) sai — em baixo
+    // fica a NOSSA linha de "usados recentemente" (o último usado sempre primeiro)
+    try {
+      const st = document.createElement('style'); st.textContent = '.favorites{display:none !important}';
+      const liga = () => { if (emojiPickerInstance.shadowRoot && !emojiPickerInstance.shadowRoot.querySelector('#vetra-nofav')) { st.id = 'vetra-nofav'; emojiPickerInstance.shadowRoot.appendChild(st); return true; } return false; };
+      if (!liga()) { let n = 0; const t = setInterval(() => { if (liga() || ++n > 40) clearInterval(t); }, 100); }
+    } catch (_) {}
     wrap.appendChild(emojiPickerInstance);
+    const rec = document.createElement('div'); rec.id = 'emoji-recentes'; wrap.appendChild(rec);
   }
+  _pintaEmojiRecentes();
   wrap.classList.add('open');
   if (btn) btn.classList.add('active');
+}
+
+// Insere o emoji no campo e guarda como "usado recentemente"
+function _insereEmoji(emoji) {
+  const ta = document.getElementById('msg-input');
+  if (!ta || !emoji) return;
+  const s = ta.selectionStart, en = ta.selectionEnd;
+  ta.value = ta.value.substring(0, s) + emoji + ta.value.substring(en);
+  ta.selectionStart = ta.selectionEnd = s + emoji.length;
+  ta.focus();
+  try { updateSendMicButtons(); autoGrowMsgInput(ta); } catch (_) {}
+  try {
+    let lista = JSON.parse(localStorage.getItem('vetra_emoji_recent') || '[]'); if (!Array.isArray(lista)) lista = [];
+    lista = [emoji].concat(lista.filter(x => x !== emoji)).slice(0, 18);
+    localStorage.setItem('vetra_emoji_recent', JSON.stringify(lista));
+  } catch (_) {}
+  _pintaEmojiRecentes();
+  // Não fecha o picker automaticamente — usuário pode escolher mais
+}
+// Linha "Recentes" em baixo do seletor: os últimos emojis que você usou
+function _pintaEmojiRecentes() {
+  const el = document.getElementById('emoji-recentes'); if (!el) return;
+  let lista = []; try { lista = JSON.parse(localStorage.getItem('vetra_emoji_recent') || '[]') || []; } catch (_) {}
+  if (!lista.length) lista = ['🙏','👍','😊','❤️','😂','🙌','✅','😍','🥰'];
+  el.innerHTML = '<span class="er-lab">Recentes</span>' + lista.slice(0, 9).map(e => `<button type="button" onclick="_insereEmoji('${_jsAttr(e)}')">${escHtml(e)}</button>`).join('');
 }
 
 document.addEventListener('click', (e) => {
