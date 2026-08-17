@@ -1756,7 +1756,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v261</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v262</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px">🔔 Ativar avisos</button>
@@ -2339,7 +2339,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v261</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v262</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2393,7 +2393,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 261;
+const APP_VER = 262;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2876,6 +2876,7 @@ async function loadContacts(render = true) {
     window._contactsLoaded = true;
     if (render) { renderContacts(allContacts); populateFilterOptions(); }
     window.hideSplash && window.hideSplash();
+    if (!window._telaRestaurada) { window._telaRestaurada = true; setTimeout(_restaurarTela, 50); }
   } catch(e) {}
 }
 
@@ -4436,6 +4437,7 @@ async function saveWaProfile() {
 
 // ── CHAT ──
 async function selectContact(phone, name, accountId) {
+  _telaAtual('chat=' + phone);
   // Modo SELEÇÃO EM MASSA: o toque marca/desmarca em vez de abrir a conversa
   if (window._selChats) {
     if (Date.now() - (window._selJustEntered || 0) < 600) return; // toque que iniciou o modo
@@ -7330,6 +7332,7 @@ function saveQR() {
 
 function openQRManager() {
   _closeAllScreens();
+  _telaAtual('respostas');
   document.getElementById('qr-modal').classList.add('open');
   renderQRManager();
   _syncQuickReplies().then(() => { const m = document.getElementById('qr-modal'); if (m && m.classList.contains('open')) renderQRManager(); });
@@ -7536,6 +7539,7 @@ async function refreshNoticesBadge() {
 }
 async function openNotices() {
   _closeAllScreens();
+  _telaAtual('avisos');
   document.getElementById('not-overlay').style.display = 'flex';
   const el = document.getElementById('not-list');
   el.innerHTML = 'Carregando...';
@@ -7699,6 +7703,7 @@ function cfgTab(k) {
 }
 async function openConfigModal() {
   _closeAllScreens();
+  _telaAtual('config');
   document.getElementById('cfg-overlay').style.display = 'flex';
   const st = document.getElementById('cfg-token-status'); if (st) st.textContent = '';
   carregarSheetsStatus();
@@ -7770,7 +7775,22 @@ function _closeAllScreens() {
   try { closeNotices(); } catch (_) {}
 }
 // Botão "Chat" do trilho: fecha tudo e volta para as conversas
-function goToChat() { _closeAllScreens(); }
+function goToChat() { _closeAllScreens(); _telaAtual(currentPhone ? 'chat=' + currentPhone : ''); }
+// 🔖 Lembra a tela atual na URL (#pipeline, #bots, #chat=5511…): ao recarregar (F5),
+// o app volta para onde estava em vez de cair sempre no Chat
+function _telaAtual(nome) { try { history.replaceState(null, '', location.pathname + location.search + (nome ? '#' + nome : '')); } catch (_) {} }
+async function _restaurarTela() {
+  const h = String(location.hash || '').replace(/^#/, '');
+  if (!h) return;
+  const abre = { pipeline: () => openPipeline(), tarefas: () => openTasksPage(), bots: () => openBotsList(), ia: () => openFaqPage(), modelos: () => openTemplates(), respostas: () => openQRManager(), tags: () => openTagManager(), config: () => openConfigModal(), avisos: () => openNotices() };
+  try {
+    if (h.startsWith('chat=')) {
+      const ph = decodeURIComponent(h.slice(5));
+      const c = (allContacts || []).find(x => x.phone === ph);
+      if (c) selectContact(c.phone, c.name, c.account_id);
+    } else if (abre[h]) { await abre[h](); }
+  } catch (_) {}
+}
 
 // ── Barra inferior do celular ("+" com as ferramentas) ──
 function toggleMobilePlus(ev) {
@@ -8249,6 +8269,7 @@ function updateVarLabels(newPreset) {
 
 function openTemplates() {
   _closeAllScreens();
+  _telaAtual('modelos');
   document.getElementById('templates-overlay').classList.add('open');
   populateTmplAccounts();
   carregarApelidosModelos().then(() => switchTmplTab('list'));
@@ -8803,6 +8824,7 @@ let dragPhone = null;
 
 function openPipeline() {
   _closeAllScreens();
+  _telaAtual('pipeline');
   document.getElementById('layout').style.display = 'none';
   const pv = document.getElementById('pipeline-view');
   pv.classList.add('open');
@@ -9914,6 +9936,7 @@ function getNodeHeight(node) {
 // ── Bot list ──
 async function openBotsList() {
   _closeAllScreens();
+  _telaAtual('bots');
   document.getElementById('bots-page').style.display = 'flex';
   const area = document.getElementById('bots-list-area');
   area.innerHTML = '<div style="color:#667781;font-size:13px;padding:20px">Carregando...</div>';
@@ -9965,6 +9988,7 @@ function _faqEsc(s){ return (s||'').toString().replace(/[&<>"]/g, c=>({'&':'&amp
 
 async function openFaqPage(){
   _closeAllScreens();
+  _telaAtual('ia');
   document.getElementById('faq-page').style.display = 'flex';
   const area = document.getElementById('faq-list-area');
   area.innerHTML = '<div style="color:#667781;font-size:13px;padding:20px">Carregando...</div>';
@@ -10210,6 +10234,7 @@ async function wpSave(){
 let _tagMgrList = [];
 async function openTagManager(){
   _closeAllScreens();
+  _telaAtual('tags');
   document.getElementById('tagmgr-overlay').style.display = 'flex';
   const el = document.getElementById('tagmgr-list');
   el.innerHTML = '<div style="color:#667781;font-size:13px;padding:16px 0">Carregando...</div>';
@@ -10349,6 +10374,7 @@ setInterval(atualizaBadgeTarefas, 120000);
 
 async function openTasksPage(){
   _closeAllScreens();
+  _telaAtual('tarefas');
   document.getElementById('tasks-page').style.display='flex';
   _selTaskPhones.clear();
   const area=document.getElementById('tasks-list-area');
