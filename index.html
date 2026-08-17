@@ -1778,7 +1778,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v281</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v282</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px">🔔 Ativar avisos</button>
@@ -2357,7 +2357,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v281</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v282</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2411,7 +2411,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 281;
+const APP_VER = 282;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5589,6 +5589,7 @@ function _ensurePresenceWatch() {
       const tecladoAberto = (fullH - vv.height) > 60;
       const dH = prevH - vv.height; prevH = vv.height;
       document.body.style.height = tecladoAberto ? (vv.height + 'px') : '';
+      if (!tecladoAberto) document.body.style.transform = ''; // teclado fechou: sem compensação
       // Teclado aberto = a folga de baixo do rodapé some (o teclado já encosta nele)
       document.body.classList.toggle('kb-open', tecladoAberto);
       // Teclado ABRIU (dH>0): as mensagens sobem o mesmo tanto — nada escondido.
@@ -5602,11 +5603,19 @@ function _ensurePresenceWatch() {
   document.addEventListener('visibilitychange', fitH);
   // TRAVA: a página nunca sai do 0,0 — qualquer empurrão do iOS é anulado NO MESMO instante
   function pin() {
-    if (!mob()) return;
+    if (!mob()) { document.body.style.transform = ''; return; }
     if (window.scrollY || window.scrollX) window.scrollTo(0, 0);
+    // iOS com teclado aberto: às vezes ele "empurra" a área visível para baixo
+    // (o topo do app some) e o scrollTo NÃO desfaz. Aí a gente compensa: o app
+    // desce o mesmo tanto e volta a caber inteirinho na parte visível.
+    const vv = window.visualViewport;
+    const off = vv ? Math.round(vv.offsetTop) : 0;
+    const alvo = off > 0 ? ('translateY(' + off + 'px)') : '';
+    if (document.body.style.transform !== alvo) document.body.style.transform = alvo;
   }
-  window.visualViewport.addEventListener('resize', () => { fitH(); pin(); });
-  window.visualViewport.addEventListener('scroll', pin);
+  window.visualViewport.addEventListener('resize', () => { fitH(); pin(); requestAnimationFrame(pin); });
+  window.visualViewport.addEventListener('scroll', () => { pin(); requestAnimationFrame(pin); });
+  window._pinTopo = pin;
   window.addEventListener('scroll', pin, { passive: true });
   fitH();
 })();
@@ -6834,7 +6843,8 @@ async function sendMessage() {
   autoGrowMsgInput(input); // campo volta à altura normal
   updateSendMicButtons();  // troca enviar→mic NA HORA (o botão alto não segura mais a linha crescida)
   delete _drafts[currentPhone]; _saveDrafts(); // enviou → rascunho some
-  if (document.activeElement !== input) input.focus(); // só foca se realmente perdeu o foco (re-focar dava o tranco na tela)
+  if (document.activeElement !== input) input.focus({ preventScroll: true }); // só foca se realmente perdeu o foco (re-focar dava o tranco na tela)
+  try { requestAnimationFrame(() => { if (window._pinTopo) window._pinTopo(); setTimeout(() => window._pinTopo && window._pinTopo(), 120); }); } catch (_) {} // topo da tela nunca some
   // Sem delay: a bolha aparece imediatamente; o servidor confirma em seguida
   const reply = replyingTo; cancelReply();
   const tempEl = appendPendingBubble(savedMessage);
