@@ -615,7 +615,12 @@
   body.dark .contact-item, body.dark .contact-swipe-wrap > .contact-item { background: #111b21; border-color: #222d34; }
   body.dark .contact-item:hover { background: #202c33; }
   body.dark .contact-item.active { background: #2a3942; }
-  body.dark .contact-swipe-wrap > .contact-item.is-fav { background: #17211d; }
+  /* No escuro, favorito não pinta a linha (a estrela ★ já marca) — evitava o "vazamento" de cor entre linhas */
+  body.dark .contact-swipe-wrap > .contact-item.is-fav, body.dark .contact-item.is-fav { background: #111b21 !important; }
+  body.dark .contact-swipe-wrap > .contact-item.is-fav:hover, body.dark .contact-item.is-fav:hover { background: #202c33 !important; }
+  body.dark .contact-item.active, body.dark .contact-swipe-wrap > .contact-item.active { background: #2a3942 !important; }
+  body.dark .contact-swipe-wrap, body.dark .contact-item { border-bottom: 1px solid #1f2a30 !important; }
+  body.dark .contact-swipe-wrap > .contact-item { border-bottom: none !important; }
   body.dark #search-box { background: #111b21; }
   body.dark #search-box input, body.dark #search-input { background: #202c33 !important; color: #e9edef !important; border-color: #2a3942 !important; }
   body.dark #search-box input::placeholder { color: #8696a0; }
@@ -627,7 +632,7 @@
   body.dark { --av-bg: #6a7175; --av-fg: #e9edef; } /* avatar cinza-médio, como o WhatsApp escuro */
   body.dark .contact-avatar { background: #6a7175; color: #e9edef; }
   body.dark .lp-avatar { background: #6a7175 !important; color: #e9edef !important; }
-  body.dark .contact-info { box-shadow: inset 0 -1px 0 #222d34; }
+  body.dark .contact-info { box-shadow: none; }
   body.dark #messages-area { background-color: #0b141a; background-image: none; }
   body.dark .msg.inbound { background: #202c33; color: #e9edef; }
   body.dark .msg.outbound { background: #005c4b; color: #e9edef; }
@@ -1751,7 +1756,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v259</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v261</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px">🔔 Ativar avisos</button>
@@ -2334,7 +2339,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v259</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v261</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2388,7 +2393,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 259;
+const APP_VER = 261;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -8399,7 +8404,7 @@ function renderTemplateList(templates) {
     const stTxt = { APPROVED: 'Aprovado', PENDING: 'Em análise', REJECTED: 'Reprovado', PAUSED: 'Pausado', DISABLED: 'Desativado' }[t.status] || t.status;
     const hdr = (t.components || []).find(c => c.type === 'HEADER');
     const nBtns = ((t.components || []).find(c => c.type === 'BUTTONS')?.buttons || []).length;
-    const extras = [hdr ? (hdr.format === 'TEXT' ? '📝 cabeçalho' : hdr.format === 'IMAGE' ? '🖼️ imagem' : hdr.format === 'VIDEO' ? '🎬 vídeo' : '📄 documento') : '', nBtns ? nBtns + ' botão' + (nBtns > 1 ? 'ões' : '') : ''].filter(Boolean).join(' · ');
+    const extras = [hdr ? (hdr.format === 'TEXT' ? '📝 cabeçalho' : hdr.format === 'IMAGE' ? '🖼️ imagem' : hdr.format === 'VIDEO' ? '🎬 vídeo' : '📄 documento') : '', nBtns ? nBtns + (nBtns > 1 ? ' botões' : ' botão') : ''].filter(Boolean).join(' · ');
     return `
       <div class="tmpl-item v2" title="Toque para ver o modelo completo" onclick="verModelo('${escHtml(t.id)}')">
         <div class="tmpl-top">
