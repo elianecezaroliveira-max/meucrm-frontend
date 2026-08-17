@@ -1785,7 +1785,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v284</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v285</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px">🔔 Ativar avisos</button>
@@ -2364,7 +2364,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v284</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v285</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2418,7 +2418,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 284;
+const APP_VER = 285;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -6192,15 +6192,21 @@ function msgDayKey(dateStr) {
 }
 
 let _lastMsgsSig = ''; // assinatura da última renderização — evita re-render desnecessário
+let _lmSeq = 0; // nº da última consulta iniciada — resposta ATRASADA de uma consulta antiga é descartada
 async function loadMessages(phone, scroll = true) {
   try {
     // Envio de mídia em andamento: o polling NÃO mexe na tela (a prévia local
     // fica parada; a real entra de uma vez quando o envio termina — sem piscar)
     if (!scroll && window._enviandoMidia) return;
     _ensurePresenceWatch();
+    const meuSeq = ++_lmSeq;
     const res = await fetch(SERVER_URL + '/messages/' + encodeURIComponent(phone));
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const msgs = await res.json();
+    // CORRIDA: o polling pode ter consultado ANTES do envio ser salvo e responder
+    // DEPOIS da recarga do envio — a lista velha (sem a mensagem nova) apagava a
+    // bolha recém-enviada, que só voltava no polling seguinte ("some e reaparece")
+    if (meuSeq !== _lmSeq) return;
     if (phone !== currentPhone) return; // trocou de conversa enquanto carregava — não mistura
     const area = document.getElementById('messages-area');
     if (!area) return;
@@ -6844,6 +6850,15 @@ async function _jaFoiEnviada(texto) {
   } catch (_) { return false; }
 }
 
+// Remove a bolha provisória SÓ depois que a mensagem real apareceu na conversa
+// (se a recarga do envio foi pulada/atrasada, espera o próximo polling — sem sumir)
+function _tiraTempQuandoChegar(tempEl, texto, tent) {
+  if (!tempEl || !tempEl.parentElement) return;
+  const chegou = (currentMessages || []).some(x => x.direction === 'outbound' && String(x.content) === String(texto) && document.querySelector('#messages-area [data-key="m-' + String(x.id).replace(/[^\w-]/g, '') + '"]'));
+  if (chegou) { tempEl.remove(); return; }
+  if ((tent || 0) >= 25) { tempEl.remove(); return; } // ~15s: desiste (o polling já terá mostrado a real)
+  setTimeout(() => _tiraTempQuandoChegar(tempEl, texto, (tent || 0) + 1), 600);
+}
 async function sendMessage() {
   _clearUnreadMark(); // você respondeu → a divisória de não lidas some na hora
   // 📝 NOTA INTERNA: fica só para você (não vai para o lead)
@@ -6896,7 +6911,8 @@ async function sendMessage() {
     // O relógio vira ✓ NA HORA; a recarga troca pela definitiva no mesmo quadro (sem piscar)
     try { const tk = tempEl && tempEl.querySelector('.msg-ticks'); if (tk) { tk.innerHTML = TICK_ONE; tk.className = 'msg-ticks sent'; tk.title = ''; } } catch (_) {}
     await loadMessages(currentPhone, false);
-    if (tempEl && tempEl.parentElement) tempEl.remove();
+    // A bolha provisória só sai quando a DEFINITIVA já está na tela (nunca fica um vão)
+    _tiraTempQuandoChegar(tempEl, savedMessage);
     // Garantia final: o envio SEMPRE termina com a conversa no fim (salvo você ter subido de propósito)
     if (Date.now() - (window._scrollUpTs || 0) > 2500) {
       const _a = document.getElementById('messages-area');
