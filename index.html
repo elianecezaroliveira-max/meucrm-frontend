@@ -1170,7 +1170,8 @@
   .v-toast.ok { background: #0f6b57; } .v-toast.err { background: #b3261e; } .v-toast.warn { background: #8a5a00; }
   .v-toast .v-toast-x { margin-left: auto; opacity: .7; cursor: pointer; font-size: 15px; line-height: 1; padding-left: 6px; }
   .v-toast-act { background: #fff; color: #111b21; border: none; border-radius: 8px; padding: 5px 10px; font-size: 12.5px; font-weight: 700; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
-  .kanban-col-del { font-size: 18px !important; opacity: .55 !important; }
+  .kanban-col-del { font-size: 18px !important; opacity: .55 !important; line-height: 1 !important; height: 24px; }
+  .kanban-col-header { min-height: 46px; box-sizing: border-box; }
   .v-toast.out { animation: vToastOut .18s ease-in forwards; }
   @keyframes vToastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
   @keyframes vToastOut { to { opacity: 0; transform: translateY(8px); } }
@@ -1195,6 +1196,30 @@
   #pipeline-sel-count { font-size: 12px !important; padding: 5px 10px !important; }
   /* Configurações em tela cheia: conteúdo com largura de leitura */
   #cfg-panes { max-width: 780px; }
+  /* ── Modelos: cartões ── */
+  #tmpl-list-content { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+  #tmpl-list-content > p { grid-column: 1 / -1; }
+  .tmpl-item.v2 { background: #fff !important; border: 1px solid var(--v-line); border-radius: 14px !important; padding: 14px 16px 12px !important; margin: 0 !important; display: flex; flex-direction: column; gap: 10px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+  .tmpl-item.v2:hover { box-shadow: 0 6px 18px rgba(0,0,0,.10); border-color: #d1d7db; }
+  .tmpl-top { display: flex; gap: 10px; align-items: flex-start; }
+  .tmpl-item.v2 .tmpl-name { margin: 0 !important; font-size: 14.5px !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tmpl-metaname { font-size: 11.5px; color: #8696a0; font-family: ui-monospace, Consolas, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tmpl-item.v2 .tmpl-preview { max-height: 66px !important; background: var(--v-bg) !important; border-radius: 10px !important; font-size: 12.5px !important; }
+  .tmpl-foot { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .tmpl-chip { font-size: 11px; font-weight: 600; color: var(--v-ink-2); background: var(--v-bg); border-radius: 10px; padding: 3px 8px; }
+  .tmpl-status.DISABLED { background: #eceff1; color: #667781; }
+  body.dark .tmpl-item.v2 { background: #202c33 !important; border-color: #2a3942 !important; } body.dark .tmpl-item.v2 .tmpl-name { color: #e9edef !important; }
+  body.dark .tmpl-item.v2 .tmpl-preview, body.dark .tmpl-chip { background: #2a3942 !important; color: #aebac1 !important; }
+  /* Modo escuro nas janelas antigas (Modelos, Respostas, Contas, Tags, Avisos, Enviar modelo) */
+  body.dark #templates-modal, body.dark #qr-modal-box, body.dark #send-tmpl-modal, body.dark #tagmgr-overlay > div, body.dark #not-overlay > div, body.dark #trem-overlay > div, body.dark #lead-modal, body.dark #import-modal { background: #111b21 !important; color: #e9edef; }
+  body.dark .tmpl-header, body.dark .tmpl-tabs, body.dark #qr-modal-header { background: #202c33 !important; border-color: #2a3942 !important; color: #e9edef; }
+  body.dark .tmpl-tab { color: #aebac1; } body.dark .tmpl-tab.active { color: #00a884; }
+  body.dark .tmpl-header h2, body.dark #qr-modal-header h3, body.dark #send-tmpl-modal h3, body.dark .tmpl-section-title { color: #e9edef !important; }
+  body.dark .tmpl-item:not(.v2), body.dark .tmpl-select-item, body.dark .qr-item, body.dark .qr-manage-item { background: #202c33 !important; color: #e9edef; border-color: #2a3942 !important; }
+  body.dark .tmpl-select-item.selected { background: rgba(0,168,132,.18) !important; }
+  body.dark .tmpl-select-name, body.dark .tmpl-select-preview { color: #e9edef; }
+  body.dark #tmpl-view-bar { background: #202c33 !important; } body.dark #tmpl-view-bar span { color: #aebac1; }
+  body.dark #tmpl-preview > div > div:first-child { border-color: #2a3942 !important; }
   /* ── Bots: cartões v2 ── */
   #bots-list-area { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; padding: 18px 20px; align-content: start; }
   .bot-card.v2 { width: auto !important; padding: 14px 16px 12px !important; border-radius: 14px !important; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
@@ -1726,7 +1751,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v256</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v259</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px">🔔 Ativar avisos</button>
@@ -1992,8 +2017,8 @@ window.addEventListener('load', initAuth);
 </div>
 <div class="cfg-pane" data-pane="pipe">
     <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
-      <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">🗑 Colunas excluídas / recuperação</div>
-      <p style="font-size:12px;color:#667781;margin:0 0 8px">Excluiu uma coluna sem querer? Aqui ela pode voltar com os leads e com os vínculos (bots, gotejamento, ID externo).</p>
+      <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">🗑 Lixeira: leads e colunas excluídos</div>
+      <p style="font-size:12px;color:#667781;margin:0 0 8px">Excluiu sem querer? Leads ficam aqui por 30 dias e voltam com conversa, etapa, etiquetas e notas. Colunas voltam com os leads e com os vínculos (bots, gotejamento, ID externo).</p>
       <div id="cfg-stage-trash" style="font-size:13px;color:#54656f">—</div>
     </div>
 </div>
@@ -2309,7 +2334,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v256</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v259</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2363,7 +2388,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 256;
+const APP_VER = 259;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -8371,14 +8396,26 @@ function renderTemplateList(templates) {
     const body = t.components?.find(c => c.type === 'BODY');
     const preview = body?.text || '';
     const catLabel = { MARKETING: 'Marketing', UTILITY: 'Utilidade', AUTHENTICATION: 'Autenticação' }[t.category] || t.category;
+    const stTxt = { APPROVED: 'Aprovado', PENDING: 'Em análise', REJECTED: 'Reprovado', PAUSED: 'Pausado', DISABLED: 'Desativado' }[t.status] || t.status;
+    const hdr = (t.components || []).find(c => c.type === 'HEADER');
+    const nBtns = ((t.components || []).find(c => c.type === 'BUTTONS')?.buttons || []).length;
+    const extras = [hdr ? (hdr.format === 'TEXT' ? '📝 cabeçalho' : hdr.format === 'IMAGE' ? '🖼️ imagem' : hdr.format === 'VIDEO' ? '🎬 vídeo' : '📄 documento') : '', nBtns ? nBtns + ' botão' + (nBtns > 1 ? 'ões' : '') : ''].filter(Boolean).join(' · ');
     return `
-      <div class="tmpl-item" style="cursor:pointer" title="Toque para ver os detalhes" onclick="verModelo('${escHtml(t.id)}')">
-        <div class="tmpl-info">
-          <div class="tmpl-name">${escHtml(tmplNome(t))}</div>
-          <div class="tmpl-meta">${_tmplAlias[t.id] ? '<span title="Nome na Meta">' + escHtml(t.name) + '</span> · ' : ''}${catLabel} · ${t.language} · <span class="tmpl-status ${t.status}">${t.status}</span></div>
-          ${preview ? `<div class="tmpl-preview">${preview}</div>` : ''}
+      <div class="tmpl-item v2" title="Toque para ver o modelo completo" onclick="verModelo('${escHtml(t.id)}')">
+        <div class="tmpl-top">
+          <div style="flex:1;min-width:0">
+            <div class="tmpl-name" title="${escHtml(t.name)}">${escHtml(tmplNome(t))}</div>
+            ${_tmplAlias[t.id] ? `<div class="tmpl-metaname">${escHtml(t.name)}</div>` : ''}
+          </div>
+          <span class="tmpl-status ${t.status}">${stTxt}</span>
         </div>
-        <button class="btn-delete" onclick="event.stopPropagation();deleteTemplate('${t.name}','${t.id}','${accountId}')" title="Excluir modelo">🗑️</button>
+        <div class="tmpl-preview">${escHtml(preview) || '<span style="color:#aaa">(sem corpo)</span>'}</div>
+        <div class="tmpl-foot">
+          <span class="tmpl-chip">${escHtml(catLabel)}</span><span class="tmpl-chip">${escHtml(t.language)}</span>${extras ? `<span class="tmpl-chip" style="background:transparent;border:none;color:#8696a0">${extras}</span>` : ''}
+          <span style="flex:1"></span>
+          <button class="bot-act" onclick="event.stopPropagation();verModelo('${escHtml(t.id)}')">👁 Ver</button>
+          <button class="bot-act del" onclick="event.stopPropagation();deleteTemplate('${_jsAttr(t.name)}','${escHtml(t.id)}','${escHtml(accountId)}')" title="Excluir modelo">Excluir</button>
+        </div>
       </div>`;
   }).join('');
 }
@@ -9256,7 +9293,7 @@ function renderKanbanWith(contacts) {
           onkeydown="if(event.key==='Enter')this.blur()">
         <span class="kanban-col-count">${cards.length}</span>
         ${_pipeSelMode ? `<button class="col-select-all" onclick="selectAllInColumn('${stage.id}')" title="Selecionar todos da coluna">☑</button>` : ''}
-        ${!stage.fixed ? `<button class="kanban-col-del" onclick="event.stopPropagation();abrirMenuColuna(event,'${stage.id}')" title="Opções da coluna">⋯</button>` : ''}
+        ${!stage.fixed ? `<button class="kanban-col-del" onclick="event.stopPropagation();abrirMenuColuna(event,'${stage.id}')" title="Opções da coluna">⋯</button>` : '<button class="kanban-col-del" style="visibility:hidden" tabindex="-1">⋯</button>'}
       </div>
       <div class="kanban-cards" id="cards-${stage.id}">
         ${cards.length ? cards.map(c => cardHTML(c)).join('') : '<div class="kanban-empty">Arraste leads para cá</div>'}
@@ -9471,13 +9508,26 @@ async function restaurarColuna(id) {
     try { carregarLixeiraColunas(); } catch (_) {}
   } catch (e) { alert('Não consegui restaurar: ' + (e.message || e)); }
 }
-// Lixeira / recuperação de colunas (Configurações → Pipeline)
+async function restaurarLeads(phones) {
+  try {
+    const r = await fetch(SERVER_URL + '/contacts/restore', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phones }) });
+    const j = await r.json(); if (!r.ok) throw new Error(j.error || 'falha');
+    showToast(`♻️ ${j.restaurados} lead(s) restaurado(s)${j.erros && j.erros.length ? ' · ' + j.erros.length + ' erro(s)' : ''}.`, 'ok', 4000);
+    try { await loadPipeline(); } catch (_) {} try { loadContacts(); } catch (_) {} try { carregarLixeiraColunas(); } catch (_) {}
+  } catch (e) { alert('Não consegui restaurar: ' + (e.message || e)); }
+}
+// Lixeira / recuperação de colunas e leads (Configurações → Pipeline)
 async function carregarLixeiraColunas() {
   const box = document.getElementById('cfg-stage-trash'); if (!box) return;
   box.innerHTML = '<span style="color:#8696a0">Carregando…</span>';
   try {
-    const [lixo, orf] = await Promise.all([(await fetch(SERVER_URL + '/pipeline/stages/trash')).json(), (await fetch(SERVER_URL + '/pipeline/stages/orphans')).json()]);
+    const [lixo, orf, leadsLixo] = await Promise.all([(await fetch(SERVER_URL + '/pipeline/stages/trash')).json(), (await fetch(SERVER_URL + '/pipeline/stages/orphans')).json(), (await fetch(SERVER_URL + '/contacts/trash')).json()]);
     let h = '';
+    if (Array.isArray(leadsLixo) && leadsLixo.length) {
+      const stName = {}; (pipelineStages || []).forEach(s => stName[s.id] = s.name);
+      h += `<div style="display:flex;align-items:center;gap:8px;margin:6px 0 4px"><span style="font-size:12px;color:#667781;flex:1">Leads excluídos (30 dias) — ${leadsLixo.length}:</span><button class="pf-topbtn" onclick="restaurarLeads(${escHtml(JSON.stringify(leadsLixo.map(x => x.phone)))})">↩ Restaurar todos</button></div>` +
+        '<div style="max-height:220px;overflow:auto;border:1px solid #f0f2f5;border-radius:8px">' + leadsLixo.map(x => `<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-bottom:1px solid #f0f2f5;font-size:12.5px"><b style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(x.name || formatPhone(x.phone))}</b><span style="color:#8696a0;font-size:11.5px">${escHtml(formatPhone(x.phone))}${x.stage_id && stName[x.stage_id] ? ' · ' + escHtml(stName[x.stage_id]) : ''} · ${new Date(x.deleted_at).toLocaleDateString('pt-BR')}</span><button class="pf-topbtn" style="padding:3px 8px !important;font-size:11.5px !important" onclick="restaurarLeads(['${escHtml(x.phone)}'])">↩</button></div>`).join('') + '</div>';
+    }
     if (Array.isArray(lixo) && lixo.length) {
       h += '<div style="font-size:12px;color:#667781;margin:6px 0 4px">Colunas excluídas recentemente (podem voltar com os leads):</div>' + lixo.map(x => `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f0f2f5;font-size:13px"><b style="flex:1">${escHtml(x.name)}</b><span style="color:#8696a0;font-size:12px">${x.leads} lead(s) · ${new Date(x.deleted_at).toLocaleString('pt-BR')}</span><button class="pf-topbtn" onclick="restaurarColuna('${escHtml(x.id)}')">↩ Restaurar</button></div>`).join('');
     }
@@ -9663,12 +9713,21 @@ async function deleteConversation(phone) {
 async function bulkDeleteLeads() {
   if (selectedLeads.size === 0) return;
   const phones = Array.from(selectedLeads);
-  if (!confirm(`Excluir ${phones.length} lead(s)? Esta ação não pode ser desfeita.`)) return;
+  // Confirmação forte: mostra QUEM vai sair e, se for mais de um, pede para digitar a quantidade
+  const nomes = phones.map(p => { const c = pipelineContacts.find(x => x.phone === p) || allContacts.find(x => x.phone === p); return (c && c.name && !_leadSemNome(c)) ? c.name : formatPhone(p); });
+  const lista = nomes.slice(0, 8).join(', ') + (nomes.length > 8 ? ` e mais ${nomes.length - 8}` : '');
+  if (phones.length === 1) {
+    if (!confirm(`Excluir o lead "${nomes[0]}"?\n\nEle vai para a lixeira por 30 dias (Configurações → Pipeline → Restaurar).`)) return;
+  } else {
+    const dig = prompt(`⚠️ Você está excluindo ${phones.length} LEADS:\n${lista}\n\nEles vão para a lixeira por 30 dias. Para confirmar, digite o número ${phones.length}:`);
+    if (dig === null) return;
+    if (String(dig).trim() !== String(phones.length)) { alert('Número não confere — nada foi excluído.'); return; }
+  }
   pipelineContacts = pipelineContacts.filter(c => !selectedLeads.has(c.phone));
   allContacts = allContacts.filter(c => !selectedLeads.has(c.phone));
   _sairSelecaoPipeline();
   renderContacts(allContacts);
-  showToast(`🗑 ${phones.length} lead(s) excluído(s)`, '', 2500);
+  showToast(`🗑 ${phones.length} lead(s) excluído(s) — na lixeira por 30 dias`, '', 12000, { label: '↩ Desfazer', fn: () => restaurarLeads(phones) });
   try {
     await fetch(`${SERVER_URL}/contacts/bulk-delete`, {
       method: 'DELETE',
