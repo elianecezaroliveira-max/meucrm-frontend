@@ -1768,7 +1768,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v271</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v273</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px">🔔 Ativar avisos</button>
@@ -2347,7 +2347,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v271</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v273</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2401,7 +2401,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 271;
+const APP_VER = 273;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2448,7 +2448,7 @@ async function init(url) {
   await loadAccounts();
   // Reabre a tela marcada na URL assim que as CONTAS existem (Modelos/Contas dependem
   // delas) e antes das conversas — sem "piscar" o chat
-  if (!window._telaRestaurada && location.hash && !location.hash.startsWith('#chat=')) { window._telaRestaurada = true; setTimeout(_restaurarTela, 0); }
+  if (!window._telaPasso1 && location.hash && !location.hash.startsWith('#chat=')) { window._telaPasso1 = true; setTimeout(_restaurarTela, 0); }
   await loadContacts();
   loadAllTags();
   startPolling();
@@ -2887,7 +2887,7 @@ async function loadContacts(render = true) {
     window._contactsLoaded = true;
     if (render) { renderContacts(allContacts); populateFilterOptions(); }
     window.hideSplash && window.hideSplash();
-    if (!window._telaRestaurada) { window._telaRestaurada = true; setTimeout(_restaurarTela, 50); }
+    if (!window._telaRestaurada) { window._telaRestaurada = true; setTimeout(() => _restaurarTela(true), 50); }
   } catch(e) {}
 }
 
@@ -4547,7 +4547,7 @@ async function selectContact(phone, name, accountId) {
       <button class="btn-template-icon" id="btn-composer-tool" onclick="openComposerTool()" title="${window.matchMedia('(max-width: 768px)').matches ? 'Respostas rápidas' : 'Enviar modelo (API)'}">
         ${window.matchMedia('(max-width: 768px)').matches
           ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></svg>'
-          : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 13h5M8 16h8"/><path d="M16 4V2M8 4V2"/></svg>'}
+          : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 8h10M7 12h6M7 16h8"/></svg>'}
       </button>
       <input type="file" id="file-input" style="display:none"
         accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip"
@@ -7803,7 +7803,7 @@ function _telaAtual(nome) {
     if (k) document.querySelectorAll('#side-rail .rail-btn').forEach(b => b.classList.toggle('is-on', b.dataset.rail === k));
   } catch (_) {}
 }
-async function _restaurarTela() {
+async function _restaurarTela(segundaPassada) {
   const h = String(location.hash || '').replace(/^#/, '');
   const _mostra = () => { try { document.documentElement.classList.remove('tela-restaurando'); } catch (_) {} };
   setTimeout(_mostra, 4000); // segurança: nunca fica escondido para sempre
@@ -9930,9 +9930,9 @@ const DEFAULT_SERVER = 'https://meucrm-backend-production-d4f4.up.railway.app';
 document.addEventListener('DOMContentLoaded', () => {
   try {
     const h = String(location.hash || '').replace(/^#/, '');
-    if (h && !h.startsWith('chat=') && h !== 'modelos' && !window._telaRestaurada) {
+    if (h && !h.startsWith('chat=') && h !== 'modelos' && !window._telaPasso1) {
       SERVER_URL = SERVER_URL || DEFAULT_SERVER; // as telas já podem buscar seus dados
-      window._telaRestaurada = true;
+      window._telaPasso1 = true;
       _restaurarTela();
     }
   } catch (_) {}
