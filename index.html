@@ -1785,7 +1785,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v287</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v289</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px">🔔 Ativar avisos</button>
@@ -2364,7 +2364,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v287</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v289</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2418,7 +2418,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 287;
+const APP_VER = 289;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -9132,6 +9132,7 @@ function dripRender() {
     let st = '';
     if (r.manual) st = `<span style="color:#00806a">● Rodando agora (manual)</span>`;
     else if (r.agendado && naJanela) st = `<span style="color:#00806a">● Rodando (automático)</span>`;
+    else if (r.agendado && r.parado_ate && new Date(r.parado_ate) > new Date()) st = `<span style="color:#c0392b">⏹ Parado até ${hh(r.parado_ate).slice(0,5)}</span> · o automático retoma na próxima janela`;
     else if (r.agendado) st = `<span style="color:#b45309">◔ Automático — aguardando o horário</span> · agora ${_dripAgora || ''} Brasília · roda ${dias}${r.hora_ini ? ' a partir das ' + r.hora_ini : ''}${r.hora_fim ? ' até ' + r.hora_fim : ''}`;
     else if (concluido) st = `<span style="color:#00806a">✓ Concluído</span> · ${feitos} movido(s)`;
     else st = feitos ? `<span style="color:#8696a0">○ Pausada</span>` : '<span style="color:#8696a0">○ Parada</span>';
@@ -9141,7 +9142,7 @@ function dripRender() {
     return `<div style="background:#f7f8fa;border:1px solid #e9edef;border-radius:8px;padding:7px 10px;margin-bottom:6px;font-size:12.5px">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <button onclick="dripToggle(${i}, ${rodando ? 'false' : 'true'})" title="${rodando ? 'Pausar tudo (manual e automático); o progresso fica guardado' : (feitos ? 'Retomar agora, de onde parou (ignora dia/horário)' : 'Iniciar agora (ignora dia/horário)')}" style="background:${rodando ? '#fff' : '#00a884'};color:${rodando ? '#b45309' : '#fff'};border:1px solid ${rodando ? '#f0c27a' : '#00a884'};border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">${rodando ? '⏸ Pausar' : ((feitos && !concluido) ? '▶ Retomar' : '▶ Iniciar')}</button>
-        ${(rodando || (feitos && !concluido)) ? `<button onclick="dripParar(${i})" title="Parar: encerra o disparo manual e zera o progresso (nenhum lead volta)" style="background:#fff;color:#c0392b;border:1px solid #f1b0a7;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">⏹ Parar</button>` : ''}
+        ${(!concluido && (r.manual || feitos > 0 || (rodando && rest > 0))) ? `<button onclick="dripParar(${i})" title="Parar: encerra o disparo manual e zera o progresso (nenhum lead volta)" style="background:#fff;color:#c0392b;border:1px solid #f1b0a7;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">⏹ Parar</button>` : ''}
         <button onclick="dripAuto(${i}, ${r.agendado ? 'false' : 'true'})" title="${r.agendado ? 'Desligar o disparo automático (dias/horários)' : 'Ligar o disparo automático nos dias/horários da regra'}" style="background:${r.agendado ? '#e7f7ef' : '#fff'};color:${r.agendado ? '#00806a' : '#667781'};border:1px solid ${r.agendado ? '#00a884' : '#d1d7db'};border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">🕐 Automático: ${r.agendado ? 'ligado' : 'desligado'}</button>
         <b style="color:#131c20">${escHtml(r.nome || 'Regra ' + (i + 1))}</b>
         <span style="color:#54656f">${escHtml(stName[r.de] || '?')} → <b>${escHtml(stName[r.para] || '?')}</b> · 1 lead a cada ${Math.round(r.min_seg / 60 * 10) / 10}–${Math.round(r.max_seg / 60 * 10) / 10} min${r.dias && r.dias.length && r.dias.length < 7 ? ' · ' + r.dias.map(d => ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d]).join(', ') : ''}${r.hora_ini || r.hora_fim ? ' · ' + (r.hora_ini || '00:00') + '–' + (r.hora_fim || 'até esvaziar') : ''}</span>
@@ -9167,9 +9168,27 @@ setInterval(() => {
   if (rodando || _dripRefreshN % 5 === 0) dripCarregar();
 }, 2000);
 // ⏹ Parar = encerra o disparo atual: desliga, sai do modo manual e zera o progresso (nenhum lead volta)
-function dripParar(i) { const r = _dripRegras[i]; if (!r) return; if (!confirm(`Parar o gotejamento "${r.nome || 'Regra ' + (i + 1)}"?\n\nO disparo manual encerra e o progresso é zerado (os leads já movidos ficam onde estão). Para continuar depois de onde parou, use Pausar.`)) return; r.manual = false; r.movidos = 0; r.zerar_movidos = true; dripSalvar(); } // (o Automático fica como está — só muda no botão dele)
+function dripParar(i) {
+  const r = _dripRegras[i]; if (!r) return;
+  const autoRodando = !r.manual && !!r.agendado && _dripJanela[r.id] !== false;
+  const aviso = autoRodando
+    ? `Parar o gotejamento "${r.nome || 'Regra ' + (i + 1)}"?\n\nO disparo de agora para e o progresso é zerado (os leads já movidos ficam onde estão). O Automático continua LIGADO e retoma sozinho na próxima janela de dia/horário.`
+    : `Parar o gotejamento "${r.nome || 'Regra ' + (i + 1)}"?\n\nO disparo manual encerra e o progresso é zerado (os leads já movidos ficam onde estão). Para continuar depois de onde parou, use Pausar.`;
+  if (!confirm(aviso)) return;
+  r.manual = false; r.movidos = 0; r.zerar_movidos = true;
+  if (autoRodando) {
+    // Fica parada até o FIM da janela de hoje (Brasília); sem "até", até a meia-noite
+    const nowBr = new Date(Date.now() - 3 * 3600000);
+    const fim = new Date(nowBr); fim.setUTCSeconds(0, 0);
+    const mm = /^(\d{1,2}):(\d{2})$/.exec(String(r.hora_fim || ''));
+    if (mm) fim.setUTCHours(+mm[1], +mm[2], 0, 0); else fim.setUTCHours(23, 59, 59, 0);
+    if (fim <= nowBr) fim.setUTCDate(fim.getUTCDate() + 1);
+    r.parado_ate = new Date(fim.getTime() + 3 * 3600000).toISOString();
+  }
+  dripSalvar();
+} // (o Automático fica como está — só muda no botão dele)
 // 🕐 Liga/desliga o disparo AUTOMÁTICO (dias e horários da regra)
-function dripAuto(i, on) { if (_dripRegras[i]) { _dripRegras[i].agendado = !!on; dripSalvar(); } }
+function dripAuto(i, on) { if (_dripRegras[i]) { _dripRegras[i].agendado = !!on; _dripRegras[i].parado_ate = null; dripSalvar(); } }
 async function dripSalvar() {
   try {
     const r = await fetch(SERVER_URL + '/drip', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ regras: _dripRegras }) });
@@ -9180,7 +9199,7 @@ async function dripSalvar() {
   dripCarregar();
 }
 // ▶ à mão = começa AGORA, ignorando dia/horário (o agendamento continua valendo para as próximas vezes)
-function dripToggle(i, on) { if (_dripRegras[i]) { const r = _dripRegras[i]; r.manual = !!on; if (!on) r.agendado = false;
+function dripToggle(i, on) { if (_dripRegras[i]) { const r = _dripRegras[i]; r.manual = !!on; if (!on) r.agendado = false; if (on) r.parado_ate = null;
   // Iniciar de novo depois de CONCLUÍDO → o contador de movidos recomeça do zero
   if (on && (r.movidos || 0) > 0 && _dripCont[r.de] === 0) { r.movidos = 0; r.zerar_movidos = true; }
   dripSalvar(); } }
