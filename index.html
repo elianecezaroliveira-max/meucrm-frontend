@@ -1785,7 +1785,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v292</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v293</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px">🔔 Ativar avisos</button>
@@ -2364,7 +2364,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v292</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v293</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2418,7 +2418,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 292;
+const APP_VER = 293;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -6318,7 +6318,7 @@ async function loadMessages(phone, scroll = true) {
           if (m.status === 'read')           ticks = '<span class="msg-ticks read">' + TICK_TWO + '</span>';
           else if (m.status === 'delivered') ticks = '<span class="msg-ticks delivered">' + TICK_TWO + '</span>';
           else if (m.status === 'failed')    ticks = `<span class="msg-ticks failed" style="cursor:pointer" title="${escHtml(m.error_info||'Falha no envio sem motivo registrado (mensagem anterior à atualização). Reenvie para ver o detalhe da Meta.')}" onclick="alert('❌ Falha no envio:\\n\\n'+this.title)">⚠️</span>`;
-          else if (m.status === 'pending')   ticks = '<span class="msg-ticks pending" title="Enviando… aguardando confirmação do WhatsApp">' + TICK_CLOCK + '</span>';
+          else if (m.status === 'pending' && !m.wamid) ticks = '<span class="msg-ticks pending" title="Enviando… aguardando confirmação do WhatsApp">' + TICK_CLOCK + '</span>';
           else                               ticks = '<span class="msg-ticks sent">' + TICK_ONE + '</span>';
         }
 
@@ -6423,10 +6423,23 @@ async function loadMessages(phone, scroll = true) {
         _fotoLog('🤝 ADOÇÃO ok (prévia reutilizada na bolha real)');
       } catch (_) {}
     };
-    // Bolhas temporárias já confirmadas saem AGORA (a real entra no mesmo quadro)
+    // Bolha provisória (relógio) → vira a DEFINITIVA no mesmo elemento: recebe a
+    // chave e o conteúdo da mensagem real, sem sair e entrar (era o "pisca" do
+    // relógio → ✓). A reconciliação abaixo então só ajusta o que mudar.
     area.querySelectorAll('[data-key^="temp-"]').forEach(t => {
-      const txt = (t.querySelector('.msg-text') || {}).textContent || '';
-      if (txt && msgs.some(x => x.direction === 'outbound' && String(x.content) === txt)) t.remove();
+      const txt = t.dataset.rawText || (t.querySelector('.msg-text') || {}).textContent || '';
+      if (!txt) return;
+      const real = msgs.slice().reverse().find(x => x.direction === 'outbound' && String(x.content) === txt
+        && !area.querySelector('[data-key="m-' + String(x.id).replace(/[^\w-]/g, '') + '"]'));
+      if (!real) return;
+      const p = parts.find(pp => pp.key === 'm-' + String(real.id));
+      if (!p) { t.remove(); return; }
+      const nu = _mkEl(p.html);
+      t.dataset.key = nu.dataset.key;
+      for (const at of Array.from(nu.attributes)) t.setAttribute(at.name, at.value);
+      t.className = nu.className;
+      t.innerHTML = nu.innerHTML;
+      t._html = p.html;
     });
     // Comparadores compartilhados: rodapé e MIOLO da foto fora da comparação
     // (endereço/tamanho internos da imagem variam sem nada visível mudar)
@@ -6829,6 +6842,7 @@ function appendPendingBubble(text) {
   el.className = 'msg outbound' + (_grpP ? ' grp' : '');
   el.style.position = 'relative';
   el.dataset.key = 'temp-' + Date.now();
+  el.dataset.rawText = text; // texto ORIGINAL (com *negrito* etc.) para casar com a mensagem real
   el.innerHTML = `<span class="msg-text">${waFormat(text)}</span><div class="time">${_brtTime(Date.now())}<span class="msg-ticks pending" title="Enviando…">${TICK_CLOCK}</span></div>`;
   area.appendChild(el);
   area.scrollTop = area.scrollHeight; // direto no fim — nada de animação disputando com o render
@@ -6856,6 +6870,7 @@ async function _jaFoiEnviada(texto) {
 // (se a recarga do envio foi pulada/atrasada, espera o próximo polling — sem sumir)
 function _tiraTempQuandoChegar(tempEl, texto, tent) {
   if (!tempEl || !tempEl.parentElement) return;
+  if (!String(tempEl.dataset.key || '').startsWith('temp-')) return; // já virou a bolha definitiva (no lugar)
   const chegou = (currentMessages || []).some(x => x.direction === 'outbound' && String(x.content) === String(texto) && document.querySelector('#messages-area [data-key="m-' + String(x.id).replace(/[^\w-]/g, '') + '"]'));
   if (chegou) { tempEl.remove(); return; }
   if ((tent || 0) >= 25) { tempEl.remove(); return; } // ~15s: desiste (o polling já terá mostrado a real)
@@ -6908,7 +6923,7 @@ async function sendMessage() {
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      if (tempEl) tempEl.remove();
+      if (tempEl && String(tempEl.dataset.key || '').startsWith('temp-')) tempEl.remove();
       // Pode ter saído mesmo assim (falha só na resposta): confere antes de
       // devolver o texto ao campo — senão a mensagem enviada vira "rascunho"
       if (await _jaFoiEnviada(savedMessage)) return;
@@ -6932,7 +6947,7 @@ async function sendMessage() {
     _voltaTopoCel(); // cabeçalho (nome do cliente + ‹ voltar) de volta à vista
     if (_botDepois) await _disparaBotPendente(); // o bot escolhido entra depois do texto
   } catch(e) {
-    if (tempEl) tempEl.remove();
+    if (tempEl && String(tempEl.dataset.key || '').startsWith('temp-')) tempEl.remove();
     // Internet oscilou DEPOIS do envio? A mensagem pode ter ido. Só devolve o
     // texto (e o rascunho) se ela realmente não estiver na conversa.
     if (await _jaFoiEnviada(savedMessage)) return;
