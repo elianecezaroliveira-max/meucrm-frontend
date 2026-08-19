@@ -1785,7 +1785,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v291</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v292</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px">🔔 Ativar avisos</button>
@@ -2364,7 +2364,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v291</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v292</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2418,7 +2418,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 291;
+const APP_VER = 292;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -9145,7 +9145,7 @@ function dripRender() {
     if (l.erro) st += ` · <span style="color:#ef4444">${escHtml(l.erro)}</span>`;
     return `<div style="background:#f7f8fa;border:1px solid #e9edef;border-radius:8px;padding:7px 10px;margin-bottom:6px;font-size:12.5px">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        ${(!rodando || emAndamento) ? `<button onclick="dripToggle(${i}, ${rodando ? 'false' : 'true'})" title="${rodando ? 'Pausar tudo (manual e automático); o progresso fica guardado' : (feitos ? 'Retomar agora, de onde parou (ignora dia/horário)' : 'Iniciar agora (ignora dia/horário)')}" style="background:${rodando ? '#fff' : '#00a884'};color:${rodando ? '#b45309' : '#fff'};border:1px solid ${rodando ? '#f0c27a' : '#00a884'};border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">${rodando ? '⏸ Pausar' : ((feitos && !concluido) ? '▶ Retomar' : '▶ Iniciar')}</button>` : ''}
+        ${`<button onclick="dripToggle(${i}, ${emAndamento ? 'false' : 'true'})" title="${emAndamento ? 'Pausar tudo (manual e automático); o progresso fica guardado' : (feitos ? 'Retomar agora, de onde parou (ignora dia/horário)' : 'Iniciar agora (ignora dia/horário)')}" style="background:${emAndamento ? '#fff' : '#00a884'};color:${emAndamento ? '#b45309' : '#fff'};border:1px solid ${emAndamento ? '#f0c27a' : '#00a884'};border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">${emAndamento ? '⏸ Pausar' : ((feitos && !concluido) ? '▶ Retomar' : '▶ Iniciar')}</button>`}
         ${(emAndamento || (feitos > 0 && !rodando && !concluido)) ? `<button onclick="dripParar(${i})" title="Parar: encerra o disparo manual e zera o progresso (nenhum lead volta)" style="background:#fff;color:#c0392b;border:1px solid #f1b0a7;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">⏹ Parar</button>` : ''}
         <button onclick="dripAuto(${i}, ${r.agendado ? 'false' : 'true'})" title="${r.agendado ? 'Desligar o disparo automático (dias/horários)' : 'Ligar o disparo automático nos dias/horários da regra'}" style="background:${r.agendado ? '#e7f7ef' : '#fff'};color:${r.agendado ? '#00806a' : '#667781'};border:1px solid ${r.agendado ? '#00a884' : '#d1d7db'};border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">🕐 Automático: ${r.agendado ? 'ligado' : 'desligado'}</button>
         <b style="color:#131c20">${escHtml(r.nome || 'Regra ' + (i + 1))}</b>
