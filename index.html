@@ -491,7 +491,7 @@
   .kanban-col { background: #f0f2f5; border-radius: 12px; width: 270px; min-width: 270px; display: flex; flex-direction: column; max-height: 100%; }
   .kanban-col-header { padding: 12px 14px 10px; display: flex; align-items: center; gap: 8px; flex-shrink: 0; border-bottom: 2px solid #e9edef; }
   .kanban-col-dot { width: 10px; height: 10px; border-radius: 50%; background: #00a884; flex-shrink: 0; }
-  .kanban-col-name { flex: 1; font-size: 14px; font-weight: 700; color: #131c20; border: none; background: transparent; outline: none; cursor: text; min-width: 0; }
+  .kanban-col-name { flex: 1; font-size: 14px; font-weight: 700; color: #131c20; border: none; background: transparent; outline: none; cursor: text; min-width: 0; text-align: center; }
   .kanban-col-name:focus { background: #e9edef; border-radius: 4px; padding: 2px 4px; }
   .kanban-col-count { font-size: 12px; color: #667781; flex-shrink: 0; }
   .kanban-col-del { background: none; border: none; color: #667781; cursor: pointer; font-size: 16px; padding: 2px 4px; border-radius: 4px; flex-shrink: 0; opacity: 0; transition: opacity 0.2s; }
@@ -1600,8 +1600,9 @@ window.addEventListener('load', initAuth);
         </div>
         <div class="tmpl-row">
           <div class="tmpl-form-group">
-            <label>Nome do modelo * <span style="font-size:11px;color:#667781">(minúsculas e _)</span></label>
-            <input type="text" id="tmpl-name" placeholder="meu_modelo_boas_vindas" oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9_]/g,'')"/>
+            <label>Nome do modelo * <span style="font-size:11px;color:#667781">(pode usar espaço — na Meta vira _)</span></label>
+            <input type="text" id="tmpl-name" placeholder="boas vindas" oninput="_tmplNomeInput(this)"/>
+            <div id="tmpl-name-meta" style="font-size:11px;color:#667781;margin-top:3px;min-height:14px"></div>
           </div>
           <div class="tmpl-form-group">
             <label>Categoria *</label>
@@ -1785,7 +1786,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v294</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v296</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px">🔔 Ativar avisos</button>
@@ -2364,7 +2365,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v294</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v296</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2418,7 +2419,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 294;
+const APP_VER = 296;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2810,11 +2811,45 @@ function renderAccountsModal(accounts) {
         <div class="acc-id">${escHtml(sub)}</div>
       </div>
       ${isEvo && acc.status !== 'connected' ? `<button class="btn-rename" style="color:#00a884" onclick="reconnectQR('${acc.id}')" title="Reconectar: gera um QR novo para ESTA conta (mantém leads, bots e nome)">🔄 Reconectar</button>` : ''}
+      ${!isEvo && acc.status !== 'connected' ? `<button class="btn-rename" style="color:#1877f2" onclick="ativarNumeroMeta('${acc.id}')" title="Diagnóstico e ativação do número na Meta (registra na Cloud API)">⚡ Ativar na Meta</button>` : ''}
       <button class="btn-rename" onclick="openWaProfile('${acc.id}')" title="Perfil do número (foto, recado, descrição)">👤</button>
       <button class="btn-rename" onclick="renameAccount('${acc.id}')" title="Renomear conta">✏️</button>
       <button class="btn-delete" onclick="deleteAccount('${acc.id}')" title="Remover conta">🗑️</button>
     </div>`;
   }).join('');
+}
+
+// ⚡ Diagnóstico + ativação do número da API oficial na Meta
+// (mostra o que falta e, quando é só o registro, registra na hora)
+async function ativarNumeroMeta(accountId) {
+  let d;
+  try {
+    const r = await fetch(SERVER_URL + '/accounts/' + accountId + '/meta-diag');
+    d = await r.json();
+  } catch (_) { return alert('Não consegui falar com o servidor.'); }
+  if (d.error) return alert('Erro no diagnóstico: ' + d.error);
+  if (d.tipo === 'qr') return alert(d.aviso);
+  const linhas = [
+    'Número: ' + (d.numero || '—'),
+    'Nome de exibição: ' + (d.nome_exibicao || '—') + (d.nome_status ? ' (' + d.nome_status + ')' : ''),
+    'Status na Meta: ' + (d.status || '—'),
+    'Verificação do número: ' + (d.verificacao || '—'),
+    'Qualidade: ' + (d.qualidade || '—')
+  ].join('\n');
+  if (d.status === 'CONNECTED') return alert('✅ Este número já está CONECTADO na Meta.\n\n' + linhas);
+  const passos = (d.passos && d.passos.length) ? '\n\nO que falta:\n• ' + d.passos.join('\n• ') : '';
+  if (!confirm(linhas + passos + '\n\nTentar ATIVAR agora (registrar o número na Cloud API)?')) return;
+  const pin = prompt('PIN de 6 dígitos da verificação em duas etapas deste número.\n\nSe você nunca definiu um, deixe o padrão abaixo — ele será criado agora.', '123456');
+  if (pin === null) return;
+  try {
+    const r = await fetch(SERVER_URL + '/accounts/' + accountId + '/ativar', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin })
+    });
+    const j = await r.json();
+    if (j.error) return alert('❌ Não deu certo:\n\n' + j.error);
+    alert('✅ Número registrado na Meta!' + (j.status ? '\nStatus agora: ' + j.status : '') + '\n\nSe ainda aparecer "Pendente", é a aprovação do NOME DE EXIBIÇÃO (leva até 48h).');
+    await loadAccounts();
+  } catch (_) { alert('Erro ao ativar o número.'); }
 }
 
 // Reconecta uma conta QR desconectada: gera QR novo para a MESMA conta
@@ -8847,9 +8882,28 @@ function removeButton(id) {
   if (typeof updateTemplatePreview === 'function') updateTemplatePreview();
 }
 
+// ✍️ Nome do modelo: você digita como quiser (com ESPAÇO e acento). Na Meta o
+// nome vai sem acento e com _ no lugar do espaço; o nome bonito fica salvo como
+// apelido e é o que aparece na lista de modelos do VETRA.
+function _tmplNomeLimpo(v) {
+  return String(v || '').toLowerCase().replace(/[^\p{L}\p{N}_ ]/gu, '').replace(/\s{2,}/g, ' ');
+}
+function _tmplNomeMeta(v) {
+  return String(v || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '').replace(/_{2,}/g, '_').replace(/^_+|_+$/g, '');
+}
+function _tmplNomeInput(el) {
+  const pos = el.selectionStart;
+  el.value = _tmplNomeLimpo(el.value);
+  try { el.selectionStart = el.selectionEnd = pos; } catch (_) {}
+  const av = document.getElementById('tmpl-name-meta');
+  const m = _tmplNomeMeta(el.value);
+  if (av) av.textContent = m && m !== el.value.trim() ? 'Na Meta: ' + m : '';
+}
 async function createTemplate() {
   const accountId = document.getElementById('tmpl-account-id').value;
-  const name = document.getElementById('tmpl-name').value.trim();
+  const nomeDigitado = _tmplNomeLimpo(document.getElementById('tmpl-name').value).trim();
+  const name = _tmplNomeMeta(nomeDigitado); // é este que vai para a Meta (sem acento, com _)
   const category = document.getElementById('tmpl-category').value;
   const language = document.getElementById('tmpl-language').value;
   const bodyText = document.getElementById('tmpl-body-text').value.trim();
@@ -8926,6 +8980,17 @@ async function createTemplate() {
     const data = await res.json();
     _restauraBtn();
     if (!res.ok) return alert('Erro: ' + (data.error || 'Tente novamente'));
+    // Digitou com espaço/acento? O nome bonito vira o APELIDO do modelo (é o que
+    // aparece na lista); na Meta fica o nome técnico com _
+    try {
+      const novoId = data && data.data && data.data.id;
+      if (novoId && nomeDigitado && nomeDigitado !== name) {
+        await carregarApelidosModelos(true);
+        _tmplAlias[novoId] = nomeDigitado;
+        await fetch(SERVER_URL + '/settings/tmpl_alias', { method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ value: JSON.stringify(_tmplAlias) }) });
+      }
+    } catch (_) {}
     alert('✅ Modelo enviado para análise!\n\nA Meta pode levar de alguns minutos a mais de um dia para responder. O status aparece na lista de modelos (Em análise → Aprovado/Reprovado).');
     document.getElementById('tmpl-name').value = '';
     document.getElementById('tmpl-body-text').value = '';
