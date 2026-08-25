@@ -1786,7 +1786,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v297</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v298</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px">🔔 Ativar avisos</button>
@@ -2365,7 +2365,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v297</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v298</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2419,7 +2419,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 297;
+const APP_VER = 298;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -9233,7 +9233,7 @@ function dripRender() {
         ${(emAndamento || (feitos > 0 && !rodando && !concluido)) ? `<button onclick="dripParar(${i})" title="Parar: encerra o disparo manual e zera o progresso (nenhum lead volta)" style="background:#fff;color:#c0392b;border:1px solid #f1b0a7;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">⏹ Parar</button>` : ''}
         <button onclick="dripAuto(${i}, ${r.agendado ? 'false' : 'true'})" title="${r.agendado ? 'Desligar o disparo automático (dias/horários)' : 'Ligar o disparo automático nos dias/horários da regra'}" style="background:${r.agendado ? '#e7f7ef' : '#fff'};color:${r.agendado ? '#00806a' : '#667781'};border:1px solid ${r.agendado ? '#00a884' : '#d1d7db'};border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">🕐 Automático: ${r.agendado ? 'ligado' : 'desligado'}</button>
         <b style="color:#131c20">${escHtml(r.nome || 'Regra ' + (i + 1))}</b>
-        <span style="color:#54656f">${escHtml(stName[r.de] || '?')} → <b>${escHtml(stName[r.para] || '?')}</b> · 1 lead a cada ${Math.round(r.min_seg / 60 * 10) / 10}–${Math.round(r.max_seg / 60 * 10) / 10} min${r.dias && r.dias.length && r.dias.length < 7 ? ' · ' + r.dias.map(d => ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d]).join(', ') : ''}${r.hora_ini || r.hora_fim ? ' · ' + (r.hora_ini || '00:00') + '–' + (r.hora_fim || 'até esvaziar') : ''}</span>
+        <span style="color:#54656f">${escHtml(stName[r.de] || '?')} → <b>${escHtml(stName[r.para] || '?')}</b> · 1 lead a cada ${Math.round(r.min_seg / (r.numeros || 1) / 60 * 10) / 10}–${Math.round(r.max_seg / (r.numeros || 1) / 60 * 10) / 10} min${(r.numeros || 1) > 1 ? ` <span title="O intervalo de ${Math.round(r.min_seg / 60 * 10) / 10}–${Math.round(r.max_seg / 60 * 10) / 10} min é por número" style="color:#00806a">(${r.numeros} números)</span>` : ''}${r.dias && r.dias.length && r.dias.length < 7 ? ' · ' + r.dias.map(d => ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d]).join(', ') : ''}${r.hora_ini || r.hora_fim ? ' · ' + (r.hora_ini || '00:00') + '–' + (r.hora_fim || 'até esvaziar') : ''}</span>
         <span style="flex:1;color:#667781;font-size:11.5px">${st}</span>
         <button onclick="dripEditar(${i})" title="Editar" style="background:#fff;border:1px solid #e9edef;border-radius:8px;padding:5px 9px;cursor:pointer;font-size:13px;margin-left:6px">✏️</button>
         <button onclick="dripRemover(${i})" title="Remover" style="background:#fff;border:1px solid #f1b0a7;border-radius:8px;padding:5px 9px;color:#ef4444;cursor:pointer;font-size:13px;margin-left:8px">✕</button>
@@ -9308,8 +9308,12 @@ function dripEditar(i) {
         <div class="tmpl-form-group"><label>Para a etapa</label><select id="drip-para">${opts(r.para)}</select></div>
       </div>
       <div class="tmpl-row">
-        <div class="tmpl-form-group"><label>Intervalo mínimo (seg)</label><input id="drip-min" type="number" min="1" value="${r.min_seg || 210}"></div>
-        <div class="tmpl-form-group"><label>Intervalo máximo (seg)</label><input id="drip-max" type="number" min="1" value="${r.max_seg || 300}"></div>
+        <div class="tmpl-form-group"><label>Intervalo mínimo (seg)</label><input id="drip-min" type="number" min="1" value="${r.min_seg || 210}" oninput="_dripPreviaIntervalo()"></div>
+        <div class="tmpl-form-group"><label>Intervalo máximo (seg)</label><input id="drip-max" type="number" min="1" value="${r.max_seg || 300}" oninput="_dripPreviaIntervalo()"></div>
+      </div>
+      <div class="tmpl-form-group"><label>Números que o bot usa (divide o intervalo)</label>
+        <input id="drip-numeros" type="number" min="1" max="20" value="${r.numeros || 1}" oninput="_dripPreviaIntervalo()">
+        <p class="tmpl-hint" id="drip-previa" style="margin:4px 0 0"></p>
       </div>
       <div class="tmpl-form-group"><label>Dias da semana</label>
         <div style="display:flex;gap:3px;flex-wrap:nowrap">${['D','S','T','Q','Q','S','S'].map((d, k) => `<label title="${['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'][k]}" style="display:flex;align-items:center;gap:2px;background:#f0f2f5;border-radius:6px;padding:5px 5px;font-size:11.5px;cursor:pointer;flex:1;justify-content:center;white-space:nowrap"><input type="checkbox" class="drip-dia" value="${k}" ${(!r.dias || !r.dias.length || r.dias.includes(k)) ? 'checked' : ''}>${['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][k]}</label>`).join('')}</div>
@@ -9323,13 +9327,29 @@ function dripEditar(i) {
       <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn-cancel" onclick="document.getElementById('drip-edit-overlay').remove()">Cancelar</button><button class="btn-save" onclick="dripConfirmar(${i})">Salvar</button></div>
     </div></div>`);
 }
+// Mostra o ritmo REAL: o intervalo que você digitou é por NÚMERO; com mais de um
+// número o VETRA move os leads mais rápido, para cada número manter esse ritmo
+function _dripPreviaIntervalo() {
+  const el = document.getElementById('drip-previa'); if (!el) return;
+  const mn = parseInt(document.getElementById('drip-min').value, 10) || 0;
+  const mx = parseInt(document.getElementById('drip-max').value, 10) || 0;
+  const n = Math.min(20, Math.max(1, parseInt(document.getElementById('drip-numeros').value, 10) || 1));
+  const a = Math.min(mn, mx), b = Math.max(mn, mx);
+  const min = v => { const m = v / 60; return (Math.round(m * 10) / 10).toString().replace('.', ','); };
+  if (!a || !b) { el.textContent = ''; return; }
+  el.innerHTML = n === 1
+    ? `Um lead a cada <b>${min(a)}–${min(b)} min</b>.`
+    : `Cada número envia a cada <b>${min(a)}–${min(b)} min</b>; com <b>${n} números</b> o VETRA move um lead a cada <b>${min(a / n)}–${min(b / n)} min</b>.`;
+}
+setTimeout(() => { try { _dripPreviaIntervalo(); } catch (_) {} }, 0);
 function dripConfirmar(i) {
   const de = document.getElementById('drip-de').value, para = document.getElementById('drip-para').value;
   if (!de || !para) return alert('Escolha a etapa de origem e a de destino.');
   if (de === para) return alert('Origem e destino não podem ser a mesma etapa.');
   const mn = parseInt(document.getElementById('drip-min').value, 10) || 210, mx = parseInt(document.getElementById('drip-max').value, 10) || 300;
+  const numeros = Math.min(20, Math.max(1, parseInt(document.getElementById('drip-numeros').value, 10) || 1));
   const r = { id: (i >= 0 && _dripRegras[i]) ? _dripRegras[i].id : undefined, nome: document.getElementById('drip-nome').value.trim(), de, para,
-    min_seg: Math.min(mn, mx), max_seg: Math.max(mn, mx),
+    min_seg: Math.min(mn, mx), max_seg: Math.max(mn, mx), numeros,
     hora_ini: document.getElementById('drip-hi').value, hora_fim: document.getElementById('drip-hf').value,
     dias: (() => { const d = Array.from(document.querySelectorAll('.drip-dia:checked')).map(x => parseInt(x.value, 10)); return d.length === 7 ? [] : d; })() };
   if (!r.dias.length && !document.querySelectorAll('.drip-dia:checked').length) return alert('Marque ao menos um dia da semana.');
