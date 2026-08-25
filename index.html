@@ -1828,7 +1828,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v301</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v302</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px">🔔 Ativar avisos</button>
@@ -2417,7 +2417,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v301</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v302</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2471,7 +2471,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 301;
+const APP_VER = 302;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -9374,24 +9374,28 @@ function dripRender() {
     const concluido = !rodando && feitos > 0 && rest === 0;
     // EM ANDAMENTO = rodando E com lead na fila para mover (só aí fazem sentido Pausar/Parar)
     const emAndamento = rodando && (rest || 0) > 0;
+    // Manual ligado SEM fila: o botão de desligar precisa continuar à vista, senão
+    // ele volta a mover assim que entrar um lead novo e parece que "disparou sozinho"
+    const podeDesligar = emAndamento || !!r.manual;
     const hh = d => new Date(d).toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
     const nx = r.next_at ? new Date(r.next_at) : null;
     const dias = (r.dias && r.dias.length && r.dias.length < 7) ? r.dias.map(d => ['dom','seg','ter','qua','qui','sex','sáb'][d]).join('/') : 'todo dia';
     let st = '';
-    if (r.manual) st = `<span style="color:#00806a">● Rodando agora (manual)</span>`;
+    if (r.manual && rest === 0) st = `<span style="color:#b45309">● Ligado no manual — fila vazia</span> · vai mover assim que entrar lead nesta etapa (use ⏸ para desligar)`;
+    else if (r.manual) st = `<span style="color:#00806a">● Rodando agora (manual)</span>`;
     else if (r.agendado && naJanela) st = `<span style="color:#00806a">● Rodando (automático)</span>`;
     else if (r.agendado && r.parado_ate && new Date(r.parado_ate) > new Date()) st = `<span style="color:#c0392b">⏹ Parado até ${hh(r.parado_ate).slice(0,5)}</span> · o automático retoma na próxima janela`;
     else if (r.agendado) st = `<span style="color:#b45309">◔ Automático — aguardando o horário</span> · agora ${_dripAgora || ''} Brasília · roda ${dias}${r.hora_ini ? ' a partir das ' + r.hora_ini : ''}${r.hora_fim ? ' até ' + r.hora_fim : ''}`;
     else if (concluido) st = `<span style="color:#00806a">✓ Concluído</span> · ${feitos} movido(s)`;
     else st = feitos ? `<span style="color:#8696a0">○ Pausada</span>` : '<span style="color:#8696a0">○ Parada</span>';
-    if (rodando) st += ` · ${l.phone ? 'último: ' + escHtml(l.name || l.phone) + ' às ' + hh(l.quando) + ' · ' : ''}${nx && nx > new Date() ? 'próximo ' + hh(nx) : (rest === 0 ? 'fila vazia' : 'próximo em instantes')}`;
-    else if (l.phone) st += ` · parou depois de ${escHtml(l.name || l.phone)}`;
+    if (rodando) st += ` · ${l.phone ? 'último: ' + escHtml(l.name || l.phone) + ' às ' + hh(l.quando) + (l.motivo ? ' (' + (l.motivo === 'manual' ? 'manual' : 'automático') + ')' : '') + ' · ' : ''}${nx && nx > new Date() ? 'próximo ' + hh(nx) : (rest === 0 ? 'fila vazia' : 'próximo em instantes')}`;
+    else if (l.phone) st += ` · parou depois de ${escHtml(l.name || l.phone)}${l.motivo ? ' (' + (l.motivo === 'manual' ? 'disparo manual' : 'automático') + ')' : ''}`;
     if (l.erro) st += ` · <span style="color:#ef4444">${escHtml(l.erro)}</span>`;
     if ((r.manual || r.agendado) && _origensLigadas[r.de] > 1) st += ` · <span style="color:#b45309" title="Outra regra ligada também puxa leads desta mesma etapa — juntas elas movem o dobro">⚠️ outra regra usa a mesma fila</span>`;
     return `<div style="background:#f7f8fa;border:1px solid #e9edef;border-radius:8px;padding:7px 10px;margin-bottom:6px;font-size:12.5px">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        ${`<button onclick="dripToggle(${i}, ${emAndamento ? 'false' : 'true'})" title="${emAndamento ? 'Pausar tudo (manual e automático); o progresso fica guardado' : (feitos ? 'Retomar agora, de onde parou (ignora dia/horário)' : 'Iniciar agora (ignora dia/horário)')}" style="background:${emAndamento ? '#fff' : '#00a884'};color:${emAndamento ? '#b45309' : '#fff'};border:1px solid ${emAndamento ? '#f0c27a' : '#00a884'};border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">${emAndamento ? '⏸ Pausar' : ((feitos && !concluido) ? '▶ Retomar' : '▶ Iniciar')}</button>`}
-        ${(emAndamento || (feitos > 0 && !rodando && !concluido)) ? `<button onclick="dripParar(${i})" title="Parar: encerra o disparo manual e zera o progresso (nenhum lead volta)" style="background:#fff;color:#c0392b;border:1px solid #f1b0a7;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">⏹ Parar</button>` : ''}
+        ${`<button onclick="dripToggle(${i}, ${podeDesligar ? 'false' : 'true'})" title="${podeDesligar ? 'Pausar tudo (manual e automático); o progresso fica guardado' : (feitos ? 'Retomar agora, de onde parou (ignora dia/horário)' : 'Iniciar agora (ignora dia/horário)')}" style="background:${podeDesligar ? '#fff' : '#00a884'};color:${podeDesligar ? '#b45309' : '#fff'};border:1px solid ${podeDesligar ? '#f0c27a' : '#00a884'};border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">${podeDesligar ? '⏸ Pausar' : ((feitos && !concluido) ? '▶ Retomar' : '▶ Iniciar')}</button>`}
+        ${(podeDesligar || (feitos > 0 && !rodando && !concluido)) ? `<button onclick="dripParar(${i})" title="Parar: encerra o disparo manual e zera o progresso (nenhum lead volta)" style="background:#fff;color:#c0392b;border:1px solid #f1b0a7;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">⏹ Parar</button>` : ''}
         <button onclick="dripAuto(${i}, ${r.agendado ? 'false' : 'true'})" title="${r.agendado ? 'Desligar o disparo automático (dias/horários)' : 'Ligar o disparo automático nos dias/horários da regra'}" style="background:${r.agendado ? '#e7f7ef' : '#fff'};color:${r.agendado ? '#00806a' : '#667781'};border:1px solid ${r.agendado ? '#00a884' : '#d1d7db'};border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">🕐 Automático: ${r.agendado ? 'ligado' : 'desligado'}</button>
         <b style="color:#131c20">${escHtml(r.nome || 'Regra ' + (i + 1))}</b>
         <span style="color:#54656f">${escHtml(stName[r.de] || '?')} → <b>${escHtml(stName[r.para] || '?')}</b> · 1 lead a cada ${Math.round(r.min_seg / (r.numeros || 1) / 60 * 10) / 10}–${Math.round(r.max_seg / (r.numeros || 1) / 60 * 10) / 10} min${(r.numeros || 1) > 1 ? ` <span title="O intervalo de ${Math.round(r.min_seg / 60 * 10) / 10}–${Math.round(r.max_seg / 60 * 10) / 10} min é por número" style="color:#00806a">(${r.numeros} números)</span>` : ''}${r.dias && r.dias.length && r.dias.length < 7 ? ' · ' + r.dias.map(d => ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d]).join(', ') : ''}${r.hora_ini || r.hora_fim ? ' · ' + (r.hora_ini || '00:00') + '–' + (r.hora_fim || 'até esvaziar') : ''}</span>
@@ -9434,10 +9438,22 @@ async function dripParar(i) {
     if (fim <= nowBr) fim.setUTCDate(fim.getUTCDate() + 1);
     r.parado_ate = new Date(fim.getTime() + 3 * 3600000).toISOString();
   }
-  dripSalvar();
+  dripSalvarRegra(i);
 } // (o Automático fica como está — só muda no botão dele)
 // 🕐 Liga/desliga o disparo AUTOMÁTICO (dias e horários da regra)
-function dripAuto(i, on) { if (_dripRegras[i]) { _dripRegras[i].agendado = !!on; _dripRegras[i].parado_ate = null; dripSalvar(); } }
+function dripAuto(i, on) { if (_dripRegras[i]) { _dripRegras[i].agendado = !!on; _dripRegras[i].parado_ate = null; dripSalvarRegra(i); } }
+// Salva SÓ uma regra (ligar/desligar/parar). Assim, se esta tela estiver
+// desatualizada, ela não sobrescreve o que foi mudado em outro lugar.
+async function dripSalvarRegra(i) {
+  const r = _dripRegras[i]; if (!r) return;
+  try {
+    const resp = await fetch(SERVER_URL + '/drip', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ regra: r }) });
+    const j = await resp.json();
+    if (!resp.ok) throw new Error(j.error || 'falha');
+    _dripRegras = j.regras || _dripRegras;
+  } catch (e) { alert('Não consegui salvar: ' + (e.message || e)); }
+  dripCarregar();
+}
 async function dripSalvar() {
   try {
     const r = await fetch(SERVER_URL + '/drip', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ regras: _dripRegras }) });
@@ -9451,7 +9467,7 @@ async function dripSalvar() {
 function dripToggle(i, on) { if (_dripRegras[i]) { const r = _dripRegras[i]; r.manual = !!on; if (!on) r.agendado = false; if (on) r.parado_ate = null;
   // Iniciar de novo depois de CONCLUÍDO → o contador de movidos recomeça do zero
   if (on && (r.movidos || 0) > 0 && _dripCont[r.de] === 0) { r.movidos = 0; r.zerar_movidos = true; }
-  dripSalvar(); } }
+  dripSalvarRegra(i); } }
 async function dripRemover(i) { const r = _dripRegras[i]; if (!r) return; if (!await vConfirm({ titulo: 'Remover regra', texto: `A regra "${r.nome || 'Regra ' + (i + 1)}" será removida do gotejamento.`, confirmar: 'Remover', perigo: true })) return; _dripRegras.splice(i, 1); dripSalvar(); }
 function dripNovaRegra() { dripEditar(-1); }
 function dripEditar(i) {
