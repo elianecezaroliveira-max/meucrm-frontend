@@ -1052,6 +1052,9 @@
      (anotações, busca, etiquetas, tarefas...) — abaixo disso o iOS amplia a tela */
   input, textarea, select { font-size: 16px !important; }
   #msg-input { font-size: 16px; line-height: 20px; height: 40px; padding: 10px 12px; }
+  /* Celular: alvos de toque maiores (evita apagar tarefa/etiqueta sem querer) */
+  .task-row button, .qr-manage-btn { min-width: 40px; min-height: 40px; }
+  .lp-tag span[onclick] { padding: 6px 8px; display: inline-block; }
   #msg-backdrop { font-size: 16px; line-height: 20px; padding: 10px 12px; } /* espelha o campo no celular */
 
   /* Chat header: nome e telefone menores */
@@ -1288,6 +1291,21 @@
   body.dark .bot-card.v2 .bot-card-name, body.dark #cfg-panes, body.dark #cfg-panes b, body.dark #cfg-panes h3, body.dark #cfg-overlay h3, body.dark #cfg-panes > div div[style*="font-weight:700"], body.dark .cfg-pane label { color: #e9edef !important; }
   body.dark #cfg-panes p, body.dark #cfg-panes span:not(.tmpl-status), body.dark #cfg-billing, body.dark #cfg-stage-ids, body.dark #cfg-sheets-robo, body.dark #cfg-sheets-status, body.dark #cfg-dup-status { color: #aebac1; }
   body.dark #cfg-panes input[type="checkbox"] { accent-color: #00a884; }
+  /* Janelas cujo fundo branco estava fixo no HTML: no escuro ficavam texto branco
+     sobre fundo branco (Configurações, Automação do funil, Etiquetas) */
+  body.dark #cfg-overlay > div, body.dark #auto-overlay > div, body.dark #tagmgr-overlay > div,
+  body.dark #drip-edit-overlay > div { background: #111b21 !important; color: #e9edef; }
+  body.dark #cfg-overlay h3, body.dark #auto-overlay h3, body.dark #tagmgr-overlay h3 { color: #e9edef !important; }
+  body.dark #auto-overlay div[style*="background:#f0f2f5"], body.dark #auto-overlay div[style*="background:#f7f8fa"],
+  body.dark #cfg-overlay div[style*="background:#f0f2f5"], body.dark #cfg-overlay div[style*="background:#f7f8fa"] { background: #202c33 !important; border-color: #2a3942 !important; }
+  body.dark #tagmgr-overlay span[style*="color:#131c20"] { color: #e9edef !important; }
+  /* Pipeline em LISTA no escuro */
+  body.dark .plist-head { background: #202c33; color: #8696a0; border-color: #2a3942; }
+  body.dark .plist-c-name { color: #e9edef; }
+  body.dark .plist-row:hover { background: #2a3942; }
+  /* Anotação da tarefa: era cinza-claro sobre branco (não dava para ler) */
+  .task-row .task-note { background: #f7f8fa !important; color: #54656f !important; border-left-color: #d6dde1 !important; }
+  body.dark .task-row .task-note { background: #202c33 !important; color: #cdd6db !important; border-left-color: #2a3942 !important; }
   body.dark #bots-page, body.dark #tasks-page, body.dark #faq-page, body.dark #pipeline-page, body.dark #kanban-board, body.dark #pipeline-list { background: #111b21; color: #e9edef; }
   body.dark #bots-page-topbar, body.dark #tasks-page-topbar, body.dark #faq-page-topbar { background: #202c33; border-color: #2a3942; }
   body.dark #bots-page-topbar h2, body.dark #tasks-page-topbar h2, body.dark #faq-page-topbar h2, body.dark #pipeline-topbar h2 { color: #e9edef; }
@@ -1786,7 +1804,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v299</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v300</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px">🔔 Ativar avisos</button>
@@ -2365,7 +2383,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v299</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v300</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2419,7 +2437,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 299;
+const APP_VER = 300;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3358,7 +3376,7 @@ function renderContacts(contacts) {
   }
   if (!contacts.length) {
     list.innerHTML = window._contactsLoaded
-      ? '<div id="empty-contacts">Nenhuma conversa ainda.<br>Envie uma mensagem pelo WhatsApp para o número de teste.</div>'
+      ? '<div id="empty-contacts">Nenhuma conversa por aqui.<br>Assim que um cliente escrever para o seu WhatsApp, a conversa aparece nesta lista.</div>'
       : '<div class="contact-skel"><i class="v-skel"></i><div style="flex:1"><div class="v-skel l" style="margin-bottom:8px"></div><div class="v-skel" style="width:70%"></div></div></div>'.repeat(8); // esqueleto enquanto carrega
     return;
   }
@@ -4014,7 +4032,7 @@ function _msgToggleFlag(id, field, path) {
   const nv = !mm[field]; mm[field] = nv;
   fetch(SERVER_URL + '/messages/' + encodeURIComponent(id) + path, { method: 'PUT', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(field === 'starred' ? { starred: nv } : { pinned: nv }) })
-    .then(r => r.json()).then(d => { if (d.error) alert('Rode no Supabase: alter table messages add column if not exists ' + field + ' boolean default false;'); }).catch(() => {});
+    .then(r => r.json()).then(d => { if (d.error) _toast('⚠️ Não consegui salvar. Recarregue a página e tente de novo.'); }).catch(() => {});
   _lastMsgsSig = ''; loadMessages(currentPhone, false);
 }
 function msgMenuPinMsg()  { const id = _msgMenuId; closeMsgMenu(); if (id) _msgToggleFlag(id, 'pinned',  '/pin'); }
@@ -4426,7 +4444,7 @@ async function toggleFavorite(phone) {
 
 // ✏️ RASCUNHO por conversa (igual WhatsApp): o texto digitado fica guardado
 let _drafts = {};
-try { _drafts = JSON.parse(localStorage.getItem('vetra_drafts') || '{}'); } catch (_) {}
+try { _drafts = JSON.parse(localStorage.getItem(_uKey('vetra_drafts')) || '{}'); } catch (_) {}
 // Grava SÓ o rascunho da conversa atual, mesclando com o que está no disco.
 // Antes gravava o objeto inteiro da memória: um segundo app aberto (aba antiga,
 // PWA + navegador) com memória velha "ressuscitava" o rascunho de uma mensagem
@@ -4434,16 +4452,16 @@ try { _drafts = JSON.parse(localStorage.getItem('vetra_drafts') || '{}'); } catc
 function _saveDrafts(phone) {
   try {
     const p = phone || currentPhone;
-    let disco = {}; try { disco = JSON.parse(localStorage.getItem('vetra_drafts') || '{}') || {}; } catch (_) { disco = {}; }
+    let disco = {}; try { disco = JSON.parse(localStorage.getItem(_uKey('vetra_drafts')) || '{}') || {}; } catch (_) { disco = {}; }
     if (p) { if (_drafts[p] && String(_drafts[p]).trim()) disco[p] = _drafts[p]; else delete disco[p]; }
-    localStorage.setItem('vetra_drafts', JSON.stringify(disco));
+    localStorage.setItem(_uKey('vetra_drafts'), JSON.stringify(disco));
     _drafts = disco; // memória passa a refletir o disco (inclui rascunhos de outra aba)
   } catch (_) {}
 }
 // Voltou para o app? Relê os rascunhos do disco (outra aba pode ter mudado) e atualiza a lista
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) return;
-  try { const d = JSON.parse(localStorage.getItem('vetra_drafts') || '{}') || {}; _drafts = d; if (typeof renderContacts === 'function' && Array.isArray(allContacts) && allContacts.length) renderContacts(sortContacts(allContacts)); } catch (_) {}
+  try { const d = JSON.parse(localStorage.getItem(_uKey('vetra_drafts')) || '{}') || {}; _drafts = d; if (typeof renderContacts === 'function' && Array.isArray(allContacts) && allContacts.length) renderContacts(sortContacts(allContacts)); } catch (_) {}
 });
 // Celular: o iOS pode suspender o app a qualquer momento — salva em TODOS os avisos de saída
 function _persistDraftNow() {
@@ -5271,7 +5289,7 @@ function lpRenderTags(phone){
   if (!el || !c) return;
   const tags = c.tags || [];
   el.innerHTML = tags.length
-    ? tags.map(t => `<span class="lp-tag">${escHtml(t)} <span onclick="lpRemoveTag('${phone}','${String(t).replace(/'/g,"\\'")}')" style="cursor:pointer;font-weight:700">×</span></span>`).join('')
+    ? tags.map(t => `<span class="lp-tag">${escHtml(t)} <span onclick="lpRemoveTag('${_jsAttr(phone)}','${_jsAttr(t)}')" style="cursor:pointer;font-weight:700">×</span></span>`).join('')
     : '<span style="color:#8696a0;font-size:12px">Nenhuma etiqueta</span>';
 }
 async function lpAddTag(phone){
@@ -5351,7 +5369,7 @@ function lpLoadMedia(phone){
   if (docs.length) {
     html += docs.map(m => {
       const fname = (m.content||'').replace(/^\[Documento: ?/,'').replace(/\]$/,'') || 'Documento';
-      const nomeSafe = escHtml(fname).replace(/'/g, "\\'");
+      const nomeSafe = _jsAttr(fname);
       const isPdfDoc = /\.pdf\s*$/i.test(fname) || String(m.media_mime_type || '').toLowerCase().includes('pdf');
       // Mesma URL do chat (tipo do arquivo + conta da mensagem)
       const urlVer = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${_acct(m)}${m.media_mime_type ? '&mime=' + encodeURIComponent(m.media_mime_type) : ''}`;
@@ -5494,7 +5512,7 @@ async function toggleMute(phone) {
   try {
     const r = await fetch(SERVER_URL + '/contacts/' + encodeURIComponent(phone) + '/mute', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ muted: nv }) });
-    const d = await r.json(); if (d.error) alert('Rode no Supabase: alter table contacts add column if not exists muted boolean default false;');
+    const d = await r.json(); if (d.error) _toast('⚠️ Não consegui salvar o silenciar. Recarregue a página e tente de novo.');
   } catch (_) {}
   loadContacts();
 }
@@ -5812,13 +5830,13 @@ function _dimCss(id) {
 // 🖼️ MINIATURAS LOCAIS (igual WhatsApp): cada foto já vista fica guardada no
 // aparelho — em toda abertura a foto pinta NA HORA, sem rede e sem redecodificar
 function _thumbGet(id) {
-  try { window._vThumbs = window._vThumbs || JSON.parse(localStorage.getItem('vetra_thumb') || '{}'); return window._vThumbs[String(id)] || null; }
+  try { window._vThumbs = window._vThumbs || JSON.parse(localStorage.getItem(_uKey('vetra_thumb')) || '{}'); return window._vThumbs[String(id)] || null; }
   catch (_) { return null; }
 }
 function _thumbSave(id, im) {
   try {
     if (!id || !im || !im.naturalWidth) return;
-    const t = window._vThumbs = window._vThumbs || JSON.parse(localStorage.getItem('vetra_thumb') || '{}');
+    const t = window._vThumbs = window._vThumbs || JSON.parse(localStorage.getItem(_uKey('vetra_thumb')) || '{}');
     if (t[String(id)]) return;
     const s = Math.min(1, 578 / im.naturalWidth);
     const cv = document.createElement('canvas');
@@ -5827,12 +5845,12 @@ function _thumbSave(id, im) {
     cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height);
     t[String(id)] = cv.toDataURL('image/jpeg', 0.75);
     const ks = Object.keys(t); if (ks.length > 40) ks.slice(0, ks.length - 40).forEach(k => delete t[k]);
-    localStorage.setItem('vetra_thumb', JSON.stringify(t));
+    localStorage.setItem(_uKey('vetra_thumb'), JSON.stringify(t));
   } catch (_) {
     try { // sem espaço → guarda só as 15 mais recentes
       const t = window._vThumbs || {}; const ks = Object.keys(t);
       ks.slice(0, Math.max(0, ks.length - 15)).forEach(k => delete t[k]);
-      localStorage.setItem('vetra_thumb', JSON.stringify(t));
+      localStorage.setItem(_uKey('vetra_thumb'), JSON.stringify(t));
     } catch (_) {}
   }
 }
@@ -7324,7 +7342,7 @@ function renderMediaGallery() {
     content.innerHTML = docs.length
       ? docs.map(m => {
           const fname = (m.content || '').replace(/^\[Documento: ?/, '').replace(/\]$/, '') || 'Documento';
-          const nomeSafe = escHtml(fname).replace(/'/g, "\\'");
+          const nomeSafe = _jsAttr(fname);
           const isPdfG = /\.pdf\s*$/i.test(fname) || String(m.media_mime_type || '').toLowerCase().includes('pdf');
           // Mesma URL do chat (tipo do arquivo + conta da mensagem)
           const urlVer = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${_acct(m)}${m.media_mime_type ? '&mime=' + encodeURIComponent(m.media_mime_type) : ''}`;
@@ -7531,6 +7549,8 @@ async function _sendOneFile(file, caption, semRecarga) {
 // ── RESPOSTAS RÁPIDAS ──
 // Cache local POR CONTA (o antigo era um só por navegador — as respostas de uma
 // conta vazavam para a outra ao trocar de login no mesmo aparelho)
+// Sufixo da conta logada: cada usuária tem o SEU cache neste navegador
+function _uKey(base) { return base + '::' + String(window._userEmail || '').toLowerCase(); }
 function _qrKey() { return 'meucrm_quick_replies::' + String(window._userEmail || '').toLowerCase(); }
 let quickReplies = [];
 try { localStorage.removeItem('meucrm_quick_replies'); } catch (_) {} // apaga o cache antigo compartilhado
@@ -7737,8 +7757,8 @@ function showQRPopup(filter, fromSearch) {
     const preview = r.message.replace(/\{nome\}/gi, contactName || '{nome}');
     const short   = preview.length > 90 ? preview.substring(0, 90) + '…' : preview;
     return `<div class="qr-item" onclick="insertQRReply(${quickReplies.indexOf(r)})">
-      <div class="qr-item-title">${r.pinned ? '📌 ' : ''}/${r.title}</div>
-      <div class="qr-item-preview">${short}</div>
+      <div class="qr-item-title">${r.pinned ? '📌 ' : ''}/${escHtml(r.title)}</div>
+      <div class="qr-item-preview">${escHtml(short)}</div>
     </div>`;
   }).join('');
   positionQRPopup();
@@ -8330,6 +8350,11 @@ async function saveLead() {
   const account_id = document.getElementById('lead-account').value || null;
   if (!name) return alert('Informe o nome do lead.');
   if (!phone) return alert('Informe o celular do lead.');
+  // Botão avisa que está salvando e trava o clique duplo (criava lead repetido)
+  const _b = document.querySelector('#new-lead-overlay .btn-save') || document.querySelector('#new-lead-overlay button[onclick*="saveLead"]');
+  const _txt = _b ? _b.innerHTML : '';
+  if (_b) { _b.disabled = true; _b.style.opacity = '.6'; _b.innerHTML = 'Salvando…'; }
+  const _solta = () => { if (_b) { _b.disabled = false; _b.style.opacity = ''; _b.innerHTML = _txt; } };
   try {
     const res = await fetch(SERVER_URL + '/contacts', {
       method: 'POST',
@@ -8337,11 +8362,12 @@ async function saveLead() {
       body: JSON.stringify({ name, phone, account_id })
     });
     const data = await res.json();
-    if (!res.ok) return alert('Erro: ' + (data.error || 'Tente novamente'));
+    if (!res.ok) { _solta(); return alert('Erro: ' + (data.error || 'Tente novamente')); }
     closeNewLead();
     await loadContacts();
-    alert('✅ Lead salvo com sucesso!');
-  } catch(e) { alert('Erro ao salvar lead.'); }
+    _solta();
+    _toast('✅ Lead salvo!');
+  } catch(e) { _solta(); alert('Erro ao salvar lead.'); }
 }
 
 // ── IMPORTAR LEADS ──
@@ -8444,7 +8470,7 @@ function showImportPreview() {
   const sample = importedContacts.slice(0, 8);
   preview.style.display = 'block';
   preview.innerHTML = `<table><thead><tr><th>#</th><th>Nome</th><th>Celular</th></tr></thead><tbody>
-    ${sample.map((c,i) => `<tr><td>${i+1}</td><td>${c.name}</td><td>${c.phone}</td></tr>`).join('')}
+    ${sample.map((c,i) => `<tr><td>${i+1}</td><td>${escHtml(c.name)}</td><td>${escHtml(c.phone)}</td></tr>`).join('')}
     ${importedContacts.length > 8 ? `<tr><td colspan="3" style="color:#667781;text-align:center">... e mais ${importedContacts.length - 8} leads</td></tr>` : ''}
   </tbody></table>`;
   document.getElementById('btn-confirm-import').disabled = valid.length === 0;
@@ -8662,12 +8688,12 @@ async function loadTemplates() {
 
 // Modelos "excluídos" só no CRM (escondidos localmente, sem mexer na Meta)
 function getHiddenTemplates() {
-  try { return JSON.parse(localStorage.getItem('hiddenTemplates') || '[]'); } catch(e) { return []; }
+  try { return JSON.parse(localStorage.getItem(_uKey('hiddenTemplates')) || '[]'); } catch(e) { return []; }
 }
 function hideTemplate(id) {
   if (!id) return;
   const h = getHiddenTemplates();
-  if (!h.includes(id)) { h.push(id); localStorage.setItem('hiddenTemplates', JSON.stringify(h)); }
+  if (!h.includes(id)) { h.push(id); localStorage.setItem(_uKey('hiddenTemplates'), JSON.stringify(h)); }
 }
 
 function renderTemplateList(templates) {
@@ -9598,7 +9624,7 @@ function renderPipelineList(contacts) {
     const sel = selectedLeads.has(c.phone);
     return `<div class="plist-row${sel ? ' sel' : ''}" data-phone="${c.phone}">
       <span class="plist-check">${_pipeSelMode ? `<input type="checkbox" ${sel ? 'checked' : ''} onclick="event.stopPropagation();togglePipelineListSel('${c.phone}',this.checked)">` : ''}</span>
-      <span class="plist-c-name" onclick="openLeadChat('${c.phone}','${(c.name || '').replace(/'/g, "\\'")}','${c.account_id || ''}')">${escHtml(c.name || c.phone)}</span>
+      <span class="plist-c-name" onclick="openLeadChat('${_jsAttr(c.phone)}','${_jsAttr(c.name || '')}','${_jsAttr(c.account_id || '')}')">${escHtml(c.name || c.phone)}</span>
       <span class="plist-c-phone">${formatPhone(c.phone)}</span>
       <span class="plist-c-stage"><span class="plist-stage">${escHtml(stName[c.stage_id] || 'Sem etapa')}</span></span>
       <span class="plist-c-tags">${tags}</span>
@@ -10868,9 +10894,9 @@ function renderTasksPage(){
       : `<span style="width:17px;flex-shrink:0;display:inline-block"></span>`);
     const due=t.due_at?`<span style="color:${overdue?'#ef4444':'#667781'};font-size:12px">⏰ ${fmtTaskDue(t.due_at)}</span>`:'';
     // Botão GRANDE e claro para abrir o lead a partir da tarefa
-    const lead=t.contact_name?`<button onclick="openTaskLead('${t.phone}','${escHtml(t.contact_name).replace(/'/g,"\\'")}',${t.account_id?`'${t.account_id}'`:'null'})" title="Abrir a conversa e os dados deste lead" style="display:inline-flex;align-items:center;gap:6px;background:#e7f7ef;border:1px solid #00a884;color:#00806a;border-radius:16px;padding:5px 12px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit">👤 ${escHtml(t.contact_name)} <span style="font-size:11px">›</span></button>`:'';
+    const lead=t.contact_name?`<button onclick="openTaskLead('${t.phone}','${_jsAttr(t.contact_name)}',${t.account_id?`'${t.account_id}'`:'null'})" title="Abrir a conversa e os dados deste lead" style="display:inline-flex;align-items:center;gap:6px;background:#e7f7ef;border:1px solid #00a884;color:#00806a;border-radius:16px;padding:5px 12px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit">👤 ${escHtml(t.contact_name)} <span style="font-size:11px">›</span></button>`:'';
     const noteBlock = t.notes
-      ? `<div style="margin-top:6px;background:#ffffff;border-left:3px solid #e9edef;border-radius:4px;padding:6px 8px;font-size:12px;color:#cdd6db;white-space:pre-wrap;word-break:break-word">${escHtml(t.notes)}</div>`
+      ? `<div class="task-note" style="margin-top:6px;border-left:3px solid #e9edef;border-radius:4px;padding:6px 8px;font-size:12px;white-space:pre-wrap;word-break:break-word">${escHtml(t.notes)}</div>`
       : '';
     return `<div class="task-row${overdue?' overdue':''}">
       ${selBox}
@@ -11096,13 +11122,14 @@ function closeBotEditor() {
   // Alterou algo e não salvou? Pergunta antes de sair (OK = salva e sai)
   try {
     if (_botSnap && _botEstadoAtual() !== _botSnap) {
-      if (confirm('Você fez alterações que ainda NÃO foram salvas.\n\nOK = salvar e sair\nCancelar = sair SEM salvar')) {
+      if (confirm('Você fez alterações que ainda NÃO foram salvas.\n\nOK = SALVAR e sair (recomendado)\nCancelar = continuar editando')) {
         saveBotFlow().then(() => {
           document.getElementById('bot-editor-page').style.display = 'none';
           openBotsList();
         }).catch(() => alert('Não consegui salvar — confira a internet e tente o 💾 Salvar.'));
         return;
       }
+      return; // Cancelar = CONTINUA editando (antes jogava o fluxo fora)
     }
   } catch (_) {}
   document.getElementById('bot-editor-page').style.display = 'none';
@@ -12817,7 +12844,7 @@ async function openBotLauncher() {
     listEl.innerHTML = bots.map(b=>`
       <div style="padding:7px 10px;cursor:pointer;font-size:13px;color:#131c20;border-radius:5px;transition:background 0.15s"
            onmouseover="this.style.background='#e9edef'" onmouseout="this.style.background=''"
-           onclick="launchBot('${b.id}','${escHtml(b.name).replace(/'/g,"\\'")}')">
+           onclick="launchBot('${b.id}','${_jsAttr(b.name)}')">
         🤖 ${escHtml(b.name)}
       </div>`).join('');
   } catch(e) { listEl.innerHTML='<div style="padding:6px 8px;color:#ef4444;font-size:12px">Erro</div>'; }
