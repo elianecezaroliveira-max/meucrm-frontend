@@ -609,6 +609,8 @@
   #topbar, #layout { margin-left: 68px; }
   .rail-btn { background: none; border: none; cursor: pointer; color: #54656f; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10px; font-weight: 600; padding: 8px 2px; border-radius: 10px; width: 60px; transition: background .12s, color .12s; }
   .rail-btn:hover { background: #f0f2f5; color: #131c20; }
+  .rail-sep { height: 1px; background: #e9edef; margin: 7px 12px; flex-shrink: 0; }
+  body.dark .rail-sep { background: #2a3942; }
   .rail-btn .ri { width: 22px; height: 22px; display: block; }
   .rail-btn .ri svg { width: 22px; height: 22px; display: block; }
   /* Ícone ativo em verde com "pastilha" clara, igual às abas do WhatsApp */
@@ -1135,6 +1137,8 @@
   body.dark .mpm-head { color: #aebac1; border-color: #2a3942; } body.dark .mpm-head button { background: #2a3942; color: #e9edef; }
   .mpm-item { padding: 13px 16px; font-size: 15px; color: #131c20; border-radius: 8px; cursor: pointer; }
   .mpm-item:active { background: #f0f2f5; }
+  .mpm-sep { height: 1px; background: #e9edef; margin: 6px 10px; }
+  body.dark .mpm-sep { background: #2a3942; }
   /* Os botões do topo foram para o "+" — some com eles no celular */
   #btn-pipeline, #btn-templates, #btn-quick-replies, #btn-accounts, #btn-bots,
   #btn-faq, #btn-tags, #btn-tasks-global, #btn-logout { display: none !important; }
@@ -1828,7 +1832,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v309</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v310</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px">🔔 Ativar avisos</button>
@@ -1855,13 +1859,17 @@ window.addEventListener('load', initAuth);
   <div class="mpm-head"><span>Ferramentas</span><button type="button" onclick="closeMobilePlus()" aria-label="Fechar">✕</button></div>
   <div class="mpm-item" onclick="mnavGo(openNewLead)">👤 Adicionar contato</div>
   <div class="mpm-item" onclick="mnavGo(openPipeline)">📊 Pipeline</div>
-  <div class="mpm-item" onclick="mnavGo(openTemplates)">📄 Modelos</div>
-  <div class="mpm-item" onclick="mnavGo(openQRManager)">⚡ Respostas</div>
-  <div class="mpm-item" onclick="mnavGo(openModal)">📱 Contas</div>
+  <div class="mpm-item" onclick="mnavGo(openTasksPage)" style="position:relative">✅ Tarefas<span class="task-badge" style="top:14px;left:96px;right:auto"></span></div>
+  <div class="mpm-sep"></div>
   <div class="mpm-item" onclick="mnavGo(openBotsList)">🤖 Bots</div>
   <div class="mpm-item" onclick="mnavGo(openFaqPage)">🧠 IA</div>
+  <div class="mpm-item" onclick="mnavGo(openAutomationPanel)">🔁 Automação</div>
+  <div class="mpm-sep"></div>
+  <div class="mpm-item" onclick="mnavGo(openTemplates)">📄 Modelos</div>
+  <div class="mpm-item" onclick="mnavGo(openQRManager)">⚡ Respostas rápidas</div>
   <div class="mpm-item" onclick="mnavGo(openTagManager)">🏷️ Etiquetas</div>
-  <div class="mpm-item" onclick="mnavGo(openTasksPage)" style="position:relative">✅ Tarefas<span class="task-badge" style="top:14px;left:96px;right:auto"></span></div>
+  <div class="mpm-sep"></div>
+  <div class="mpm-item" onclick="mnavGo(openModal)">📱 Contas de WhatsApp</div>
   <div class="mpm-item" onclick="mnavGo(openNotices)" style="position:relative">🔔 Avisos<span class="notice-dot" style="top:14px;left:90px"></span></div>
   <div class="mpm-item" onclick="mnavGo(openConfigModal)">⚙️ Configurações</div>
   <div class="mpm-item" style="color:#ef4444" onclick="mnavGo(logoutCRM)">🚪 Sair</div>
@@ -1917,6 +1925,9 @@ window.addEventListener('load', initAuth);
       <div id="pipe-more-menu" style="display:none;position:absolute;right:0;top:calc(100% + 6px);background:#fff;border:1px solid #e9edef;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.16);min-width:220px;padding:6px;z-index:50">
         <button class="cm-item" style="width:100%;text-align:left;background:none;border:none;font-family:inherit;color:#131c20" id="btn-export-leads" onclick="document.getElementById('pipe-more-menu').style.display='none';exportarLeads()" title="Baixa em CSV (Excel): os selecionados, ou os leads visíveis com o filtro atual">⬇ Exportar leads (CSV)</button>
         <button class="cm-item" style="width:100%;text-align:left;background:none;border:none;font-family:inherit;color:#131c20" onclick="document.getElementById('pipe-more-menu').style.display='none';addStage()">＋ Nova coluna</button>
+        <div style="height:1px;background:#e9edef;margin:5px 2px"></div>
+        <button class="cm-item" style="width:100%;text-align:left;background:none;border:none;font-family:inherit;color:#131c20" onclick="document.getElementById('pipe-more-menu').style.display='none';abrirConfigEm('pipe')" title="Recuperar leads e colunas excluídos nos últimos 30 dias">🗑️ Lixeira do pipeline</button>
+        <button class="cm-item" style="width:100%;text-align:left;background:none;border:none;font-family:inherit;color:#131c20" onclick="document.getElementById('pipe-more-menu').style.display='none';abrirConfigEm('ids')" title="Códigos usados por planilhas e integrações">🔢 Códigos das etapas</button>
       </div>
     </div>
     <button id="btn-close-pipeline" onclick="closePipeline()" title="Fechar">✕</button>
@@ -1949,13 +1960,17 @@ window.addEventListener('load', initAuth);
 <div id="side-rail">
   <button class="rail-btn is-on" data-rail="chat" onclick="railOn(this);goToChat()" title="Conversas"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.3 8.7 8.7 0 0 1-3.8-.9L3 20l1.1-4.6A8.2 8.2 0 0 1 3 11.5 8.4 8.4 0 0 1 11.5 3.2h.5a8.4 8.4 0 0 1 9 8.3z"/></svg></span>Chat</button>
   <button class="rail-btn" data-rail="pipe" onclick="railOn(this);openPipeline()" title="Pipeline"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="5" height="18" rx="1.2"/><rect x="10" y="3" width="5" height="12" rx="1.2"/><rect x="17" y="3" width="4" height="15" rx="1.2"/></svg></span>Pipeline</button>
-  <button class="rail-btn" data-rail="tmpl" onclick="railOn(this);openTemplates()" title="Modelos"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></span>Modelos</button>
-  <button class="rail-btn" data-rail="quick" onclick="railOn(this);openQRManager()" title="Respostas rápidas"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></svg></span>Respostas</button>
-  <button class="rail-btn" data-rail="acc" onclick="railOn(this);openModal()" title="Contas de WhatsApp"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2.2"/><path d="M11 18h2"/></svg></span>Contas</button>
+  <button class="rail-btn" data-rail="tasks" onclick="railOn(this);openTasksPage()" title="Tarefas" style="position:relative"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m8 12 3 3 5-6"/></svg></span>Tarefas<span class="task-badge"></span></button>
+  <div class="rail-sep"></div>
   <button class="rail-btn" data-rail="bots" onclick="railOn(this);openBotsList()" title="Bots"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="2.5"/><path d="M12 8V4M8 4h8"/><circle cx="9" cy="14" r="1.2" fill="currentColor" stroke="none"/><circle cx="15" cy="14" r="1.2" fill="currentColor" stroke="none"/></svg></span>Bots</button>
   <button class="rail-btn" data-rail="ia" onclick="railOn(this);openFaqPage()" title="IA / FAQ"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5.5a3 3 0 0 0-5.7-1.3A2.8 2.8 0 0 0 4.2 8.6 2.9 2.9 0 0 0 5 13.7a3 3 0 0 0 3.6 3.6A2.6 2.6 0 0 0 12 18.5z"/><path d="M12 5.5a3 3 0 0 1 5.7-1.3 2.8 2.8 0 0 1 2.1 4.4 2.9 2.9 0 0 1-.8 5.1 3 3 0 0 1-3.6 3.6A2.6 2.6 0 0 1 12 18.5z"/><path d="M12 5.5v13"/></svg></span>IA</button>
+  <button class="rail-btn" data-rail="auto" onclick="railOn(this);openAutomationPanel()" title="Automação do funil (regras por etapa e gotejamento)"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h9a3 3 0 0 1 3 3v2a3 3 0 0 0 3 3h1"/><path d="m17 4 3 4-3 4"/><path d="m8 20-3-4 3-4"/></svg></span>Automação</button>
+  <div class="rail-sep"></div>
+  <button class="rail-btn" data-rail="tmpl" onclick="railOn(this);openTemplates()" title="Modelos"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></span>Modelos</button>
+  <button class="rail-btn" data-rail="quick" onclick="railOn(this);openQRManager()" title="Respostas rápidas"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></svg></span>Respostas</button>
   <button class="rail-btn" data-rail="tags" onclick="railOn(this);openTagManager()" title="Etiquetas"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.4" fill="currentColor" stroke="none"/></svg></span>Etiquetas</button>
-  <button class="rail-btn" data-rail="tasks" onclick="railOn(this);openTasksPage()" title="Tarefas" style="position:relative"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m8 12 3 3 5-6"/></svg></span>Tarefas<span class="task-badge"></span></button>
+  <div class="rail-sep"></div>
+  <button class="rail-btn" data-rail="acc" onclick="railOn(this);openModal()" title="Contas de WhatsApp"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2.2"/><path d="M11 18h2"/></svg></span>Contas</button>
   <button class="rail-btn" data-rail="notice" onclick="railOn(this);openNotices()" title="Avisos" style="position:relative"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 16V11a6 6 0 1 0-12 0v5l-2 2h16l-2-2z"/><path d="M10 21a2 2 0 0 0 4 0"/></svg></span>Avisos<span class="notice-dot"></span></button>
   <button class="rail-btn" data-rail="cfg" onclick="railOn(this);openConfigModal()" title="Configurações"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></span>Config.</button>
   <button class="rail-btn rail-sair" onclick="logoutCRM()" title="Sair da conta"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg></span>Sair</button>
@@ -2433,7 +2448,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v309</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v310</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🪄 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2487,7 +2502,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 309;
+const APP_VER = 310;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -8142,6 +8157,11 @@ async function equipeRemover(email) {
     equipeCarregar();
   } catch (_) { alert('Erro ao remover o acesso.'); }
 }
+// Abre Configurações já na aba pedida (usado pelos atalhos do Pipeline)
+function abrirConfigEm(aba) {
+  try { openConfigModal(); } catch (_) {}
+  setTimeout(() => { try { cfgTab(aba); } catch (_) {} }, 60);
+}
 function cfgTab(k) {
   document.querySelectorAll('#cfg-nav .cfg-tab').forEach(b => b.classList.toggle('on', b.dataset.pane === k));
   document.querySelectorAll('#cfg-panes .cfg-pane').forEach(p => p.classList.toggle('on', p.dataset.pane === k));
@@ -8230,7 +8250,7 @@ function _telaAtual(nome) {
   try { history.replaceState(null, '', location.pathname + location.search + (nome ? '#' + nome : '')); } catch (_) {}
   // Trilho acompanha a tela (inclusive quando a tela é reaberta ao recarregar)
   try {
-    const mapa = { pipeline: 'pipe', tarefas: 'tasks', bots: 'bots', ia: 'ia', modelos: 'tmpl', respostas: 'quick', tags: 'tags', config: 'cfg', avisos: 'notice' };
+    const mapa = { pipeline: 'pipe', tarefas: 'tasks', bots: 'bots', ia: 'ia', automacao: 'auto', modelos: 'tmpl', respostas: 'quick', tags: 'tags', config: 'cfg', avisos: 'notice' };
     const k = !nome || nome.startsWith('chat=') ? 'chat' : (mapa[nome] || null);
     if (k) document.querySelectorAll('#side-rail .rail-btn').forEach(b => b.classList.toggle('is-on', b.dataset.rail === k));
   } catch (_) {}
@@ -8240,7 +8260,7 @@ async function _restaurarTela(segundaPassada) {
   const _mostra = () => { try { document.documentElement.classList.remove('tela-restaurando'); } catch (_) {} };
   setTimeout(_mostra, 4000); // segurança: nunca fica escondido para sempre
   if (!h) { _mostra(); return; }
-  const abre = { pipeline: () => openPipeline(), tarefas: () => openTasksPage(), bots: () => openBotsList(), ia: () => openFaqPage(), modelos: () => openTemplates(), respostas: () => openQRManager(), tags: () => openTagManager(), config: () => openConfigModal(), avisos: () => openNotices() };
+  const abre = { pipeline: () => openPipeline(), tarefas: () => openTasksPage(), bots: () => openBotsList(), ia: () => openFaqPage(), automacao: () => openAutomationPanel(), modelos: () => openTemplates(), respostas: () => openQRManager(), tags: () => openTagManager(), config: () => openConfigModal(), avisos: () => openNotices() };
   try {
     if (h.startsWith('chat=')) {
       const ph = decodeURIComponent(h.slice(5));
@@ -8562,7 +8582,21 @@ async function saveLead() {
 // ── IMPORTAR LEADS ──
 let importedContacts = [];
 
+// Um só caminho para trazer leads: o botão Importar pergunta a origem
 async function openImport() {
+  const de = await vEscolha({
+    titulo: '⬆️ Importar leads',
+    texto: 'De onde vêm os leads?',
+    opcoes: [
+      { v: 'arquivo', t: 'Arquivo do computador (Excel ou CSV)', icone: '📄' },
+      { v: 'planilha', t: 'Planilha do Google (automático)', icone: '📊' }
+    ]
+  });
+  if (!de) return;
+  if (de === 'planilha') { abrirConfigEm('sheets'); return; }
+  await _abrirImportArquivo();
+}
+async function _abrirImportArquivo() {
   populateLeadAccounts();
   // Carrega as etapas do pipeline na hora (podem ainda não ter sido carregadas)
   try {
@@ -9385,6 +9419,7 @@ function autoTab(t) {
   if (t === 'drip') dripCarregar();
 }
 async function openAutomationPanel() {
+  _telaAtual('automacao');
   document.getElementById('auto-overlay').style.display = 'flex';
   autoTab('regras');
   const board = document.getElementById('auto-board');
@@ -9644,6 +9679,7 @@ async function _saveStageActions() {
 }
 function closeAutomationPanel() {
   document.getElementById('auto-overlay').style.display = 'none';
+  try { _telaAtual(document.getElementById('pipeline-page')?.style.display === 'flex' ? 'pipeline' : ''); } catch (_) {}
   try { renderKanban(); } catch (_) {} // reflete a nova ordem das colunas
 }
 function _actionChip(stageId, idx, a) {
