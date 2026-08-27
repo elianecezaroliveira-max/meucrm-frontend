@@ -1832,7 +1832,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v310</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v311</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px">🔔 Ativar avisos</button>
@@ -1918,12 +1918,11 @@ window.addEventListener('load', initAuth);
     <button id="pipeline-selall-all" onclick="selectAllInPipeline()" title="Seleciona/desmarca TODOS os leads visíveis (respeita o filtro ativo)" style="display:none;background:#e7f7ef;border:1px solid #00a884;color:#00806a;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">☑️ Selecionar todos</button>
     <span id="pipeline-sel-count" style="display:none;font-size:13px;font-weight:700;color:#00806a;background:#e7f7ef;border-radius:12px;padding:5px 11px;white-space:nowrap"></span>
     <button class="btn-primary" onclick="openNewLead()">＋ Novo lead</button>
-    <button class="pf-topbtn" onclick="openImport()">⬆️ Importar</button>
-    <button class="pf-topbtn" onclick="openAutomationPanel()">🔁 Automação</button>
+    <button class="pf-topbtn" onclick="openImport()">📥 Importar</button>
     <div style="position:relative">
       <button class="pf-topbtn" id="pipe-more-btn" onclick="event.stopPropagation();const m=document.getElementById('pipe-more-menu');m.style.display=m.style.display==='block'?'none':'block'" title="Mais ações" style="padding:8px 10px !important">⋯</button>
       <div id="pipe-more-menu" style="display:none;position:absolute;right:0;top:calc(100% + 6px);background:#fff;border:1px solid #e9edef;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.16);min-width:220px;padding:6px;z-index:50">
-        <button class="cm-item" style="width:100%;text-align:left;background:none;border:none;font-family:inherit;color:#131c20" id="btn-export-leads" onclick="document.getElementById('pipe-more-menu').style.display='none';exportarLeads()" title="Baixa em CSV (Excel): os selecionados, ou os leads visíveis com o filtro atual">⬇ Exportar leads (CSV)</button>
+        <button class="cm-item" style="width:100%;text-align:left;background:none;border:none;font-family:inherit;color:#131c20" id="btn-export-leads" onclick="document.getElementById('pipe-more-menu').style.display='none';exportarLeads()" title="Baixa em CSV (Excel): os selecionados, ou os leads visíveis com o filtro atual">📤 Exportar leads (CSV)</button>
         <button class="cm-item" style="width:100%;text-align:left;background:none;border:none;font-family:inherit;color:#131c20" onclick="document.getElementById('pipe-more-menu').style.display='none';addStage()">＋ Nova coluna</button>
         <div style="height:1px;background:#e9edef;margin:5px 2px"></div>
         <button class="cm-item" style="width:100%;text-align:left;background:none;border:none;font-family:inherit;color:#131c20" onclick="document.getElementById('pipe-more-menu').style.display='none';abrirConfigEm('pipe')" title="Recuperar leads e colunas excluídos nos últimos 30 dias">🗑️ Lixeira do pipeline</button>
@@ -2058,7 +2057,7 @@ window.addEventListener('load', initAuth);
       <button onclick="closeConfigModal()" style="background:none;border:none;font-size:20px;color:#667781;cursor:pointer">✕</button>
     </div>
     <div id="cfg-shell">
-      <div id="cfg-nav"><button class="cfg-tab on" data-pane="integ" onclick="cfgTab('integ')">🔗 Integração</button><button class="cfg-tab" data-pane="ids" onclick="cfgTab('ids')">🔢 Códigos das etapas</button><button class="cfg-tab" data-pane="sheets" onclick="cfgTab('sheets')">📊 Planilha Google</button><button class="cfg-tab" data-pane="dup" onclick="cfgTab('dup')">📑 Chats duplicados</button><button class="cfg-tab" data-pane="bill" onclick="cfgTab('bill')">💳 Faturamento</button><button class="cfg-tab" data-pane="pipe" onclick="cfgTab('pipe')">🗑️ Lixeira</button><button class="cfg-tab" data-pane="equipe" onclick="cfgTab('equipe')">👥 Equipe</button><button class="cfg-tab" data-pane="apar" onclick="cfgTab('apar')">🌙 Aparência</button></div>
+      <div id="cfg-nav"><button class="cfg-tab on" data-pane="integ" onclick="cfgTab('integ')">🔗 Integração</button><button class="cfg-tab" data-pane="dup" onclick="cfgTab('dup')">📑 Chats duplicados</button><button class="cfg-tab" data-pane="bill" onclick="cfgTab('bill')">💳 Faturamento</button><button class="cfg-tab" data-pane="equipe" onclick="cfgTab('equipe')">👥 Equipe</button><button class="cfg-tab" data-pane="apar" onclick="cfgTab('apar')">🌙 Aparência</button></div>
       <div id="cfg-panes">
 <div class="cfg-pane" data-pane="equipe">
     <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
@@ -2448,7 +2447,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v310</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v311</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🪄 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2502,7 +2501,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 310;
+const APP_VER = 311;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -8160,7 +8159,14 @@ async function equipeRemover(email) {
 // Abre Configurações já na aba pedida (usado pelos atalhos do Pipeline)
 function abrirConfigEm(aba) {
   try { openConfigModal(); } catch (_) {}
-  setTimeout(() => { try { cfgTab(aba); } catch (_) {} }, 60);
+  setTimeout(() => {
+    try {
+      cfgTab(aba);
+      // Telas abertas pelo Pipeline não mostram as abas de Configurações:
+      // é UM caminho só, e a janela vira a tela daquele assunto
+      const nav = document.getElementById('cfg-nav'); if (nav) nav.style.display = 'none';
+    } catch (_) {}
+  }, 60);
 }
 function cfgTab(k) {
   document.querySelectorAll('#cfg-nav .cfg-tab').forEach(b => b.classList.toggle('on', b.dataset.pane === k));
@@ -8170,6 +8176,7 @@ function cfgTab(k) {
   if (k === 'equipe') equipeCarregar();
 }
 async function openConfigModal() {
+  try { const nav = document.getElementById('cfg-nav'); if (nav) nav.style.display = ''; } catch (_) {}
   _closeAllScreens();
   _telaAtual('config');
   document.getElementById('cfg-overlay').style.display = 'flex';
@@ -8585,7 +8592,7 @@ let importedContacts = [];
 // Um só caminho para trazer leads: o botão Importar pergunta a origem
 async function openImport() {
   const de = await vEscolha({
-    titulo: '⬆️ Importar leads',
+    titulo: '📥 Importar leads',
     texto: 'De onde vêm os leads?',
     opcoes: [
       { v: 'arquivo', t: 'Arquivo do computador (Excel ou CSV)', icone: '📄' },
