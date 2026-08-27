@@ -1836,7 +1836,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v317</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v318</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px">🔔 Ativar avisos</button>
@@ -2451,7 +2451,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v317</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v318</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🪄 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2505,7 +2505,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 317;
+const APP_VER = 318;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -11854,6 +11854,18 @@ function renderBotList(){
     p.setAttribute('fill','none'); p.setAttribute('stroke',color||'#94a3b8'); p.setAttribute('stroke-width','2');
     if(dash) p.setAttribute('stroke-dasharray','5 4');
     svg.appendChild(p);
+    return p;
+  }
+  // Faixa invisível por cima da linha: é ela que percebe o mouse (não precisa
+  // acertar o fio fino) e faz aparecer os botões daquela ligação
+  function faixaDaLinha(sx,sy,tx,ty){
+    const dx=Math.max(40,(tx-sx)/2);
+    const h=document.createElementNS('http://www.w3.org/2000/svg','path');
+    h.setAttribute('d',`M ${sx} ${sy} C ${sx+dx} ${sy}, ${tx-dx} ${ty}, ${tx} ${ty}`);
+    h.setAttribute('fill','none'); h.setAttribute('stroke','transparent'); h.setAttribute('stroke-width','24');
+    h.style.pointerEvents='stroke'; h.style.cursor='pointer';
+    svg.appendChild(h);
+    return h;
   }
   function slotPill(text,x,y,col,naBorda){
     if(!text) return;
@@ -11915,21 +11927,30 @@ function renderBotList(){
         rh.style.cssText=`position:absolute;left:${tx-7}px;top:${ty-7}px;width:14px;height:14px;border-radius:50%;background:#fff;border:2px solid #00a884;cursor:grab;z-index:6`;
         rh.addEventListener('mousedown',(e)=>beginPortDrag(e, node.id, slot.label, sx, sy));
         layer.appendChild(rh);
-        // 🙈 Esconder este caminho (tudo que vem depois desta saída)
-        const esc=document.createElement('button');
-        esc.textContent='−';
-        esc.title='Esconder os passos deste caminho';
-        esc.style.cssText=`position:absolute;left:${sx+4}px;top:${sy-10}px;width:20px;height:20px;border-radius:50%;background:#fff;border:1px solid #94a3b8;color:#54656f;font-size:13px;font-weight:700;line-height:1;cursor:pointer;z-index:7;display:flex;align-items:center;justify-content:center;padding:0`;
-        esc.addEventListener('click',(e)=>{ e.stopPropagation(); botToggleRamo(node.id, slot.label); });
-        layer.appendChild(esc);
-        // ✕ no meio da linha: DESPRENDE a ligação (os dois passos continuam no fluxo)
-        const ux=(sx+tx)/2, uy=(sy+ty)/2;
-        const unl=document.createElement('button');
-        unl.textContent='✕';
-        unl.title='Desprender esta ligação (não apaga nenhum passo)';
-        unl.style.cssText=`position:absolute;left:${ux-9}px;top:${uy+10}px;width:18px;height:18px;border-radius:50%;background:#fff;border:1px solid #ef4444;color:#ef4444;font-size:10px;line-height:1;cursor:pointer;z-index:6;display:flex;align-items:center;justify-content:center;padding:0`;
-        unl.addEventListener('click',(e)=>{ e.stopPropagation(); botEdges=botEdges.filter(x=>x!==edge); renderBotList(); });
-        layer.appendChild(unl);
+        // ── Barra que aparece ao passar o mouse na linha: ＋ inserir · ✕ desprender · 🙈 esconder ──
+        const traco = svg.lastElementChild; // a curva recém-desenhada
+        const hit = faixaDaLinha(sx,sy,tx,ty);
+        const mx=(sx+tx)/2, my=(sy+ty)/2;
+        const barra=document.createElement('div');
+        barra.style.cssText=`position:absolute;left:${mx}px;top:${my}px;transform:translate(-50%,-50%);display:flex;gap:4px;z-index:8;opacity:0;pointer-events:none;transition:opacity .12s ease`;
+        const _mkB=(txt,dica,cor,fn)=>{
+          const b=document.createElement('button');
+          b.textContent=txt; b.title=dica;
+          b.style.cssText=`width:26px;height:26px;border-radius:8px;background:#fff;border:1px solid ${cor};color:${cor};font-size:13px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.18);padding:0`;
+          b.addEventListener('mousedown',(e)=>e.stopPropagation());
+          b.addEventListener('click',(e)=>{ e.preventDefault(); e.stopPropagation(); fn(e); });
+          barra.appendChild(b);
+        };
+        _mkB('＋','Inserir um passo aqui','#00a884',(e)=>menuInserirNaLigacao(edge.id, e));
+        _mkB('✕','Desprender esta ligação (não apaga nenhum passo)','#ef4444',()=>{ botEdges=botEdges.filter(x=>x!==edge); renderBotList(); });
+        _mkB('🙈','Esconder os passos deste caminho','#94a3b8',()=>botToggleRamo(node.id, slot.label));
+        layer.appendChild(barra);
+        let _t=null;
+        const _mostra=()=>{ if(_t){clearTimeout(_t);_t=null;} barra.style.opacity='1'; barra.style.pointerEvents='auto'; if(traco) traco.setAttribute('stroke-width','3'); };
+        const _some=()=>{ _t=setTimeout(()=>{ barra.style.opacity='0'; barra.style.pointerEvents='none'; if(traco) traco.setAttribute('stroke-width','2'); },200); };
+        hit.addEventListener('mouseenter',_mostra); hit.addEventListener('mouseleave',_some);
+        barra.addEventListener('mouseenter',_mostra); barra.addEventListener('mouseleave',_some);
+        hit.addEventListener('touchstart',(e)=>{ e.stopPropagation(); _mostra(); setTimeout(_some,2800); },{passive:true});
       } else {
         const bx=sx+BOT_HG, by=sy;
         curve(sx,sy,bx,by, isFail?'#ef4444':'#274d3d', true);
