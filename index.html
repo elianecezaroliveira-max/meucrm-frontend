@@ -1828,7 +1828,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v302</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v303</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px">🔔 Ativar avisos</button>
@@ -2043,8 +2043,24 @@ window.addEventListener('load', initAuth);
       <button onclick="closeConfigModal()" style="background:none;border:none;font-size:20px;color:#667781;cursor:pointer">✕</button>
     </div>
     <div id="cfg-shell">
-      <div id="cfg-nav"><button class="cfg-tab on" data-pane="integ" onclick="cfgTab('integ')">🔗 Integração</button><button class="cfg-tab" data-pane="ids" onclick="cfgTab('ids')">🆔 IDs das etapas</button><button class="cfg-tab" data-pane="sheets" onclick="cfgTab('sheets')">📊 Planilha Google</button><button class="cfg-tab" data-pane="dup" onclick="cfgTab('dup')">🔗 Chats duplicados</button><button class="cfg-tab" data-pane="bill" onclick="cfgTab('bill')">💳 Faturamento</button><button class="cfg-tab" data-pane="pipe" onclick="cfgTab('pipe')">📊 Pipeline</button><button class="cfg-tab" data-pane="apar" onclick="cfgTab('apar')">🌙 Aparência</button></div>
+      <div id="cfg-nav"><button class="cfg-tab on" data-pane="integ" onclick="cfgTab('integ')">🔗 Integração</button><button class="cfg-tab" data-pane="ids" onclick="cfgTab('ids')">🆔 IDs das etapas</button><button class="cfg-tab" data-pane="sheets" onclick="cfgTab('sheets')">📊 Planilha Google</button><button class="cfg-tab" data-pane="dup" onclick="cfgTab('dup')">🔗 Chats duplicados</button><button class="cfg-tab" data-pane="bill" onclick="cfgTab('bill')">💳 Faturamento</button><button class="cfg-tab" data-pane="pipe" onclick="cfgTab('pipe')">📊 Pipeline</button><button class="cfg-tab" data-pane="equipe" onclick="cfgTab('equipe')">👥 Equipe</button><button class="cfg-tab" data-pane="apar" onclick="cfgTab('apar')">🌙 Aparência</button></div>
       <div id="cfg-panes">
+<div class="cfg-pane" data-pane="equipe">
+    <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
+      <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">👥 Quem entra na sua conta</div>
+      <p style="font-size:12px;color:#667781;margin:0 0 10px;line-height:1.5">
+        Cada e-mail que faz login tem a <b>própria conta</b>, com conversas, leads e automações separadas.
+        Aqui você libera pessoas da <b>sua equipe</b> para entrarem na SUA conta e verem os mesmos dados.
+        Quem não estiver nesta lista nunca enxerga nada seu.
+      </p>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <input id="equipe-email" type="email" placeholder="email@daequipe.com" style="flex:1;min-width:200px;box-sizing:border-box;background:#fff;border:1px solid #d1d7db;border-radius:8px;padding:10px 12px;font-size:13px;outline:none">
+        <button class="btn-save" onclick="equipeAdicionar()">+ Liberar acesso</button>
+      </div>
+      <div id="equipe-status" style="font-size:12px;color:#00a884;min-height:16px;margin-top:6px"></div>
+      <div id="equipe-lista" style="margin-top:8px"></div>
+    </div>
+</div>
 <div class="cfg-pane on" data-pane="integ">
     <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
       <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">🔗 Integração</div>
@@ -2417,7 +2433,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v302</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v303</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2471,7 +2487,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 302;
+const APP_VER = 303;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -8085,11 +8101,53 @@ async function sincronizarSheets(confirmado) {
   finally { if (b) { b.disabled = false; b.textContent = '👀 Prévia e importar'; } }
 }
 
+// ── 👥 EQUIPE: quem pode entrar na MINHA conta ──
+async function equipeCarregar() {
+  const el = document.getElementById('equipe-lista'); if (!el) return;
+  el.innerHTML = '<div style="font-size:12px;color:#8696a0">Carregando…</div>';
+  try {
+    const r = await fetch(SERVER_URL + '/equipe');
+    const j = await r.json();
+    if (j.error) { el.innerHTML = '<div style="font-size:12px;color:#ef4444">' + escHtml(j.error) + '</div>'; return; }
+    const meu = `<div style="display:flex;align-items:center;gap:8px;padding:9px 11px;background:#e7f7ef;border:1px solid #c8ecd9;border-radius:8px;margin-bottom:6px">
+      <span>👑</span><span style="flex:1;font-size:13px;color:#131c20"><b>${escHtml(j.dono || '')}</b> — dona da conta</span></div>`;
+    const lista = (j.membros || []).map(e => `<div style="display:flex;align-items:center;gap:8px;padding:9px 11px;background:#f7f8fa;border:1px solid #e9edef;border-radius:8px;margin-bottom:6px">
+      <span>👤</span><span style="flex:1;font-size:13px;color:#131c20">${escHtml(e)}</span>
+      <button class="btn-cancel" style="padding:6px 12px;font-size:12px" onclick="equipeRemover('${_jsAttr(e)}')">Remover</button></div>`).join('');
+    el.innerHTML = meu + (lista || '<div style="font-size:12px;color:#8696a0;padding:4px 2px">Ninguém além de você tem acesso a esta conta.</div>');
+  } catch (_) { el.innerHTML = '<div style="font-size:12px;color:#ef4444">Não consegui carregar a equipe.</div>'; }
+}
+async function equipeAdicionar() {
+  const inp = document.getElementById('equipe-email');
+  const st = document.getElementById('equipe-status');
+  const email = (inp.value || '').trim().toLowerCase();
+  if (!email) return;
+  if (!await vConfirm({ titulo: '👥 Liberar acesso', texto: `${email} vai entrar na SUA conta e ver as mesmas conversas, leads e automações que você.\n\nLibere apenas pessoas da sua equipe.`, confirmar: 'Liberar acesso' })) return;
+  st.style.color = '#667781'; st.textContent = 'Liberando…';
+  try {
+    const r = await fetch(SERVER_URL + '/equipe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+    const j = await r.json();
+    if (j.error) { st.style.color = '#ef4444'; st.textContent = j.error; return; }
+    inp.value = ''; st.style.color = '#00a884'; st.textContent = '✓ Acesso liberado!';
+    setTimeout(() => { st.textContent = ''; }, 2500);
+    equipeCarregar();
+  } catch (_) { st.style.color = '#ef4444'; st.textContent = 'Erro ao liberar o acesso.'; }
+}
+async function equipeRemover(email) {
+  if (!await vConfirm({ titulo: 'Remover acesso', texto: `${email} deixa de entrar na sua conta. Os dados continuam todos com você.`, confirmar: 'Remover', perigo: true })) return;
+  try {
+    const r = await fetch(SERVER_URL + '/equipe/' + encodeURIComponent(email), { method: 'DELETE' });
+    const j = await r.json();
+    if (j.error) return alert(j.error);
+    equipeCarregar();
+  } catch (_) { alert('Erro ao remover o acesso.'); }
+}
 function cfgTab(k) {
   document.querySelectorAll('#cfg-nav .cfg-tab').forEach(b => b.classList.toggle('on', b.dataset.pane === k));
   document.querySelectorAll('#cfg-panes .cfg-pane').forEach(p => p.classList.toggle('on', p.dataset.pane === k));
   if (k === 'ids') { const w = document.getElementById('cfg-stage-ids-wrap'); if (w) w.style.display = 'block'; const a = document.getElementById('cfg-stage-ids-arrow'); if (a) a.textContent = '▾'; }
   if (k === 'pipe') carregarLixeiraColunas();
+  if (k === 'equipe') equipeCarregar();
 }
 async function openConfigModal() {
   _closeAllScreens();
