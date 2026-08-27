@@ -1836,7 +1836,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v316</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v317</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px">🔔 Ativar avisos</button>
@@ -2451,7 +2451,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v316</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v317</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🪄 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2505,7 +2505,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 316;
+const APP_VER = 317;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -12576,6 +12576,57 @@ function renderEdges() {
     const edgeId = edge.id;
     path.addEventListener('dblclick', (e) => { e.preventDefault(); e.stopPropagation(); deleteEdge(edgeId); });
     g.appendChild(path);
+
+    // ── 🖱️ Passe o mouse na linha: aparecem ➕ inserir passo, 🗑️ excluir ligação
+    //     e 👁 esconder/mostrar os passos seguintes (igual ao n8n) ──
+    const faixa = document.createElementNS('http://www.w3.org/2000/svg', 'path'); // área de toque larga
+    faixa.setAttribute('d', path.getAttribute('d'));
+    faixa.setAttribute('stroke', 'transparent');
+    faixa.setAttribute('stroke-width', '22');
+    faixa.setAttribute('fill', 'none');
+    faixa.style.pointerEvents = 'stroke';
+    faixa.style.cursor = 'pointer';
+    g.appendChild(faixa);
+
+    // Ponto do meio da curva (para pousar os botões)
+    const t = 0.5, mt = 1 - t;
+    const mx = mt*mt*mt*x1 + 3*mt*mt*t*x1 + 3*mt*t*t*x2 + t*t*t*x2;
+    const my = mt*mt*mt*y1 + 3*mt*mt*t*(y1+cy) + 3*mt*t*t*(y2-cy) + t*t*t*y2;
+
+    const escondido = _botColapsados.has(edge.from_node_id + '::' + _botNrmLbl(edge.label));
+    const btns = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    btns.setAttribute('opacity', '0');
+    btns.style.pointerEvents = 'none';
+    btns.style.transition = 'opacity .12s ease';
+    const _btn = (dx, emoji, titulo, acao, cor) => {
+      const gg = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      gg.style.cursor = 'pointer';
+      const r = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      r.setAttribute('x', mx + dx - 13); r.setAttribute('y', my - 13);
+      r.setAttribute('width', 26); r.setAttribute('height', 26); r.setAttribute('rx', 7);
+      r.setAttribute('fill', '#ffffff'); r.setAttribute('stroke', cor || '#d1d7db');
+      const tx = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      tx.setAttribute('x', mx + dx); tx.setAttribute('y', my + 5);
+      tx.setAttribute('text-anchor', 'middle'); tx.setAttribute('font-size', '13');
+      tx.textContent = emoji;
+      const ti = document.createElementNS('http://www.w3.org/2000/svg', 'title'); ti.textContent = titulo;
+      gg.appendChild(r); gg.appendChild(tx); gg.appendChild(ti);
+      gg.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); acao(e); });
+      gg.addEventListener('mousedown', (e) => e.stopPropagation());
+      btns.appendChild(gg);
+      return gg;
+    };
+    _btn(-32, '＋', 'Inserir um passo aqui', (e) => menuInserirNaLigacao(edgeId, e));
+    _btn(0, '🗑️', 'Excluir esta ligação', () => deleteEdge(edgeId), '#f1b0a7');
+    _btn(32, escondido ? '👁' : '🙈', escondido ? 'Mostrar os passos seguintes' : 'Esconder os passos seguintes', () => alternarRamoDaLigacao(edgeId));
+    g.appendChild(btns);
+
+    let sair = null;
+    const mostra = () => { if (sair) { clearTimeout(sair); sair = null; } btns.setAttribute('opacity', '1'); btns.style.pointerEvents = 'auto'; path.setAttribute('stroke-width', '3'); };
+    const some = () => { sair = setTimeout(() => { btns.setAttribute('opacity', '0'); btns.style.pointerEvents = 'none'; path.setAttribute('stroke-width', '2'); }, 220); };
+    [faixa, btns, path].forEach(el => { el.addEventListener('mouseenter', mostra); el.addEventListener('mouseleave', some); });
+    // No celular: um toque na linha mostra os botões
+    faixa.addEventListener('touchstart', (e) => { e.stopPropagation(); mostra(); setTimeout(some, 2600); }, { passive: true });
   }
 }
 
@@ -12722,6 +12773,42 @@ function addStep(fromNodeId, portLabel, type){
   selectNode(node.id);
 }
 
+// ➕ Insere um passo NO MEIO de uma ligação: A → (novo) → B
+function inserirPassoNaLigacao(edgeId, type){
+  closeStepMenu();
+  const e = botEdges.find(x => x.id === edgeId); if (!e) return;
+  const node = { id:_botGenId(), type, label:'', config:botDefaultConfig(type), pos_x:null, pos_y:null };
+  botNodes.push(node);
+  const destino = e.to_node_id;
+  e.to_node_id = node.id; // A → novo
+  botEdges.push({ id:_botGenId(), bot_id:botEditorId, from_node_id:node.id, to_node_id:destino, label:'' }); // novo → B
+  seedBotPositions(true); _markBotManual(); renderBotList();
+  seedBotPositions(true); renderBotList();
+  setTimeout(botZoomFit, 20);
+  selectNode(node.id);
+}
+// Menu "adicionar" que aparece ao passar o mouse na linha
+function menuInserirNaLigacao(edgeId, ev){
+  closeStepMenu();
+  const menu = document.createElement('div');
+  menu.id = 'bot-step-menu';
+  menu.style.cssText = 'position:fixed;z-index:9999;background:#fff;border:1px solid #e9edef;border-radius:8px;padding:6px;box-shadow:0 8px 24px rgba(0,0,0,.25);min-width:230px;max-height:calc(100vh - 24px);overflow:auto';
+  menu.innerHTML = '<div style="font-size:11px;color:#667781;padding:4px 8px;text-transform:uppercase;letter-spacing:.5px">Inserir passo aqui</div>' +
+    STEP_TYPES.map(([t, l]) => `<div onmouseover="this.style.background='#e9edef'" onmouseout="this.style.background='transparent'" style="padding:8px 10px;border-radius:6px;cursor:pointer;color:#131c20;font-size:13px" onclick="inserirPassoNaLigacao('${_jsAttr(edgeId)}','${_jsAttr(t)}')">${escHtml(l)}</div>`).join('');
+  document.body.appendChild(menu);
+  const x = (ev && ev.clientX) || window.innerWidth / 2, y = (ev && ev.clientY) || window.innerHeight / 2;
+  const h = menu.offsetHeight || 460, w = menu.offsetWidth || 250;
+  menu.style.left = Math.max(8, Math.min(x, window.innerWidth - w - 8)) + 'px';
+  menu.style.top = Math.max(8, Math.min(y, window.innerHeight - h - 8)) + 'px';
+  setTimeout(() => document.addEventListener('click', closeStepMenu, { once: true }), 0);
+}
+// 👁 Esconde/mostra os passos que vêm DEPOIS desta ligação
+function alternarRamoDaLigacao(edgeId){
+  const e = botEdges.find(x => x.id === edgeId); if (!e) return;
+  const k = e.from_node_id + '::' + _botNrmLbl(e.label);
+  if (_botColapsados.has(k)) _botColapsados.delete(k); else _botColapsados.add(k);
+  renderBotList();
+}
 function deleteNode(id) {
   botNodes = botNodes.filter(n=>n.id!==id);
   botEdges = botEdges.filter(e=>e.from_node_id!==id && e.to_node_id!==id);
