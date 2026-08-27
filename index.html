@@ -1832,7 +1832,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v314</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v315</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px">🔔 Ativar avisos</button>
@@ -2447,7 +2447,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v314</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v315</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🪄 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2501,7 +2501,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 314;
+const APP_VER = 315;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -7021,7 +7021,19 @@ function _mpCaptionGrow(ta) {
 async function sendMessage() {
   _clearUnreadMark(); // você respondeu → a divisória de não lidas some na hora
   // 📝 NOTA INTERNA: fica só para você (não vai para o lead)
-  if (_notaModo) { await _enviaNotaInterna(); return; }
+  if (_notaModo) {
+    // Arquivo escolhido (PDF, planilha, áudio…): vira anexo da nota
+    if (typeof selectedFile !== 'undefined' && selectedFile) {
+      const _arq = selectedFile;
+      const _leg = (document.getElementById('msg-input')?.value || _mediaCaption || '').trim();
+      try { removeFile(); } catch (_) {}
+      const _in = document.getElementById('msg-input'); if (_in) { _in.value = ''; autoGrowMsgInput(_in); }
+      updateSendMicButtons();
+      await _enviaNotaComArquivos([_arq], _leg);
+      return;
+    }
+    await _enviaNotaInterna(); return;
+  }
   // Se há arquivo pendente, envia o arquivo (com ou sem legenda)
   if (selectedFile) { await sendFile(); return; }
   const input = document.getElementById('msg-input');
