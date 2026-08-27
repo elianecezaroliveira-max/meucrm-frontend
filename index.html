@@ -1912,7 +1912,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v322</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v323</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2527,7 +2527,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v322</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v323</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2581,7 +2581,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 322;
+const APP_VER = 323;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4410,6 +4410,46 @@ function _reactBarComMenu(id, menu) {
   document.addEventListener('touchcancel', cancelLP);
 })();
 
+// ── BOTÃO DIREITO DO MOUSE (igual WhatsApp Web) ─────────────────────────────
+// Clique com o botão direito na conversa (lista) ou numa mensagem: abre o
+// MESMO menu do "⋯". Em campos de texto e sobre texto selecionado o menu do
+// navegador continua aparecendo (para copiar/colar).
+(function initMenuBotaoDireito() {
+  document.addEventListener('touchstart', () => { window._ultimoToque = Date.now(); }, { passive: true, capture: true });
+  document.addEventListener('contextmenu', (e) => {
+    // No celular o "segurar o dedo" já abre o menu: aqui só evita o menu do navegador
+    if (Date.now() - (window._ultimoToque || 0) < 900) {
+      if (e.target.closest && e.target.closest('#messages-area .msg, #contacts-list .contact-swipe-wrap')) e.preventDefault();
+      return;
+    }
+    if (!e.target || !e.target.closest) return;
+    // Campo de digitação: deixa o menu do navegador (colar, corrigir palavra)
+    if (e.target.closest('input, textarea, [contenteditable="true"]')) return;
+    // Texto selecionado: deixa o menu do navegador (copiar)
+    try {
+      const sel = window.getSelection();
+      if (sel && String(sel).trim() && !sel.isCollapsed) return;
+    } catch (_) {}
+
+    const msg = e.target.closest('#messages-area .msg');
+    if (msg && msg.dataset.msgId) {
+      e.preventDefault();
+      try { closeContactMenu(); } catch (_) {}
+      try { closeInfoMenu(); } catch (_) {}
+      openMsgMenuAt(msg.dataset.msgId, e.clientX, e.clientY, msg);
+      return;
+    }
+    const item = e.target.closest('#contacts-list .contact-swipe-wrap');
+    if (item && item.dataset.phone) {
+      e.preventDefault();
+      try { closeMsgMenu(); } catch (_) {}
+      try { closeReactPicker(); } catch (_) {}
+      try { closeInfoMenu(); } catch (_) {}
+      openContactMenu({ clientX: e.clientX, clientY: e.clientY, stopPropagation() {} }, item.dataset.phone);
+    }
+  });
+})();
+
 // ── Menu "⋯" da conversa (computador) ──
 function openContactMenu(ev, phone) {
   const c = allContacts.find(x => x.phone === phone);
@@ -4426,8 +4466,10 @@ function openContactMenu(ev, phone) {
     `<div class="cm-item" onclick="closeContactMenu();_selEntrar('${phone}')"><i class=ic-task></i> Selecionar conversas</div>` +
     `<div class="cm-item" style="color:#ef4444" onclick="closeContactMenu();deleteConversation('${phone}')"><i class=ic-trash></i> Apagar conversa</div>`;
   menu.style.display = 'block';
-  menu.style.left = Math.min(ev.clientX, window.innerWidth - 210) + 'px';
-  menu.style.top  = Math.min(ev.clientY, window.innerHeight - 110) + 'px';
+  // usa o tamanho REAL do menu: nunca sai da tela (embaixo ou na lateral)
+  const mw = menu.offsetWidth || 210, mh = menu.offsetHeight || 240;
+  menu.style.left = Math.max(8, Math.min(ev.clientX, window.innerWidth  - mw - 8)) + 'px';
+  menu.style.top  = Math.max(8, Math.min(ev.clientY, window.innerHeight - mh - 8)) + 'px';
 }
 function closeContactMenu() {
   const m = document.getElementById('contact-menu');
