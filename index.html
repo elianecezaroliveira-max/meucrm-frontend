@@ -1836,7 +1836,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v318</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v320</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px">🔔 Ativar avisos</button>
@@ -2451,7 +2451,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v318</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v320</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🪄 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2505,7 +2505,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 318;
+const APP_VER = 320;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -7612,7 +7612,8 @@ function vEscolha(o) {
   window._vdlgOpcoes = (o.opcoes || []).map(x => x.v);
   const lista = `<div class="vdlg-lista">${(o.opcoes || []).map((x, i) =>
     `<button type="button" class="vdlg-op" onclick="_vdlgFecha(window._vdlgOpcoes[${i}])">${x.icone ? escHtml(x.icone) + ' ' : ''}<span style="flex:1">${escHtml(x.t)}</span></button>`).join('')}</div>`;
-  const btns = `<button class="btn-cancel" onclick="_vdlgFecha(null)">Cancelar</button>`;
+  // semCancelar: só as opções da lista (fechar pelo Esc ou clicando fora)
+  const btns = o.semCancelar ? '' : `<button class="btn-cancel" onclick="_vdlgFecha(null)">Cancelar</button>`;
   return _vdlgAbre({ titulo: escHtml(o.titulo || 'Escolha'), texto: o.texto || '', campos: lista, botoes: btns });
 }
 // ⚠️ Confirmação FORTE: só libera quando você digita a palavra pedida
@@ -11480,14 +11481,24 @@ async function closeBotEditor() {
   // Alterou algo e não salvou? Pergunta antes de sair (OK = salva e sai)
   try {
     if (_botSnap && _botEstadoAtual() !== _botSnap) {
-      if (await vConfirm({ titulo: '💾 Alterações não salvas', texto: 'Você mexeu no fluxo deste bot e ainda não salvou.', confirmar: 'Salvar e sair', cancelar: 'Continuar editando' })) {
+      // Duas opções, exatamente como pedido: salvar e fechar, ou sair sem salvar
+      const esc = await vEscolha({
+        titulo: '💾 Alterações não salvas',
+        texto: 'Você mexeu no fluxo deste bot e ainda não salvou.',
+        opcoes: [
+          { v: 'salvar', t: 'Salvar e fechar', icone: '💾' },
+          { v: 'descartar', t: 'Sair sem salvar', icone: '🚪' }
+        ],
+        semCancelar: true
+      });
+      if (esc === 'salvar') {
         saveBotFlow().then(() => {
           document.getElementById('bot-editor-page').style.display = 'none';
           openBotsList();
         }).catch(() => alert('Não consegui salvar — confira a internet e tente o 💾 Salvar.'));
         return;
       }
-      return; // Cancelar = CONTINUA editando (antes jogava o fluxo fora)
+      if (esc !== 'descartar') return; // fechou a janela (X ou Esc) = continua editando
     }
   } catch (_) {}
   document.getElementById('bot-editor-page').style.display = 'none';
