@@ -1912,7 +1912,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v321</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v322</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2527,7 +2527,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v321</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v322</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2581,7 +2581,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 321;
+const APP_VER = 322;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -8072,6 +8072,12 @@ function insertQRReply(index) {
 
 // ── Central de Avisos (números desconectados etc.) ──
 let _notices = [];
+// Avisos antigos guardados no banco ainda podem ter emoji: limpa na hora de mostrar
+function _semEmoji(t) {
+  return String(t == null ? '' : t)
+    .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{1F000}-\u{1F2FF}\u{2300}-\u{23FF}]\uFE0F?[ ]?/gu, '')
+    .trim();
+}
 async function refreshNoticesBadge() {
   try {
     const d = await (await fetch(SERVER_URL + '/notices')).json();
@@ -8096,7 +8102,7 @@ async function openNotices() {
         const dt = new Date(n.ts);
         const quando = dt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' + dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         return `<div style="border:1px solid ${n.read ? '#e9edef' : '#ffd591'};background:${n.read ? '#fff' : '#fff7e6'};border-radius:10px;padding:10px 12px;margin-bottom:8px">
-          <div style="color:#131c20">${escHtml(n.text)}</div>
+          <div style="color:#131c20">${escHtml(_semEmoji(n.text))}</div>
           <div style="font-size:11px;color:#8696a0;margin-top:4px">${quando}</div>
         </div>`;
       }).join('');
