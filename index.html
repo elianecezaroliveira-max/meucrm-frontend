@@ -1832,7 +1832,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v311</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v312</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px">🔔 Ativar avisos</button>
@@ -2447,7 +2447,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v311</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v312</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🪄 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2501,7 +2501,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 311;
+const APP_VER = 312;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3769,6 +3769,7 @@ function updateSendMicButtons() {
   if (typeof removeFile === 'function')       removeFile       = wrap(removeFile);
 })();
 async function startVoiceRec() {
+  if (_bloqueadoPelaNota('gravar áudio')) return;
   if (!currentPhone) return;
   if (!navigator.mediaDevices?.getUserMedia)
     return alert('Gravação de áudio não é suportada neste navegador.');
@@ -5616,6 +5617,7 @@ function _parseLatLng(txt) {
   return { lat: parseFloat(m[1].replace(',', '.')), lng: parseFloat(m[2].replace(',', '.')) };
 }
 async function sendLocationUI() {
+  if (_bloqueadoPelaNota('enviar localização')) return;
   if (!currentPhone) return;
   const txt = await vPrompt({ titulo: '📍 Enviar localização', rotulo: 'Link do Google Maps ou latitude,longitude', dica: 'https://maps.google.com/... ou -23.55,-46.63', confirmar: 'Continuar' }); if (txt === null) return;
   const ll = _parseLatLng(txt.trim());
@@ -5629,6 +5631,7 @@ async function sendLocationUI() {
   } catch (_) { alert('Erro ao enviar localização.'); }
 }
 async function sendContactUI() {
+  if (_bloqueadoPelaNota('enviar contato')) return;
   if (!currentPhone) return;
   const d = await vCampos({ titulo: '👤 Enviar contato', campos: [
     { id: 'nome', rotulo: 'Nome do contato', valor: '' },
@@ -6496,7 +6499,15 @@ async function loadMessages(phone, scroll = true) {
           parts.push({ key: 'm-' + safeId, html: `<div class="msg outbound nota" style="position:relative;background:#fff6d5;border:1px solid #f2e08a"
             data-key="m-${safeId}" data-msg-id="${safeId}" data-msg-content="${dataCont}" data-msg-dir="outbound" data-msg-type="note">
             <div style="font-size:11px;color:#a07c00;font-weight:700;margin-bottom:3px">🔒 Nota interna — o cliente não vê</div>
-            <div style="color:#131c20">${waFormat(m.content || '')}</div>
+            ${m.media_id ? (() => {
+              const u = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}${m.media_mime_type ? '?mime=' + encodeURIComponent(m.media_mime_type) : ''}`;
+              const mt = String(m.media_mime_type || '');
+              if (mt.startsWith('image/')) return `<img src="${u}" class="msg-image" style="max-width:260px;border-radius:8px;display:block;margin-bottom:5px;cursor:pointer" onclick="verMidia('${u}','img','Anexo da nota')" alt="Anexo da nota">`;
+              if (mt.startsWith('video/')) return `<video src="${u}" controls style="max-width:260px;border-radius:8px;display:block;margin-bottom:5px"></video>`;
+              if (mt.startsWith('audio/')) return `<audio src="${u}" controls style="max-width:260px;display:block;margin-bottom:5px"></audio>`;
+              return `<a href="${u}" target="_blank" rel="noopener" style="display:inline-block;margin-bottom:5px;color:#a07c00;font-weight:600">📎 Abrir arquivo</a>`;
+            })() : ''}
+            ${m.content && !/^\[(Foto|Arquivo)\]$/.test(m.content) ? `<div style="color:#131c20">${waFormat(m.content)}</div>` : ''}
             <div class="time" style="color:#a07c00">${timeStr}<span onclick="deleteNota('${safeId}')" title="Apagar nota" style="cursor:pointer;margin-left:8px">🗑️</span></div>
           </div>` });
           continue;
@@ -7335,6 +7346,8 @@ async function confirmMediaSend() {
   const caption = (cp && cp.value.trim()) || '';
   const lista = _previewList.slice();
   closeMediaPreview();
+  // 📝 NOTA INTERNA LIGADA: o arquivo vira anexo da NOTA — nunca vai ao cliente
+  if (_notaModo) { await _enviaNotaComArquivos(lista, caption); return; }
   // UM clique envia TODAS, em ordem; a legenda vai na última foto.
   // (a lista só recarrega UMA vez no final — envio bem mais rápido)
   const previas = []; let algumOk = false;
@@ -7625,6 +7638,8 @@ async function sendFile() {
 }
 
 async function _sendOneFile(file, caption, semRecarga) {
+  // 🔒 Última barreira: nada sai para o cliente com a nota interna ligada
+  if (_notaModo) { await _enviaNotaComArquivos([file], caption || ''); return { ok: false, nota: true }; }
   if (!file || !currentPhone) return;
   _fotoLog('📤 ═══ ENVIO INICIADO ═══', file.type);
   // Lê como base64
@@ -9269,6 +9284,7 @@ async function createTemplate() {
 
 // ── ENVIAR TEMPLATE NO CHAT ──
 function openSendTemplate() {
+  if (_bloqueadoPelaNota('enviar modelo')) return;
   if (!currentPhone || !currentAccountId) return alert('Selecione uma conversa primeiro.');
   document.getElementById('send-tmpl-overlay').classList.add('open');
   loadApprovedTemplates();
@@ -13167,6 +13183,7 @@ function toggleNotaModo() {
   _notaModo = !_notaModo;
   if (_notaModo) { try { _paraDigitando(); } catch (_) {} } // tira o "digitando…" da tela do lead
   const inp = document.getElementById('msg-input');
+  const at = document.getElementById('attach-btn'); if (at) at.title = _notaModo ? 'Anexar à nota interna (o cliente não vê)' : 'Anexar';
   const bt  = document.getElementById('btn-nota');
   const wrap = document.getElementById('input-wrap');
   if (bt) { bt.style.background = _notaModo ? '#fff2b8' : ''; bt.style.borderRadius = '8px'; }
@@ -13185,6 +13202,37 @@ async function deleteNota(id) {
     _lastMsgsSig = '';
     await loadMessages(currentPhone, false);
   } catch (_) { alert('Erro ao apagar a nota.'); }
+}
+// 📎 Anexos da nota interna: sobem para o cofre do VETRA e aparecem só aqui dentro
+// 🔒 Um só ponto de bloqueio: com a NOTA INTERNA ligada nada é enviado ao cliente
+function _bloqueadoPelaNota(oque) {
+  if (!_notaModo) return false;
+  _toast('📝 Nota interna ligada — ' + (oque || 'isso') + ' não vai para o cliente. Desligue o 📝 para enviar.');
+  return true;
+}
+async function _enviaNotaComArquivos(lista, legenda) {
+  if (!currentPhone || !lista || !lista.length) return;
+  _toast('📝 Salvando na nota interna…');
+  let ok = 0;
+  for (let i = 0; i < lista.length; i++) {
+    const f = lista[i];
+    try {
+      const b64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = rej; r.readAsDataURL(f); });
+      const r = await fetch(SERVER_URL + '/notes', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: currentPhone, account_id: currentAccountId || null,
+          content: (i === lista.length - 1 ? (legenda || '') : ''), arquivo: b64, mime: f.type || '', filename: f.name || '' })
+      });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok && !d.error) ok++; else _toast('❌ ' + (d.error || 'Não consegui salvar o anexo da nota'));
+    } catch (_) { _toast('❌ Erro ao ler o arquivo'); }
+  }
+  if (ok) {
+    _lastMsgsSig = '';
+    await loadMessages(currentPhone, false);
+    const a = document.getElementById('messages-area'); if (a) a.scrollTop = a.scrollHeight;
+    _toast('🔒 ' + (ok > 1 ? ok + ' anexos salvos na nota' : 'Anexo salvo na nota') + ' — o cliente não vê');
+  }
 }
 async function _enviaNotaInterna() {
   const inp = document.getElementById('msg-input');
@@ -13211,6 +13259,7 @@ function launchBot(botId, botName) {
   const menu = document.getElementById('bot-launcher-menu');
   if (menu) menu.style.display = 'none';
   if (!currentPhone) return;
+  if (_bloqueadoPelaNota('disparar bot')) return;
   _botPendente = { id: botId, name: botName || 'Bot' };
   const bar = document.getElementById('bot-draft-bar');
   const nm = document.getElementById('bot-draft-name');
