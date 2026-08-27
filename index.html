@@ -1828,7 +1828,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v308</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v309</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px">🔔 Ativar avisos</button>
@@ -1855,12 +1855,12 @@ window.addEventListener('load', initAuth);
   <div class="mpm-head"><span>Ferramentas</span><button type="button" onclick="closeMobilePlus()" aria-label="Fechar">✕</button></div>
   <div class="mpm-item" onclick="mnavGo(openNewLead)">👤 Adicionar contato</div>
   <div class="mpm-item" onclick="mnavGo(openPipeline)">📊 Pipeline</div>
-  <div class="mpm-item" onclick="mnavGo(openTemplates)">📋 Modelos</div>
+  <div class="mpm-item" onclick="mnavGo(openTemplates)">📄 Modelos</div>
   <div class="mpm-item" onclick="mnavGo(openQRManager)">⚡ Respostas</div>
   <div class="mpm-item" onclick="mnavGo(openModal)">📱 Contas</div>
   <div class="mpm-item" onclick="mnavGo(openBotsList)">🤖 Bots</div>
   <div class="mpm-item" onclick="mnavGo(openFaqPage)">🧠 IA</div>
-  <div class="mpm-item" onclick="mnavGo(openTagManager)">🏷️ Tags</div>
+  <div class="mpm-item" onclick="mnavGo(openTagManager)">🏷️ Etiquetas</div>
   <div class="mpm-item" onclick="mnavGo(openTasksPage)" style="position:relative">✅ Tarefas<span class="task-badge" style="top:14px;left:96px;right:auto"></span></div>
   <div class="mpm-item" onclick="mnavGo(openNotices)" style="position:relative">🔔 Avisos<span class="notice-dot" style="top:14px;left:90px"></span></div>
   <div class="mpm-item" onclick="mnavGo(openConfigModal)">⚙️ Configurações</div>
@@ -1899,19 +1899,19 @@ window.addEventListener('load', initAuth);
     <h2>📊 Pipeline de Vendas <span id="pipeline-count" style="font-size:12px;font-weight:600;color:#00a884;background:#e7f7ef;border-radius:12px;padding:3px 10px;margin-left:6px;vertical-align:middle"></span></h2>
     <div id="pview-toggle">
       <button id="pv-kanban" class="pv-btn active" onclick="setPipelineView('kanban')" title="Visão Kanban">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="3" y="3" width="5" height="18" rx="1"/><rect x="10" y="3" width="5" height="12" rx="1"/><rect x="17" y="3" width="5" height="15" rx="1"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="3" y="3" width="5" height="18" rx="1"/><rect x="10" y="3" width="5" height="12" rx="1"/><rect x="17" y="3" width="5" height="15" rx="1"/><rect x="4.3" y="5" width="2.4" height="2.6" rx=".6" fill="currentColor" stroke="none"/></svg>
       </button>
       <button id="pv-list" class="pv-btn" onclick="setPipelineView('list')" title="Visão Lista">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
       </button>
     </div>
-    <button id="pipeline-filter-btn" onclick="togglePipelineFilter()">⚙ Filtrar</button>
+    <button id="pipeline-filter-btn" onclick="togglePipelineFilter()">🔻 Filtrar</button>
     <button id="pipeline-selall-btn" onclick="togglePipeSelMode()" title="Ativa o modo de seleção de leads" style="background:#e7f7ef;border:1px solid #00a884;color:#00806a;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">☑️ Selecionar</button>
     <button id="pipeline-selall-all" onclick="selectAllInPipeline()" title="Seleciona/desmarca TODOS os leads visíveis (respeita o filtro ativo)" style="display:none;background:#e7f7ef;border:1px solid #00a884;color:#00806a;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">☑️ Selecionar todos</button>
     <span id="pipeline-sel-count" style="display:none;font-size:13px;font-weight:700;color:#00806a;background:#e7f7ef;border-radius:12px;padding:5px 11px;white-space:nowrap"></span>
     <button class="btn-primary" onclick="openNewLead()">＋ Novo lead</button>
-    <button class="pf-topbtn" onclick="openImport()">📥 Importar</button>
-    <button class="pf-topbtn" onclick="openAutomationPanel()">⚡ Automação</button>
+    <button class="pf-topbtn" onclick="openImport()">⬆️ Importar</button>
+    <button class="pf-topbtn" onclick="openAutomationPanel()">🔁 Automação</button>
     <div style="position:relative">
       <button class="pf-topbtn" id="pipe-more-btn" onclick="event.stopPropagation();const m=document.getElementById('pipe-more-menu');m.style.display=m.style.display==='block'?'none':'block'" title="Mais ações" style="padding:8px 10px !important">⋯</button>
       <div id="pipe-more-menu" style="display:none;position:absolute;right:0;top:calc(100% + 6px);background:#fff;border:1px solid #e9edef;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.16);min-width:220px;padding:6px;z-index:50">
@@ -1938,8 +1938,8 @@ window.addEventListener('load', initAuth);
     <select id="bulk-stage-sel" onchange="bulkMoveStage(this.value)">
       <option value="">↪ Mover para...</option>
     </select>
-    <button class="bulk-btn bulk-btn-tags" onclick="bulkEditTags()">🏷 Editar tags</button>
-    <button class="bulk-btn bulk-btn-delete" onclick="bulkDeleteLeads()">🗑 Excluir</button>
+    <button class="bulk-btn bulk-btn-tags" onclick="bulkEditTags()">🏷️ Editar tags</button>
+    <button class="bulk-btn bulk-btn-delete" onclick="bulkDeleteLeads()">🗑️ Excluir</button>
     <button id="bulk-clear" onclick="clearBulkSelection()" title="Cancelar seleção">✕</button>
   </div>
 </div>
@@ -1953,8 +1953,8 @@ window.addEventListener('load', initAuth);
   <button class="rail-btn" data-rail="quick" onclick="railOn(this);openQRManager()" title="Respostas rápidas"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></svg></span>Respostas</button>
   <button class="rail-btn" data-rail="acc" onclick="railOn(this);openModal()" title="Contas de WhatsApp"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2.2"/><path d="M11 18h2"/></svg></span>Contas</button>
   <button class="rail-btn" data-rail="bots" onclick="railOn(this);openBotsList()" title="Bots"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="2.5"/><path d="M12 8V4M8 4h8"/><circle cx="9" cy="14" r="1.2" fill="currentColor" stroke="none"/><circle cx="15" cy="14" r="1.2" fill="currentColor" stroke="none"/></svg></span>Bots</button>
-  <button class="rail-btn" data-rail="ia" onclick="railOn(this);openFaqPage()" title="IA / FAQ"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a4 4 0 0 0-4 4v1a3.5 3.5 0 0 0-2 6.3V16a4 4 0 0 0 4 4h4a4 4 0 0 0 4-4v-1.7A3.5 3.5 0 0 0 16 8V7a4 4 0 0 0-4-4z"/><path d="M12 3v17"/></svg></span>IA</button>
-  <button class="rail-btn" data-rail="tags" onclick="railOn(this);openTagManager()" title="Etiquetas"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.4" fill="currentColor" stroke="none"/></svg></span>Tags</button>
+  <button class="rail-btn" data-rail="ia" onclick="railOn(this);openFaqPage()" title="IA / FAQ"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5.5a3 3 0 0 0-5.7-1.3A2.8 2.8 0 0 0 4.2 8.6 2.9 2.9 0 0 0 5 13.7a3 3 0 0 0 3.6 3.6A2.6 2.6 0 0 0 12 18.5z"/><path d="M12 5.5a3 3 0 0 1 5.7-1.3 2.8 2.8 0 0 1 2.1 4.4 2.9 2.9 0 0 1-.8 5.1 3 3 0 0 1-3.6 3.6A2.6 2.6 0 0 1 12 18.5z"/><path d="M12 5.5v13"/></svg></span>IA</button>
+  <button class="rail-btn" data-rail="tags" onclick="railOn(this);openTagManager()" title="Etiquetas"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.4" fill="currentColor" stroke="none"/></svg></span>Etiquetas</button>
   <button class="rail-btn" data-rail="tasks" onclick="railOn(this);openTasksPage()" title="Tarefas" style="position:relative"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m8 12 3 3 5-6"/></svg></span>Tarefas<span class="task-badge"></span></button>
   <button class="rail-btn" data-rail="notice" onclick="railOn(this);openNotices()" title="Avisos" style="position:relative"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 16V11a6 6 0 1 0-12 0v5l-2 2h16l-2-2z"/><path d="M10 21a2 2 0 0 0 4 0"/></svg></span>Avisos<span class="notice-dot"></span></button>
   <button class="rail-btn" data-rail="cfg" onclick="railOn(this);openConfigModal()" title="Configurações"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></span>Config.</button>
@@ -2022,7 +2022,7 @@ window.addEventListener('load', initAuth);
   <div class="cm-item" onclick="closeInfoMenu();toggleNotes()">📝 Anotações do lead</div>
   <div class="cm-item" onclick="closeInfoMenu();openMediaGallery()">🖼️ Fotos e arquivos</div>
   <div class="cm-item" onclick="closeInfoMenu();openTasks()">✅ Tarefas</div>
-  <div class="cm-item" onclick="closeInfoMenu();deleteConversation(currentPhone)" style="color:#ef4444">🗑 Apagar conversa</div>
+  <div class="cm-item" onclick="closeInfoMenu();deleteConversation(currentPhone)" style="color:#ef4444">🗑️ Apagar conversa</div>
 </div>
 
 <!-- Janela padrão do VETRA (confirmar / perguntar / escolher) -->
@@ -2043,7 +2043,7 @@ window.addEventListener('load', initAuth);
       <button onclick="closeConfigModal()" style="background:none;border:none;font-size:20px;color:#667781;cursor:pointer">✕</button>
     </div>
     <div id="cfg-shell">
-      <div id="cfg-nav"><button class="cfg-tab on" data-pane="integ" onclick="cfgTab('integ')">🔗 Integração</button><button class="cfg-tab" data-pane="ids" onclick="cfgTab('ids')">🆔 IDs das etapas</button><button class="cfg-tab" data-pane="sheets" onclick="cfgTab('sheets')">📊 Planilha Google</button><button class="cfg-tab" data-pane="dup" onclick="cfgTab('dup')">🔗 Chats duplicados</button><button class="cfg-tab" data-pane="bill" onclick="cfgTab('bill')">💳 Faturamento</button><button class="cfg-tab" data-pane="pipe" onclick="cfgTab('pipe')">📊 Pipeline</button><button class="cfg-tab" data-pane="equipe" onclick="cfgTab('equipe')">👥 Equipe</button><button class="cfg-tab" data-pane="apar" onclick="cfgTab('apar')">🌙 Aparência</button></div>
+      <div id="cfg-nav"><button class="cfg-tab on" data-pane="integ" onclick="cfgTab('integ')">🔗 Integração</button><button class="cfg-tab" data-pane="ids" onclick="cfgTab('ids')">🔢 Códigos das etapas</button><button class="cfg-tab" data-pane="sheets" onclick="cfgTab('sheets')">📊 Planilha Google</button><button class="cfg-tab" data-pane="dup" onclick="cfgTab('dup')">📑 Chats duplicados</button><button class="cfg-tab" data-pane="bill" onclick="cfgTab('bill')">💳 Faturamento</button><button class="cfg-tab" data-pane="pipe" onclick="cfgTab('pipe')">🗑️ Lixeira</button><button class="cfg-tab" data-pane="equipe" onclick="cfgTab('equipe')">👥 Equipe</button><button class="cfg-tab" data-pane="apar" onclick="cfgTab('apar')">🌙 Aparência</button></div>
       <div id="cfg-panes">
 <div class="cfg-pane" data-pane="equipe">
     <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
@@ -2068,7 +2068,7 @@ window.addEventListener('load', initAuth);
       <div style="display:flex;gap:6px">
         <input id="cfg-token" readonly placeholder="Nenhum token gerado ainda" style="flex:1;background:#f0f2f5;border:1px solid #e9edef;border-radius:6px;padding:8px 10px;font-size:12px;color:#131c20;font-family:monospace;min-width:0">
         <button class="pf-topbtn" onclick="copyIntegrationToken(this)">📋 Copiar</button>
-        <button class="pf-topbtn" onclick="genIntegrationToken()">🔄 Gerar</button>
+        <button class="pf-topbtn" onclick="genIntegrationToken()">🔑 Gerar nova</button>
       </div>
       <div id="cfg-token-status" style="font-size:11px;color:#00a884;height:14px;margin-top:4px"></div>
     </div>
@@ -2116,7 +2116,7 @@ window.addEventListener('load', initAuth);
 </div>
 <div class="cfg-pane" data-pane="pipe">
     <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
-      <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">🗑 Lixeira: leads e colunas excluídos</div>
+      <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">🗑️ Lixeira: leads e colunas excluídos</div>
       <p style="font-size:12px;color:#667781;margin:0 0 8px">Excluiu sem querer? Leads ficam aqui por 30 dias e voltam com conversa, etapa, etiquetas e notas. Colunas voltam com os leads e com os vínculos (bots, gotejamento, ID externo).</p>
       <div id="cfg-stage-trash" style="font-size:13px;color:#54656f">—</div>
     </div>
@@ -2160,7 +2160,7 @@ window.addEventListener('load', initAuth);
 <div id="auto-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:600;align-items:center;justify-content:center" onclick="if(event.target===this)closeAutomationPanel()">
   <div style="background:#f0f2f5;border-radius:12px;max-width:1100px;width:96%;max-height:90vh;display:flex;flex-direction:column;overflow:hidden">
     <div style="display:flex;align-items:center;gap:10px;padding:14px 18px;background:#fff;border-bottom:1px solid #e9edef">
-      <h3 style="flex:1;margin:0;font-size:16px;color:#131c20">⚡ Automação do funil</h3>
+      <h3 style="flex:1;margin:0;font-size:16px;color:#131c20">🔁 Automação do funil</h3>
       <button onclick="closeAutomationPanel()" style="background:none;border:none;font-size:20px;color:#667781;cursor:pointer">✕</button>
     </div>
     <div class="auto-tabs">
@@ -2207,7 +2207,7 @@ window.addEventListener('load', initAuth);
   <div class="cm-item" id="msg-menu-info" style="display:none" onclick="msgMenuInfo()">ℹ️ Dados da mensagem</div>
   <div class="cm-item" id="msg-menu-edit" style="display:none" onclick="msgMenuEdit()">✏️ Editar</div>
   <div class="cm-item" id="msg-menu-revoke" style="display:none;color:#ef4444" onclick="msgMenuRevoke()">🚫 Apagar para todos</div>
-  <div class="cm-item" onclick="msgMenuDelete()" style="color:#ef4444">🗑 Apagar</div>
+  <div class="cm-item" onclick="msgMenuDelete()" style="color:#ef4444">🗑️ Apagar</div>
 </div>
 
 <!-- Menu "⋯" da conversa (marcar como lida / favoritar) -->
@@ -2347,7 +2347,7 @@ window.addEventListener('load', initAuth);
       <input type="checkbox" id="tasks-select-all" onchange="toggleSelectAllTasks(this.checked)" /> Selecionar todos
     </label>
     <span id="tasks-sel-count" style="font-size:12px;color:#00a884;font-weight:600"></span>
-    <button class="btn-secondary" id="tasks-disparo-btn" style="display:none" onclick="openBulkBotMenu(event)" title="Dispara o bot para os leads selecionados">📢 Disparar bot</button>
+    <button class="btn-secondary" id="tasks-disparo-btn" style="display:none" onclick="openBulkBotMenu(event)" title="Dispara o bot para os leads selecionados">🤖 Disparar bot</button>
     <label style="font-size:13px;color:#667781;display:flex;align-items:center;gap:6px;cursor:pointer">
       <input type="checkbox" id="tasks-show-done" onchange="renderTasksPage()" /> Mostrar concluídas
     </label>
@@ -2422,7 +2422,7 @@ window.addEventListener('load', initAuth);
   <div id="bot-editor-topbar">
     <button class="btn-secondary" onclick="closeBotEditor()">← Bots</button>
     <input id="bot-name-input" type="text" placeholder="Nome do bot..." />
-    <!-- Gatilho de etapa agora é definido na ⚡ Automação do Pipeline.
+    <!-- Gatilho de etapa agora é definido na 🔁 Automação do Pipeline.
          Os campos ficam OCULTOS (o salvar do bot preserva o valor configurado lá). -->
     <label style="display:none;color:#667781;font-size:12px">Gatilho:</label>
     <select id="bot-trigger-select" onchange="onBotTriggerChange()" style="display:none">
@@ -2433,8 +2433,8 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v308</span>
-    <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v309</span>
+    <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🪄 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
   <div id="bot-editor-body">
@@ -2487,7 +2487,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 308;
+const APP_VER = 309;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3461,7 +3461,7 @@ function renderContacts(contacts) {
     const isFav = !!c.favorite;
     return `<div class="contact-swipe-wrap" data-phone="${c.phone}">
       <div class="swipe-action read">📖<span>Lida</span></div>
-      <div class="swipe-action fav">${isFav?'☆':'⭐'}<span>${isFav?'Remover':'Favoritar'}</span></div>
+      <div class="swipe-action fav">⭐<span>${isFav?'Remover':'Favoritar'}</span></div>
       <div class="contact-item${c.phone===currentPhone?' active':''}${hasUnread}${isFav?' is-fav':''}" onclick="selectContact('${c.phone}','${_jsAttr(c.name||'')}','${c.account_id||''}')">
       <div class="contact-avatar" style="${_avatarCor(c.name||c.phone)}">${escHtml((c.name||'?')[0].toUpperCase())}${c.avatar ? `<img src="${SERVER_URL}/avatar/${encodeURIComponent(String(c.avatar).split('/').pop())}" loading="lazy" alt="" onerror="this.remove()">` : ''}</div>
       <div class="contact-info">
@@ -3589,7 +3589,7 @@ function openInfoMenu(ev) {
     const pi = document.getElementById('info-menu-pin');
     if (pi) pi.textContent = (c && c.pinned) ? '📌 Desafixar do topo' : '📌 Fixar no topo';
     const fi = document.getElementById('info-menu-fav');
-    if (fi) fi.textContent = (c && c.favorite) ? '★ Remover dos favoritos' : '⭐ Favoritar conversa';
+    if (fi) fi.textContent = (c && c.favorite) ? '⭐ Remover dos favoritos' : '⭐ Favoritar conversa';
     const mu = document.getElementById('info-menu-mute');
     if (mu) mu.textContent = (c && c.muted) ? '🔔 Reativar notificações' : '🔇 Silenciar conversa';
   } catch (_) {}
@@ -3912,7 +3912,7 @@ function _showRecReview() {
     const ia = document.getElementById('input-area');
     if (!ia) { sendVoiceBlob(_recPending.blob, _recPending.secs); _recPending = null; return; }
     ia.insertAdjacentHTML('afterbegin', `<div id="rec-review" style="display:flex;align-items:center;gap:10px;padding:4px 2px">
-      <button onclick="_recReviewDiscard()" title="Descartar" style="background:none;border:none;font-size:21px;cursor:pointer;color:#54656f;flex-shrink:0">🗑</button>
+      <button onclick="_recReviewDiscard()" title="Descartar" style="background:none;border:none;font-size:21px;cursor:pointer;color:#54656f;flex-shrink:0">🗑️</button>
       <div style="flex:1;display:flex;align-items:center;gap:10px;background:#e9edef;border-radius:24px;padding:8px 14px;min-width:0">
         <button id="rr-play" onclick="_recReviewToggle()" style="background:none;border:none;color:#54656f;cursor:pointer;font-size:17px;padding:0;flex-shrink:0">▶</button>
         <div onclick="_recReviewSeek(event)" style="flex:1;height:5px;background:#c6cdd2;border-radius:99px;cursor:pointer;position:relative;min-width:0">
@@ -4055,7 +4055,7 @@ function _updateMsgMenuItems(id) {
     const pi = document.getElementById('msg-menu-pinmsg');
     if (pi) pi.textContent = (mm && mm.pinned) ? '📌 Desafixar' : '📌 Fixar';
     const si = document.getElementById('msg-menu-starmsg');
-    if (si) si.textContent = (mm && mm.starred) ? '★ Desfavoritar' : '⭐ Favoritar';
+    if (si) si.textContent = (mm && mm.starred) ? '⭐ Desfavoritar' : '⭐ Favoritar';
   } catch (_) {}
   try {
     const inf = document.getElementById('msg-menu-info');
@@ -4114,7 +4114,7 @@ function enterSelMode(firstId) {
         <span onclick="exitSelMode()" style="cursor:pointer;font-size:17px">✕</span>
         <b id="sel-count" style="flex:1">0 selecionada(s)</b>
         <span onclick="selCopy()" style="cursor:pointer" title="Copiar">📋 Copiar</span>
-        <span onclick="selDelete()" style="cursor:pointer" title="Apagar do CRM">🗑 Apagar</span>
+        <span onclick="selDelete()" style="cursor:pointer" title="Apagar do CRM">🗑️ Apagar</span>
       </div>`);
     bar = document.getElementById('sel-bar');
   }
@@ -4325,11 +4325,11 @@ function openContactMenu(ev, phone) {
     (temNaoLida
       ? `<div class="cm-item" onclick="markContactRead('${phone}');closeContactMenu()">✓ Marcar como lida</div>`
       : `<div class="cm-item" onclick="markContactUnread('${phone}');closeContactMenu()">🔵 Marcar como não lida</div>`) +
-    `<div class="cm-item" onclick="toggleFavorite('${phone}');closeContactMenu()">${c && c.favorite ? '★ Remover dos favoritos' : '⭐ Favoritar conversa'}</div>` +
+    `<div class="cm-item" onclick="toggleFavorite('${phone}');closeContactMenu()">${c && c.favorite ? '⭐ Remover dos favoritos' : '⭐ Favoritar conversa'}</div>` +
     `<div class="cm-item" onclick="togglePin('${phone}');closeContactMenu()">${c && c.pinned ? '📌 Desafixar do topo' : '📌 Fixar no topo'}</div>` +
     `<div class="cm-item" onclick="toggleMute('${phone}');closeContactMenu()">${c && c.muted ? '🔔 Reativar notificações' : '🔇 Silenciar conversa'}</div>` +
     `<div class="cm-item" onclick="closeContactMenu();_selEntrar('${phone}')">☑️ Selecionar conversas</div>` +
-    `<div class="cm-item" style="color:#ef4444" onclick="closeContactMenu();deleteConversation('${phone}')">🗑 Apagar conversa</div>`;
+    `<div class="cm-item" style="color:#ef4444" onclick="closeContactMenu();deleteConversation('${phone}')">🗑️ Apagar conversa</div>`;
   menu.style.display = 'block';
   menu.style.left = Math.min(ev.clientX, window.innerWidth - 210) + 'px';
   menu.style.top  = Math.min(ev.clientY, window.innerHeight - 110) + 'px';
@@ -4356,7 +4356,7 @@ function _selEntrar(ph) {
       <button title="Fixar no topo" onclick="_selAplicar('fixar')">📌</button>
       <button title="Silenciar" onclick="_selAplicar('silenciar')">🔇</button>
       <button title="Favoritar" onclick="_selAplicar('favoritar')">⭐</button>
-      <button title="Apagar conversas" onclick="_selAplicar('apagar')">🗑</button>
+      <button title="Apagar conversas" onclick="_selAplicar('apagar')">🗑️</button>
       <button title="Cancelar" onclick="_selSair()">✕</button>`;
     lista.parentElement.insertBefore(bar, lista);
   }
@@ -4680,10 +4680,10 @@ async function selectContact(phone, name, accountId) {
         style="background:none;border:none;color:#667781;cursor:pointer;padding:6px;border-radius:50%;margin-left:auto;flex-shrink:0;display:flex;align-items:center;justify-content:center">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
       </button>
-      <button id="btn-info" title="Informações do lead" onclick="openInfoMenu(event)"
+      <button id="btn-info" title="Opções da conversa" onclick="openInfoMenu(event)"
         style="background:none;border:none;color:#667781;cursor:pointer;padding:6px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+          <circle cx="12" cy="5" r="1.7" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1.7" fill="currentColor" stroke="none"/>
         </svg>
       </button>
     </div>
@@ -4763,7 +4763,7 @@ async function selectContact(phone, name, accountId) {
           <div id="rec-wave" style="flex:1;display:flex;align-items:center;gap:2px;height:26px;justify-content:flex-end;overflow:hidden"></div>
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between">
-          <button onclick="stopVoiceRec(true)" title="Descartar" style="background:none;border:none;font-size:23px;cursor:pointer;color:#54656f;padding:2px 6px">🗑</button>
+          <button onclick="stopVoiceRec(true)" title="Descartar" style="background:none;border:none;font-size:23px;cursor:pointer;color:#54656f;padding:2px 6px">🗑️</button>
           <button id="rec-ouvir" onclick="_recPreviewToggle()" style="display:none;background:none;border:1.5px solid #8696a0;border-radius:16px;color:#54656f;font-size:13px;font-weight:600;padding:6px 12px;cursor:pointer;font-family:inherit">▶ Ouvir</button>
           <button class="rec-pause" onclick="_recPauseToggle()" title="Pausar / retomar" style="width:48px;height:48px;border-radius:50%;border:2.5px solid #ef4444;background:none;color:#ef4444;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center">⏸</button>
           <button onclick="stopVoiceRec(false)" title="Enviar" style="width:48px;height:48px;border-radius:50%;background:#00a884;border:none;color:#fff;font-size:17px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.25)">➤</button>
@@ -6483,7 +6483,7 @@ async function loadMessages(phone, scroll = true) {
             data-key="m-${safeId}" data-msg-id="${safeId}" data-msg-content="${dataCont}" data-msg-dir="outbound" data-msg-type="note">
             <div style="font-size:11px;color:#a07c00;font-weight:700;margin-bottom:3px">🔒 Nota interna — o cliente não vê</div>
             <div style="color:#131c20">${waFormat(m.content || '')}</div>
-            <div class="time" style="color:#a07c00">${timeStr}<span onclick="deleteNota('${safeId}')" title="Apagar nota" style="cursor:pointer;margin-left:8px">🗑</span></div>
+            <div class="time" style="color:#a07c00">${timeStr}<span onclick="deleteNota('${safeId}')" title="Apagar nota" style="cursor:pointer;margin-left:8px">🗑️</span></div>
           </div>` });
           continue;
         }
@@ -6614,7 +6614,7 @@ async function loadMessages(phone, scroll = true) {
       const validas = new Set(parts.map(p => p.key));
       kids.forEach(el => {
         const k = el.dataset && el.dataset.key;
-        if (!k || !validas.has(k)) { if (el.querySelector && el.querySelector('img.msg-image')) _fotoLog('🗑 removida bolha que saiu', k || 'sem-chave'); el.remove(); }
+        if (!k || !validas.has(k)) { if (el.querySelector && el.querySelector('img.msg-image')) _fotoLog('🗑️ removida bolha que saiu', k || 'sem-chave'); el.remove(); }
       });
       let ref = area.firstElementChild;
       for (const p of parts) {
@@ -9692,7 +9692,7 @@ function renderAutomationBoard() {
       <select onchange="autoPickCategory(this,'${s.id}')" style="width:100%;background:#f0f2f5;border:1px solid #e9edef;border-radius:6px;padding:6px;font-size:12px;color:#54656f;cursor:pointer;margin-top:2px">
         <option value="">＋ Adicionar automação...</option>
         <option value="bot">🤖 Executar bot…</option>
-        <option value="task">📝 Criar tarefa</option>
+        <option value="task">➕ Criar tarefa</option>
         <option value="complete_task">✅ Concluir tarefas do lead</option>
         <option value="tags">🏷️ Editar tags</option>
         <option value="move">➡️ Mover lead para…</option>
@@ -10128,7 +10128,7 @@ function abrirMenuColuna(ev, id) {
   m.innerHTML = `
     <div class="cm-item" onclick="document.getElementById('col-menu').remove();const i=document.querySelector('.kanban-col[data-stage-id=&quot;${id}&quot;] .kanban-col-name');if(i){i.focus();i.select();}">✏️ Renomear coluna</div>
     <div class="cm-item" onclick="document.getElementById('col-menu').remove();togglePipeSelMode();selectAllInColumn('${id}')">☑️ Selecionar todos os leads</div>
-    <div class="cm-item" style="color:#ef4444" onclick="document.getElementById('col-menu').remove();deleteStage('${id}')">🗑 Excluir coluna…</div>`;
+    <div class="cm-item" style="color:#ef4444" onclick="document.getElementById('col-menu').remove();deleteStage('${id}')">🗑️ Excluir coluna…</div>`;
   document.body.appendChild(m);
   const x = Math.min(ev.clientX, window.innerWidth - 230), y = Math.min(ev.clientY, window.innerHeight - 150);
   m.style.left = x + 'px'; m.style.top = y + 'px';
@@ -10153,7 +10153,7 @@ async function deleteStage(id) {
     pipelineStages = pipelineStages.filter(s => s.id !== id);
     pipelineContacts.forEach(c => { if (c.stage_id === id) c.stage_id = null; });
     renderKanban();
-    showToast(`🗑 Coluna "${stage.name}" excluída${inStage ? ' — ' + inStage + ' lead(s) foram para "Sem status"' : ''}.`, '', 12000, { label: '↩ Desfazer', fn: () => restaurarColuna(id) });
+    showToast(`🗑️ Coluna "${stage.name}" excluída${inStage ? ' — ' + inStage + ' lead(s) foram para "Sem status"' : ''}.`, '', 12000, { label: '↩ Desfazer', fn: () => restaurarColuna(id) });
   } catch(e) { alert('Erro ao excluir coluna'); }
 }
 async function restaurarColuna(id) {
@@ -10390,7 +10390,7 @@ async function bulkDeleteLeads() {
   allContacts = allContacts.filter(c => !selectedLeads.has(c.phone));
   _sairSelecaoPipeline();
   renderContacts(allContacts);
-  showToast(`🗑 ${phones.length} lead(s) excluído(s) — na lixeira por 30 dias`, '', 12000, { label: '↩ Desfazer', fn: () => restaurarLeads(phones) });
+  showToast(`🗑️ ${phones.length} lead(s) excluído(s) — na lixeira por 30 dias`, '', 12000, { label: '↩ Desfazer', fn: () => restaurarLeads(phones) });
   try {
     await fetch(`${SERVER_URL}/contacts/bulk-delete`, {
       method: 'DELETE',
@@ -10562,8 +10562,8 @@ let _botStages = [];
 let _activeBotRun = null;
 const NODE_W = 220;
 const NODE_COLORS = { start:'#25D366', message:'#1d9bf0', wait_reply:'#FF9800', pause:'#6B7280', move_stage:'#8B5CF6', end:'#EF4444', round_robin:'#0ea5e9', tags:'#14b8a6', task:'#f59e0b', complete_task:'#16a34a', mark_read:'#22c55e', business_hours:'#f97316' };
-const NODE_ICONS  = { start:'▶', message:'📨', wait_reply:'💬', pause:'⏱', move_stage:'📋', end:'⏹', round_robin:'🔀', tags:'🏷', task:'✅', complete_task:'☑️', mark_read:'👁', business_hours:'🕐' };
-const NODE_LABELS = { start:'Início', message:'Enviar mensagem', wait_reply:'Aguardar resposta', pause:'Cronômetro', move_stage:'Mudar status', end:'Fim', round_robin:'Rodízio de números', tags:'Gerenciar tags', task:'Criar tarefa', complete_task:'Concluir tarefas', mark_read:'Marcar como lida', business_hours:'Horário comercial' };
+const NODE_ICONS  = { start:'▶', message:'💬', wait_reply:'❓', pause:'⏱', move_stage:'➡️', end:'⏹', round_robin:'🔀', tags:'🏷️', task:'➕', complete_task:'✅', mark_read:'✓', business_hours:'🕐' };
+const NODE_LABELS = { start:'Início', message:'Enviar mensagem', wait_reply:'Aguardar resposta', pause:'Cronômetro', move_stage:'Mudar status', end:'Fim', round_robin:'Rodízio de números', tags:'Gerenciar etiquetas', task:'Criar tarefa', complete_task:'Concluir tarefas', mark_read:'Marcar como lida', business_hours:'Horário comercial' };
 
 function _botGenId() { return 'n' + Date.now().toString(36) + Math.random().toString(36).substring(2,6); }
 
@@ -11178,7 +11178,7 @@ function renderTasksPage(){
           <span style="color:#667781;font-size:12px;cursor:pointer" onclick="editTaskTitle('${t.id}')">✏️ Editar</span>
         </div>
       </div>
-      <button title="Excluir" onclick="deleteTaskGlobal('${t.id}')" style="background:none;border:none;color:#667781;cursor:pointer;font-size:14px">🗑</button>
+      <button title="Excluir" onclick="deleteTaskGlobal('${t.id}')" style="background:none;border:none;color:#667781;cursor:pointer;font-size:14px">🗑️</button>
     </div>`;
   }).join('');
   // Sincroniza "selecionar todos" e o contador de selecionados
@@ -11346,7 +11346,7 @@ async function openBotEditor(id, isNew=false) {
   const stageSelect = document.getElementById('bot-trigger-stage-select');
   stageSelect.innerHTML = _botStages.map(s=>`<option value="${s.id}">${escHtml(s.name)}</option>`).join('');
   if (bot.trigger_stage_id) stageSelect.value = bot.trigger_stage_id;
-  stageSelect.style.display = 'none'; // etapa do bot agora vive na ⚡ Automação — aqui fica SEMPRE oculto
+  stageSelect.style.display = 'none'; // etapa do bot agora vive na 🔁 Automação — aqui fica SEMPRE oculto
   _loadAllTmplCache(); // prévias dos modelos nos nós (carrega uma vez)
 
   // Load flow (tolerante a falha)
@@ -11405,7 +11405,7 @@ async function closeBotEditor() {
 }
 
 function onBotTriggerChange() {
-  // Gatilho agora é configurado na ⚡ Automação — os campos ficam sempre ocultos
+  // Gatilho agora é configurado na 🔁 Automação — os campos ficam sempre ocultos
   document.getElementById('bot-trigger-stage-select').style.display = 'none';
 }
 
@@ -11881,7 +11881,7 @@ function botNodeEl(node,x,y){
           <span style="background:#f0f2f5;border:1px solid #e9edef;border-radius:6px;padding:0 6px;font-size:10px;color:#54656f;font-weight:700;line-height:1.6">${idx}</span>
           <span style="font-size:10.5px;font-weight:700;color:#8696a0;letter-spacing:.3px;flex:1;white-space:nowrap">Enviar mensagem</span>
           ${canal}
-          <button title="Remover" style="background:none;border:none;color:#c4ccd1;cursor:pointer;font-size:12px;flex-shrink:0;padding:0 2px">🗑</button>
+          <button title="Remover" style="background:none;border:none;color:#c4ccd1;cursor:pointer;font-size:12px;flex-shrink:0;padding:0 2px">🗑️</button>
         </div>
         ${_nodeMsgBubble(node)}
         ${(function(){
@@ -11901,7 +11901,7 @@ function botNodeEl(node,x,y){
         <div style="font-size:13px;font-weight:600;color:#131c20">${title}</div>
         ${summary?`<div style="font-size:11px;color:#667781;margin-top:2px;word-break:break-word;max-height:32px;overflow:hidden">${escHtml(summary)}</div>`:''}
       </div>
-      ${node.type!=='start'?`<button title="Remover" style="background:none;border:none;color:#667781;cursor:pointer;font-size:13px;flex-shrink:0">🗑</button>`:''}`;
+      ${node.type!=='start'?`<button title="Remover" style="background:none;border:none;color:#667781;cursor:pointer;font-size:13px;flex-shrink:0">🗑️</button>`:''}`;
   }
   const del=el.querySelector('button');
   if(del) del.addEventListener('click', async (e) => { e.stopPropagation(); if (await vConfirm({ titulo: 'Remover passo', texto: 'Este passo sai do fluxo do bot.', confirmar: 'Remover', perigo: true })) deleteNode(node.id); });
@@ -12350,7 +12350,7 @@ function _tagsNodeSugg(nodeId, campo) {
   const achadas = (allTagsList || []).filter(t => !ja.includes(t) && (!q || t.toLowerCase().includes(q))).slice(0, 10);
   _tagsNSug[campo] = achadas;
   let h = achadas.map((t, i) =>
-    `<div onclick="_tagsNodePick('${nodeId}','${campo}',${i})" style="padding:7px 10px;background:#f0f2f5;border-radius:7px;font-size:13px;color:#131c20;cursor:pointer">🏷 ${escHtml(t)}</div>`).join('');
+    `<div onclick="_tagsNodePick('${nodeId}','${campo}',${i})" style="padding:7px 10px;background:#f0f2f5;border-radius:7px;font-size:13px;color:#131c20;cursor:pointer">🏷️ ${escHtml(t)}</div>`).join('');
   // Não existe? Oferece CRIAR (só no campo Adicionar — não dá para remover o que não existe)
   const existe = (allTagsList || []).some(t => t.toLowerCase() === q);
   if (q && !existe && campo === 'add')
@@ -12573,17 +12573,17 @@ function botDefaultConfig(type) {
 
 // ── Menu "Adicionar próximo passo" (estilo Kommo): cria já conectado e posicionado ──
 const STEP_TYPES = [
-  ['message','📨 Enviar mensagem'],
-  ['wait_reply','💬 Aguardar resposta / botões'],
+  ['message','💬 Enviar mensagem'],
+  ['wait_reply','❓ Aguardar resposta / botões'],
   ['round_robin','🔀 Rodízio de números'],
-  ['tags','🏷 Gerenciar tags'],
-  ['task','✅ Criar tarefa'],
-  ['complete_task','☑️ Concluir tarefas'],
+  ['tags','🏷️ Gerenciar etiquetas'],
+  ['task','➕ Criar tarefa'],
+  ['complete_task','✅ Concluir tarefas'],
   ['business_hours','🕐 Horário comercial'],
-  ['mark_read','👁 Marcar como lida'],
-  ['move_stage','📋 Mudar status'],
+  ['mark_read','✓ Marcar como lida'],
+  ['move_stage','➡️ Mudar status'],
   ['pause','⏱ Cronômetro'],
-  ['end','🔴 Fim'],
+  ['end','⏹ Fim'],
 ];
 function closeStepMenu(){ const m=document.getElementById('bot-step-menu'); if(m) m.remove(); }
 function openStepMenu(fromNodeId, portLabel, ev){
@@ -12796,7 +12796,7 @@ function renderConfigPanel(node) {
             ? `<div style="display:flex;gap:8px;align-items:center;background:#f0f2f5;border-radius:8px;padding:8px">
                  <img src="${escHtml(node.config.image_url)}" style="width:56px;height:56px;object-fit:cover;border-radius:6px">
                  <span style="flex:1;font-size:12px;color:#667781">Foto anexada</span>
-                 <button type="button" onclick="removeBotFoto('${node.id}')" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:13px">🗑 Remover</button>
+                 <button type="button" onclick="removeBotFoto('${node.id}')" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:13px">🗑️ Remover</button>
                </div>`
             : `<label style="display:inline-flex;align-items:center;gap:6px;background:#e7f7ef;border:1px dashed #00a884;color:#00806a;border-radius:8px;padding:8px 12px;font-size:13px;cursor:pointer">
                  📷 Escolher foto
