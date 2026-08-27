@@ -1828,7 +1828,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v307</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v308</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px">🔔 Ativar avisos</button>
@@ -2433,7 +2433,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v307</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v308</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">🧹 Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">💾 Salvar</button>
   </div>
@@ -2487,7 +2487,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 307;
+const APP_VER = 308;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -9411,7 +9411,15 @@ async function dripCarregar() {
   try {
     const j = await (await fetch(SERVER_URL + '/drip')).json();
     _dripRegras = Array.isArray(j.regras) ? j.regras : []; _dripCont = j.contagens || {}; _dripJanela = j.janela || {}; _dripAgora = j.agora_brasilia || '';
-  } catch (_) { _dripRegras = []; }
+  } catch (_) {
+    // Falha de rede: MANTÉM o que já estava na tela (antes sumia tudo e parecia
+    // que as regras tinham sido apagadas)
+    if (!Array.isArray(_dripRegras)) _dripRegras = [];
+    const el = document.getElementById('auto-drip-list');
+    if (el && _dripRegras.length) { const av = document.getElementById('drip-aviso-rede'); if (!av) el.insertAdjacentHTML('beforebegin', '<div id="drip-aviso-rede" style="font-size:11.5px;color:#b45309;margin-bottom:6px">⚠️ Sem conexão com o servidor — mostrando a última informação recebida.</div>'); }
+    dripRender(); return;
+  }
+  document.getElementById('drip-aviso-rede')?.remove();
   dripRender();
 }
 function dripRender() {
@@ -9460,7 +9468,7 @@ function dripRender() {
     if ((r.manual || r.agendado) && _origensLigadas[r.de] > 1) st += ` · <span style="color:#b45309" title="Outra regra ligada também puxa leads desta mesma etapa — juntas elas movem o dobro">⚠️ outra regra usa a mesma fila</span>`;
     return `<div style="background:#f7f8fa;border:1px solid #e9edef;border-radius:8px;padding:7px 10px;margin-bottom:6px;font-size:12.5px">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        ${soAguardando ? '<span style="background:#e7f7ef;color:#00806a;border:1px solid #c8ecd9;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;white-space:nowrap">● Ligado</span>' : `<button onclick="dripToggle(${i}, ${podeDesligar ? 'false' : 'true'})" title="${podeDesligar ? 'Pausar tudo (manual e automático); o progresso fica guardado' : (feitos ? 'Retomar agora, de onde parou (ignora dia/horário)' : 'Iniciar agora (ignora dia/horário)')}" style="background:${podeDesligar ? '#fff' : '#00a884'};color:${podeDesligar ? '#b45309' : '#fff'};border:1px solid ${podeDesligar ? '#f0c27a' : '#00a884'};border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">${podeDesligar ? '⏸ Pausar' : (pendente ? '▶ Retomar' : '▶ Iniciar')}</button>`}
+        ${soAguardando ? '<span style="background:#e7f7ef;color:#00806a;border:1px solid #c8ecd9;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;white-space:nowrap">● Ligado</span>' : `<button onclick="dripToggle(${i}, ${podeDesligar ? 'false' : 'true'})" title="${podeDesligar ? 'Pausar tudo (manual e automático); o progresso fica guardado' : (pendente ? 'Retomar de onde parou (ignora dia/horário)' : 'Começar agora, do zero (ignora dia/horário)')}" style="background:${podeDesligar ? '#fff' : '#00a884'};color:${podeDesligar ? '#b45309' : '#fff'};border:1px solid ${podeDesligar ? '#f0c27a' : '#00a884'};border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">${podeDesligar ? '⏸ Pausar' : (pendente ? '▶ Retomar' : '▶ Iniciar')}</button>`}
         ${(emAndamento || !!r.manual || (pendente && !rodando)) ? `<button onclick="dripParar(${i})" title="Parar: encerra o disparo manual e zera o progresso (nenhum lead volta)" style="background:#fff;color:#c0392b;border:1px solid #f1b0a7;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">⏹ Parar</button>` : ''}
         <button onclick="dripAuto(${i}, ${r.agendado ? 'false' : 'true'})" title="${r.agendado ? 'Desligar o disparo automático (dias/horários)' : 'Ligar o disparo automático nos dias/horários da regra'}" style="background:${r.agendado ? '#e7f7ef' : '#fff'};color:${r.agendado ? '#00806a' : '#667781'};border:1px solid ${r.agendado ? '#00a884' : '#d1d7db'};border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">🕐 Automático: ${r.agendado ? 'ligado' : 'desligado'}</button>
         <b style="color:#131c20">${escHtml(r.nome || 'Regra ' + (i + 1))}</b>
@@ -9504,16 +9512,19 @@ async function dripParar(i) {
     if (fim <= nowBr) fim.setUTCDate(fim.getUTCDate() + 1);
     r.parado_ate = new Date(fim.getTime() + 3 * 3600000).toISOString();
   }
-  dripSalvarRegra(i);
+  dripSalvarRegra(i, { manual: false, zerar_movidos: true, parado_ate: r.parado_ate || null });
 } // (o Automático fica como está — só muda no botão dele)
 // 🕐 Liga/desliga o disparo AUTOMÁTICO (dias e horários da regra)
-function dripAuto(i, on) { if (_dripRegras[i]) { _dripRegras[i].agendado = !!on; _dripRegras[i].parado_ate = null; dripSalvarRegra(i); } }
+function dripAuto(i, on) { if (_dripRegras[i]) { _dripRegras[i].agendado = !!on; _dripRegras[i].parado_ate = null; dripSalvarRegra(i, { agendado: !!on, parado_ate: null }); } }
 // Salva SÓ uma regra (ligar/desligar/parar). Assim, se esta tela estiver
 // desatualizada, ela não sobrescreve o que foi mudado em outro lugar.
-async function dripSalvarRegra(i) {
+async function dripSalvarRegra(i, campos) {
   const r = _dripRegras[i]; if (!r) return;
+  // Manda SÓ os campos desta ação (+ o id). O resto vem do banco — assim uma tela
+  // aberta há muito tempo não regrava liga/desliga velho por cima.
+  const envio = campos ? Object.assign({ id: r.id }, campos) : r;
   try {
-    const resp = await fetch(SERVER_URL + '/drip', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ regra: r }) });
+    const resp = await fetch(SERVER_URL + '/drip', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ regra: envio }) });
     const j = await resp.json();
     if (!resp.ok) throw new Error(j.error || 'falha');
     _dripRegras = j.regras || _dripRegras;
@@ -9542,8 +9553,10 @@ async function dripSalvar() {
 // ▶ à mão = começa AGORA, ignorando dia/horário (o agendamento continua valendo para as próximas vezes)
 function dripToggle(i, on) { if (_dripRegras[i]) { const r = _dripRegras[i]; r.manual = !!on; if (!on) r.agendado = false; if (on) r.parado_ate = null;
   // Iniciar de novo depois de CONCLUÍDO → o contador de movidos recomeça do zero
-  if (on && (r.movidos || 0) > 0 && (r.ciclo_fechado || _dripCont[r.de] === 0)) { r.movidos = 0; r.zerar_movidos = true; r.ciclo_fechado = false; }
-  dripSalvarRegra(i); } }
+  const zera = on && (r.movidos || 0) > 0 && (r.ciclo_fechado || _dripCont[r.de] === 0);
+  if (zera) { r.movidos = 0; r.ciclo_fechado = false; }
+  dripSalvarRegra(i, zera ? { manual: !!on, agendado: !!r.agendado, parado_ate: on ? null : r.parado_ate, zerar_movidos: true }
+                          : { manual: !!on, agendado: !!r.agendado, parado_ate: on ? null : r.parado_ate }); } }
 async function dripRemover(i) {
   const r = _dripRegras[i]; if (!r) return;
   if (!r.id) { _dripRegras.splice(i, 1); dripRender(); return; } // regra ainda não salva
@@ -9619,7 +9632,10 @@ function dripConfirmar(i) {
   if (!r.dias.length && !document.querySelectorAll('.drip-dia:checked').length) return alert('Marque ao menos um dia da semana.');
   if (i >= 0) _dripRegras[i] = Object.assign({}, _dripRegras[i], r); else _dripRegras.push(Object.assign({ manual: false, agendado: false }, r));
   document.getElementById('drip-edit-overlay').remove();
-  if (i >= 0) dripSalvarRegra(i); else dripCriarRegra(r); // regra NOVA entra sozinha, sem reenviar a lista
+  // Editar manda SÓ a configuração (nome, etapas, intervalo, dias, horário) —
+  // liga/desliga e progresso continuam sendo o que está no servidor
+  if (i >= 0) dripSalvarRegra(i, { nome: r.nome, de: r.de, para: r.para, min_seg: r.min_seg, max_seg: r.max_seg, numeros: r.numeros, hora_ini: r.hora_ini, hora_fim: r.hora_fim, dias: r.dias });
+  else dripCriarRegra(r); // regra NOVA entra sozinha, sem reenviar a lista
 }
 async function _saveStageActions() {
   try {
