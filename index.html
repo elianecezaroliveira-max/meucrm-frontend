@@ -1931,7 +1931,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v328</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v329</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2548,7 +2548,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v328</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v329</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2602,7 +2602,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 328;
+const APP_VER = 329;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4477,6 +4477,126 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════════════
+// MENSAGENS AGENDADAS (escrever agora, sair depois)
+// ═══════════════════════════════════════════════════════════════════════════
+let _agendadas = [];
+function _agFmt(iso) {
+  const d = new Date(parseUTC(iso) - _BRT_OFFSET);
+  const dd = String(d.getUTCDate()).padStart(2, '0'), mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const hh = String(d.getUTCHours()).padStart(2, '0'), mi = String(d.getUTCMinutes()).padStart(2, '0');
+  return dd + '/' + mm + ' às ' + hh + ':' + mi;
+}
+async function _agCarrega() {
+  try {
+    const r = await fetch(SERVER_URL + '/scheduled');
+    const d = await r.json();
+    _agendadas = Array.isArray(d) ? d : [];
+  } catch (_) { _agendadas = []; }
+  return _agendadas;
+}
+async function _agAtualizaBarra() {
+  await _agCarrega();
+  const bar = document.getElementById('ag-bar'), txt = document.getElementById('ag-bar-txt');
+  if (!bar || !txt) return;
+  const minhas = _agendadas.filter(x => String(x.phone) === String(currentPhone));
+  if (!minhas.length) { bar.style.display = 'none'; return; }
+  minhas.sort((a, b) => new Date(a.at) - new Date(b.at));
+  txt.textContent = minhas.length === 1
+    ? 'Mensagem programada para ' + _agFmt(minhas[0].at)
+    : minhas.length + ' mensagens programadas · a próxima ' + _agFmt(minhas[0].at);
+  bar.style.display = 'flex';
+}
+// Sugestão de horário: daqui a 1h; se já passou das 18h, amanhã às 9h
+function _agSugestao() {
+  const agoraBrt = new Date(Date.now() - _BRT_OFFSET);
+  let d;
+  if (agoraBrt.getUTCHours() >= 18) {
+    d = new Date(agoraBrt.getTime() + 86400000);
+    d.setUTCHours(9, 0, 0, 0);
+  } else {
+    d = new Date(agoraBrt.getTime() + 3600000);
+    d.setUTCMinutes(0, 0, 0);
+  }
+  const p = n => String(n).padStart(2, '0');
+  return {
+    data: d.getUTCFullYear() + '-' + p(d.getUTCMonth() + 1) + '-' + p(d.getUTCDate()),
+    hora: p(d.getUTCHours()) + ':' + p(d.getUTCMinutes())
+  };
+}
+async function abrirAgendar() {
+  if (!currentPhone) return;
+  if (_notaModo) { _toast('Desligue a nota interna para agendar uma mensagem.'); return; }
+  const inp = document.getElementById('msg-input');
+  const sug = _agSugestao();
+  const d = await vCampos({
+    titulo: 'Agendar mensagem',
+    texto: 'A mensagem sai sozinha na data e hora escolhidas (horário de Brasília), mesmo com o VETRA fechado.',
+    campos: [
+      { id: 'texto', rotulo: 'Mensagem', multilinha: true, valor: (inp && inp.value) || '', dica: 'O que você quer enviar…' },
+      { id: 'data',  rotulo: 'Data',  tipo: 'date', valor: sug.data },
+      { id: 'hora',  rotulo: 'Hora',  tipo: 'time', valor: sug.hora }
+    ],
+    confirmar: 'Agendar'
+  });
+  if (!d) return;
+  const texto = String(d.texto || '').trim();
+  if (!texto) { _toast('Escreva a mensagem antes de agendar.'); return; }
+  if (!d.data || !d.hora) { _toast('Escolha a data e a hora.'); return; }
+  // Data/hora digitadas são de Brasília (UTC-3) → converte para UTC
+  const quandoUTC = new Date(d.data + 'T' + d.hora + ':00.000Z').getTime() + _BRT_OFFSET;
+  if (!isFinite(quandoUTC)) { _toast('Data ou hora inválida.'); return; }
+  if (quandoUTC < Date.now() + 30000) { _toast('Escolha um horário à frente do de agora.'); return; }
+  const acc = currentAccountId || (document.getElementById('chat-account-select') || {}).value || '';
+  if (!acc) { _toast('Escolha por qual número a mensagem sai (seletor ao lado do campo).'); return; }
+  try {
+    const r = await fetch(SERVER_URL + '/scheduled', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to: currentPhone, message: texto, account_id: acc, at: new Date(quandoUTC).toISOString() })
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || j.error) { showToast(j.error || 'Não consegui agendar', 'err'); return; }
+    if (inp && inp.value.trim() === texto) { inp.value = ''; try { updateSendMicButtons(); autoGrowMsgInput(inp); } catch (_) {} }
+    showToast('Mensagem agendada para ' + _agFmt(j.item.at), 'ok');
+    _agAtualizaBarra();
+  } catch (e) { showToast('Não consegui agendar: ' + (e.message || e), 'err'); }
+}
+async function abrirListaAgendadas() {
+  await _agCarrega();
+  const minhas = _agendadas.filter(x => String(x.phone) === String(currentPhone))
+    .sort((a, b) => new Date(a.at) - new Date(b.at));
+  let ov = document.getElementById('ag-overlay');
+  if (!ov) { ov = document.createElement('div'); ov.id = 'ag-overlay'; document.body.appendChild(ov); }
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(11,20,26,.55);z-index:9500;display:flex;align-items:center;justify-content:center;padding:16px';
+  ov.innerHTML = '<div style="background:#fff;border-radius:12px;width:min(460px,100%);max-height:78vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.35)">'
+    + '<div style="display:flex;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid #e9edef">'
+    + '<b style="flex:1;font-size:15px;color:#131c20">Mensagens programadas</b>'
+    + '<span onclick="fecharListaAgendadas()" style="cursor:pointer;font-size:20px;color:#667781">✕</span></div>'
+    + '<div id="ag-lista" style="flex:1;overflow-y:auto;padding:10px 14px 14px"></div></div>';
+  ov.onclick = (e) => { if (e.target === ov) fecharListaAgendadas(); };
+  const el = document.getElementById('ag-lista');
+  el.innerHTML = minhas.length
+    ? minhas.map(x => '<div style="border:1px solid #e9edef;border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;gap:10px;align-items:flex-start">'
+        + '<div style="flex:1;min-width:0">'
+        + '<div style="font-size:12px;font-weight:700;color:#8c6d1f;margin-bottom:3px"><i class=ic-clock></i> ' + escHtml(_agFmt(x.at)) + '</div>'
+        + '<div style="font-size:13px;color:#3b4a54;white-space:pre-wrap;word-break:break-word">' + escHtml(String(x.text || '').slice(0, 400)) + '</div></div>'
+        + '<button onclick="cancelarAgendada(\'' + escHtml(String(x.id)) + '\')" title="Cancelar este envio" '
+        + 'style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:15px"><i class=ic-trash></i></button></div>').join('')
+    : '<div style="padding:16px 0;text-align:center;color:#8696a0;font-size:13px">Nada programado nesta conversa.</div>';
+}
+function fecharListaAgendadas() { const ov = document.getElementById('ag-overlay'); if (ov) ov.remove(); }
+async function cancelarAgendada(id) {
+  if (!await vConfirm({ titulo: 'Cancelar envio', texto: 'Esta mensagem não será enviada. Quer cancelar mesmo?', confirmar: 'Cancelar envio', perigo: true })) return;
+  try {
+    const r = await fetch(SERVER_URL + '/scheduled/' + encodeURIComponent(id), { method: 'DELETE' });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || j.error) { showToast(j.error || 'Não consegui cancelar', 'err'); return; }
+    showToast('Envio cancelado', 'ok');
+    await _agAtualizaBarra();
+    abrirListaAgendadas();
+  } catch (e) { showToast('Não consegui cancelar: ' + (e.message || e), 'err'); }
+}
+
 function msgMenuInfo() {
   const id = _msgMenuId; closeMsgMenu(); if (!id) return;
   const m = (currentMessages || []).find(x => String(x.id) === String(id)); if (!m) return;
@@ -5105,6 +5225,7 @@ async function selectContact(phone, name, accountId) {
         <div style="font-size:11px;color:#667781;padding:4px 8px;text-transform:uppercase">Iniciar bot</div>
         <div id="bot-launcher-list"></div>
       </div>
+      <button id="btn-agendar" title="Agendar mensagem" onclick="abrirAgendar()" style="background:none;border:none;color:#667781;cursor:pointer;padding:6px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px"><i class=ic-clock></i></button>
       <button id="emoji-btn" onclick="toggleEmojiPicker(event)" title="Emojis"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5a4.4 4.4 0 0 0 7 0"/><circle cx="9" cy="9.6" r="1.1" fill="currentColor" stroke="none"/><circle cx="15" cy="9.6" r="1.1" fill="currentColor" stroke="none"/></svg></button>
       <div id="emoji-picker-wrap"></div>
       <select id="chat-account-select" onchange="currentAccountId=this.value" title="Enviar pelo número"
@@ -5120,6 +5241,11 @@ async function selectContact(phone, name, accountId) {
       <div id="bot-draft-bar" style="display:none;align-items:center;gap:8px;background:#e7f7ef;border-left:3px solid #00a884;border-radius:6px;padding:7px 10px;margin-bottom:6px">
         <span style="flex:1;font-size:13px;color:#00806a"><b><i class=ic-bot></i> <span id="bot-draft-name"></span></b> — toque em enviar para disparar</span>
         <button onclick="cancelBotDraft()" title="Cancelar" style="background:none;border:none;color:#667781;cursor:pointer;font-size:15px;padding:2px 4px">✕</button>
+      </div>
+      <!-- Mensagens programadas para esta conversa -->
+      <div id="ag-bar" style="display:none;align-items:center;gap:8px;background:#fff7e6;border-left:3px solid #f0b400;border-radius:6px;padding:7px 10px;margin-bottom:6px">
+        <span id="ag-bar-txt" style="flex:1;font-size:13px;color:#8c6d1f"></span>
+        <button onclick="abrirListaAgendadas()" style="background:none;border:none;color:#8c6d1f;font-weight:700;cursor:pointer;font-size:13px;font-family:inherit">Ver</button>
       </div>
       <div id="input-row">
       <div id="input-wrap">
@@ -5195,6 +5321,7 @@ async function selectContact(phone, name, accountId) {
   checkActiveBotRun(phone);
   // Mídia do lead (depois que as mensagens carregaram)
   lpLoadMedia(phone);
+  _agAtualizaBarra();
 }
 
 // ══════════════════════════════════════════════
