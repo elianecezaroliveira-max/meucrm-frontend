@@ -1949,7 +1949,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v336</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v337</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2572,7 +2572,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v336</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v337</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2626,7 +2626,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 336;
+const APP_VER = 337;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -9116,6 +9116,29 @@ async function editLeadName() {
 // ── TAGS ──
 const TAG_COLORS = ['tc0','tc1','tc2','tc3','tc4','tc5'];
 let allTagsList = [];
+// Cor da etiqueta vem do NOME (sempre a mesma em qualquer lugar). Se você
+// escolher uma cor no gerenciador, ela manda.
+let _tagCores = {};
+function _tagCor(nome) {
+  const n = String(nome == null ? '' : nome);
+  if (_tagCores[n] != null) return TAG_COLORS[Math.max(0, Math.min(5, _tagCores[n]))];
+  let h = 0;
+  const base = n.trim().toLowerCase();
+  for (let i = 0; i < base.length; i++) h = (h * 31 + base.charCodeAt(i)) >>> 0;
+  return TAG_COLORS[h % TAG_COLORS.length];
+}
+// Nome "achatado" para comparar parecidas: sem acento, sem espaço extra, minúsculo
+function _tagNorm(t) {
+  return String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ').trim().toLowerCase();
+}
+async function _carregaCoresTags() {
+  try {
+    const r = await fetch(SERVER_URL + '/tags/manage');
+    const l = await r.json();
+    if (Array.isArray(l)) { _tagCores = {}; l.forEach(t => { if (t.cor != null) _tagCores[t.name] = t.cor; }); }
+  } catch (_) {}
+}
 
 async function loadAllTags() {
   try {
@@ -9123,6 +9146,7 @@ async function loadAllTags() {
     const list = await r.json();
     if (Array.isArray(list)) allTagsList = list;
   } catch(e) {}
+  _carregaCoresTags(); // cores escolhidas por você (não trava a lista)
 }
 
 function renderTagManager(contact) {
@@ -9132,7 +9156,7 @@ function renderTagManager(contact) {
   const phone = contact.phone;
   const opts = allTagsList.map(t => '<option value="' + t.replace(/"/g,'&quot;') + '">').join('');
   area.innerHTML = tags.map((t,i) =>
-    `<span class="tag-chip ${TAG_COLORS[i%6]} removable" title="Clique para remover" onclick="removeTag('${phone}','${t}')">${t} ×</span>`
+    `<span class="tag-chip ${_tagCor(t)} removable" title="Clique para remover" onclick="removeTag('${phone}','${t}')">${t} ×</span>`
   ).join('') +
   `<input id="tag-add-input" list="tag-options" autocomplete="off" placeholder="+ tag" maxlength="20"
     onkeydown="if(event.key==='Enter'||event.key===','){event.preventDefault();addTag('${phone}',this.value)}"
@@ -9194,7 +9218,7 @@ function renderTagSheet() {
   const tags = c.tags || [];
   const esc = t => t.replace(/'/g, "\\'");
   document.getElementById('tag-sheet-chips').innerHTML = tags.length
-    ? tags.map((t,i) => `<span class="tag-chip ${TAG_COLORS[i%6]} removable" title="Toque para remover" onclick="removeTag('${c.phone}','${esc(t)}')" style="font-size:13px;padding:6px 11px">${escHtml(t)} ×</span>`).join('')
+    ? tags.map((t,i) => `<span class="tag-chip ${_tagCor(t)} removable" title="Toque para remover" onclick="removeTag('${c.phone}','${esc(t)}')" style="font-size:13px;padding:6px 11px">${escHtml(t)} ×</span>`).join('')
     : '<span style="color:#667781;font-size:13px">Este cliente ainda não tem etiquetas.</span>';
   const sug = allTagsList.filter(t => !tags.includes(t)).slice(0, 12);
   document.getElementById('tag-sheet-suggest').innerHTML = sug.length
@@ -10870,7 +10894,7 @@ function renderPipelineList(contacts) {
     <span class="plist-h-tags">Tags</span>
   </div>`;
   const body = rows.map(c => {
-    const tags = (c.tags || []).slice(0, 3).map((t, i) => `<span class="tag-chip tc${i % 6}" style="font-size:10px;padding:1px 6px">${escHtml(t)}</span>`).join('');
+    const tags = (c.tags || []).slice(0, 3).map((t) => `<span class="tag-chip ${_tagCor(t)}" style="font-size:10px;padding:1px 6px">${escHtml(t)}</span>`).join('');
     const sel = selectedLeads.has(c.phone);
     return `<div class="plist-row${sel ? ' sel' : ''}" data-phone="${c.phone}">
       <span class="plist-check">${_pipeSelMode ? `<input type="checkbox" ${sel ? 'checked' : ''} onclick="event.stopPropagation();togglePipelineListSel('${c.phone}',this.checked)">` : ''}</span>
@@ -11032,7 +11056,7 @@ function cardHTML(c) {
   const date = _cDt
     ? new Date(_cDt).toLocaleDateString('pt-BR', {day:'2-digit',month:'2-digit'})
     : '';
-  const tags = (c.tags||[]).map((t,i)=>`<span class="tag-chip tc${i%6}" style="font-size:10px;padding:1px 6px">${escHtml(t)}</span>`).join('');
+  const tags = (c.tags||[]).map((t)=>`<span class="tag-chip ${_tagCor(t)}" style="font-size:10px;padding:1px 6px">${escHtml(t)}</span>`).join('');
   const isSelected = selectedLeads.has(c.phone);
   return `
     <div class="kanban-card${isSelected?' selected':''}" draggable="true" data-phone="${c.phone}">
@@ -11891,19 +11915,115 @@ function renderTagManager(){
     el.innerHTML = '<div style="color:#667781;font-size:13px;padding:20px 0;text-align:center">Nenhuma etiqueta ainda.<br>Adicione uma acima.</div>';
     return;
   }
-  el.innerHTML = _tagMgrList.map((t,i) => {
+  // Cores escolhidas ficam disponíveis para o resto do CRM na hora
+  _tagCores = {}; _tagMgrList.forEach(t => { if (t.cor != null) _tagCores[t.name] = t.cor; });
+  const q = _tagNorm(window._tagBusca || '');
+  const lista = _tagMgrList.map((t,i)=>({t,i})).filter(({t}) => !q || _tagNorm(t.name).includes(q));
+  const busca = '<input id="tagmgr-busca" placeholder="Buscar etiqueta…" value="' + _faqEsc(window._tagBusca || '') + '"'
+    + ' oninput="window._tagBusca=this.value;renderTagManager();document.getElementById(\'tagmgr-busca\')?.focus()"'
+    + ' style="width:100%;box-sizing:border-box;background:#fff;border:1px solid #e9edef;color:#131c20;padding:9px 12px;border-radius:8px;font-size:13px;font-family:inherit;outline:none;margin-bottom:6px">';
+  // Etiquetas parecidas (só diferem por acento/maiúscula/espaço) — oferece juntar
+  const grupos = {};
+  _tagMgrList.forEach(t => { const k=_tagNorm(t.name); (grupos[k]=grupos[k]||[]).push(t.name); });
+  const repetidas = Object.values(grupos).filter(g=>g.length>1);
+  const avisoRep = repetidas.length
+    ? '<div style="background:#fff7e6;border:1px solid #ffd591;border-radius:8px;padding:9px 11px;font-size:12.5px;color:#8c6d1f;margin-bottom:8px">'
+      + '<b>Etiquetas repetidas:</b> ' + repetidas.map(g=>g.map(n=>'"'+_faqEsc(n)+'"').join(' = ')).join(' · ')
+      + '<div style="margin-top:6px"><button onclick="tagMgrJuntarTodas()" style="background:#fff;border:1px solid #e0b458;color:#8c6d1f;border-radius:7px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit">Juntar as repetidas</button></div></div>'
+    : '';
+  const corpo = lista.length ? lista.map(({t,i}) => {
     const uso = t.count > 0 ? (t.count + (t.count>1?' leads':' lead')) : 'sem uso';
-    return '<div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid #f0f2f5">'
-      + '<span style="flex:1;font-size:14px;color:#131c20;word-break:break-word">' + _faqEsc(t.name) + '</span>'
-      + '<span style="font-size:12px;color:#667781;white-space:nowrap">' + uso + '</span>'
-      + '<button onclick="tagMgrDelete(' + i + ')" style="background:#fde8e8;color:#c0392b;border:none;border-radius:7px;padding:5px 12px;font-size:12px;cursor:pointer">Excluir</button>'
+    const swatches = TAG_COLORS.map((c,ci) =>
+      '<span onclick="tagMgrCor(' + i + ',' + ci + ')" class="tag-chip ' + c + '" title="Usar esta cor"'
+      + ' style="width:15px;height:15px;padding:0;border-radius:50%;cursor:pointer;' + (t.cor===ci?'outline:2px solid #131c20;outline-offset:1px':'') + '"></span>').join('');
+    return '<div style="display:flex;align-items:center;gap:8px;padding:11px 0;border-bottom:1px solid #f0f2f5;flex-wrap:wrap">'
+      + '<span class="tag-chip ' + _tagCor(t.name) + '" style="font-size:12px;padding:3px 10px">' + _faqEsc(t.name) + '</span>'
+      + '<span style="flex:1"></span>'
+      + '<span onclick="tagMgrVerLeads(' + i + ')" title="Ver os leads com esta etiqueta"'
+      + ' style="font-size:12px;color:' + (t.count>0?'#00806a':'#8696a0') + ';white-space:nowrap;' + (t.count>0?'cursor:pointer;text-decoration:underline':'') + '">' + uso + '</span>'
+      + '<button onclick="tagMgrRenomear(' + i + ')" title="Renomear em todos os leads" style="background:#e9edef;color:#131c20;border:none;border-radius:7px;padding:5px 11px;font-size:12px;cursor:pointer;font-family:inherit">Renomear</button>'
+      + '<button onclick="tagMgrDelete(' + i + ')" style="background:#fde8e8;color:#c0392b;border:none;border-radius:7px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit">Excluir</button>'
+      + '<div style="flex-basis:100%;display:flex;gap:5px;align-items:center;margin-top:2px">'
+      + '<span style="font-size:11px;color:#8696a0;margin-right:2px">Cor:</span>' + swatches
+      + (t.cor!=null ? '<span onclick="tagMgrCor(' + i + ',null)" style="font-size:11px;color:#667781;cursor:pointer;margin-left:6px">usar automática</span>' : '')
+      + '</div>'
       + '</div>';
-  }).join('');
+  }).join('') : '<div style="color:#8696a0;font-size:13px;padding:14px 2px">Nenhuma etiqueta com esse texto.</div>';
+  el.innerHTML = busca + avisoRep + corpo;
 }
+async function tagMgrCor(i, cor){
+  const t = _tagMgrList[i]; if(!t) return;
+  t.cor = cor;
+  if (cor == null) delete _tagCores[t.name]; else _tagCores[t.name] = cor;
+  renderTagManager();
+  try { await fetch(SERVER_URL + '/tags/cor', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name:t.name, cor }) }); }
+  catch(_) { showToast('Não consegui salvar a cor','err'); }
+}
+async function tagMgrRenomear(i){
+  const t = _tagMgrList[i]; if(!t) return;
+  const novo = await vPrompt({ titulo:'Renomear etiqueta', texto:'O novo nome vale para todos os leads, automações e bots que usam esta etiqueta.', rotulo:'Novo nome', valor:t.name });
+  if(novo === null) return;
+  const nome = String(novo).trim();
+  if(!nome || nome === t.name) return;
+  const existe = _tagMgrList.some(x => x.name !== t.name && _tagNorm(x.name) === _tagNorm(nome));
+  if (existe && !await vConfirm({ titulo:'Juntar etiquetas', texto:'Já existe "' + nome + '". As duas viram uma só e os leads são somados. Continuar?', confirmar:'Juntar' })) return;
+  await _tagMgrRename(t.name, nome);
+}
+async function _tagMgrRename(de, para){
+  try{
+    const r = await fetch(SERVER_URL + '/tags/manage', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ de, para }) });
+    const d = await r.json().catch(()=>({}));
+    if(!r.ok || d.error) { showToast(d.error || 'Não consegui renomear','err'); return; }
+    showToast('Etiqueta atualizada em ' + (d.leads||0) + ' lead(s)','ok');
+    await openTagManager();
+    if(typeof loadAllTags === 'function') loadAllTags();
+    try { if (document.getElementById('pipeline-page')?.style.display === 'flex') loadPipeline(); } catch(_){}
+  }catch(e){ showToast('Não consegui renomear: ' + (e.message||e),'err'); }
+}
+async function tagMgrJuntarTodas(){
+  const grupos = {};
+  _tagMgrList.forEach(t => { const k=_tagNorm(t.name); (grupos[k]=grupos[k]||[]).push(t); });
+  const repetidas = Object.values(grupos).filter(g=>g.length>1);
+  if(!repetidas.length) return;
+  if(!await vConfirm({ titulo:'Juntar etiquetas repetidas', texto:'Etiquetas que só diferem por acento, espaço ou maiúscula viram uma só (fica a mais usada). Continuar?', confirmar:'Juntar' })) return;
+  for(const g of repetidas){
+    const alvo = [...g].sort((a,b)=>(b.count||0)-(a.count||0))[0];
+    for(const t of g){ if(t.name !== alvo.name) {
+      try{ await fetch(SERVER_URL + '/tags/manage', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ de:t.name, para:alvo.name }) }); }catch(_){}
+    }}
+  }
+  showToast('Etiquetas repetidas juntadas','ok');
+  await openTagManager();
+  if(typeof loadAllTags === 'function') loadAllTags();
+}
+async function tagMgrVerLeads(i){
+  const t = _tagMgrList[i];
+  if(!t || !t.count) return;
+  closeTagManager();
+  await openPipeline();
+  try {
+    const painel = document.getElementById('pipeline-filter-panel');
+    if (painel && !painel.classList.contains('open')) await togglePipelineFilter();
+    activePipelineFilterTags.clear();
+    activePipelineFilterTags.add(t.name);
+    const busca = document.getElementById('pf-tag-search');
+    if (busca) busca.value = '';
+    populatePipelineFilterTags();
+    applyPipelineFilter();
+    showToast('Pipeline filtrado por "' + t.name + '"', 'ok');
+  } catch(_) {}
+}
+
 async function tagMgrAdd(){
   const inp = document.getElementById('tagmgr-new');
   const name = inp.value.trim();
   if(!name) return;
+  const parecida = _tagMgrList.find(t => _tagNorm(t.name) === _tagNorm(name));
+  if (parecida) {
+    showToast('Já existe a etiqueta "' + parecida.name + '"', 'err');
+    inp.value = '';
+    return;
+  }
   try{
     await fetch(SERVER_URL + '/tags/manage', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) });
     inp.value = '';
@@ -13572,7 +13692,7 @@ function _tagsNodeRepinta(nodeId) {
     if (box) {
       const lst = _tagsNodeLista(nodeId, campo);
       box.innerHTML = lst.map((t, i) =>
-        `<span class="tag-chip tc${i % 6} removable" title="Clique para remover" onclick="_tagsNodeDel('${nodeId}','${campo}',${i})" style="cursor:pointer">${escHtml(t)} ×</span>`).join('')
+        `<span class="tag-chip ${_tagCor(t)} removable" title="Clique para remover" onclick="_tagsNodeDel('${nodeId}','${campo}',${i})" style="cursor:pointer">${escHtml(t)} ×</span>`).join('')
         || '<span style="font-size:12px;color:#8696a0">nenhuma</span>';
     }
     _tagsNodeSugg(nodeId, campo);
