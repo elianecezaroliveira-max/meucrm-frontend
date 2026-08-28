@@ -579,7 +579,7 @@
   /* FILTER SIDEBAR */
   #filter-toggle{background:none;border:1px solid #e9edef;color:#667781;padding:5px 8px;border-radius:8px;cursor:pointer;font-size:13px;flex-shrink:0}
   #filter-toggle:hover,#filter-toggle.active{border-color:#00a884;color:#00a884}
-  #btn-favoritas{background:none;border:1px solid #e9edef;color:#667781;padding:5px 8px;border-radius:8px;cursor:pointer;font-size:13px;flex-shrink:0}
+  #btn-favoritas{width:100%;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:7px;background:#fff;border:1px solid #e9edef;color:#54656f;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:12.5px;font-weight:600;font-family:inherit}
   #btn-favoritas:hover{border-color:#00a884;color:#00a884}
   body.dark #btn-favoritas{background:#202c33;color:#aebac1;border-color:#2a3942}
   #filter-panel{background:#ffffff;border-bottom:1px solid #e9edef;padding:10px 12px;display:none}
@@ -1931,7 +1931,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v329</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v330</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2079,7 +2079,6 @@ window.addEventListener('load', initAuth);
   <div id="sidebar">
     <div id="search-box" style="display:flex;gap:6px;align-items:center">
       <input type="text" id="search-input" placeholder="Buscar por nome ou mensagem..." oninput="onSearchInput()" style="flex:1" />
-      <button id="btn-favoritas" onclick="abrirFavoritas()" title="Mensagens favoritas"><i class=ic-star></i></button>
       <button id="filter-toggle" onclick="toggleFilterPanel()" title="Filtros"><i class=ic-filter></i></button>
     </div>
     <div id="filter-panel">
@@ -2103,6 +2102,9 @@ window.addEventListener('load', initAuth);
       <input type="date" id="filter-date-from" onchange="applyFilters()">
       <label>Data (até)</label>
       <input type="date" id="filter-date-to" onchange="applyFilters()">
+      <button id="btn-favoritas" onclick="toggleFilterPanel();abrirFavoritas()">
+        <i class=ic-star></i> Ver mensagens favoritas
+      </button>
       <button id="filter-clear" onclick="clearFilters()">✕ Limpar filtros</button>
     </div>
     <div id="contacts-list">
@@ -2548,7 +2550,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v329</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v330</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2602,7 +2604,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 329;
+const APP_VER = 330;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4411,7 +4413,7 @@ async function abrirFavoritas() {
   ov.onclick = (e) => { if (e.target === ov) fecharFavoritas(); };
   const el = document.getElementById('fav-lista');
   try {
-    const r = await fetch(SERVER_URL + '/messages/starred');
+    const r = await fetch(SERVER_URL + '/starred');
     const lista = await r.json();
     if (!r.ok) throw new Error(lista?.error || 'HTTP ' + r.status);
     if (!Array.isArray(lista) || !lista.length) {
