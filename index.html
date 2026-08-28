@@ -1949,7 +1949,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v335</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v336</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2572,7 +2572,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v335</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v336</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2626,7 +2626,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 335;
+const APP_VER = 336;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -8381,12 +8381,20 @@ function renderQRManager() {
       </div>`;
     return;
   }
-  const order = quickReplies.map((r, i) => ({ r, i })).sort((a, b) => (b.r.pinned ? 1 : 0) - (a.r.pinned ? 1 : 0));
-  body.innerHTML = order.map(({ r, i }) => `
+  const q = String(window._qrBusca || '').toLowerCase().trim();
+  let order = quickReplies.map((r, i) => ({ r, i }))
+    .sort((a, b) => (b.r.pinned ? 1 : 0) - (a.r.pinned ? 1 : 0));
+  if (q) order = order.filter(({ r }) =>
+    String(r.title || '').toLowerCase().includes(q) || String(r.message || '').toLowerCase().includes(q));
+  const busca = `<input id="qr-busca" placeholder="Buscar pelo atalho ou pelo texto…" value="${escHtml(window._qrBusca || '')}"
+      oninput="window._qrBusca=this.value;renderQRManager();document.getElementById('qr-busca')?.focus()"
+      style="width:100%;box-sizing:border-box;background:#fff;border:1px solid #e9edef;color:#131c20;padding:9px 12px;border-radius:8px;font-size:13px;font-family:inherit;outline:none;margin-bottom:10px">`;
+  body.innerHTML = busca + (order.length ? order.map(({ r, i }) => `
     <div class="qr-manage-item">
       <div class="qr-manage-info">
-        <div class="qr-manage-name">${r.pinned ? '<i class=ic-pin></i> ' : ''}/${r.title}</div>
-        <div class="qr-manage-text">${r.message}</div>
+        <div class="qr-manage-name">${r.pinned ? '<i class=ic-pin></i> ' : ''}/${escHtml(r.title)}</div>
+        <div class="qr-manage-text">${escHtml(r.message)}</div>
+        ${r.media_url ? `<div style="font-size:11.5px;color:#00806a;margin-top:3px"><i class=ic-clip></i> ${escHtml(r.media_name || 'arquivo anexado')}</div>` : ''}
       </div>
       <div class="qr-manage-btns">
         <button class="qr-manage-btn" onclick="togglePinQR(${i})" title="${r.pinned ? 'Desafixar' : 'Fixar no topo'}" style="${r.pinned ? 'color:#00a884' : ''}"><i class=ic-pin></i></button>
@@ -8394,7 +8402,7 @@ function renderQRManager() {
         <button class="qr-manage-btn del" onclick="deleteQR(${i})"><i class=ic-trash></i></button>
       </div>
     </div>
-  `).join('');
+  `).join('') : '<div style="color:#8696a0;font-size:13px;padding:14px 2px">Nenhuma resposta com esse texto.</div>');
 }
 
 function togglePinQR(i) {
@@ -8417,26 +8425,75 @@ function showQRForm(index) {
       <div>
         <label>Mensagem</label>
         <textarea id="qr-message" placeholder="Olá, {nome}! Como posso ajudar?">${r.message}</textarea>
-        <div id="qr-var-hint">Use <span onclick="insertQRVar()"><b>{nome}</b></span> para inserir o nome do contato automaticamente</div>
+        <div id="qr-var-hint">Use <span onclick="insertQRVar('{nome}')"><b>{nome}</b></span>, <span onclick="insertQRVar('{telefone}')"><b>{telefone}</b></span> ou <span onclick="insertQRVar('{notas}')"><b>{notas}</b></span> — o VETRA troca pelos dados do lead</div>
+      </div>
+      <div>
+        <label>Foto ou arquivo (opcional)</label>
+        <div id="qr-anexo-box"></div>
       </div>
       <div style="display:flex;gap:10px">
         <button class="btn-primary" onclick="saveQRForm()">Salvar</button>
         <button class="btn-secondary" onclick="renderQRManager()">Cancelar</button>
       </div>
     </div>`;
+  _qrAnexoAtual = r.media_url ? { url: r.media_url, mime: r.media_mime || '', name: r.media_name || 'arquivo' } : null;
+  _qrRenderAnexo();
   document.getElementById('qr-title').focus();
+}
+
+// Anexo em edição (some quando você sai do formulário)
+let _qrAnexoAtual = null;
+function _qrRenderAnexo() {
+  const box = document.getElementById('qr-anexo-box');
+  if (!box) return;
+  if (_qrAnexoAtual) {
+    const ehFoto = String(_qrAnexoAtual.mime || '').startsWith('image/');
+    box.innerHTML = `<div style="display:flex;gap:10px;align-items:center;background:#f0f2f5;border-radius:8px;padding:8px">
+        ${ehFoto ? `<img src="${escHtml(_qrAnexoAtual.url)}" style="width:46px;height:46px;object-fit:cover;border-radius:6px">`
+                 : `<span style="font-size:22px;color:#667781"><i class=ic-file></i></span>`}
+        <span style="flex:1;font-size:12.5px;color:#131c20;word-break:break-all">${escHtml(_qrAnexoAtual.name)}</span>
+        <button type="button" onclick="_qrTiraAnexo()" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:13px"><i class=ic-trash></i> Remover</button>
+      </div>`;
+  } else {
+    box.innerHTML = `<label style="display:inline-flex;align-items:center;gap:6px;background:#e7f7ef;border:1px dashed #00a884;color:#00806a;border-radius:8px;padding:8px 12px;font-size:13px;cursor:pointer">
+        <i class=ic-clip></i> Escolher foto ou arquivo
+        <input type="file" style="display:none" onchange="_qrSobeAnexo(this)">
+      </label>`;
+  }
+}
+function _qrTiraAnexo() { _qrAnexoAtual = null; _qrRenderAnexo(); }
+async function _qrSobeAnexo(input) {
+  const f = input && input.files && input.files[0];
+  if (!f) return;
+  if (f.size > 16 * 1024 * 1024) { showToast('Arquivo muito grande. O limite é 16 MB.', 'err'); return; }
+  const box = document.getElementById('qr-anexo-box');
+  if (box) box.innerHTML = '<span style="font-size:12.5px;color:#667781">Enviando o arquivo…</span>';
+  try {
+    const b64 = await new Promise((ok, err) => { const rd = new FileReader(); rd.onload = () => ok(String(rd.result)); rd.onerror = err; rd.readAsDataURL(f); });
+    const rr = await fetch(SERVER_URL + '/bot-media', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: b64, mime: f.type || 'application/octet-stream', filename: f.name || 'arquivo' })
+    });
+    const d = await rr.json().catch(() => ({}));
+    if (!rr.ok || !d.url) throw new Error(d.error || 'falha no envio');
+    _qrAnexoAtual = { url: d.url, mime: f.type || '', name: f.name || 'arquivo' };
+  } catch (e) {
+    showToast('Não consegui anexar: ' + (e.message || e), 'err');
+  }
+  _qrRenderAnexo();
 }
 
 function editQR(index) { showQRForm(index); }
 
-function insertQRVar() {
+function insertQRVar(v) {
   const ta = document.getElementById('qr-message');
   if (!ta) return;
+  const tag = v || '{nome}';
   const pos = ta.selectionStart;
   const val = ta.value;
-  ta.value = val.substring(0, pos) + '{nome}' + val.substring(pos);
+  ta.value = val.substring(0, pos) + tag + val.substring(pos);
   ta.focus();
-  ta.setSelectionRange(pos + 6, pos + 6);
+  ta.setSelectionRange(pos + tag.length, pos + tag.length);
 }
 
 function saveQRForm() {
@@ -8444,11 +8501,18 @@ function saveQRForm() {
   const message = (document.getElementById('qr-message')?.value || '').trim();
   if (!title) { alert('Digite um atalho para a resposta.'); return; }
   if (!message) { alert('Digite o texto da mensagem.'); return; }
+  // Atalho repetido deixa o menu do "/" ambíguo
+  const repetido = quickReplies.some((x, i) => i !== qrEditIndex && String(x.title).toLowerCase() === title);
+  if (repetido) { showToast('Já existe uma resposta com o atalho /' + title, 'err'); return; }
+  const anexo = _qrAnexoAtual ? { media_url: _qrAnexoAtual.url, media_mime: _qrAnexoAtual.mime, media_name: _qrAnexoAtual.name }
+                              : { media_url: null, media_mime: null, media_name: null };
   if (qrEditIndex !== null) {
-    quickReplies[qrEditIndex] = { title, message };
+    // ...quickReplies[qrEditIndex]: mantém o "fixado" e o que mais existir
+    quickReplies[qrEditIndex] = { ...quickReplies[qrEditIndex], title, message, ...anexo };
   } else {
-    quickReplies.push({ title, message });
+    quickReplies.push({ title, message, ...anexo });
   }
+  _qrAnexoAtual = null;
   saveQR();
   renderQRManager();
 }
@@ -8529,7 +8593,7 @@ function showQRPopup(filter, fromSearch) {
     const preview = r.message.replace(/\{nome\}/gi, contactName || '{nome}');
     const short   = preview.length > 90 ? preview.substring(0, 90) + '…' : preview;
     return `<div class="qr-item" onclick="insertQRReply(${quickReplies.indexOf(r)})">
-      <div class="qr-item-title">${r.pinned ? '<i class=ic-pin></i> ' : ''}/${escHtml(r.title)}</div>
+      <div class="qr-item-title">${r.pinned ? '<i class=ic-pin></i> ' : ''}/${escHtml(r.title)}${r.media_url ? ' <i class=ic-clip title="Vai com anexo"></i>' : ''}</div>
       <div class="qr-item-preview">${escHtml(short)}</div>
     </div>`;
   }).join('');
@@ -8544,18 +8608,63 @@ function hideQRPopup() {
   try { const ta = document.getElementById('msg-input'); if (ta && ta.value === '/') { ta.value = ''; if (currentPhone) { delete _drafts[currentPhone]; _saveDrafts(); } if (typeof updateSendMicButtons === 'function') updateSendMicButtons(); } } catch (_) {}
 }
 
+// Troca {nome}, {telefone} e {notas} pelos dados do lead (igual aos bots)
+function _qrVars(txt) {
+  const c = (allContacts || []).find(x => x.phone === currentPhone) || {};
+  let notas = '';
+  try { if (window._lpPhone === currentPhone) notas = document.getElementById('notes-textarea')?.value || ''; } catch (_) {}
+  return String(txt || '')
+    .replace(/\{nome\}/gi, c.name || '')
+    .replace(/\{telefone\}/gi, (typeof fmtPhoneBR === 'function' ? fmtPhoneBR(currentPhone) : (currentPhone || '')))
+    .replace(/\{notas?\}/gi, notas);
+}
 function insertQRReply(index) {
   const r = quickReplies[index];
   if (!r) return;
   const input = document.getElementById('msg-input');
   if (!input) return;
-  const contactName = allContacts.find(c => c.phone === currentPhone)?.name || '';
-  input.value = r.message.replace(/\{nome\}/gi, contactName);
+  const texto = _qrVars(r.message);
+  hideQRPopup();
+  // Resposta COM anexo: abre a prévia do arquivo com o texto já como legenda
+  if (r.media_url) { _qrEnviaComAnexo(r, texto); return; }
+  // Insere no lugar do cursor, sem apagar o que você já escreveu.
+  // Se você chamou pelo "/", o /atalho digitado é substituído.
+  const val = input.value;
+  let ini = (input.selectionStart != null) ? input.selectionStart : val.length;
+  const fim = (input.selectionEnd != null) ? input.selectionEnd : ini;
+  const antes = val.slice(0, ini);
+  const m = antes.match(/(^|\s)(\/[^\s/]*)$/);
+  if (m) ini = antes.length - m[2].length;
+  input.value = val.slice(0, ini) + texto + val.slice(fim);
+  const pos = ini + texto.length;
   input.focus();
+  try { input.setSelectionRange(pos, pos); } catch (_) {}
   autoGrowMsgInput(input);
   updateSendMicButtons(); // mostra o botão ENVIAR (o campo deixou de estar vazio)
   if (currentPhone) { _drafts[currentPhone] = input.value; _saveDrafts(); } // vira rascunho até enviar
-  hideQRPopup();
+}
+// Baixa o anexo guardado e joga no mesmo caminho de um arquivo escolhido à mão
+async function _qrEnviaComAnexo(r, texto) {
+  try {
+    showToast('Preparando o anexo…');
+    const resp = await fetch(r.media_url);
+    if (!resp.ok) throw new Error('não consegui baixar o arquivo');
+    const blob = await resp.blob();
+    const nome = r.media_name || 'arquivo';
+    const file = new File([blob], nome, { type: r.media_mime || blob.type || 'application/octet-stream' });
+    handleFileSelect(file);
+    // Foto/vídeo abrem a prévia com legenda; arquivo usa o campo de mensagem
+    setTimeout(() => {
+      const cap = document.getElementById('mp-caption');
+      if (cap) { cap.value = texto; cap.focus(); }
+      else {
+        const inp = document.getElementById('msg-input');
+        if (inp) { inp.value = texto; try { updateSendMicButtons(); autoGrowMsgInput(inp); } catch (_) {} }
+      }
+    }, 120);
+  } catch (e) {
+    showToast('Não consegui abrir o anexo: ' + (e.message || e), 'err');
+  }
 }
 
 // ── Central de Avisos (números desconectados etc.) ──
