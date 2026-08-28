@@ -1931,7 +1931,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v333</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v334</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2277,6 +2277,7 @@ window.addEventListener('load', initAuth);
   <div style="background:#f0f2f5;border-radius:12px;max-width:1100px;width:96%;max-height:90vh;display:flex;flex-direction:column;overflow:hidden">
     <div style="display:flex;align-items:center;gap:10px;padding:14px 18px;background:#fff;border-bottom:1px solid #e9edef">
       <h3 style="flex:1;margin:0;font-size:16px;color:#131c20">Automação do funil</h3>
+      <button class="pf-topbtn" onclick="abrirRegistroAutomacao()" title="O que a automação fez nos últimos dias">Registro</button>
       <button onclick="closeAutomationPanel()" style="background:none;border:none;font-size:20px;color:#667781;cursor:pointer">✕</button>
     </div>
     <div class="auto-tabs">
@@ -2553,7 +2554,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v333</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v334</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2607,7 +2608,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 333;
+const APP_VER = 334;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -10296,10 +10297,27 @@ function _actionChip(stageId, idx, a) {
   if (a.type === 'tags')          { icon = '<i class=ic-tag></i>'; desc = `Tags: ${(a.add||[]).map(t=>'+'+escHtml(t)).join(' ')} ${(a.remove||[]).map(t=>'−'+escHtml(t)).join(' ')}`; }
   if (a.type === 'move_stage')    { icon = '<i class=ic-right></i>'; desc = `Mover lead para: <b>${escHtml(stName[a.stage_id] || '?')}</b>`; }
   if (a.type === 'create_lead')   { icon = '<i class=ic-user></i>'; desc = `Criar lead: <b>${escHtml(a.name || a.phone || '')}</b>`; }
-  return `<div style="background:#fff7e6;border:1px solid #ffd591;border-radius:8px;padding:7px 9px;font-size:11.5px;color:#131c20;display:flex;align-items:flex-start;gap:6px;margin-bottom:6px">
-    <span style="font-size:14px">${icon}</span>
-    <div style="flex:1;min-width:0"><div style="color:#8c6d1f;font-size:10px">Quando movido para esta etapa</div>${desc}</div>
-    <button onclick="autoRemoveAction('${stageId}',${idx})" title="Remover ação" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:13px;line-height:1">✕</button>
+  const ligada = a.ativo !== false;
+  const marcas = [];
+  if (Number(a.delay_min) > 0) marcas.push('<span title="Espera antes de executar"><i class=ic-clock></i> ' + escHtml(_autoEsperaTexto(a.delay_min)) + '</span>');
+  if (a.cond_tag) marcas.push('<span title="Condição"><i class=ic-tag></i> ' + (a.cond_negar ? 'sem' : 'com') + ' "' + escHtml(a.cond_tag) + '"</span>');
+  const linhaMarcas = marcas.length
+    ? '<div style="display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:5px;font-size:10.5px;color:#8c6d1f">' + marcas.join('') + '</div>' : '';
+  return `<div style="background:${ligada?'#fff7e6':'#f4f5f6'};border:1px solid ${ligada?'#ffd591':'#e0e3e5'};border-radius:8px;padding:7px 9px;font-size:11.5px;color:#131c20;margin-bottom:6px;${ligada?'':'opacity:.7'}">
+    <div style="display:flex;align-items:flex-start;gap:6px">
+      <span style="font-size:14px;line-height:1.2">${icon}</span>
+      <div style="flex:1;min-width:0">
+        <div style="color:#8c6d1f;font-size:10px">Quando movido para esta etapa</div>${desc}${linhaMarcas}
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;margin-top:6px;padding-top:6px;border-top:1px solid ${ligada?'#f3dfb8':'#e6e8ea'}">
+      <label class="v-switch" title="${ligada?'Ligada — clique para pausar':'Pausada — clique para ligar'}" style="transform:scale(.72);transform-origin:left center">
+        <input type="checkbox" ${ligada?'checked':''} onchange="autoToggleAction('${stageId}',${idx},this.checked)"><span></span>
+      </label>
+      <span style="font-size:10.5px;color:#8c6d1f;flex:1;margin-left:-6px">${ligada?'Ligada':'Pausada'}</span>
+      <button onclick="autoEditAction('${stageId}',${idx})" title="Espera e condição" style="background:none;border:none;color:#8c6d1f;cursor:pointer;font-size:13px;line-height:1"><i class=ic-cfg></i></button>
+      <button onclick="autoRemoveAction('${stageId}',${idx})" title="Remover ação" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:13px;line-height:1">✕</button>
+    </div>
   </div>`;
 }
 function renderAutomationBoard() {
@@ -10451,6 +10469,99 @@ async function autoAddActionByType(v, stageId) {
   renderAutomationBoard();
   await _saveStageActions();
 }
+function _autoEsperaTexto(min) {
+  const m = Number(min) || 0;
+  if (m <= 0) return 'na hora';
+  if (m < 60) return m + ' min depois';
+  if (m < 1440) { const h = m / 60; return (Number.isInteger(h) ? h : h.toFixed(1)) + 'h depois'; }
+  const d = m / 1440;
+  return (Number.isInteger(d) ? d : d.toFixed(1)) + (d === 1 ? ' dia depois' : ' dias depois');
+}
+async function autoToggleAction(stageId, idx, on) {
+  const a = (_stageActions[stageId] || [])[idx];
+  if (!a) return;
+  a.ativo = !!on;
+  renderAutomationBoard();
+  await _saveStageActions();
+}
+async function autoEditAction(stageId, idx) {
+  const a = (_stageActions[stageId] || [])[idx];
+  if (!a) return;
+  const tags = [...new Set([...(allTagsList || []), ...(a.cond_tag ? [a.cond_tag] : [])])].sort();
+  const d = await vCampos({
+    titulo: 'Espera e condição',
+    texto: 'Vale só para esta regra.',
+    campos: [
+      { id: 'espera', rotulo: 'Executar', valor: String(Number(a.delay_min) || 0), opcoes: [
+        { v: '0', t: 'Na hora' }, { v: '30', t: '30 minutos depois' }, { v: '60', t: '1 hora depois' },
+        { v: '120', t: '2 horas depois' }, { v: '360', t: '6 horas depois' }, { v: '1440', t: '1 dia depois' },
+        { v: '2880', t: '2 dias depois' }, { v: '4320', t: '3 dias depois' }, { v: '10080', t: '7 dias depois' } ] },
+      { id: 'tag', rotulo: 'Só quando o lead…', valor: a.cond_tag || '', opcoes: [
+        { v: '', t: 'Sempre (sem condição)' } ].concat(tags.map(t => ({ v: t, t: 'tiver a etiqueta "' + t + '"' }))) },
+      { id: 'negar', rotulo: 'Inverter a condição', valor: a.cond_negar ? '1' : '0', opcoes: [
+        { v: '0', t: 'Não — só quando TIVER a etiqueta' }, { v: '1', t: 'Sim — só quando NÃO tiver' } ] }
+    ],
+    confirmar: 'Salvar'
+  });
+  if (!d) return;
+  a.delay_min = parseInt(d.espera, 10) || 0;
+  a.cond_tag = String(d.tag || '').trim() || null;
+  a.cond_negar = d.negar === '1';
+  if (!a.cond_tag) a.cond_negar = false;
+  renderAutomationBoard();
+  await _saveStageActions();
+  showToast('Regra atualizada', 'ok');
+}
+
+// ── Registro: o que a automação fez ──
+async function abrirRegistroAutomacao() {
+  let ov = document.getElementById('autolog-overlay');
+  if (!ov) { ov = document.createElement('div'); ov.id = 'autolog-overlay'; document.body.appendChild(ov); }
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(11,20,26,.55);z-index:9600;display:flex;align-items:center;justify-content:center;padding:16px';
+  ov.innerHTML = '<div style="background:#fff;border-radius:12px;width:min(560px,100%);max-height:80vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.35)">'
+    + '<div style="display:flex;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid #e9edef">'
+    + '<b style="flex:1;font-size:15px;color:#131c20">O que a automação fez</b>'
+    + '<button class="pf-topbtn" onclick="limparRegistroAutomacao()">Limpar</button>'
+    + '<span onclick="fecharRegistroAutomacao()" style="cursor:pointer;font-size:20px;color:#667781">✕</span></div>'
+    + '<div id="autolog-lista" style="flex:1;overflow-y:auto;padding:10px 14px 14px;font-size:13px;color:#667781">Carregando…</div></div>';
+  ov.onclick = (e) => { if (e.target === ov) fecharRegistroAutomacao(); };
+  const el = document.getElementById('autolog-lista');
+  try {
+    const r = await fetch(SERVER_URL + '/automation-log');
+    const lista = await r.json();
+    if (!r.ok) throw new Error(lista?.error || 'HTTP ' + r.status);
+    if (!Array.isArray(lista) || !lista.length) {
+      el.innerHTML = '<div style="padding:18px 0;text-align:center;color:#8696a0">Nada registrado ainda.'
+        + '<br><span style="font-size:12px">Assim que uma regra criar tarefa, mexer em etiqueta, mover ou criar lead, aparece aqui.</span></div>';
+      return;
+    }
+    const stName = {}; (pipelineStages || []).forEach(s => stName[s.id] = s.name);
+    const cor = { task: '#f59e0b', complete_task: '#16a34a', tags: '#14b8a6', move_stage: '#8B5CF6', create_lead: '#0ea5e9' };
+    el.innerHTML = lista.map(x => {
+      const quando = (typeof formatDayLabel === 'function' ? formatDayLabel(x.ts) : '') + ' ' + _brtTime(parseUTC(x.ts));
+      const etapa = stName[x.stage_id] || '';
+      const destino = x.para ? (' → ' + escHtml(stName[x.para] || 'outra etapa')) : '';
+      return '<div style="border-left:3px solid ' + (cor[x.tipo] || '#c4ccd1') + ';background:#f8f9fa;border-radius:6px;padding:8px 10px;margin-bottom:7px">'
+        + '<div style="display:flex;gap:8px;align-items:center;margin-bottom:2px">'
+        + '<b style="flex:1;font-size:12.5px;color:#131c20;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(x.nome || x.phone || '') + '</b>'
+        + '<span style="font-size:11px;color:#8696a0;white-space:nowrap">' + escHtml(quando) + '</span></div>'
+        + '<div style="font-size:12.5px;color:#3b4a54">' + escHtml(x.texto || '') + destino + '</div>'
+        + (etapa ? '<div style="font-size:11px;color:#8696a0;margin-top:2px">Etapa: ' + escHtml(etapa) + '</div>' : '')
+        + '</div>';
+    }).join('');
+  } catch (e) {
+    el.innerHTML = '<div style="color:#ef4444;padding:14px 0">Não consegui carregar o registro: ' + escHtml(e.message || String(e)) + '</div>';
+  }
+}
+function fecharRegistroAutomacao() { const ov = document.getElementById('autolog-overlay'); if (ov) ov.remove(); }
+async function limparRegistroAutomacao() {
+  if (!await vConfirm({ titulo: 'Limpar registro', texto: 'O histórico do que a automação fez será apagado. As regras continuam iguais.', confirmar: 'Limpar', perigo: true })) return;
+  try {
+    await fetch(SERVER_URL + '/automation-log', { method: 'DELETE' });
+    abrirRegistroAutomacao();
+  } catch (_) { showToast('Não consegui limpar', 'err'); }
+}
+
 async function autoRemoveAction(stageId, idx) {
   if (!_stageActions[stageId]) return;
   _stageActions[stageId].splice(idx, 1);
