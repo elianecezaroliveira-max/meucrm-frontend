@@ -1718,6 +1718,24 @@ window.addEventListener('load', initAuth);
           <label>Conta WhatsApp</label>
           <select id="tmpl-list-account-id" onchange="loadTemplates()"></select>
         </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+          <input id="tmpl-busca" placeholder="Buscar pelo nome ou pelo texto…" oninput="renderTemplateList(allTemplates)"
+            style="flex:1 1 200px;min-width:150px;background:#fff;border:1px solid #e9edef;color:#131c20;padding:8px 11px;border-radius:8px;font-size:13px;font-family:inherit;outline:none">
+          <select id="tmpl-filtro-status" onchange="renderTemplateList(allTemplates)"
+            style="background:#fff;border:1px solid #e9edef;color:#131c20;padding:8px 10px;border-radius:8px;font-size:13px;font-family:inherit;cursor:pointer">
+            <option value="">Todas as situações</option>
+            <option value="APPROVED">Aprovados</option>
+            <option value="PENDING">Em análise</option>
+            <option value="REJECTED">Reprovados</option>
+            <option value="PAUSED">Pausados</option>
+          </select>
+          <select id="tmpl-ordem" onchange="renderTemplateList(allTemplates)"
+            style="background:#fff;border:1px solid #e9edef;color:#131c20;padding:8px 10px;border-radius:8px;font-size:13px;font-family:inherit;cursor:pointer">
+            <option value="status">Aprovados primeiro</option>
+            <option value="nome">Por nome (A–Z)</option>
+            <option value="meta">Ordem da Meta</option>
+          </select>
+        </div>
         <div id="tmpl-list-content"><p style="color:#667781;font-size:13px">Selecione uma conta para ver os modelos.</p></div>
       </div>
       <!-- CRIAR -->
@@ -1931,7 +1949,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v334</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v335</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2554,7 +2572,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v334</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v335</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2608,7 +2626,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 334;
+const APP_VER = 335;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -9506,6 +9524,7 @@ async function loadTemplates() {
   }
   document.getElementById('tmpl-list-content').innerHTML = '<p style="color:#667781;font-size:13px">Carregando modelos...</p>';
   try {
+    await _carregaOcultos();
     const res = await fetch(SERVER_URL + '/templates?account_id=' + accountId);
     allTemplates = await res.json();
     if (!Array.isArray(allTemplates)) throw new Error(allTemplates.error || 'Erro');
@@ -9515,22 +9534,64 @@ async function loadTemplates() {
   }
 }
 
-// Modelos "excluídos" só no CRM (escondidos localmente, sem mexer na Meta)
+// Modelos "excluídos" só no CRM (a Meta às vezes recusa apagar). A lista fica
+// guardada NA CONTA — vale no computador e no celular. O navegador é só reserva.
+let _tmplOcultos = null;
 function getHiddenTemplates() {
+  if (Array.isArray(_tmplOcultos)) return _tmplOcultos;
   try { return JSON.parse(localStorage.getItem(_uKey('hiddenTemplates')) || '[]'); } catch(e) { return []; }
+}
+async function _carregaOcultos() {
+  try {
+    const r = await fetch(SERVER_URL + '/tmpl-ocultos');
+    const v = await r.json();
+    if (r.ok && Array.isArray(v)) {
+      // junta com o que já estava só neste aparelho (migração da lista antiga)
+      let locais = []; try { locais = JSON.parse(localStorage.getItem(_uKey('hiddenTemplates')) || '[]'); } catch (_) {}
+      const uniao = [...new Set([...v, ...locais])];
+      _tmplOcultos = uniao;
+      if (uniao.length !== v.length) _salvaOcultos();
+    }
+  } catch (_) { /* offline: segue com o que está no navegador */ }
+  return getHiddenTemplates();
+}
+async function _salvaOcultos() {
+  const ids = getHiddenTemplates();
+  try { localStorage.setItem(_uKey('hiddenTemplates'), JSON.stringify(ids)); } catch (_) {}
+  try { await fetch(SERVER_URL + '/tmpl-ocultos', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ids }) }); } catch (_) {}
 }
 function hideTemplate(id) {
   if (!id) return;
   const h = getHiddenTemplates();
-  if (!h.includes(id)) { h.push(id); localStorage.setItem(_uKey('hiddenTemplates'), JSON.stringify(h)); }
+  if (!h.includes(id)) { h.push(id); _tmplOcultos = h; _salvaOcultos(); }
 }
 
 function renderTemplateList(templates) {
   const hidden = getHiddenTemplates();
-  templates = (templates || []).filter(t => !hidden.includes(t.id));
+  const todos = (templates || []).filter(t => !hidden.includes(t.id));
   const el = document.getElementById('tmpl-list-content');
+  const q = (document.getElementById('tmpl-busca')?.value || '').toLowerCase().trim();
+  const fSt = document.getElementById('tmpl-filtro-status')?.value || '';
+  const ordem = document.getElementById('tmpl-ordem')?.value || 'status';
+  templates = todos.filter(t => {
+    if (fSt && String(t.status) !== fSt) return false;
+    if (!q) return true;
+    const corpo = ((t.components || []).find(c => c.type === 'BODY')?.text || '').toLowerCase();
+    return String(t.name || '').toLowerCase().includes(q)
+        || String(tmplNome(t) || '').toLowerCase().includes(q)
+        || corpo.includes(q);
+  });
+  if (ordem === 'nome') {
+    templates = [...templates].sort((a, b) => String(tmplNome(a)).localeCompare(String(tmplNome(b)), 'pt-BR'));
+  } else if (ordem === 'status') {
+    const peso = { APPROVED: 0, PENDING: 1, PAUSED: 2, REJECTED: 3, DISABLED: 4 };
+    templates = [...templates].sort((a, b) =>
+      ((peso[a.status] ?? 9) - (peso[b.status] ?? 9)) || String(tmplNome(a)).localeCompare(String(tmplNome(b)), 'pt-BR'));
+  }
   if (!templates.length) {
-    el.innerHTML = '<p style="color:#667781;font-size:13px">Nenhum modelo encontrado. Crie o primeiro modelo!</p>';
+    el.innerHTML = todos.length
+      ? '<p style="color:#667781;font-size:13px">Nenhum modelo com esse filtro.</p>'
+      : '<p style="color:#667781;font-size:13px">Nenhum modelo encontrado. Crie o primeiro modelo!</p>';
     return;
   }
   const accountId = document.getElementById('tmpl-list-account-id')?.value || document.getElementById('tmpl-account-id')?.value || document.getElementById('account-select').value;
@@ -9552,10 +9613,20 @@ function renderTemplateList(templates) {
           <span class="tmpl-status ${t.status}">${stTxt}</span>
         </div>
         <div class="tmpl-preview">${escHtml(preview) || '<span style="color:#aaa">(sem corpo)</span>'}</div>
+        ${(function(){
+          const mot = _tmplMotivo(t), qual = _tmplQualidade(t);
+          const partes = [];
+          if (mot)  partes.push('<b>Recusado:</b> ' + escHtml(mot));
+          if (qual && !/boa/.test(qual)) partes.push('<b>Qualidade:</b> ' + escHtml(qual));
+          return partes.length
+            ? '<div style="margin-top:6px;font-size:11.5px;color:#8c3b00;background:#fff7e6;border:1px solid #ffd591;border-radius:6px;padding:6px 8px">' + partes.join(' · ') + '</div>'
+            : '';
+        })()}
         <div class="tmpl-foot">
           <span class="tmpl-chip">${escHtml(catLabel)}</span><span class="tmpl-chip">${escHtml(t.language)}</span>${extras ? `<span class="tmpl-chip" style="background:transparent;border:none;color:#8696a0">${extras}</span>` : ''}
-          <span style="flex:1"></span>
+          <span style="flex:1 0 100%"></span>
           <button class="bot-act" onclick="event.stopPropagation();verModelo('${escHtml(t.id)}')"><i class=ic-eye></i> Ver</button>
+          <button class="bot-act" onclick="event.stopPropagation();duplicarModelo('${escHtml(t.id)}')" title="Criar outro modelo a partir deste"><i class=ic-copy></i> Duplicar</button>
           <button class="bot-act del" onclick="event.stopPropagation();deleteTemplate('${_jsAttr(t.name)}','${escHtml(t.id)}','${escHtml(accountId)}')" title="Excluir modelo">Excluir</button>
         </div>
       </div>`;
@@ -9627,6 +9698,17 @@ function _garanteOpcao(sel, valor, rotulo) {
 function verModelo(tmplId) {
   const t = (allTemplates || []).find(x => String(x.id) === String(tmplId));
   if (!t) return;
+  _preencheFormModelo(t, false);
+}
+// Duplicar: abre o formulário de CRIAÇÃO já preenchido (a Meta não deixa editar
+// um modelo existente; o caminho é criar outro parecido)
+function duplicarModelo(tmplId) {
+  const t = (allTemplates || []).find(x => String(x.id) === String(tmplId));
+  if (!t) return;
+  _preencheFormModelo(t, true);
+  showToast('Modelo copiado — troque o nome e envie para análise', 'ok');
+}
+function _preencheFormModelo(t, duplicando) {
   const comps  = t.components || [];
   const body   = comps.find(c => c.type === 'BODY');
   const footer = comps.find(c => c.type === 'FOOTER');
@@ -9634,14 +9716,15 @@ function verModelo(tmplId) {
   const btns   = (comps.find(c => c.type === 'BUTTONS')?.buttons || []);
   const stTxt = { APPROVED: 'Aprovado', PENDING: 'Em análise', REJECTED: 'Reprovado', PAUSED: 'Pausado' }[t.status] || t.status;
 
-  _tmplViewMode = true; _tmplViewId = String(t.id);
-  switchTmplTab('create', { view: true });
-  _setTmplFormReadonly(false); // habilita para preencher; trava no fim
+  _tmplViewMode = !duplicando; _tmplViewId = duplicando ? null : String(t.id);
+  switchTmplTab('create', { view: !duplicando });
+  _setTmplFormReadonly(false); // habilita para preencher; trava no fim (se for visualização)
 
   // conta / nome / categoria / idioma
   const accId = document.getElementById('tmpl-list-account-id')?.value || '';
   const accSel = document.getElementById('tmpl-account-id'); if (accSel && accId) accSel.value = accId;
-  document.getElementById('tmpl-name').value = t.name;
+  document.getElementById('tmpl-name').value = duplicando ? _nomeCopia(t.name) : t.name;
+  try { _tmplNomeInput(document.getElementById('tmpl-name')); } catch (_) {}
   _garanteOpcao(document.getElementById('tmpl-category'), t.category);
   _garanteOpcao(document.getElementById('tmpl-language'), t.language);
 
@@ -9681,16 +9764,63 @@ function verModelo(tmplId) {
     bl.appendChild(div);
   });
 
+  if (duplicando) {
+    document.getElementById('tmpl-view-bar').style.display = 'none';
+    updateTemplatePreview();
+    const tb0 = document.querySelector('#templates-modal .tmpl-body'); if (tb0) tb0.scrollTop = 0;
+    return;
+  }
   // apelido + status na barra
   document.getElementById('tmpl-alias-input').value = _tmplAlias[t.id] || '';
   const bar = document.getElementById('tmpl-view-bar');
   let st = bar.querySelector('.tmpl-view-status');
   if (!st) { st = document.createElement('span'); st.className = 'tmpl-view-status'; bar.firstElementChild.insertBefore(st, bar.firstElementChild.children[1]); }
   st.innerHTML = `<span class="tmpl-status ${t.status}">${stTxt}</span>`;
+  // Motivo da recusa e qualidade, direto da Meta
+  let mot = bar.querySelector('.tmpl-view-motivo');
+  if (!mot) { mot = document.createElement('div'); mot.className = 'tmpl-view-motivo'; bar.appendChild(mot); }
+  const motivoTxt = _tmplMotivo(t), qual = _tmplQualidade(t);
+  mot.innerHTML = (motivoTxt || qual)
+    ? `<div style="margin-top:8px;font-size:12px;color:#8c3b00;background:#fff7e6;border:1px solid #ffd591;border-radius:8px;padding:8px 10px">
+        ${motivoTxt ? '<b>Por que a Meta recusou:</b> ' + escHtml(motivoTxt) : ''}
+        ${motivoTxt && qual ? '<br>' : ''}
+        ${qual ? '<b>Qualidade:</b> ' + escHtml(qual) : ''}
+      </div>` : '';
 
   _setTmplFormReadonly(true);
   updateTemplatePreview();
   const tb = document.querySelector('#templates-modal .tmpl-body'); if (tb) tb.scrollTop = 0;
+}
+
+// "boas vindas" -> "boas vindas 2" / "boas vindas 3"…
+function _nomeCopia(nome) {
+  const base = String(nome || 'modelo').replace(/_/g, ' ').replace(/\s+\d+$/, '').trim();
+  const usados = new Set((allTemplates || []).map(x => String(x.name || '').toLowerCase()));
+  for (let i = 2; i < 50; i++) {
+    const cand = base + ' ' + i;
+    if (!usados.has(cand.replace(/\s+/g, '_').toLowerCase())) return cand;
+  }
+  return base + ' copia';
+}
+// Motivo da recusa (a Meta manda um código curto) traduzido
+function _tmplMotivo(t) {
+  const r = String(t.rejected_reason || '').toUpperCase();
+  if (!r || r === 'NONE') return '';
+  const mapa = {
+    ABUSIVE_CONTENT: 'conteúdo considerado abusivo ou enganoso',
+    INCORRECT_CATEGORY: 'categoria errada — a Meta acha que o modelo é de outra categoria',
+    INVALID_FORMAT: 'formatação inválida (variáveis, espaços ou pontuação fora do padrão)',
+    SCAM: 'conteúdo parecido com golpe',
+    PROMOTIONAL: 'conteúdo promocional numa categoria que não permite',
+    TAG_CONTENT_MISMATCH: 'o conteúdo não combina com a categoria escolhida',
+    NONE: ''
+  };
+  return mapa[r] || r.toLowerCase().replace(/_/g, ' ');
+}
+function _tmplQualidade(t) {
+  const q = String(t.quality_score?.score || t.quality_score || '').toUpperCase();
+  const mapa = { GREEN: 'boa (verde)', YELLOW: 'atenção (amarela)', RED: 'ruim (vermelha) — risco de a Meta pausar', UNKNOWN: '' };
+  return mapa[q] || '';
 }
 
 async function deleteTemplate(templateName, templateId, accountId) {
