@@ -1931,7 +1931,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v331</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v332</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2553,7 +2553,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v331</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v332</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2607,7 +2607,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 331;
+const APP_VER = 332;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -11203,9 +11203,9 @@ let _nodeDragState = null;
 let _botStages = [];
 let _activeBotRun = null;
 const NODE_W = 220;
-const NODE_COLORS = { start:'#25D366', message:'#1d9bf0', wait_reply:'#FF9800', pause:'#6B7280', move_stage:'#8B5CF6', end:'#EF4444', round_robin:'#0ea5e9', tags:'#14b8a6', task:'#f59e0b', complete_task:'#16a34a', mark_read:'#22c55e', business_hours:'#f97316' };
-const NODE_ICONS  = { start:'<i class=ic-play></i>', message:'<i class=ic-chat></i>', wait_reply:'<i class=ic-help></i>', pause:'<i class=ic-clock></i>', move_stage:'<i class=ic-right></i>', end:'<i class=ic-stop></i>', round_robin:'<i class=ic-shuffle></i>', tags:'<i class=ic-tag></i>', task:'<i class=ic-plus></i>', complete_task:'<i class=ic-task></i>', mark_read:'<i class=ic-check></i>', business_hours:'<i class=ic-clock></i>' };
-const NODE_LABELS = { start:'Início', message:'Enviar mensagem', wait_reply:'Aguardar resposta', pause:'Cronômetro', move_stage:'Mudar status', end:'Fim', round_robin:'Rodízio de números', tags:'Gerenciar etiquetas', task:'Criar tarefa', complete_task:'Concluir tarefas', mark_read:'Marcar como lida', business_hours:'Horário comercial' };
+const NODE_COLORS = { start:'#25D366', message:'#1d9bf0', wait_reply:'#FF9800', pause:'#6B7280', move_stage:'#8B5CF6', end:'#EF4444', round_robin:'#0ea5e9', tags:'#14b8a6', task:'#f59e0b', complete_task:'#16a34a', mark_read:'#22c55e', business_hours:'#f97316', condition:'#7c3aed' };
+const NODE_ICONS  = { start:'<i class=ic-play></i>', message:'<i class=ic-chat></i>', wait_reply:'<i class=ic-help></i>', pause:'<i class=ic-clock></i>', move_stage:'<i class=ic-right></i>', end:'<i class=ic-stop></i>', round_robin:'<i class=ic-shuffle></i>', tags:'<i class=ic-tag></i>', task:'<i class=ic-plus></i>', complete_task:'<i class=ic-task></i>', mark_read:'<i class=ic-check></i>', business_hours:'<i class=ic-clock></i>', condition:'<i class=ic-shuffle></i>' };
+const NODE_LABELS = { start:'Início', message:'Enviar mensagem', wait_reply:'Aguardar resposta', pause:'Cronômetro', move_stage:'Mudar status', end:'Fim', round_robin:'Rodízio de números', tags:'Gerenciar etiquetas', task:'Criar tarefa', complete_task:'Concluir tarefas', mark_read:'Marcar como lida', business_hours:'Horário comercial', condition:'Condição (etiqueta ou etapa)' };
 
 function _botGenId() { return 'n' + Date.now().toString(36) + Math.random().toString(36).substring(2,6); }
 
@@ -12360,7 +12360,7 @@ function _botInheritedAcct(nodeId){
 
 function botOutSlots(node){
   if (node.type==='end') return [];
-  if (node.type==='wait_reply' || node.type==='round_robin' || node.type==='message' || node.type==='business_hours')
+  if (node.type==='wait_reply' || node.type==='round_robin' || node.type==='message' || node.type==='business_hours' || node.type==='condition')
     return getOutputPorts(node).map(p=>({label:p.label, display:p.display||p.label||''}));
   return [{label:'', display:''}];
 }
@@ -13015,6 +13015,13 @@ function getNodePreview(node) {
     const s = _botStages.find(s=>s.id===cfg.stage_id);
     return s ? s.name : '(selecione o status)';
   }
+  if (node.type==='condition') {
+    if (cfg.campo==='etapa') {
+      const st=_botStages.find(x=>x.id===cfg.stage_id);
+      return (cfg.negar?'NÃO está em: ':'Está em: ') + (st? st.name : '(selecione a etapa)');
+    }
+    return (cfg.negar?'NÃO tem a etiqueta: ':'Tem a etiqueta: ') + (String(cfg.tag||'').trim() || '(escolha a etiqueta)');
+  }
   if (node.type==='round_robin') { const n=(cfg.branches||[]).length; return n? `Rodízio entre ${n} opção(ões)` : '(adicione opções)'; }
   if (node.type==='tags') {
     const a=(cfg.add||[]), r=(cfg.remove||[]);
@@ -13243,6 +13250,9 @@ function getOutputPorts(node) {
     const branches = node.config?.branches||[];
     return branches.map((b,i)=>({label:String(i), display:(b&&b.name)||('Opção '+(i+1))}));
   }
+  if (node.type==='condition') {
+    return [{label:'__sim__', display:'Sim'}, {label:'__nao__', display:'Não'}];
+  }
   if (node.type==='business_hours') {
     const ports = [{label:'__open__', display:'Em expediente'}];
     if (node.config?.wait===false) ports.push({label:'__closed__', display:'Fora do expediente'});
@@ -13444,6 +13454,7 @@ function botDefaultConfig(type) {
   if (type==='task') c.due_hours=24;
   if (type==='complete_task') c.match='all';
   if (type==='business_hours') { c.days=[1,2,3,4,5]; c.start='08:00'; c.end='18:00'; c.wait=true; }
+  if (type==='condition') { c.campo='tag'; c.tag=''; c.stage_id=''; c.negar=false; }
   return c;
 }
 
@@ -13455,6 +13466,7 @@ const STEP_TYPES = [
   ['tags','Gerenciar etiquetas'],
   ['task','➕ Criar tarefa'],
   ['complete_task','Concluir tarefas'],
+  ['condition','Condição: etiqueta ou etapa'],
   ['business_hours','Horário comercial'],
   ['mark_read','✓ Marcar como lida'],
   ['move_stage','Mudar status'],
@@ -13668,7 +13680,70 @@ function renderConfigPanel(node) {
   form.style.display='block';
 
   if (node.type==='start'||node.type==='end') {
-    form.innerHTML = `<div style="color:#667781;font-size:13px">${node.type==='start'?'Nó de início do bot. O fluxo começa aqui.':'Nó de fim do bot. O fluxo encerra aqui.'}</div>`;
+    if (node.type==='end') {
+      form.innerHTML = '<div style="color:#667781;font-size:13px">Nó de fim do bot. O fluxo encerra aqui.</div>';
+      return;
+    }
+    const parar = !!node.config.parar_ao_responder;
+    form.innerHTML = `
+      <div style="color:#667781;font-size:13px;margin-bottom:14px">Nó de início do bot. O fluxo começa aqui.</div>
+      <label style="display:flex;gap:10px;align-items:flex-start;cursor:pointer;background:#f0f2f5;border-radius:10px;padding:10px 12px">
+        <input type="checkbox" id="cfg-parar-resp" ${parar?'checked':''} style="margin-top:2px;width:16px;height:16px;accent-color:#00a884;cursor:pointer">
+        <span style="font-size:13px;color:#131c20;line-height:1.4">
+          <b>Parar se o lead responder</b>
+          <div style="font-size:12px;color:#667781;margin-top:2px">Qualquer mensagem do lead encerra a sequência — inclusive no meio de um cronômetro. Passos "Aguardar resposta" continuam funcionando normalmente.</div>
+        </span>
+      </label>`;
+    document.getElementById('cfg-parar-resp').addEventListener('change', function(){
+      updateNodeConfig(node.id, { parar_ao_responder: this.checked });
+    });
+    return;
+  }
+
+  if (node.type==='condition') {
+    const campo = node.config.campo || 'tag';
+    const tags = [...new Set([...(allTagsList||[]), ...(node.config.tag?[node.config.tag]:[])])].sort();
+    // Etiquetas ainda não carregadas nesta sessão: busca e redesenha o painel
+    if (!(allTagsList||[]).length && !window._condTagsCarregando) {
+      window._condTagsCarregando = true;
+      loadAllTags().then(() => {
+        window._condTagsCarregando = false;
+        if (selectedNodeId === node.id && (allTagsList||[]).length) renderConfigPanel(node);
+      });
+    }
+    form.innerHTML = `
+      <div style="font-size:12.5px;color:#667781;margin-bottom:12px">O bot olha o cadastro do lead e segue pela saída <b>Sim</b> ou <b>Não</b>.</div>
+      <label class="bot-cfg-label">Verificar</label>
+      <select class="bot-cfg-select" id="cfg-cond-campo">
+        <option value="tag" ${campo==='tag'?'selected':''}>Etiqueta do lead</option>
+        <option value="etapa" ${campo==='etapa'?'selected':''}>Etapa do funil</option>
+      </select>
+      <div id="cfg-cond-tag" style="display:${campo==='etapa'?'none':'block'}">
+        <label class="bot-cfg-label" style="margin-top:12px">Etiqueta</label>
+        <select class="bot-cfg-select" id="cfg-cond-tagsel">
+          <option value="">(escolha a etiqueta)</option>
+          ${tags.map(t=>`<option value="${escHtml(t)}" ${String(node.config.tag||'')===t?'selected':''}>${escHtml(t)}</option>`).join('')}
+        </select>
+      </div>
+      <div id="cfg-cond-etapa" style="display:${campo==='etapa'?'block':'none'}">
+        <label class="bot-cfg-label" style="margin-top:12px">Etapa</label>
+        <select class="bot-cfg-select" id="cfg-cond-etapasel">
+          <option value="">(escolha a etapa)</option>
+          ${(_botStages||[]).map(st=>`<option value="${escHtml(st.id)}" ${String(node.config.stage_id||'')===String(st.id)?'selected':''}>${escHtml(st.name)}</option>`).join('')}
+        </select>
+      </div>
+      <label style="display:flex;gap:9px;align-items:center;cursor:pointer;margin-top:14px">
+        <input type="checkbox" id="cfg-cond-negar" ${node.config.negar?'checked':''} style="width:16px;height:16px;accent-color:#00a884;cursor:pointer">
+        <span style="font-size:13px;color:#131c20">Inverter: seguir por <b>Sim</b> quando <b>NÃO</b> bater</span>
+      </label>`;
+    document.getElementById('cfg-cond-campo').addEventListener('change', function(){
+      updateNodeConfig(node.id, { campo: this.value });
+      document.getElementById('cfg-cond-tag').style.display   = this.value==='etapa' ? 'none' : 'block';
+      document.getElementById('cfg-cond-etapa').style.display = this.value==='etapa' ? 'block' : 'none';
+    });
+    document.getElementById('cfg-cond-tagsel')?.addEventListener('change', function(){ updateNodeConfig(node.id,{tag:this.value}); });
+    document.getElementById('cfg-cond-etapasel')?.addEventListener('change', function(){ updateNodeConfig(node.id,{stage_id:this.value}); });
+    document.getElementById('cfg-cond-negar').addEventListener('change', function(){ updateNodeConfig(node.id,{negar:this.checked}); });
     return;
   }
 
