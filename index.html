@@ -707,6 +707,11 @@
   }
   .msg-menu-btn { background:rgba(255,255,255,.9); border:none; cursor:pointer; color:#667781; font-size:13px; padding:1px 8px; border-radius:10px; line-height:1.5; box-shadow:0 1px 3px rgba(0,0,0,.18); }
   .msg-menu-btn:hover { background:#e9edef; color:#131c20; }
+  /* Computador: guarda o espaço da setinha para ela NUNCA cobrir o horário, os
+     tiques de entrega nem o aviso de falha no envio (mensagens curtas) */
+  @media (hover: hover) and (pointer: fine) {
+    .msg:not(:has(.msg-image)):not(:has(video)):not([data-key^="alb-"]) .time { padding-right: 26px; }
+  }
   /* Reply preview bar acima do input */
   /* Prévia da resposta: linha própria ACIMA do campo (o campo fica todo livre) */
   #reply-bar { display:none; align-items:center; gap:8px; padding:8px 12px; background:#e9edef; border-left:3px solid #00a884; border-radius:8px; width:100%; box-sizing:border-box; }
@@ -1923,7 +1928,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v325</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v326</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2538,7 +2543,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v325</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v326</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2592,7 +2597,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 325;
+const APP_VER = 326;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -6616,7 +6621,7 @@ async function loadMessages(phone, scroll = true) {
         if (m.direction === 'outbound') {
           if (m.status === 'read')           ticks = '<span class="msg-ticks read">' + TICK_TWO + '</span>';
           else if (m.status === 'delivered') ticks = '<span class="msg-ticks delivered">' + TICK_TWO + '</span>';
-          else if (m.status === 'failed')    ticks = `<span class="msg-ticks failed" style="cursor:pointer" title="${escHtml(m.error_info||'Falha no envio sem motivo registrado (mensagem anterior à atualização). Reenvie para ver o detalhe da Meta.')}" onclick="alert('Falha no envio:\\n\\n'+this.title)"><i class=ic-alert></i></span>`;
+          else if (m.status === 'failed')    ticks = `<span class="msg-ticks failed" style="cursor:pointer" title="${escHtml(m.error_info||'Falha no envio sem motivo registrado (mensagem anterior à atualização). Reenvie para ver o detalhe da Meta.')}" onclick="_verFalha(this)"><i class=ic-alert></i></span>`;
           else if (m.status === 'pending' && !m.wamid) ticks = '<span class="msg-ticks pending" title="Enviando… aguardando confirmação do WhatsApp">' + TICK_CLOCK + '</span>';
           else                               ticks = '<span class="msg-ticks sent">' + TICK_ONE + '</span>';
         }
@@ -7732,6 +7737,22 @@ function vConfirm(opts) {
     <button class="btn-save ${o.perigo ? 'vdlg-perigo' : ''}" id="vdlg-ok" onclick="_vdlgFecha(true)">${escHtml(o.confirmar || 'Confirmar')}</button>`;
   return _vdlgAbre({ titulo: escHtml(o.titulo || (o.perigo ? 'Confirmar' : 'Confirmar')), texto: o.texto || '', botoes: btns, foco: 'vdlg-ok' })
     .then(v => v === true);
+}
+// Aviso simples: só informa, com um botão só (sem "Cancelar")
+function vAviso(o) {
+  const x = typeof o === 'string' ? { texto: o } : (o || {});
+  return _vdlgAbre({
+    titulo: escHtml(x.titulo || 'Aviso'),
+    texto: x.texto || '',
+    botoes: `<button class="btn-save" id="vdlg-ok" onclick="_vdlgFecha(true)">${escHtml(x.ok || 'Entendi')}</button>`,
+    foco: 'vdlg-ok'
+  });
+}
+// Detalhe da falha de envio (o motivo vem da Meta e fica no title do ícone)
+function _verFalha(el) {
+  try {
+    vAviso({ titulo: 'Falha no envio', texto: escHtml(el.title || 'Sem motivo registrado.').replace(/\n/g, '<br>') });
+  } catch (_) {}
 }
 // Perguntar um texto (devolve o texto ou null se cancelar)
 function vPrompt(opts) {
