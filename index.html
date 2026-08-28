@@ -1949,7 +1949,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v337</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v338</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2572,7 +2572,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v337</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v338</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2626,7 +2626,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 337;
+const APP_VER = 338;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2983,7 +2983,30 @@ async function loadAccounts() {
       sel.appendChild(opt);
     });
     renderAccountsModal(accounts);
+    // Quantas mensagens saíram por número (não trava a lista se demorar)
+    fetch(SERVER_URL + '/accounts/uso').then(r => r.json()).then(u => {
+      if (u && typeof u === 'object' && !u.error) { _accUso = u; renderAccountsModal(accounts); }
+    }).catch(() => {});
   } catch(e) {}
+}
+let _accUso = {};
+// Qualidade e limite diário vindos da Meta, em português
+function _accQualidade(q) {
+  return { GREEN: ['Qualidade boa', '#00806a', '#e7f7ef', '#b7e4d3'],
+           YELLOW: ['Qualidade em atenção', '#8c6d1f', '#fff7e6', '#ffd591'],
+           RED: ['Qualidade ruim — risco de bloqueio', '#c0392b', '#fde8e8', '#f1b0a7'] }[String(q || '').toUpperCase()] || null;
+}
+function _accLimite(t) {
+  return { TIER_50: 'até 50 conversas/dia', TIER_250: 'até 250 conversas/dia',
+           TIER_1K: 'até 1.000 conversas/dia', TIER_10K: 'até 10.000 conversas/dia',
+           TIER_100K: 'até 100.000 conversas/dia', TIER_UNLIMITED: 'sem limite de conversas' }[String(t || '').toUpperCase()] || '';
+}
+async function copiarTexto(txt, btn) {
+  try {
+    if (navigator.clipboard) await navigator.clipboard.writeText(txt);
+    else { const t = document.createElement('textarea'); t.value = txt; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); }
+    if (btn) { const o = btn.innerHTML; btn.innerHTML = 'Copiado'; setTimeout(() => { btn.innerHTML = o; }, 1200); }
+  } catch (_) { showToast('Não consegui copiar', 'err'); }
 }
 
 function renderAccountsModal(accounts) {
@@ -3010,12 +3033,29 @@ function renderAccountsModal(accounts) {
           : '';
     const sub = isEvo
       ? (acc.phone_display ? `${acc.phone_display}` : 'WhatsApp Pessoal')
-      : (acc.phone_display || '') + (acc.phone_number_id ? ` · ID: ${acc.phone_number_id}` : '');
+      : (acc.phone_display || '');
+    // Qualidade / limite diário (só a API oficial) + quanto saiu por este número
+    const q = _accQualidade(acc.qualidade);
+    const lim = _accLimite(acc.limite);
+    const uso = _accUso[acc.id] || null;
+    const chips = [];
+    if (q)   chips.push(`<span style="background:${q[2]};border:1px solid ${q[3]};color:${q[1]};font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:10px">${q[0]}</span>`);
+    if (lim) chips.push(`<span style="background:#f0f2f5;border:1px solid #e9edef;color:#54656f;font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:10px" title="Limite da Meta para este número">${escHtml(lim)}</span>`);
+    if (uso) chips.push(`<span style="background:#f0f2f5;border:1px solid #e9edef;color:#54656f;font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:10px" title="Mensagens enviadas por este número">hoje ${uso.hoje} · 7 dias ${uso.semana}</span>`);
+    const linhaChips = chips.length ? `<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:5px">${chips.join('')}</div>` : '';
+    // IDs que a Meta e o n8n pedem — com botão de copiar
+    const ids = [];
+    if (!isEvo && acc.phone_number_id) ids.push(['Phone Number ID', acc.phone_number_id]);
+    if (!isEvo && acc.waba_id)         ids.push(['WABA ID', acc.waba_id]);
+    const linhaIds = ids.length ? `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:5px">${ids.map(([rot, val]) =>
+      `<span style="font-size:11px;color:#8696a0">${rot}: <code style="color:#54656f">${escHtml(val)}</code>
+        <button onclick="event.stopPropagation();copiarTexto('${escHtml(val)}',this)" style="background:none;border:none;color:#00806a;cursor:pointer;font-size:11px;font-weight:600;font-family:inherit">copiar</button></span>`).join('')}</div>` : '';
     return `
     <div class="account-row">
       <div class="acc-info">
         <div class="acc-name">${escHtml(acc.name)}${badge}${stBadge}</div>
         <div class="acc-id">${escHtml(sub)}</div>
+        ${linhaChips}${linhaIds}
       </div>
       ${isEvo && acc.status !== 'connected' ? `<button class="btn-rename" style="color:#00a884" onclick="reconnectQR('${acc.id}')" title="Reconectar: gera um QR novo para ESTA conta (mantém leads, bots e nome)"><i class=ic-refresh></i> Reconectar</button>` : ''}
       ${!isEvo && acc.status !== 'connected' ? `<button class="btn-rename" style="color:#1877f2" onclick="ativarNumeroMeta('${acc.id}')" title="Diagnóstico e ativação do número na Meta (registra na Cloud API)"><i class=ic-zap></i> Ativar na Meta</button>` : ''}
@@ -3123,7 +3163,27 @@ async function addAccount() {
 }
 
 async function deleteAccount(id) {
-  if (!await vConfirm({ titulo: 'Remover conta', texto: 'Esta conta de WhatsApp sai do VETRA. As conversas e os leads continuam salvos.', confirmar: 'Remover', perigo: true })) return;
+  // Mostra o que depende deste número ANTES de confirmar
+  let dep = null;
+  try {
+    const r = await fetch(SERVER_URL + '/accounts/' + encodeURIComponent(id) + '/dependencias');
+    const d = await r.json();
+    if (r.ok && !d.error) dep = d;
+  } catch (_) {}
+  let detalhe = 'Esta conta de WhatsApp sai do VETRA. As conversas e os leads continuam salvos.';
+  if (dep) {
+    const linhas = [];
+    if (dep.conversas) linhas.push('<b>' + dep.conversas + '</b> conversa(s) ligada(s) a este número');
+    if (dep.mensagens) linhas.push('<b>' + dep.mensagens + '</b> mensagem(ns) enviada(s) ou recebida(s) por ele');
+    if (dep.bots && dep.bots.length) linhas.push('<b>' + dep.bots.length + '</b> bot(s) que enviam por ele: ' + dep.bots.map(escHtml).join(', '));
+    if (linhas.length) {
+      detalhe += '<div style="margin-top:10px;background:#fff7e6;border:1px solid #ffd591;border-radius:8px;padding:9px 11px;font-size:12.5px;color:#8c6d1f;text-align:left">'
+        + 'O que depende deste número:<ul style="margin:6px 0 0 16px;padding:0">' + linhas.map(l => '<li>' + l + '</li>').join('') + '</ul>'
+        + (dep.bots && dep.bots.length ? '<div style="margin-top:6px">Esses bots param de enviar até você escolher outro número neles.</div>' : '')
+        + '</div>';
+    }
+  }
+  if (!await vConfirm({ titulo: 'Remover conta', texto: detalhe, confirmar: 'Remover', perigo: true })) return;
   await fetch(SERVER_URL + '/accounts/' + id, { method: 'DELETE' });
   await loadAccounts();
 }
