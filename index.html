@@ -1949,7 +1949,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v342</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v343</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2606,7 +2606,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v342</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v343</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2660,7 +2660,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 342;
+const APP_VER = 343;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -9131,15 +9131,20 @@ async function openConfigModal() {
   } catch (_) {}
   const ct = document.getElementById('cfg-conta');
   if (ct) ct.innerHTML = 'Você está usando o VETRA com <b>' + escHtml(window._userEmail || '—') + '</b>';
+  _avisaServidorAtrasado();
   _carregaUsoConta();
   _renderCfgStageIds();
 }
-// Versão do servidor que está no ar (para avisar quando o app está na frente)
+// Versão do servidor que este app espera. Se o Railway estiver atrás disso,
+// algumas telas não têm como funcionar — e o app avisa em vez de dar erro seco.
+const SERVIDOR_MIN = 245;
 let _verServidor = null;
 async function _servidorVersao() {
   if (_verServidor !== null) return _verServidor;
-  try { const d = await (await fetch(SERVER_URL + '/versao')).json(); _verServidor = d.server || 0; }
-  catch (_) { _verServidor = 0; }
+  try {
+    const d = await (await fetch(SERVER_URL + '/versao?t=' + Date.now(), { cache: 'no-store' })).json();
+    _verServidor = d.server || 0;
+  } catch (_) { _verServidor = 0; }
   return _verServidor;
 }
 // Busca esperando JSON. Se o servidor devolver a página de erro (rota que ainda
@@ -9156,6 +9161,24 @@ async function _apiJson(url, opts) {
   const d = await r.json();
   if (!r.ok || d?.error) throw new Error(d?.error || ('HTTP ' + r.status));
   return d;
+}
+
+// Faixa no topo das Configurações quando o servidor ainda não subiu
+async function _avisaServidorAtrasado() {
+  const painel = document.getElementById('cfg-panes');
+  if (!painel) return;
+  const v = await _servidorVersao();
+  let faixa = document.getElementById('cfg-aviso-versao');
+  if (v && v >= SERVIDOR_MIN) { if (faixa) faixa.remove(); return; }
+  if (!faixa) {
+    faixa = document.createElement('div');
+    faixa.id = 'cfg-aviso-versao';
+    painel.parentElement.insertBefore(faixa, painel);
+  }
+  faixa.style.cssText = 'background:#fff7e6;border:1px solid #ffd591;border-radius:8px;padding:10px 12px;font-size:12.5px;color:#8c6d1f;margin-bottom:10px;line-height:1.6';
+  faixa.innerHTML = '<b>O servidor está atrás do app.</b><div>App v' + APP_VER + ' · servidor v' + (v || '?') + ' (o app precisa da v' + SERVIDOR_MIN + ').</div>'
+    + '<div style="margin-top:5px">Rode o DEPLOY.bat e confira o arquivo <b>deploy-log.txt</b> na pasta do VETRA: ele mostra se o envio do <b>server.js</b> deu certo. '
+    + 'Se o log estiver ok, veja em Deployments no Railway se o último deploy falhou.</div>';
 }
 
 // Quanto a conta consumiu no mês (mensagens, leads, tarefas e espaço)
