@@ -1949,7 +1949,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v339</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v340</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2572,7 +2572,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v339</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v340</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2626,7 +2626,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 339;
+const APP_VER = 340;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -8747,30 +8747,112 @@ async function refreshNoticesBadge() {
     document.querySelectorAll('.notice-dot').forEach(e => { e.style.display = n ? 'block' : 'none'; });
   } catch (_) {}
 }
+let _avisos = [], _avFiltro = '';
+const _AV_ALVOS = { contas:['Abrir Contas','openModal'], modelos:['Abrir Modelos','openTemplates'],
+                    automacao:['Abrir Automação','openAutomationPanel'], bots:['Abrir Bots','openBotsList'] };
+// O aviso guarda a hora como número (Date.now()), não como texto ISO
+function _avMs(ts) { const n = (typeof ts === 'number') ? ts : Date.parse(ts); return isFinite(n) ? n : Date.now(); }
+function _avDia(ts) {
+  const ms = _avMs(ts);
+  const d = Math.floor((ms - _BRT_OFFSET) / 86400000);
+  const hoje = Math.floor((Date.now() - _BRT_OFFSET) / 86400000);
+  if (d === hoje) return 'Hoje';
+  if (d === hoje - 1) return 'Ontem';
+  const x = new Date(ms - _BRT_OFFSET);
+  const p = n => String(n).padStart(2, '0');
+  return p(x.getUTCDate()) + '/' + p(x.getUTCMonth() + 1) + '/' + x.getUTCFullYear();
+}
+function _avHora(ts) {
+  const x = new Date(_avMs(ts) - _BRT_OFFSET);
+  const p = n => String(n).padStart(2, '0');
+  return p(x.getUTCHours()) + ':' + p(x.getUTCMinutes());
+}
 async function openNotices() {
   _closeAllScreens();
   _telaAtual('avisos');
   document.getElementById('not-overlay').style.display = 'flex';
-  const el = document.getElementById('not-list');
-  el.innerHTML = 'Carregando...';
+  document.getElementById('not-list').innerHTML = 'Carregando...';
   try {
     const d = await (await fetch(SERVER_URL + '/notices')).json();
     _notices = Array.isArray(d.value) ? d.value : [];
-    if (!_notices.length) {
-      el.innerHTML = '<div style="padding:16px 0;color:#8696a0">Nenhum aviso por enquanto.<br><span style="font-size:12px">Você será avisada aqui (e por notificação) se algum número do WhatsApp desconectar.</span></div>';
-    } else {
-      el.innerHTML = _notices.map(n => {
-        const dt = new Date(n.ts);
-        const quando = dt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' + dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-        return `<div style="border:1px solid ${n.read ? '#e9edef' : '#ffd591'};background:${n.read ? '#fff' : '#fff7e6'};border-radius:10px;padding:10px 12px;margin-bottom:8px">
-          <div style="color:#131c20">${escHtml(_semEmoji(n.text))}</div>
-          <div style="font-size:11px;color:#8696a0;margin-top:4px">${quando}</div>
-        </div>`;
-      }).join('');
-    }
-    // Abriu = leu: marca todas como lidas e apaga a bolinha
+    _avisos = _notices;
+    renderAvisos();
+    // Abriu = leu: marca todas como lidas (dá para marcar de volta uma a uma)
     fetch(SERVER_URL + '/notices/read', { method: 'PUT' }).then(() => refreshNoticesBadge()).catch(() => {});
-  } catch (_) { el.innerHTML = '<div style="color:#ef4444">Erro ao carregar os avisos.</div>'; }
+  } catch (_) { document.getElementById('not-list').innerHTML = '<div style="color:#ef4444">Erro ao carregar os avisos.</div>'; }
+}
+function renderAvisos() {
+  const el = document.getElementById('not-list');
+  if (!el) return;
+  const cores = { erro: ['#ef4444', '#fde8e8', '#f1b0a7', 'ic-alert'],
+                  ok:   ['#00806a', '#e7f7ef', '#b7e4d3', 'ic-check'],
+                  info: ['#54656f', '#f0f2f5', '#e9edef', 'ic-bell'] };
+  const problemas = _avisos.filter(n => (n.tipo || 'info') === 'erro').length;
+  const barra = `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+      <button onclick="avFiltrar('')"    class="pf-topbtn" style="${_avFiltro===''    ?'background:#00a884;color:#fff':''}">Todos (${_avisos.length})</button>
+      <button onclick="avFiltrar('erro')" class="pf-topbtn" style="${_avFiltro==='erro'?'background:#ef4444;color:#fff':''}">Problemas (${problemas})</button>
+      <span style="flex:1"></span>
+      ${_avisos.length ? '<button onclick="avLimparTudo()" class="pf-topbtn">Limpar tudo</button>' : ''}
+    </div>`;
+  const lista = _avFiltro ? _avisos.filter(n => (n.tipo || 'info') === _avFiltro) : _avisos;
+  if (!lista.length) {
+    el.innerHTML = barra + '<div style="padding:16px 0;color:#8696a0">'
+      + (_avFiltro ? 'Nenhum problema — tudo certo por aqui.' : 'Nenhum aviso por enquanto.<br><span style="font-size:12px">Você será avisada aqui (e por notificação) se um número desconectar, um bot falhar ao enviar ou a Meta responder sobre um modelo.</span>')
+      + '</div>';
+    return;
+  }
+  let diaAtual = '', html = '';
+  lista.forEach(n => {
+    const dia = _avDia(n.ts);
+    if (dia !== diaAtual) {
+      diaAtual = dia;
+      html += `<div style="font-size:11.5px;font-weight:700;color:#8696a0;text-transform:uppercase;letter-spacing:.4px;margin:14px 2px 6px">${escHtml(dia)}</div>`;
+    }
+    const c = cores[n.tipo || 'info'] || cores.info;
+    const hora = _avHora(n.ts);
+    const id = escHtml(String(n.id || n.ts));
+    const alvo = _AV_ALVOS[n.alvo];
+    html += `<div style="border:1px solid ${n.read ? '#e9edef' : c[2]};background:${n.read ? '#fff' : c[1]};border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;gap:10px;align-items:flex-start">
+        <span style="color:${c[0]};font-size:15px;line-height:1.3;flex-shrink:0"><i class=${c[3]}></i></span>
+        <div style="flex:1;min-width:0">
+          <div style="color:#131c20;font-size:13.5px;line-height:1.45">${escHtml(_semEmoji(n.text))}</div>
+          <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:6px">
+            <span style="font-size:11px;color:#8696a0">${escHtml(hora)}</span>
+            ${alvo ? `<span onclick="avIr('${escHtml(n.alvo)}')" style="font-size:12px;color:#00806a;font-weight:600;cursor:pointer">${escHtml(alvo[0])} ›</span>` : ''}
+            <span onclick="avNaoLido('${id}',${n.read ? 'false' : 'true'})" style="font-size:12px;color:#667781;cursor:pointer">${n.read ? 'Marcar como não lido' : 'Marcar como lido'}</span>
+          </div>
+        </div>
+        <button onclick="avExcluir('${id}')" title="Excluir aviso" style="background:none;border:none;color:#8696a0;cursor:pointer;font-size:13px;flex-shrink:0"><i class=ic-trash></i></button>
+      </div>`;
+  });
+  el.innerHTML = barra + html;
+}
+function avFiltrar(t) { _avFiltro = t; renderAvisos(); }
+function avIr(alvo) {
+  const a = _AV_ALVOS[alvo]; if (!a) return;
+  closeNotices();
+  try { window[a[1]](); } catch (_) {}
+}
+async function avExcluir(id) {
+  _avisos = _avisos.filter(n => String(n.id || n.ts) !== String(id));
+  _notices = _avisos;
+  renderAvisos();
+  try { await fetch(SERVER_URL + '/notices/' + encodeURIComponent(id), { method: 'DELETE' }); } catch (_) {}
+  refreshNoticesBadge();
+}
+async function avNaoLido(id, naoLido) {
+  const n = _avisos.find(x => String(x.id || x.ts) === String(id));
+  if (n) n.read = !naoLido;
+  renderAvisos();
+  try { await fetch(SERVER_URL + '/notices/item/' + encodeURIComponent(id), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ read: !naoLido }) }); } catch (_) {}
+  refreshNoticesBadge();
+}
+async function avLimparTudo() {
+  if (!await vConfirm({ titulo: 'Limpar avisos', texto: 'Todos os avisos serão apagados. Isso não mexe nas contas nem nos bots.', confirmar: 'Limpar', perigo: true })) return;
+  _avisos = []; _notices = [];
+  renderAvisos();
+  try { await fetch(SERVER_URL + '/notices', { method: 'DELETE' }); } catch (_) {}
+  refreshNoticesBadge();
 }
 function closeNotices() { document.getElementById('not-overlay').style.display = 'none'; }
 
