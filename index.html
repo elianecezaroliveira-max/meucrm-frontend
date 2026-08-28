@@ -1949,7 +1949,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v341</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v342</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2606,7 +2606,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v341</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v342</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2660,7 +2660,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 341;
+const APP_VER = 342;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4530,9 +4530,7 @@ async function abrirFavoritas() {
   ov.onclick = (e) => { if (e.target === ov) fecharFavoritas(); };
   const el = document.getElementById('fav-lista');
   try {
-    const r = await fetch(SERVER_URL + '/starred');
-    const lista = await r.json();
-    if (!r.ok) throw new Error(lista?.error || 'HTTP ' + r.status);
+    const lista = await _apiJson(SERVER_URL + '/starred');
     if (!Array.isArray(lista) || !lista.length) {
       el.innerHTML = '<div style="padding:18px 0;text-align:center;color:#8696a0">Nenhuma mensagem favoritada ainda.'
         + '<br><span style="font-size:12px">Use o menu da mensagem → Favoritar para guardar aqui as que você quer reencontrar.</span></div>';
@@ -9136,12 +9134,35 @@ async function openConfigModal() {
   _carregaUsoConta();
   _renderCfgStageIds();
 }
+// Versão do servidor que está no ar (para avisar quando o app está na frente)
+let _verServidor = null;
+async function _servidorVersao() {
+  if (_verServidor !== null) return _verServidor;
+  try { const d = await (await fetch(SERVER_URL + '/versao')).json(); _verServidor = d.server || 0; }
+  catch (_) { _verServidor = 0; }
+  return _verServidor;
+}
+// Busca esperando JSON. Se o servidor devolver a página de erro (rota que ainda
+// não existe lá), explica em português em vez de mostrar erro técnico.
+async function _apiJson(url, opts) {
+  const r = await fetch(url, opts);
+  const tipo = r.headers.get('content-type') || '';
+  if (!tipo.includes('json')) {
+    const v = await _servidorVersao();
+    const ondeEsta = v ? ' (ele está na versão ' + v + ')' : '';
+    throw new Error('O servidor ainda não tem este recurso' + ondeEsta
+      + '. Rode o DEPLOY.bat e espere o Railway terminar de subir, coisa de 1 a 2 minutos.');
+  }
+  const d = await r.json();
+  if (!r.ok || d?.error) throw new Error(d?.error || ('HTTP ' + r.status));
+  return d;
+}
+
 // Quanto a conta consumiu no mês (mensagens, leads, tarefas e espaço)
 async function _carregaUsoConta() {
   const el = document.getElementById('cfg-uso'); if (!el) return;
   try {
-    const d = await (await fetch(SERVER_URL + '/uso-conta')).json();
-    if (d.error) throw new Error(d.error);
+    const d = await _apiJson(SERVER_URL + '/uso-conta');
     const n = v => Number(v || 0).toLocaleString('pt-BR');
     const linha = (rot, val, dica) => `<div style="display:flex;gap:10px;align-items:baseline;padding:5px 0;border-bottom:1px solid #f0f2f5">
         <span style="flex:1;color:#667781">${rot}</span><b style="color:#131c20;font-size:14px">${val}</b>
@@ -9160,16 +9181,14 @@ async function _carregaUsoConta() {
         </div>`;
     }
     el.innerHTML = html;
-  } catch (e) { el.innerHTML = '<span style="color:#ef4444">Não consegui carregar o consumo.</span>'; }
+  } catch (e) { el.innerHTML = '<span style="color:#ef4444">' + escHtml(e.message || 'Não consegui carregar o consumo.') + '</span>'; }
 }
 // Backup das configurações
 async function baixarBackup(btn) {
   const st = document.getElementById('cfg-backup-status');
   if (st) st.textContent = 'Montando o arquivo…';
   try {
-    const r = await fetch(SERVER_URL + '/backup');
-    const d = await r.json();
-    if (!r.ok || d.error) throw new Error(d.error || 'HTTP ' + r.status);
+    const d = await _apiJson(SERVER_URL + '/backup');
     const blob = new Blob([JSON.stringify(d, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     const hoje = new Date(Date.now() - _BRT_OFFSET).toISOString().slice(0, 10);
@@ -9200,9 +9219,7 @@ async function restaurarBackup(input) {
   if (!ok) return;
   if (st) st.textContent = 'Restaurando…';
   try {
-    const r = await fetch(SERVER_URL + '/backup/restaurar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bk) });
-    const d = await r.json();
-    if (!r.ok || d.error) throw new Error(d.error || 'falha');
+    const d = await _apiJson(SERVER_URL + '/backup/restaurar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bk) });
     if (st) st.textContent = 'Pronto! Restaurado: ' + (d.restaurados || []).join(', ') + '. Recarregue a página para ver tudo.';
     try { _syncQuickReplies(true); loadAllTags(); } catch (_) {}
   } catch (e) { if (st) st.innerHTML = '<span style="color:#ef4444">Não consegui restaurar: ' + escHtml(e.message || e) + '</span>'; }
@@ -11083,9 +11100,7 @@ async function abrirRegistroAutomacao() {
   ov.onclick = (e) => { if (e.target === ov) fecharRegistroAutomacao(); };
   const el = document.getElementById('autolog-lista');
   try {
-    const r = await fetch(SERVER_URL + '/automation-log');
-    const lista = await r.json();
-    if (!r.ok) throw new Error(lista?.error || 'HTTP ' + r.status);
+    const lista = await _apiJson(SERVER_URL + '/automation-log');
     if (!Array.isArray(lista) || !lista.length) {
       el.innerHTML = '<div style="padding:18px 0;text-align:center;color:#8696a0">Nada registrado ainda.'
         + '<br><span style="font-size:12px">Assim que uma regra criar tarefa, mexer em etiqueta, mover ou criar lead, aparece aqui.</span></div>';
