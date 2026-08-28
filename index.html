@@ -1949,7 +1949,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v338</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v339</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2572,7 +2572,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v338</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v339</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2626,7 +2626,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 338;
+const APP_VER = 339;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3170,20 +3170,21 @@ async function deleteAccount(id) {
     const d = await r.json();
     if (r.ok && !d.error) dep = d;
   } catch (_) {}
-  let detalhe = 'Esta conta de WhatsApp sai do VETRA. As conversas e os leads continuam salvos.';
+  let detalhe = '<div>Esta conta de WhatsApp sai do VETRA. As conversas e os leads continuam salvos.</div>';
   if (dep) {
     const linhas = [];
-    if (dep.conversas) linhas.push('<b>' + dep.conversas + '</b> conversa(s) ligada(s) a este número');
-    if (dep.mensagens) linhas.push('<b>' + dep.mensagens + '</b> mensagem(ns) enviada(s) ou recebida(s) por ele');
-    if (dep.bots && dep.bots.length) linhas.push('<b>' + dep.bots.length + '</b> bot(s) que enviam por ele: ' + dep.bots.map(escHtml).join(', '));
+    if (dep.conversas) linhas.push('<b>' + dep.conversas + '</b> conversa' + (dep.conversas > 1 ? 's' : ''));
+    if (dep.mensagens) linhas.push('<b>' + dep.mensagens + '</b> ' + (dep.mensagens > 1 ? 'mensagens' : 'mensagem'));
+    if (dep.bots && dep.bots.length) linhas.push('<b>' + dep.bots.length + '</b> bot' + (dep.bots.length > 1 ? 's' : '') + ': ' + dep.bots.map(escHtml).join(', '));
     if (linhas.length) {
-      detalhe += '<div style="margin-top:10px;background:#fff7e6;border:1px solid #ffd591;border-radius:8px;padding:9px 11px;font-size:12.5px;color:#8c6d1f;text-align:left">'
-        + 'O que depende deste número:<ul style="margin:6px 0 0 16px;padding:0">' + linhas.map(l => '<li>' + l + '</li>').join('') + '</ul>'
-        + (dep.bots && dep.bots.length ? '<div style="margin-top:6px">Esses bots param de enviar até você escolher outro número neles.</div>' : '')
+      detalhe += '<div style="margin-top:12px;background:#fff7e6;border:1px solid #ffd591;border-radius:8px;padding:10px 12px;font-size:12.5px;color:#8c6d1f;text-align:left;line-height:1.7">'
+        + '<div style="font-weight:700;margin-bottom:4px">Usam este número</div>'
+        + linhas.map(l => '<div>· ' + l + '</div>').join('')
+        + (dep.bots && dep.bots.length ? '<div style="margin-top:7px;color:#a2691f">Esses bots param de enviar até você escolher outro número neles.</div>' : '')
         + '</div>';
     }
   }
-  if (!await vConfirm({ titulo: 'Remover conta', texto: detalhe, confirmar: 'Remover', perigo: true })) return;
+  if (!await vConfirm({ titulo: 'Remover conta', textoHtml: detalhe, confirmar: 'Remover', perigo: true })) return;
   await fetch(SERVER_URL + '/accounts/' + id, { method: 'DELETE' });
   await loadAccounts();
 }
@@ -8146,14 +8147,17 @@ function _vdlgFecha(valor) {
   const r = _vdlgResolve; _vdlgResolve = null;
   if (r) r(valor);
 }
-function _vdlgAbre({ titulo, texto, campos, botoes, foco }) {
+function _vdlgAbre({ titulo, texto, textoHtml, campos, botoes, foco }) {
   return new Promise(resolve => {
     if (_vdlgResolve) { const r = _vdlgResolve; _vdlgResolve = null; r(null); } // fecha a anterior
     _vdlgResolve = resolve;
     const ov = document.getElementById('vdlg-overlay');
     document.getElementById('vdlg-title').innerHTML = titulo || '';
     const t = document.getElementById('vdlg-text');
-    t.textContent = texto || ''; t.style.display = texto ? '' : 'none';
+    // textoHtml = formatado de propósito (negrito, lista). texto = sempre puro,
+    // para que nada digitado por alguém vire HTML na tela.
+    if (textoHtml) { t.innerHTML = textoHtml; t.style.display = ''; }
+    else { t.textContent = texto || ''; t.style.display = texto ? '' : 'none'; }
     document.getElementById('vdlg-campos').innerHTML = campos || '';
     document.getElementById('vdlg-botoes').innerHTML = botoes || '';
     ov.classList.add('open');
@@ -8169,7 +8173,7 @@ function vConfirm(opts) {
   const o = typeof opts === 'string' ? { texto: opts } : (opts || {});
   const btns = `<button class="btn-cancel" onclick="_vdlgFecha(false)">${escHtml(o.cancelar || 'Cancelar')}</button>
     <button class="btn-save ${o.perigo ? 'vdlg-perigo' : ''}" id="vdlg-ok" onclick="_vdlgFecha(true)">${escHtml(o.confirmar || 'Confirmar')}</button>`;
-  return _vdlgAbre({ titulo: escHtml(o.titulo || (o.perigo ? 'Confirmar' : 'Confirmar')), texto: o.texto || '', botoes: btns, foco: 'vdlg-ok' })
+  return _vdlgAbre({ titulo: escHtml(o.titulo || (o.perigo ? 'Confirmar' : 'Confirmar')), texto: o.texto || '', textoHtml: o.textoHtml || '', botoes: btns, foco: 'vdlg-ok' })
     .then(v => v === true);
 }
 // Aviso simples: só informa, com um botão só (sem "Cancelar")
@@ -8177,7 +8181,7 @@ function vAviso(o) {
   const x = typeof o === 'string' ? { texto: o } : (o || {});
   return _vdlgAbre({
     titulo: escHtml(x.titulo || 'Aviso'),
-    texto: x.texto || '',
+    texto: x.texto || '', textoHtml: x.textoHtml || '',
     botoes: `<button class="btn-save" id="vdlg-ok" onclick="_vdlgFecha(true)">${escHtml(x.ok || 'Entendi')}</button>`,
     foco: 'vdlg-ok'
   });
@@ -8198,7 +8202,7 @@ async function _verFalha(el) {
     const botoes = podeReenviar
       ? '<button class="btn-cancel" onclick="_vdlgFecha(false)">Fechar</button><button class="btn-save" id="vdlg-ok" onclick="_vdlgFecha(true)">Reenviar</button>'
       : '<button class="btn-save" id="vdlg-ok" onclick="_vdlgFecha(false)">Entendi</button>';
-    const r = await _vdlgAbre({ titulo: 'Falha no envio', texto: motivo + extra, botoes, foco: 'vdlg-ok' });
+    const r = await _vdlgAbre({ titulo: 'Falha no envio', textoHtml: motivo + extra, botoes, foco: 'vdlg-ok' });
     if (r === true) reenviarMensagem(id, texto);
   } catch (_) {}
 }
