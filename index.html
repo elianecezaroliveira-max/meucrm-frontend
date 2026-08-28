@@ -1949,7 +1949,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v340</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v341</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2205,6 +2205,22 @@ window.addEventListener('load', initAuth);
         <button class="pf-topbtn" onclick="genIntegrationToken()">Gerar nova</button>
       </div>
       <div id="cfg-token-status" style="font-size:11px;color:#00a884;height:14px;margin-top:4px"></div>
+      <div style="margin-top:12px;border-top:1px solid #f0f2f5;padding-top:12px">
+        <div style="font-size:12.5px;font-weight:700;color:#131c20;margin-bottom:4px">Endereço do seu servidor</div>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          <code id="cfg-server-url" style="flex:1;min-width:180px;background:#f0f2f5;border:1px solid #e9edef;border-radius:6px;padding:8px 10px;font-size:12px;color:#131c20;word-break:break-all"></code>
+          <button class="pf-topbtn" onclick="copiarTexto(SERVER_URL,this)">Copiar</button>
+        </div>
+        <div style="font-size:12.5px;font-weight:700;color:#131c20;margin:12px 0 4px">Exemplo pronto (criar um lead)</div>
+        <pre id="cfg-exemplo" style="background:#f0f2f5;border:1px solid #e9edef;border-radius:6px;padding:10px;font-size:11.5px;color:#131c20;white-space:pre-wrap;word-break:break-all;margin:0"></pre>
+        <button class="pf-topbtn" style="margin-top:6px" onclick="copiarTexto(document.getElementById('cfg-exemplo').textContent,this)">Copiar exemplo</button>
+      </div>
+    </div>
+    <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
+      <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">Sua conta</div>
+      <div id="cfg-conta" style="font-size:13px;color:#54656f;margin-bottom:10px">—</div>
+      <button class="pf-topbtn" onclick="sairDeTodos()" style="color:#c0392b">Sair de todos os aparelhos</button>
+      <p style="font-size:11.5px;color:#8696a0;margin:6px 0 0">Use se perdeu o celular ou emprestou o computador: derruba o login em todos os aparelhos, inclusive neste.</p>
     </div>
 </div>
 <div class="cfg-pane" data-pane="ids">
@@ -2246,6 +2262,24 @@ window.addEventListener('load', initAuth);
     <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
       <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">Faturamento</div>
       <div id="cfg-billing" style="font-size:13px;color:#54656f">Carregando...</div>
+    </div>
+    <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
+      <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:8px">Consumo deste mês</div>
+      <div id="cfg-uso" style="font-size:13px;color:#54656f">Carregando…</div>
+    </div>
+    <div style="border:1px solid #e9edef;border-radius:10px;padding:14px">
+      <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">Backup das configurações</div>
+      <p style="font-size:12px;color:#667781;margin:0 0 10px;line-height:1.5">
+        Baixa um arquivo com respostas rápidas, etiquetas, automações por etapa, gotejamento, planilha, bots, etapas do funil e as perguntas da IA.
+        Conversas e leads <b>não</b> entram (use Exportar leads no Pipeline).
+      </p>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="pf-topbtn" onclick="baixarBackup(this)">Baixar backup</button>
+        <label class="pf-topbtn" style="cursor:pointer">Restaurar de um arquivo
+          <input type="file" accept="application/json,.json" style="display:none" onchange="restaurarBackup(this)">
+        </label>
+      </div>
+      <div id="cfg-backup-status" style="font-size:12px;color:#54656f;margin-top:6px;min-height:14px"></div>
     </div>
 </div>
 <div class="cfg-pane" data-pane="pipe">
@@ -2572,7 +2606,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v340</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v341</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2626,7 +2660,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 340;
+const APP_VER = 341;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -8988,6 +9022,21 @@ async function sincronizarSheets(confirmado) {
 }
 
 // ── EQUIPE: quem pode entrar na MINHA conta ──
+// "há 5 min", "hoje às 14:20", "ontem às 09:10", "12/08/2026"
+function _acessoTexto(iso) {
+  const ms = Date.parse(iso);
+  if (!isFinite(ms)) return 'ainda não entrou';
+  const diff = Date.now() - ms;
+  if (diff < 120000) return 'agora há pouco';
+  if (diff < 3600000) return 'há ' + Math.round(diff / 60000) + ' min';
+  const d = new Date(ms - _BRT_OFFSET), p = n => String(n).padStart(2, '0');
+  const dia = Math.floor((ms - _BRT_OFFSET) / 86400000);
+  const hoje = Math.floor((Date.now() - _BRT_OFFSET) / 86400000);
+  const hora = p(d.getUTCHours()) + ':' + p(d.getUTCMinutes());
+  if (dia === hoje) return 'hoje às ' + hora;
+  if (dia === hoje - 1) return 'ontem às ' + hora;
+  return p(d.getUTCDate()) + '/' + p(d.getUTCMonth() + 1) + '/' + d.getUTCFullYear() + ' às ' + hora;
+}
 async function equipeCarregar() {
   const el = document.getElementById('equipe-lista'); if (!el) return;
   el.innerHTML = '<div style="font-size:12px;color:#8696a0">Carregando…</div>';
@@ -8997,9 +9046,17 @@ async function equipeCarregar() {
     if (j.error) { el.innerHTML = '<div style="font-size:12px;color:#ef4444">' + escHtml(j.error) + '</div>'; return; }
     const meu = `<div style="display:flex;align-items:center;gap:8px;padding:9px 11px;background:#e7f7ef;border:1px solid #c8ecd9;border-radius:8px;margin-bottom:6px">
       <span><i class=ic-crown></i></span><span style="flex:1;font-size:13px;color:#131c20"><b>${escHtml(j.dono || '')}</b> — dona da conta</span></div>`;
-    const lista = (j.membros || []).map(e => `<div style="display:flex;align-items:center;gap:8px;padding:9px 11px;background:#f7f8fa;border:1px solid #e9edef;border-radius:8px;margin-bottom:6px">
-      <span><i class=ic-user></i></span><span style="flex:1;font-size:13px;color:#131c20">${escHtml(e)}</span>
-      <button class="btn-cancel" style="padding:6px 12px;font-size:12px" onclick="equipeRemover('${_jsAttr(e)}')">Remover</button></div>`).join('');
+    const ac = j.acessos || {};
+    const lista = (j.membros || []).map(e => {
+      const q = ac[e] ? _acessoTexto(ac[e]) : 'ainda não entrou';
+      return `<div style="display:flex;align-items:center;gap:8px;padding:9px 11px;background:#f7f8fa;border:1px solid #e9edef;border-radius:8px;margin-bottom:6px">
+      <span><i class=ic-user></i></span>
+      <span style="flex:1;min-width:0">
+        <span style="font-size:13px;color:#131c20;display:block;overflow:hidden;text-overflow:ellipsis">${escHtml(e)}</span>
+        <span style="font-size:11.5px;color:${ac[e] ? '#667781' : '#c07b00'}">Último acesso: ${escHtml(q)}</span>
+      </span>
+      <button class="btn-cancel" style="padding:6px 12px;font-size:12px" onclick="equipeRemover('${_jsAttr(e)}')">Remover</button></div>`;
+    }).join('');
     el.innerHTML = meu + (lista || '<div style="font-size:12px;color:#8696a0;padding:4px 2px">Ninguém além de você tem acesso a esta conta.</div>');
   } catch (_) { el.innerHTML = '<div style="font-size:12px;color:#ef4444">Não consegui carregar a equipe.</div>'; }
 }
@@ -9064,7 +9121,97 @@ async function openConfigModal() {
     const v = d.value || {};
     b.innerHTML = `Plano: <b>${escHtml(v.plano || 'VETRA')}</b> &nbsp;·&nbsp; Validade: <b>${escHtml(v.validade || '—')}</b>`;
   } catch (_) { b.textContent = 'Plano: VETRA'; }
+  // Endereço do servidor + exemplo pronto para o n8n / planilha
+  try {
+    const u = document.getElementById('cfg-server-url'); if (u) u.textContent = SERVER_URL;
+    const ex = document.getElementById('cfg-exemplo');
+    const tok = document.getElementById('cfg-token')?.value || 'SUA_CHAVE_AQUI';
+    if (ex) ex.textContent = 'POST ' + SERVER_URL + '/import/lead\n'
+      + 'X-Api-Token: ' + tok + '\n'
+      + 'Content-Type: application/json\n\n'
+      + '{ "nome": "Maria Silva", "telefone": "15998887777", "etapa": "1" }';
+  } catch (_) {}
+  const ct = document.getElementById('cfg-conta');
+  if (ct) ct.innerHTML = 'Você está usando o VETRA com <b>' + escHtml(window._userEmail || '—') + '</b>';
+  _carregaUsoConta();
   _renderCfgStageIds();
+}
+// Quanto a conta consumiu no mês (mensagens, leads, tarefas e espaço)
+async function _carregaUsoConta() {
+  const el = document.getElementById('cfg-uso'); if (!el) return;
+  try {
+    const d = await (await fetch(SERVER_URL + '/uso-conta')).json();
+    if (d.error) throw new Error(d.error);
+    const n = v => Number(v || 0).toLocaleString('pt-BR');
+    const linha = (rot, val, dica) => `<div style="display:flex;gap:10px;align-items:baseline;padding:5px 0;border-bottom:1px solid #f0f2f5">
+        <span style="flex:1;color:#667781">${rot}</span><b style="color:#131c20;font-size:14px">${val}</b>
+        ${dica ? `<span style="font-size:11px;color:#8696a0">${dica}</span>` : ''}</div>`;
+    let html = linha('Mensagens enviadas', n(d.enviadas_mes), 'hoje: ' + n(d.enviadas_hoje))
+             + linha('Mensagens recebidas', n(d.recebidas_mes))
+             + linha('Leads no pipeline', n(d.leads))
+             + linha('Tarefas em aberto', n(d.tarefas_abertas));
+    if (d.cofre) {
+      const pct = Math.max(0, Math.min(100, d.cofre.pct || 0));
+      const cor = pct >= 90 ? '#ef4444' : pct >= 70 ? '#f0b400' : '#00a884';
+      html += `<div style="padding:8px 0 0">
+          <div style="display:flex;gap:10px;align-items:baseline"><span style="flex:1;color:#667781">Fotos e arquivos guardados</span>
+            <b style="color:#131c20;font-size:14px">${d.cofre.mb} MB</b><span style="font-size:11px;color:#8696a0">de ${d.cofre.teto_mb} MB</span></div>
+          <div style="height:6px;background:#f0f2f5;border-radius:4px;margin-top:5px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${cor}"></div></div>
+        </div>`;
+    }
+    el.innerHTML = html;
+  } catch (e) { el.innerHTML = '<span style="color:#ef4444">Não consegui carregar o consumo.</span>'; }
+}
+// Backup das configurações
+async function baixarBackup(btn) {
+  const st = document.getElementById('cfg-backup-status');
+  if (st) st.textContent = 'Montando o arquivo…';
+  try {
+    const r = await fetch(SERVER_URL + '/backup');
+    const d = await r.json();
+    if (!r.ok || d.error) throw new Error(d.error || 'HTTP ' + r.status);
+    const blob = new Blob([JSON.stringify(d, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    const hoje = new Date(Date.now() - _BRT_OFFSET).toISOString().slice(0, 10);
+    a.href = URL.createObjectURL(blob);
+    a.download = 'vetra-backup-' + hoje + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    if (st) st.textContent = 'Backup baixado. Guarde o arquivo em lugar seguro.';
+  } catch (e) { if (st) st.innerHTML = '<span style="color:#ef4444">Não consegui montar o backup: ' + escHtml(e.message || e) + '</span>'; }
+}
+async function restaurarBackup(input) {
+  const f = input && input.files && input.files[0];
+  input.value = '';
+  if (!f) return;
+  const st = document.getElementById('cfg-backup-status');
+  let bk = null;
+  try { bk = JSON.parse(await f.text()); } catch (_) { if (st) st.innerHTML = '<span style="color:#ef4444">Arquivo inválido.</span>'; return; }
+  if (bk.vetra !== 'backup') { if (st) st.innerHTML = '<span style="color:#ef4444">Este arquivo não é um backup do VETRA.</span>'; return; }
+  const quando = bk.quando ? new Date(bk.quando).toLocaleString('pt-BR') : 'data desconhecida';
+  const ok = await vConfirm({
+    titulo: 'Restaurar configurações',
+    textoHtml: '<div>Backup de <b>' + escHtml(quando) + '</b>.</div>'
+      + '<div style="margin-top:10px;background:#fff7e6;border:1px solid #ffd591;border-radius:8px;padding:10px 12px;font-size:12.5px;color:#8c6d1f;text-align:left;line-height:1.6">'
+      + '<b>Serão substituídos</b><div>· respostas rápidas</div><div>· etiquetas e cores</div><div>· automações por etapa</div><div>· gotejamento</div><div>· planilha do Google</div>'
+      + '<div style="margin-top:7px">Bots, etapas do funil e conversas <b>não</b> são tocados.</div></div>',
+    confirmar: 'Restaurar', perigo: true
+  });
+  if (!ok) return;
+  if (st) st.textContent = 'Restaurando…';
+  try {
+    const r = await fetch(SERVER_URL + '/backup/restaurar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bk) });
+    const d = await r.json();
+    if (!r.ok || d.error) throw new Error(d.error || 'falha');
+    if (st) st.textContent = 'Pronto! Restaurado: ' + (d.restaurados || []).join(', ') + '. Recarregue a página para ver tudo.';
+    try { _syncQuickReplies(true); loadAllTags(); } catch (_) {}
+  } catch (e) { if (st) st.innerHTML = '<span style="color:#ef4444">Não consegui restaurar: ' + escHtml(e.message || e) + '</span>'; }
+}
+// Derruba o login em TODOS os aparelhos
+async function sairDeTodos() {
+  if (!await vConfirm({ titulo: 'Sair de todos os aparelhos', texto: 'Todos os aparelhos conectados nesta conta vão precisar entrar de novo, inclusive este. Continuar?', confirmar: 'Sair de todos', perigo: true })) return;
+  try { await _supaAuth.auth.signOut({ scope: 'global' }); } catch (_) {}
+  try { _showLogin(); } catch (_) { location.reload(); }
 }
 // Lista das etapas com seus IDs externos (para automações do n8n)
 async function _renderCfgStageIds() {
