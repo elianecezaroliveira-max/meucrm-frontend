@@ -579,6 +579,9 @@
   /* FILTER SIDEBAR */
   #filter-toggle{background:none;border:1px solid #e9edef;color:#667781;padding:5px 8px;border-radius:8px;cursor:pointer;font-size:13px;flex-shrink:0}
   #filter-toggle:hover,#filter-toggle.active{border-color:#00a884;color:#00a884}
+  #btn-favoritas{background:none;border:1px solid #e9edef;color:#667781;padding:5px 8px;border-radius:8px;cursor:pointer;font-size:13px;flex-shrink:0}
+  #btn-favoritas:hover{border-color:#00a884;color:#00a884}
+  body.dark #btn-favoritas{background:#202c33;color:#aebac1;border-color:#2a3942}
   #filter-panel{background:#ffffff;border-bottom:1px solid #e9edef;padding:10px 12px;display:none}
   #filter-panel.open{display:block}
   #filter-panel label{font-size:11px;color:#667781;display:block;margin-bottom:4px;margin-top:8px;text-transform:uppercase;letter-spacing:.4px}
@@ -1928,7 +1931,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v327</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v328</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2076,6 +2079,7 @@ window.addEventListener('load', initAuth);
   <div id="sidebar">
     <div id="search-box" style="display:flex;gap:6px;align-items:center">
       <input type="text" id="search-input" placeholder="Buscar por nome ou mensagem..." oninput="onSearchInput()" style="flex:1" />
+      <button id="btn-favoritas" onclick="abrirFavoritas()" title="Mensagens favoritas"><i class=ic-star></i></button>
       <button id="filter-toggle" onclick="toggleFilterPanel()" title="Filtros"><i class=ic-filter></i></button>
     </div>
     <div id="filter-panel">
@@ -2311,6 +2315,7 @@ window.addEventListener('load', initAuth);
   <div class="cm-item" onclick="msgMenuReply()">↩ Responder</div>
   <div class="cm-item" onclick="msgMenuReact()"><i class=ic-chat></i> Reagir</div>
   <div class="cm-item" onclick="msgMenuCopy()"><i class=ic-copy></i> Copiar</div>
+  <div class="cm-item" onclick="msgMenuForward()"><i class=ic-send></i> Encaminhar</div>
   <div class="cm-item" id="msg-menu-pinmsg" onclick="msgMenuPinMsg()"><i class=ic-pin></i> Fixar</div>
   <div class="cm-item" id="msg-menu-starmsg" onclick="msgMenuStarMsg()"><i class=ic-star></i> Favoritar</div>
   <div class="cm-item" onclick="msgMenuSelect()"><i class=ic-task></i> Selecionar</div>
@@ -2543,7 +2548,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v327</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v328</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2597,7 +2602,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 327;
+const APP_VER = 328;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4224,6 +4229,7 @@ function enterSelMode(firstId) {
       `<div id="sel-bar" style="display:flex;align-items:center;gap:12px;background:#00a884;color:#fff;padding:10px 14px;font-size:14px">
         <span onclick="exitSelMode()" style="cursor:pointer;font-size:17px">✕</span>
         <b id="sel-count" style="flex:1">0 selecionada(s)</b>
+        <span onclick="selForward()" style="cursor:pointer" title="Encaminhar para outra conversa"><i class=ic-send></i> Encaminhar</span>
         <span onclick="selCopy()" style="cursor:pointer" title="Copiar"><i class=ic-copy></i> Copiar</span>
         <span onclick="selDelete()" style="cursor:pointer" title="Apagar do CRM"><i class=ic-trash></i> Apagar</span>
       </div>`);
@@ -4267,6 +4273,209 @@ async function selDelete() {
   for (const id of ids) { try { await fetch(`${SERVER_URL}/messages/id/${id}`, { method: 'DELETE' }); } catch (_) {} }
   exitSelMode(); _lastMsgsSig = ''; loadMessages(currentPhone, false);
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// REENVIAR · ENCAMINHAR · MENSAGENS FAVORITAS
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Pergunta por qual dos seus números a mensagem deve sair (se houver mais de um)
+async function _escolheNumero(titulo) {
+  const accs = Object.values(window._accountsById || {});
+  if (accs.length <= 1) return (accs[0] && accs[0].id) || currentAccountId || '';
+  const opcoes = accs.map(a => ({
+    v: a.id,
+    t: (a.name || a.phone_display || 'Número') + (a.phone_display ? ' · ' + a.phone_display : '')
+  }));
+  return await vEscolha({ titulo: titulo || 'Enviar por qual número?', opcoes });
+}
+
+// ── Reenviar uma mensagem que falhou ──
+async function reenviarMensagem(id, texto) {
+  if (!texto || !currentPhone) return;
+  const acc = await _escolheNumero('Reenviar por qual número?');
+  if (acc === null) return; // fechou a escolha
+  try {
+    const r = await fetch(SERVER_URL + '/send', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to: currentPhone, message: texto, account_id: acc })
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || d.error) { showToast(d.error || 'Não consegui reenviar', 'err'); return; }
+    // Deu certo: a bolha vermelha antiga sai da conversa (não faz sentido manter)
+    if (id) { try { await fetch(SERVER_URL + '/messages/id/' + encodeURIComponent(id), { method: 'DELETE' }); } catch (_) {} }
+    showToast('Mensagem reenviada', 'ok');
+    _lastMsgsSig = ''; loadMessages(currentPhone, true);
+  } catch (e) { showToast('Não consegui reenviar: ' + (e.message || e), 'err'); }
+}
+
+// ── Encaminhar mensagens para outra conversa ──
+let _fwIds = [];
+function abrirEncaminhar(ids) {
+  _fwIds = (ids || []).filter(Boolean);
+  if (!_fwIds.length) return;
+  let ov = document.getElementById('fw-overlay');
+  if (!ov) { ov = document.createElement('div'); ov.id = 'fw-overlay'; document.body.appendChild(ov); }
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(11,20,26,.55);z-index:9500;display:flex;align-items:center;justify-content:center;padding:16px';
+  ov.innerHTML = '<div id="fw-box" style="background:#fff;border-radius:12px;width:min(430px,100%);max-height:78vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.35)">'
+    + '<div style="display:flex;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid #e9edef">'
+    + '<b style="flex:1;font-size:15px;color:#131c20">Encaminhar ' + (_fwIds.length > 1 ? _fwIds.length + ' mensagens' : 'mensagem') + '</b>'
+    + '<span onclick="fecharEncaminhar()" style="cursor:pointer;font-size:20px;color:#667781">✕</span></div>'
+    + '<div style="padding:10px 14px 6px"><input id="fw-busca" placeholder="Buscar conversa pelo nome ou número…" oninput="_fwLista()" '
+    + 'style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #e9edef;border-radius:9px;font-size:13.5px;font-family:inherit;outline:none"></div>'
+    + '<div id="fw-lista" style="flex:1;overflow-y:auto;padding:0 8px 12px"></div></div>';
+  ov.onclick = (e) => { if (e.target === ov) fecharEncaminhar(); };
+  _fwLista();
+  setTimeout(() => { const i = document.getElementById('fw-busca'); if (i) i.focus(); }, 60);
+}
+function fecharEncaminhar() { const ov = document.getElementById('fw-overlay'); if (ov) ov.remove(); }
+function _fwLista() {
+  const el = document.getElementById('fw-lista'); if (!el) return;
+  const q = (document.getElementById('fw-busca')?.value || '').toLowerCase().trim();
+  const lista = (allContacts || [])
+    .filter(c => !q || String(c.name || '').toLowerCase().includes(q) || String(c.phone || '').includes(q))
+    .slice(0, 80);
+  el.innerHTML = lista.length
+    ? lista.map(c => '<div class="cm-item" style="display:flex;align-items:center;border-radius:8px;gap:10px" onclick="_fwEnviar(\'' + escHtml(String(c.phone)) + '\')">'
+        + '<i class=ic-user></i><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(c.name || c.phone) + '</span>'
+        + '<span style="font-size:11px;color:#8696a0">' + escHtml(typeof fmtPhoneBR === 'function' ? fmtPhoneBR(c.phone) : c.phone) + '</span></div>').join('')
+    : '<div style="padding:18px;color:#8696a0;font-size:13px;text-align:center">Nenhuma conversa encontrada.</div>';
+}
+async function _fwEnviar(destino) {
+  const ids = _fwIds.slice();
+  fecharEncaminhar();
+  const acc = await _escolheNumero('Encaminhar por qual número?');
+  if (acc === null) return;
+  showToast('Encaminhando…');
+  let ok = 0, falha = 0, motivo = '';
+  for (const id of ids) {
+    const m = (currentMessages || []).find(x => String(x.id) === String(id));
+    if (!m) { falha++; continue; }
+    try { await _fwUma(m, destino, acc); ok++; }
+    catch (e) { falha++; motivo = motivo || (e.message || String(e)); }
+  }
+  try { exitSelMode(); } catch (_) {}
+  if (ok && !falha)      showToast(ok > 1 ? ok + ' mensagens encaminhadas' : 'Mensagem encaminhada', 'ok');
+  else if (ok && falha)  showToast(ok + ' encaminhada(s), ' + falha + ' não deu certo: ' + motivo, 'warn');
+  else                   showToast('Não consegui encaminhar: ' + (motivo || 'sem motivo'), 'err');
+}
+async function _fwUma(m, to, account_id) {
+  const tipo = String(m.type || 'text');
+  // Mídia: baixa o arquivo pelo cofre e reenvia como um envio novo
+  if (m.media_id && ['image', 'video', 'audio', 'document', 'sticker'].includes(tipo)) {
+    const url = SERVER_URL + '/media-proxy/' + encodeURIComponent(m.media_id)
+      + '?account_id=' + encodeURIComponent(m.account_id || '')
+      + (m.media_mime_type ? '&mime=' + encodeURIComponent(m.media_mime_type) : '');
+    const r = await fetch(url);
+    if (!r.ok) throw new Error('não consegui baixar o arquivo');
+    const blob = await r.blob();
+    const b64 = await new Promise((res, rej) => {
+      const fr = new FileReader();
+      fr.onload = () => res(String(fr.result).split(',')[1]);
+      fr.onerror = () => rej(new Error('falha ao ler o arquivo'));
+      fr.readAsDataURL(blob);
+    });
+    const mime = m.media_mime_type || blob.type || 'application/octet-stream';
+    const ext = String((mime.split('/')[1] || 'bin')).split(';')[0];
+    const legenda = (tipo === 'image' || tipo === 'video') ? String(m.content || '') : '';
+    const nome = tipo === 'document' ? (String(m.content || '').trim() || 'arquivo.' + ext) : ('encaminhado.' + ext);
+    const rr = await fetch(SERVER_URL + '/send-media', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to, account_id, fileBase64: b64, fileName: nome, mimeType: mime, caption: legenda })
+    });
+    const d = await rr.json().catch(() => ({}));
+    if (!rr.ok || d.error) throw new Error(d.error || 'o WhatsApp recusou');
+    return;
+  }
+  const texto = String(m.content || '').trim();
+  if (!texto) throw new Error('mensagem sem texto');
+  const rr = await fetch(SERVER_URL + '/send', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ to, message: texto, account_id })
+  });
+  const d = await rr.json().catch(() => ({}));
+  if (!rr.ok || d.error) throw new Error(d.error || 'o WhatsApp recusou');
+}
+function msgMenuForward() { const id = _msgMenuId; closeMsgMenu(); if (id) abrirEncaminhar([id]); }
+function selForward() { const ids = _selOrdered(); if (ids.length) abrirEncaminhar(ids); }
+
+// ── Mensagens favoritas (a estrela), de todas as conversas ──
+async function abrirFavoritas() {
+  let ov = document.getElementById('fav-overlay');
+  if (!ov) { ov = document.createElement('div'); ov.id = 'fav-overlay'; document.body.appendChild(ov); }
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(11,20,26,.55);z-index:9500;display:flex;align-items:center;justify-content:center;padding:16px';
+  ov.innerHTML = '<div style="background:#fff;border-radius:12px;width:min(520px,100%);max-height:80vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.35)">'
+    + '<div style="display:flex;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid #e9edef">'
+    + '<b style="flex:1;font-size:15px;color:#131c20">Mensagens favoritas</b>'
+    + '<span onclick="fecharFavoritas()" style="cursor:pointer;font-size:20px;color:#667781">✕</span></div>'
+    + '<div id="fav-lista" style="flex:1;overflow-y:auto;padding:10px 14px 14px;font-size:13.5px;color:#667781">Carregando…</div></div>';
+  ov.onclick = (e) => { if (e.target === ov) fecharFavoritas(); };
+  const el = document.getElementById('fav-lista');
+  try {
+    const r = await fetch(SERVER_URL + '/messages/starred');
+    const lista = await r.json();
+    if (!r.ok) throw new Error(lista?.error || 'HTTP ' + r.status);
+    if (!Array.isArray(lista) || !lista.length) {
+      el.innerHTML = '<div style="padding:18px 0;text-align:center;color:#8696a0">Nenhuma mensagem favoritada ainda.'
+        + '<br><span style="font-size:12px">Use o menu da mensagem → Favoritar para guardar aqui as que você quer reencontrar.</span></div>';
+      return;
+    }
+    el.innerHTML = lista.map(m => {
+      const quando = (typeof formatDayLabel === 'function' ? formatDayLabel(m.timestamp) : '') + ' ' + _brtTime(parseUTC(m.timestamp));
+      const corpo = String(m.content || '').trim() || '(mídia)';
+      return '<div onclick="_favAbrir(\'' + escHtml(String(m.phone)) + '\')" '
+        + 'style="border:1px solid #e9edef;border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer;background:'
+        + (m.direction === 'outbound' ? '#f6fdf4' : '#fff') + '">'
+        + '<div style="display:flex;gap:8px;align-items:center;margin-bottom:4px">'
+        + '<b style="flex:1;font-size:13px;color:#131c20;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(m.contact_name || m.phone) + '</b>'
+        + '<span style="font-size:11px;color:#8696a0;white-space:nowrap">' + escHtml(quando) + '</span></div>'
+        + '<div style="color:#3b4a54;font-size:13px;max-height:52px;overflow:hidden">' + escHtml(corpo.slice(0, 240)) + '</div></div>';
+    }).join('');
+  } catch (e) {
+    el.innerHTML = '<div style="color:#ef4444;padding:14px 0">Não consegui carregar as favoritas: ' + escHtml(e.message || String(e)) + '</div>';
+  }
+}
+function fecharFavoritas() { const ov = document.getElementById('fav-overlay'); if (ov) ov.remove(); }
+function _favAbrir(phone) {
+  fecharFavoritas();
+  const c = (allContacts || []).find(x => String(x.phone) === String(phone));
+  try { selectContact(phone, (c && c.name) || phone, (c && c.account_id) || ''); } catch (_) {}
+}
+
+// ── Atalhos de teclado (computador) ──
+document.addEventListener('keydown', (e) => {
+  const alvo = e.target;
+  const digitando = alvo && (alvo.tagName === 'INPUT' || alvo.tagName === 'TEXTAREA' || alvo.isContentEditable);
+  // Esc fecha o que estiver aberto, um de cada vez
+  if (e.key === 'Escape') {
+    let fez = false;
+    try { if (document.getElementById('fw-overlay'))  { fecharEncaminhar(); fez = true; } } catch (_) {}
+    try { if (!fez && document.getElementById('fav-overlay')) { fecharFavoritas(); fez = true; } } catch (_) {}
+    try { if (!fez && document.getElementById('react-picker')) { closeReactPicker(); fez = true; } } catch (_) {}
+    try { if (!fez && document.getElementById('msg-menu')?.style.display === 'block') { closeMsgMenu(); fez = true; } } catch (_) {}
+    try { if (!fez && document.getElementById('contact-menu')?.style.display === 'block') { closeContactMenu(); fez = true; } } catch (_) {}
+    try { if (!fez && document.getElementById('reply-bar')?.style.display === 'flex') { cancelReply(); fez = true; } } catch (_) {}
+    try { if (!fez && typeof _selMode !== 'undefined' && _selMode) { exitSelMode(); fez = true; } } catch (_) {}
+    if (fez) e.preventDefault();
+    return;
+  }
+  // Ctrl+F (ou ⌘F): pesquisar DENTRO da conversa aberta
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'F') && currentPhone && !digitando) {
+    e.preventDefault();
+    try { toggleChatSearch(); } catch (_) {}
+    return;
+  }
+  // Seta para cima com o campo vazio: edita a última mensagem sua (quando dá)
+  if (e.key === 'ArrowUp' && alvo && alvo.id === 'msg-input' && !alvo.value.trim()) {
+    try {
+      const minhas = (currentMessages || []).filter(m => m.direction === 'outbound' && String(m.type || 'text') === 'text');
+      const ult = minhas[minhas.length - 1];
+      if (!ult) return;
+      _updateMsgMenuItems(ult.id);
+      const it = document.getElementById('msg-menu-edit');
+      if (it && it.style.display !== 'none') { e.preventDefault(); _msgMenuId = ult.id; msgMenuEdit(); }
+    } catch (_) {}
+  }
+});
 
 function msgMenuInfo() {
   const id = _msgMenuId; closeMsgMenu(); if (!id) return;
@@ -6478,6 +6687,14 @@ function _contaNumero(id) {
   return (a && a.phone_display) ? a.phone_display : '';
 }
 
+// "maria.souza@empresa.com" → "Maria Souza" (para mostrar quem da equipe enviou)
+function _nomeAutor(email) {
+  const e = String(email || '').trim();
+  if (!e) return '';
+  const n = e.split('@')[0].replace(/[._+-]+/g, ' ').trim();
+  return n.replace(/\b\w/g, c => c.toUpperCase());
+}
+
 function msgDayKey(dateStr) {
   return new Date(parseUTC(dateStr) - _BRT_OFFSET).toISOString().substring(0, 10);
 }
@@ -6629,6 +6846,11 @@ async function loadMessages(phone, scroll = true) {
         // Horário UTC-3 — usa parseUTC() para garantir que o timestamp seja tratado como UTC
         const timeStr = _brtTime(parseUTC(m.timestamp));
 
+        // Quem da equipe enviou (só aparece quando NÃO foi você — senão seria óbvio)
+        const _euMesma = String(m.sent_by || '').toLowerCase() === String(window._userEmail || '').toLowerCase();
+        const autorHtml = (m.direction === 'outbound' && m.sent_by && !_euMesma)
+          ? `<div style="font-size:11px;font-weight:700;color:#00806a;margin-bottom:2px">${escHtml(_nomeAutor(m.sent_by))}</div>`
+          : '';
         const msgContent = renderMessageContent(m);
         // Guarda conteúdo no data-attribute como fallback para startReply
         const safeId  = escHtml(String(m.id || ''));
@@ -6697,7 +6919,7 @@ async function loadMessages(phone, scroll = true) {
           <div class="msg-actions">
             <button class="msg-menu-btn" title="Opções da mensagem" onclick="openMsgMenu(event,'${safeId}')">⌄</button>
           </div>
-          ${m.forwarded ? '<div style="font-size:11.5px;color:#8696a0;margin-bottom:3px;font-style:italic">↪ Encaminhada</div>' : ''}${msgContent}
+          ${autorHtml}${m.forwarded ? '<div style="font-size:11.5px;color:#8696a0;margin-bottom:3px;font-style:italic">↪ Encaminhada</div>' : ''}${msgContent}
           <div class="time">${m.edited ? '<span style="font-size:10.5px;color:#8696a0;margin-right:4px">editada</span>' : ''}${m.starred ? '<span style="font-size:10px;margin-right:3px;opacity:.75">★</span>' : ''}${timeStr}${ticks}</div>
           ${reactBadge}
         </div>` });
@@ -7749,10 +7971,24 @@ function vAviso(o) {
     foco: 'vdlg-ok'
   });
 }
-// Detalhe da falha de envio (o motivo vem da Meta e fica no title do ícone)
-function _verFalha(el) {
+// Detalhe da falha de envio (o motivo vem da Meta e fica no title do ícone).
+// Quando é mensagem de texto, oferece REENVIAR sem precisar digitar de novo.
+async function _verFalha(el) {
   try {
-    vAviso({ titulo: 'Falha no envio', texto: escHtml(el.title || 'Sem motivo registrado.').replace(/\n/g, '<br>') });
+    const bolha = el.closest ? el.closest('.msg') : null;
+    const id    = bolha ? bolha.dataset.msgId : null;
+    const tipo  = bolha ? String(bolha.dataset.msgType || 'text') : 'text';
+    const texto = bolha ? String(bolha.dataset.msgContent || '') : '';
+    const podeReenviar = tipo === 'text' && !!texto.trim() && !!currentPhone;
+    const motivo = escHtml(el.title || 'Sem motivo registrado.').replace(/\n/g, '<br>');
+    const extra = podeReenviar
+      ? '<div style="margin-top:10px;font-size:12.5px;color:#667781">Dá para tentar de novo sem redigitar — você escolhe por qual número.</div>'
+      : '';
+    const botoes = podeReenviar
+      ? '<button class="btn-cancel" onclick="_vdlgFecha(false)">Fechar</button><button class="btn-save" id="vdlg-ok" onclick="_vdlgFecha(true)">Reenviar</button>'
+      : '<button class="btn-save" id="vdlg-ok" onclick="_vdlgFecha(false)">Entendi</button>';
+    const r = await _vdlgAbre({ titulo: 'Falha no envio', texto: motivo + extra, botoes, foco: 'vdlg-ok' });
+    if (r === true) reenviarMensagem(id, texto);
   } catch (_) {}
 }
 // Perguntar um texto (devolve o texto ou null se cancelar)
