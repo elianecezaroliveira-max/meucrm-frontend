@@ -1912,7 +1912,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v323</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v324</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2527,7 +2527,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v323</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v324</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2581,7 +2581,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 323;
+const APP_VER = 324;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -12561,16 +12561,18 @@ function renderTmplPreview(node){
   if (!el) return;
   const key = (node.config.template_name || '') + '|' + (node.config.language || 'pt_BR');
   const t = _botTmplCache[key] || Object.values(_botTmplCache).find(x => x.name === node.config.template_name);
-  const vw = document.getElementById('cfg-tmpl-vars-wrap');
-  if (!t) { el.innerHTML = ''; if(vw) vw.style.display='none'; return; }
+  if (!t) { el.innerHTML = ''; return; }
   const body = ((t.components || []).find(c => c.type === 'BODY') || {}).text || '';
-  if(vw) vw.style.display = body.includes('{{') ? 'block' : 'none';
   if (!body) { el.innerHTML = ''; return; }
+  // O modelo tem lacunas ({{1}}, {{2}}…): o VETRA preenche sozinho na hora do envio
+  const aviso = body.includes('{{')
+    ? '<div style="font-size:11.5px;color:#667781;margin-top:6px;line-height:1.4">As lacunas do modelo são preenchidas na hora do envio: a primeira recebe o nome do lead.</div>'
+    : '';
   const btns = node.config.buttons || [];
   el.innerHTML = `<div style="background:linear-gradient(135deg,#4e8cff,#3f7ae0);color:#fff;border-radius:12px;padding:12px 14px;font-size:12.5px;line-height:1.45;white-space:pre-wrap">${escHtml(body)}${
       btns.length ? '<div style="margin-top:9px;display:flex;flex-direction:column;gap:6px">' +
         btns.map(b => `<div style="background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.55);border-radius:8px;text-align:center;padding:5px;font-size:12px">${escHtml(b)}</div>`).join('') + '</div>' : ''
-    }</div>`;
+    }</div>` + aviso;
 }
 function renderTmplButtonsInfo(node){
   const el=document.getElementById('cfg-tmpl-buttons');
@@ -13140,10 +13142,6 @@ function renderConfigPanel(node) {
       <div id="cfg-msg-template" style="display:${mode==='template'?'block':'none'}">
         <label class="bot-cfg-label" style="margin-top:12px">Modelo</label>
         <select class="bot-cfg-select" id="cfg-tmpl-select"><option value="">Carregando...</option></select>
-        <div id="cfg-tmpl-vars-wrap" style="display:none">
-          <label class="bot-cfg-label" style="margin-top:10px">Variáveis</label>
-          <textarea class="bot-cfg-textarea" id="cfg-tmpl-vars" placeholder="{nome}">${escHtml((node.config.vars||[]).join('\n'))}</textarea>
-        </div>
         <div id="cfg-tmpl-preview" style="margin-top:10px"></div>
       </div>`;
     document.getElementById('cfg-msg-mode').addEventListener('change', function(){
@@ -13185,7 +13183,6 @@ function renderConfigPanel(node) {
       ta.focus(); ta.selectionStart=ta.selectionEnd=s+v.length;
       updateNodeConfig(node.id,{text:ta.value});
     };
-    document.getElementById('cfg-tmpl-vars').addEventListener('input', function(){ updateNodeConfig(node.id,{vars:this.value.split('\n').map(s=>s.trim()).filter(Boolean)}); });
     document.getElementById('cfg-tmpl-select').addEventListener('change', function(){ onBotTmplSelect(node, this.value); });
     document.getElementById('cfg-msg-account').addEventListener('change', function(){
       updateNodeConfig(node.id, { account_id: this.value || null });
