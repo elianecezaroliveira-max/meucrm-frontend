@@ -1950,7 +1950,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v347</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v348</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2608,7 +2608,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v347</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v348</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2662,7 +2662,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 347;
+const APP_VER = 348;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -14052,7 +14052,11 @@ function getNodePreview(node) {
     const opts = cfg.options||[];
     return opts.map(o=>o.label).join(' / ') || '(sem opções)';
   }
-  if (node.type==='pause') return `${cfg.days||0}d ${cfg.hours||0}h ${cfg.minutes||0}m ${cfg.seconds||0}s`;
+  if (node.type==='pause') {
+    const d = cfg.days||0, h = cfg.hours||0, m = cfg.minutes||0, sg = cfg.seconds||0;
+    if (d + h + m + sg === 0) return '(sem espera)';
+    return [d ? d+'d' : '', h ? h+'h' : '', m ? m+'m' : '', sg ? sg+'s' : ''].filter(Boolean).join(' ');
+  }
   if (node.type==='move_stage') {
     const s = _botStages.find(s=>s.id===cfg.stage_id);
     return s ? s.name : '(selecione o status)';
@@ -14489,7 +14493,7 @@ function addNodeFromPalette(type) {
 function botDefaultConfig(type) {
   const c = {};
   if (type==='wait_reply') c.options = [{label:'Sim'},{label:'Não'}];
-  if (type==='pause') c.hours=1;
+  if (type==='pause') { c.days=0; c.hours=0; c.minutes=0; c.seconds=0; }
   if (type==='message') c.mode='custom';
   if (type==='tags') { c.add=[]; c.remove=[]; }
   if (type==='round_robin') c.branches=[{},{}];
@@ -14916,7 +14920,10 @@ function renderConfigPanel(node) {
         <div style="flex:1"><label style="font-size:11px;color:#667781">Horas</label><input class="bot-cfg-input" type="number" min="0" max="23" value="${cfg.hours||0}" onchange="updateNodeConfig('${node.id}',{hours:parseInt(this.value)||0})" /></div>
         <div style="flex:1"><label style="font-size:11px;color:#667781">Minutos</label><input class="bot-cfg-input" type="number" min="0" max="59" value="${cfg.minutes||0}" onchange="updateNodeConfig('${node.id}',{minutes:parseInt(this.value)||0})" /></div>
         <div style="flex:1"><label style="font-size:11px;color:#667781">Segundos</label><input class="bot-cfg-input" type="number" min="0" max="59" value="${cfg.seconds||0}" onchange="updateNodeConfig('${node.id}',{seconds:parseInt(this.value)||0})" /></div>
-      </div>`;
+      </div>
+      ${((cfg.days||0)+(cfg.hours||0)+(cfg.minutes||0)+(cfg.seconds||0)) === 0
+        ? '<div style="margin-top:8px;font-size:12px;color:#8c6d1f;background:#fff7e6;border:1px solid #ffd591;border-radius:8px;padding:8px 10px">Tudo zerado: o bot segue direto para o próximo passo, sem esperar.</div>'
+        : ''}`;
     return;
   }
 
