@@ -1729,6 +1729,7 @@ window.addEventListener('load', initAuth);
             <option value="REJECTED">Reprovados</option>
             <option value="PAUSED">Pausados</option>
           </select>
+          <button class="pf-topbtn" onclick="abrirEscondidos()" title="Modelos escondidos e apagados">Escondidos</button>
           <select id="tmpl-ordem" onchange="renderTemplateList(allTemplates)"
             style="background:#fff;border:1px solid #e9edef;color:#131c20;padding:8px 10px;border-radius:8px;font-size:13px;font-family:inherit;cursor:pointer">
             <option value="status">Aprovados primeiro</option>
@@ -1949,7 +1950,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v346</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v347</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2607,7 +2608,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v346</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v347</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2661,7 +2662,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 346;
+const APP_VER = 347;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -9166,7 +9167,7 @@ async function openConfigModal() {
 }
 // Versão do servidor que este app espera. Se o Railway estiver atrás disso,
 // algumas telas não têm como funcionar — e o app avisa em vez de dar erro seco.
-const SERVIDOR_MIN = 247;
+const SERVIDOR_MIN = 248;
 let _verServidor = null;
 async function _servidorVersao() {
   if (_verServidor !== null) return _verServidor;
@@ -10382,12 +10383,116 @@ function _tmplQualidade(t) {
 }
 
 async function deleteTemplate(templateName, templateId, accountId) {
-  if (!await vConfirm({ titulo: 'Remover modelo', texto: 'O modelo some da sua lista no VETRA (continua existindo na Meta).', confirmar: 'Remover', perigo: true })) return;
-  // Esconde no CRM (não depende da Meta)
-  hideTemplate(templateId);
-  // Tenta excluir na Meta também, mas de forma silenciosa — se falhar, fica só escondido aqui
-  fetch(`${SERVER_URL}/templates/${encodeURIComponent(templateName)}?account_id=${accountId}&hsm_id=${encodeURIComponent(templateId || '')}`, { method: 'DELETE' }).catch(() => {});
+  const t = (allTemplates || []).find(x => String(x.id) === String(templateId));
+  const escolha = await vEscolha({
+    titulo: 'Remover modelo',
+    texto: 'O que você quer fazer com "' + (t ? tmplNome(t) : templateName) + '"?',
+    opcoes: [
+      { v: 'esconder', t: 'Só esconder no VETRA (continua na Meta)' },
+      { v: 'apagar',   t: 'Apagar de vez na Meta (não tem como desfazer lá)' }
+    ]
+  });
+  if (!escolha) return;
+
+  if (escolha === 'esconder') {
+    hideTemplate(templateId);
+    loadTemplates();
+    showToast('Modelo escondido. Use "Escondidos" para trazer de volta.', 'ok');
+    return;
+  }
+
+  if (!await vConfirm({
+    titulo: 'Apagar na Meta',
+    textoHtml: '<div>O modelo será apagado <b>na Meta</b>. A Meta não guarda cópia e ainda bloqueia o mesmo nome por 30 dias.</div>'
+      + '<div style="margin-top:10px;background:#e7f7ef;border:1px solid #b7e4d3;border-radius:8px;padding:9px 11px;font-size:12.5px;color:#00806a;text-align:left">'
+      + 'O VETRA guarda uma cópia completa na <b>Lixeira de modelos</b>, com texto, botões e cabeçalho, para você recriar quando quiser.</div>',
+    confirmar: 'Apagar na Meta', perigo: true })) return;
+
+  // 1) cópia de segurança ANTES de encostar na Meta
+  let guardou = false;
+  if (t) {
+    try {
+      const r = await fetch(SERVER_URL + '/tmpl-lixeira', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ modelo: t, account_id: accountId }) });
+      guardou = r.ok;
+    } catch (_) {}
+    if (!guardou && !await vConfirm({ titulo: 'Não consegui guardar a cópia', texto: 'A cópia de segurança do modelo falhou. Se apagar agora, o conteúdo se perde de vez. Continuar mesmo assim?', confirmar: 'Apagar sem cópia', perigo: true })) return;
+  }
+  // 2) agora sim, apaga na Meta — e conta o resultado de verdade
+  try {
+    const r = await fetch(`${SERVER_URL}/templates/${encodeURIComponent(templateName)}?account_id=${accountId}&hsm_id=${encodeURIComponent(templateId || '')}`, { method: 'DELETE' });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok && d.success) {
+      hideTemplate(templateId);
+      showToast('Modelo apagado na Meta. A cópia ficou na Lixeira de modelos.', 'ok', 6000);
+    } else {
+      showToast('A Meta não apagou: ' + (d.error || 'motivo não informado') + '. O modelo continua lá e foi só escondido aqui.', 'warn', 9000);
+      hideTemplate(templateId);
+    }
+  } catch (e) {
+    showToast('Sem conexão — nada foi apagado na Meta.', 'err');
+  }
   loadTemplates();
+}
+
+// ── Escondidos e Lixeira de modelos ──
+async function abrirEscondidos() {
+  const escondidos = getHiddenTemplates();
+  const naMeta = (allTemplates || []).filter(t => escondidos.includes(t.id));
+  let lixo = [];
+  try { lixo = await _apiJson(SERVER_URL + '/tmpl-lixeira'); } catch (_) {}
+  let ov = document.getElementById('tlix-overlay');
+  if (!ov) { ov = document.createElement('div'); ov.id = 'tlix-overlay'; document.body.appendChild(ov); }
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(11,20,26,.55);z-index:9700;display:flex;align-items:center;justify-content:center;padding:16px';
+  const bloco = (titulo, dica, html) => '<div style="margin-bottom:16px"><b style="font-size:13.5px;color:#131c20">' + titulo + '</b>'
+    + '<div style="font-size:12px;color:#667781;margin:2px 0 8px">' + dica + '</div>' + html + '</div>';
+  const listaEscondidos = naMeta.length
+    ? naMeta.map(t => '<div style="border:1px solid #e9edef;border-radius:10px;padding:10px 12px;margin-bottom:7px;display:flex;gap:10px;align-items:center">'
+        + '<div style="flex:1;min-width:0"><b style="font-size:13px;color:#131c20">' + escHtml(tmplNome(t)) + '</b>'
+        + '<div style="font-size:11.5px;color:#8696a0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(((t.components || []).find(c => c.type === 'BODY') || {}).text || '') + '</div></div>'
+        + '<button class="pf-topbtn" onclick="mostrarModelo(\'' + escHtml(t.id) + '\')">Trazer de volta</button></div>').join('')
+    : '<div style="font-size:12.5px;color:#8696a0">Nenhum modelo escondido.</div>';
+  const listaLixo = (Array.isArray(lixo) && lixo.length)
+    ? lixo.map(t => '<div style="border:1px solid #e9edef;border-radius:10px;padding:10px 12px;margin-bottom:7px;display:flex;gap:10px;align-items:center">'
+        + '<div style="flex:1;min-width:0"><b style="font-size:13px;color:#131c20">' + escHtml(t.name) + '</b>'
+        + '<div style="font-size:11.5px;color:#8696a0">apagado em ' + escHtml(new Date(t.apagado_em).toLocaleString('pt-BR')) + '</div>'
+        + '<div style="font-size:11.5px;color:#54656f;margin-top:3px;max-height:34px;overflow:hidden">' + escHtml(((t.components || []).find(c => c.type === 'BODY') || {}).text || '') + '</div></div>'
+        + '<button class="pf-topbtn" onclick="recriarDaLixeira(\'' + escHtml(t.id) + '\')">Recriar na Meta</button></div>').join('')
+    : '<div style="font-size:12.5px;color:#8696a0">Nada aqui. Modelos apagados na Meta a partir de agora ficam guardados neste lugar.</div>';
+  ov.innerHTML = '<div style="background:#fff;border-radius:12px;width:min(560px,100%);max-height:80vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.35)">'
+    + '<div style="display:flex;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid #e9edef">'
+    + '<b style="flex:1;font-size:15px;color:#131c20">Escondidos e lixeira</b>'
+    + '<span onclick="fecharEscondidos()" style="cursor:pointer;font-size:20px;color:#667781">✕</span></div>'
+    + '<div style="flex:1;overflow-y:auto;padding:12px 14px 14px">'
+    + bloco('Escondidos no VETRA', 'Continuam existindo na Meta — é só trazer de volta.', listaEscondidos)
+    + bloco('Lixeira (apagados na Meta)', 'Cópia guardada pelo VETRA. Recriar envia de novo para análise da Meta.', listaLixo)
+    + '</div></div>';
+  ov.onclick = (e) => { if (e.target === ov) fecharEscondidos(); };
+}
+function fecharEscondidos() { const ov = document.getElementById('tlix-overlay'); if (ov) ov.remove(); }
+function mostrarModelo(id) {
+  const h = getHiddenTemplates().filter(x => String(x) !== String(id));
+  _tmplOcultos = h; _salvaOcultos();
+  showToast('Modelo de volta na lista', 'ok');
+  loadTemplates();
+  abrirEscondidos();
+}
+async function recriarDaLixeira(id) {
+  let lixo = [];
+  try { lixo = await _apiJson(SERVER_URL + '/tmpl-lixeira'); } catch (_) { return; }
+  const t = (lixo || []).find(x => String(x.id) === String(id));
+  if (!t) return;
+  const acc = document.getElementById('tmpl-list-account-id')?.value || t.account_id || '';
+  if (!acc) { showToast('Escolha a conta de WhatsApp na lista de modelos primeiro.', 'err'); return; }
+  if (!await vConfirm({ titulo: 'Recriar na Meta', texto: 'O modelo "' + t.name + '" será enviado de novo para análise da Meta. Se ele foi apagado há menos de 30 dias, a Meta pode recusar o mesmo nome — nesse caso mude o nome e tente de novo.', confirmar: 'Recriar' })) return;
+  try {
+    const r = await fetch(SERVER_URL + '/templates', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ account_id: acc, name: t.name, category: t.category || 'MARKETING', language: t.language || 'pt_BR', components: t.components || [] }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || d.error) { showToast('A Meta recusou: ' + (d.error || r.status), 'err', 9000); return; }
+    showToast('Modelo enviado para análise da Meta.', 'ok', 6000);
+    fecharEscondidos();
+    loadTemplates();
+  } catch (e) { showToast('Não consegui recriar: ' + (e.message || e), 'err'); }
 }
 
 function onHeaderTypeChange() {
