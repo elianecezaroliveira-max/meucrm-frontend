@@ -1949,7 +1949,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v344</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v345</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2607,7 +2607,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v344</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v345</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="pf-topbtn" onclick="abrirVersoesBot()" title="Voltar o fluxo para uma versão anterior">Versões</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
@@ -2662,7 +2662,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 344;
+const APP_VER = 345;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3225,8 +3225,13 @@ async function deleteAccount(id) {
   await loadAccounts();
 }
 
-function openModal() { _closeAllScreens(); document.getElementById('modal-overlay').classList.add('open'); loadAccounts(); }
-function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
+function openModal() { _closeAllScreens(); _telaAtual('contas'); document.getElementById('modal-overlay').classList.add('open'); loadAccounts(); }
+function closeModal() {
+  const el = document.getElementById('modal-overlay');
+  const estava = el.classList.contains('open');
+  el.classList.remove('open');
+  if (estava) _telaFechou();
+}
 
 // ── CONTATOS ──
 // Ordena: não lidos no topo pela 1ª mensagem não lida (quem espera há mais tempo), lidos por mais recente
@@ -8481,7 +8486,9 @@ function openQRManager() {
 }
 
 function closeQRManager() {
+  const _ab = document.getElementById('qr-modal').classList.contains('open');
   document.getElementById('qr-modal').classList.remove('open');
+  if (_ab) _telaFechou();
 }
 
 function renderQRManager() {
@@ -8904,7 +8911,12 @@ async function avLimparTudo() {
   try { await fetch(SERVER_URL + '/notices', { method: 'DELETE' }); } catch (_) {}
   refreshNoticesBadge();
 }
-function closeNotices() { document.getElementById('not-overlay').style.display = 'none'; }
+function closeNotices() {
+  const el = document.getElementById('not-overlay');
+  const _ab = el.style.display !== 'none';
+  el.style.display = 'none';
+  if (_ab) _telaFechou();
+}
 
 // ── Configurações (Integração / Faturamento / Suporte) ──
 // Planilha do Google → Pipeline
@@ -9331,7 +9343,12 @@ async function _renderCfgStageIds() {
       </div>`).join('');
   } catch (_) { box.textContent = 'Erro ao carregar as etapas.'; }
 }
-function closeConfigModal() { document.getElementById('cfg-overlay').style.display = 'none'; }
+function closeConfigModal() {
+  const el = document.getElementById('cfg-overlay');
+  const _ab = el.style.display !== 'none';
+  el.style.display = 'none';
+  if (_ab) _telaFechou();
+}
 async function genIntegrationToken() {
   if (!await vConfirm({ titulo: 'Gerar nova chave de conexão', texto: 'A chave atual deixa de funcionar na hora. Ferramentas já conectadas (n8n, planilhas, Zapier) precisam receber a nova chave.', confirmar: 'Gerar nova', perigo: true })) return;
   const st = document.getElementById('cfg-token-status');
@@ -9372,13 +9389,21 @@ function _closeAllScreens() {
 }
 // Botão "Chat" do trilho: fecha tudo e volta para as conversas
 function goToChat() { _closeAllScreens(); _telaAtual(currentPhone ? 'chat=' + currentPhone : ''); }
+// Fechou uma tela: a URL volta para o que ficou na frente (pipeline ou o chat).
+// Sem isso, fechar a tela e apertar F5 reabria ela do nada.
+function _telaFechou() {
+  try {
+    const pipeAberto = document.getElementById('pipeline-view')?.classList.contains('open');
+    _telaAtual(pipeAberto ? 'pipeline' : (currentPhone ? 'chat=' + currentPhone : ''));
+  } catch (_) {}
+}
 // Lembra a tela atual na URL (#pipeline, #bots, #chat=5511…): ao recarregar (F5),
 // o app volta para onde estava em vez de cair sempre no Chat
 function _telaAtual(nome) {
   try { history.replaceState(null, '', location.pathname + location.search + (nome ? '#' + nome : '')); } catch (_) {}
   // Trilho acompanha a tela (inclusive quando a tela é reaberta ao recarregar)
   try {
-    const mapa = { pipeline: 'pipe', tarefas: 'tasks', bots: 'bots', ia: 'ia', automacao: 'auto', modelos: 'tmpl', respostas: 'quick', tags: 'tags', config: 'cfg', avisos: 'notice' };
+    const mapa = { pipeline: 'pipe', tarefas: 'tasks', bots: 'bots', ia: 'ia', automacao: 'auto', modelos: 'tmpl', respostas: 'quick', tags: 'tags', contas: 'acc', config: 'cfg', avisos: 'notice' };
     const k = !nome || nome.startsWith('chat=') ? 'chat' : (mapa[nome] || null);
     if (k) document.querySelectorAll('#side-rail .rail-btn').forEach(b => b.classList.toggle('is-on', b.dataset.rail === k));
   } catch (_) {}
@@ -9388,7 +9413,7 @@ async function _restaurarTela(segundaPassada) {
   const _mostra = () => { try { document.documentElement.classList.remove('tela-restaurando'); } catch (_) {} };
   setTimeout(_mostra, 4000); // segurança: nunca fica escondido para sempre
   if (!h) { _mostra(); return; }
-  const abre = { pipeline: () => openPipeline(), tarefas: () => openTasksPage(), bots: () => openBotsList(), ia: () => openFaqPage(), automacao: () => openAutomationPanel(), modelos: () => openTemplates(), respostas: () => openQRManager(), tags: () => openTagManager(), config: () => openConfigModal(), avisos: () => openNotices() };
+  const abre = { pipeline: () => openPipeline(), tarefas: () => openTasksPage(), bots: () => openBotsList(), ia: () => openFaqPage(), automacao: () => openAutomationPanel(), modelos: () => openTemplates(), respostas: () => openQRManager(), tags: () => openTagManager(), contas: () => openModal(), config: () => openConfigModal(), avisos: () => openNotices() };
   try {
     if (h.startsWith('chat=')) {
       const ph = decodeURIComponent(h.slice(5));
@@ -9936,7 +9961,12 @@ function openTemplates() {
   populateTmplAccounts();
   carregarApelidosModelos().then(() => switchTmplTab('list'));
 }
-function closeTemplates() { document.getElementById('templates-overlay').classList.remove('open'); }
+function closeTemplates() {
+  const el = document.getElementById('templates-overlay');
+  const _ab = el.classList.contains('open');
+  el.classList.remove('open');
+  if (_ab) _telaFechou();
+}
 
 function switchTmplTab(tab, opts) {
   const _view = !!(opts && opts.view);
@@ -10637,8 +10667,11 @@ function openPipeline() {
 }
 
 function closePipeline() {
-  document.getElementById('pipeline-view').classList.remove('open');
+  const el = document.getElementById('pipeline-view');
+  const _ab = el.classList.contains('open');
+  el.classList.remove('open');
   document.getElementById('layout').style.display = 'flex';
+  if (_ab) _telaFechou();
 }
 
 async function loadPipeline() {
@@ -12035,7 +12068,10 @@ function _tempoRel(iso) {
 }
 
 function closeBotsList() {
-  document.getElementById('bots-page').style.display = 'none';
+  const el = document.getElementById('bots-page');
+  const _ab = el.style.display !== 'none';
+  el.style.display = 'none';
+  if (_ab) _telaFechou();
 }
 
 // ═══════════════════════ IA / FAQ ═══════════════════════
@@ -12098,7 +12134,12 @@ async function openFaqPage(){
     area.innerHTML = '<div style="color:#ef4444;padding:20px">Erro ao carregar. Verifique a conexão com o servidor.</div>';
   }
 }
-function closeFaqPage(){ document.getElementById('faq-page').style.display = 'none'; _faqEditId = null; }
+function closeFaqPage(){
+  const el = document.getElementById('faq-page');
+  const _ab = el.style.display !== 'none';
+  el.style.display = 'none'; _faqEditId = null;
+  if (_ab) _telaFechou();
+}
 
 function faqRender(){
   const area = document.getElementById('faq-list-area');
@@ -12313,7 +12354,12 @@ async function openTagManager(){
     renderTagManager();
   }catch(e){ el.innerHTML = '<div style="color:#ef4444;padding:16px 0">Erro ao carregar. Verifique a conexão.</div>'; }
 }
-function closeTagManager(){ document.getElementById('tagmgr-overlay').style.display = 'none'; }
+function closeTagManager(){
+  const el = document.getElementById('tagmgr-overlay');
+  const _ab = el.style.display !== 'none';
+  el.style.display = 'none';
+  if (_ab) _telaFechou();
+}
 function renderTagManager(){
   const el = document.getElementById('tagmgr-list');
   if(!_tagMgrList.length){
@@ -12551,7 +12597,12 @@ async function openTasksPage(){
     _pintaBadgeTarefas(_allTasksCache.filter(t=>!t.done).length);
   }catch(e){ area.innerHTML='<div style="color:#ef4444;padding:20px">Erro ao carregar tarefas</div>'; }
 }
-function closeTasksPage(){ document.getElementById('tasks-page').style.display='none'; }
+function closeTasksPage(){
+  const el = document.getElementById('tasks-page');
+  const _ab = el.style.display !== 'none';
+  el.style.display='none';
+  if (_ab) _telaFechou();
+}
 
 // ── Lembrete de tarefas em aberto (push a cada 20 min, janela por dia) ──
 const TREM_DIAS = [ ['1','Segunda'], ['2','Terça'], ['3','Quarta'], ['4','Quinta'], ['5','Sexta'], ['6','Sábado'], ['0','Domingo'] ];
