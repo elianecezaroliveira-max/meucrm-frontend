@@ -1949,7 +1949,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v345</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v346</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2607,9 +2607,8 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v345</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v346</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
-    <button class="pf-topbtn" onclick="abrirVersoesBot()" title="Voltar o fluxo para uma versão anterior">Versões</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
   <div id="bot-editor-body">
@@ -2662,7 +2661,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 345;
+const APP_VER = 346;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -9167,7 +9166,7 @@ async function openConfigModal() {
 }
 // Versão do servidor que este app espera. Se o Railway estiver atrás disso,
 // algumas telas não têm como funcionar — e o app avisa em vez de dar erro seco.
-const SERVIDOR_MIN = 246;
+const SERVIDOR_MIN = 247;
 let _verServidor = null;
 async function _servidorVersao() {
   if (_verServidor !== null) return _verServidor;
@@ -9293,15 +9292,15 @@ async function abrirHistoricoConfig() {
     const lista = await _apiJson(SERVER_URL + '/historico');
     if (!Array.isArray(lista) || !lista.length) {
       el.innerHTML = '<div style="padding:16px 0;text-align:center;color:#8696a0">Nada guardado ainda.'
-        + '<br><span style="font-size:12px">A cada mudança em respostas rápidas, etiquetas, automações ou gotejamento, o VETRA guarda como estava antes. As versões aparecem aqui.</span></div>';
+        + '<br><span style="font-size:12px">A cada mudança em respostas rápidas, etiquetas, automações, gotejamento ou no fluxo de um bot, o VETRA guarda como estava antes. As versões aparecem aqui.</span></div>';
       return;
     }
-    el.innerHTML = '<div style="font-size:12px;color:#667781;margin-bottom:10px">Cada linha é como a configuração estava <b>antes</b> de uma mudança. Restaurar não mexe em conversas, leads nem bots.</div>'
+    el.innerHTML = '<div style="font-size:12px;color:#667781;margin-bottom:10px">Cada linha é como a configuração estava <b>antes</b> de uma mudança. Restaurar não mexe em conversas nem em leads.</div>'
       + lista.map(v => {
         const q = new Date(v.ts).toLocaleString('pt-BR');
         return '<div style="border:1px solid #e9edef;border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;gap:10px;align-items:center">'
           + '<div style="flex:1;min-width:0"><b style="font-size:13px;color:#131c20">' + escHtml(v.nome) + '</b>'
-          + '<div style="font-size:11.5px;color:#8696a0">' + escHtml(q) + ' · ' + v.itens + ' item(ns)'
+          + '<div style="font-size:11.5px;color:#8696a0">' + escHtml(q) + ' · ' + v.itens + (String(v.chave).startsWith('bot:') ? ' passo(s)' : ' item(ns)')
           + (v.por ? ' · por ' + escHtml(String(v.por).split('@')[0]) : '') + '</div></div>'
           + '<button class="pf-topbtn" onclick="restaurarVersao(\'' + escHtml(v.chave) + '\',\'' + escHtml(v.ts) + '\',\'' + escHtml(v.nome) + '\')">Restaurar</button></div>';
       }).join('');
@@ -9312,11 +9311,12 @@ async function abrirHistoricoConfig() {
 function fecharHistoricoConfig() { const ov = document.getElementById('hist-overlay'); if (ov) ov.remove(); }
 async function restaurarVersao(chave, ts, nome) {
   const q = new Date(ts).toLocaleString('pt-BR');
-  if (!await vConfirm({ titulo: 'Voltar para esta versão', texto: nome + ' vai voltar para como estava em ' + q + '. A configuração de agora também fica guardada, então dá para desfazer depois.', confirmar: 'Restaurar' })) return;
+  if (!await vConfirm({ titulo: 'Voltar para esta versão', texto: nome + ' vai voltar para como estava em ' + q + '. O que está valendo agora também fica guardado, então dá para desfazer depois.', confirmar: 'Restaurar' })) return;
   try {
     const d = await _apiJson(SERVER_URL + '/historico/restaurar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chave, ts }) });
     showToast((d.nome || nome) + ' restaurado. Recarregue a página para ver.', 'ok', 6000);
     try { _qrSynced = false; _syncQuickReplies(true); loadAllTags(); } catch (_) {}
+    try { if (document.getElementById('bots-page')?.style.display !== 'none') openBotsList(); } catch (_) {}
     abrirHistoricoConfig();
   } catch (e) { showToast('Não consegui restaurar: ' + (e.message || e), 'err'); }
 }
@@ -13135,43 +13135,6 @@ async function closeBotEditor() {
 function onBotTriggerChange() {
   // Gatilho agora é configurado na Automação — os campos ficam sempre ocultos
   document.getElementById('bot-trigger-stage-select').style.display = 'none';
-}
-
-// Versões anteriores do fluxo (o servidor guarda uma cópia antes de cada salvamento)
-async function abrirVersoesBot() {
-  if (!botEditorId) return;
-  let ov = document.getElementById('bver-overlay');
-  if (!ov) { ov = document.createElement('div'); ov.id = 'bver-overlay'; document.body.appendChild(ov); }
-  ov.style.cssText = 'position:fixed;inset:0;background:rgba(11,20,26,.55);z-index:9700;display:flex;align-items:center;justify-content:center;padding:16px';
-  ov.innerHTML = '<div style="background:#fff;border-radius:12px;width:min(480px,100%);max-height:78vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.35)">'
-    + '<div style="display:flex;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid #e9edef">'
-    + '<b style="flex:1;font-size:15px;color:#131c20">Versões do fluxo</b>'
-    + '<span onclick="fecharVersoesBot()" style="cursor:pointer;font-size:20px;color:#667781">✕</span></div>'
-    + '<div id="bver-lista" style="flex:1;overflow-y:auto;padding:12px 14px 14px;font-size:13px;color:#667781">Carregando…</div></div>';
-  ov.onclick = (e) => { if (e.target === ov) fecharVersoesBot(); };
-  const el = document.getElementById('bver-lista');
-  try {
-    const lista = await _apiJson(SERVER_URL + '/bots/' + encodeURIComponent(botEditorId) + '/versoes');
-    if (!Array.isArray(lista) || !lista.length) {
-      el.innerHTML = '<div style="padding:16px 0;text-align:center;color:#8696a0">Nenhuma versão guardada ainda.<br><span style="font-size:12px">A partir do próximo salvamento, o VETRA guarda como o fluxo estava antes.</span></div>';
-      return;
-    }
-    el.innerHTML = '<div style="font-size:12px;color:#667781;margin-bottom:10px">Cada linha é como o fluxo estava <b>antes</b> de um salvamento.</div>'
-      + lista.map(v => '<div style="border:1px solid #e9edef;border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;gap:10px;align-items:center">'
-        + '<div style="flex:1"><b style="font-size:13px;color:#131c20">' + escHtml(new Date(v.ts).toLocaleString('pt-BR')) + '</b>'
-        + '<div style="font-size:11.5px;color:#8696a0">' + v.passos + ' passo(s) · ' + v.ligacoes + ' ligação(ões)</div></div>'
-        + '<button class="pf-topbtn" onclick="restaurarVersaoBot(\'' + escHtml(v.ts) + '\')">Restaurar</button></div>').join('');
-  } catch (e) { el.innerHTML = '<div style="color:#ef4444;padding:14px 0">' + escHtml(e.message || 'Não consegui carregar.') + '</div>'; }
-}
-function fecharVersoesBot() { const ov = document.getElementById('bver-overlay'); if (ov) ov.remove(); }
-async function restaurarVersaoBot(ts) {
-  if (!await vConfirm({ titulo: 'Voltar o fluxo', texto: 'O fluxo deste bot volta para como estava em ' + new Date(ts).toLocaleString('pt-BR') + '. O fluxo de agora também fica guardado.', confirmar: 'Restaurar' })) return;
-  try {
-    const d = await _apiJson(SERVER_URL + '/bots/' + encodeURIComponent(botEditorId) + '/versoes/restaurar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ts }) });
-    fecharVersoesBot();
-    showToast('Fluxo restaurado com ' + (d.passos || 0) + ' passo(s)', 'ok');
-    await openBotEditor(botEditorId);
-  } catch (e) { showToast('Não consegui restaurar: ' + (e.message || e), 'err'); }
 }
 
 async function saveBotFlow() {
