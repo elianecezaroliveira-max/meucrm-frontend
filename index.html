@@ -856,6 +856,51 @@
 #btn-n8n:hover, #btn-n8n.connected { background:#EA4B71; color:#fff; }
 
 #bots-page, #bot-editor-page, #tasks-page, #faq-page { position:fixed; top:0;left:0;right:0;bottom:0; background:#ffffff; z-index:500; display:none; flex-direction:column; }
+/* ── 📊 RELATÓRIOS ─────────────────────────────────────────────
+   Duas cores só: uma para o que SAI e outra para o que ENTRA.
+   Foram conferidas para quem enxerga cores de forma diferente
+   (daltonismo) e para o modo escuro — não são chute. */
+:root{
+  --rel-sai:#00806a; --rel-entra:#b25a00;
+  --rel-fundo:#ffffff; --rel-cartao:#ffffff; --rel-borda:#e9edef;
+  --rel-tinta:#131c20; --rel-tinta2:#54656f; --rel-tinta3:#8696a0;
+  --rel-grade:#eef1f2;
+}
+body.dark{
+  --rel-sai:#17a888; --rel-entra:#c8792c;
+  --rel-fundo:#111b21; --rel-cartao:#202c33; --rel-borda:#2a3942;
+  --rel-tinta:#e9edef; --rel-tinta2:#aebac1; --rel-tinta3:#8696a0;
+  --rel-grade:#2a3942;
+}
+#rel-page{position:fixed;top:0;left:68px;right:0;bottom:0;background:var(--rel-fundo);color:var(--rel-tinta);z-index:500;display:none;flex-direction:column}
+#rel-topbar{display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--rel-cartao);border-bottom:1px solid var(--rel-borda);flex-wrap:wrap}
+#rel-topbar h2{flex:1;margin:0;font-size:16px;color:var(--rel-tinta)}
+#rel-corpo{flex:1;overflow-y:auto;padding:16px}
+.rel-card{background:var(--rel-cartao);border:1px solid var(--rel-borda);border-radius:12px;padding:14px 16px;margin-bottom:14px}
+.rel-card h3{margin:0 0 2px;font-size:13.5px;color:var(--rel-tinta)}
+.rel-card .rel-sub{font-size:11.5px;color:var(--rel-tinta3);margin-bottom:10px}
+.rel-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.rel-tile{background:var(--rel-cartao);border:1px solid var(--rel-borda);border-radius:12px;padding:12px 14px}
+.rel-tile b{display:block;font-size:24px;line-height:1.15;color:var(--rel-tinta);font-variant-numeric:tabular-nums}
+.rel-tile span{display:block;font-size:11.5px;color:var(--rel-tinta2);margin-top:2px}
+.rel-tile small{display:block;font-size:11px;color:var(--rel-tinta3);margin-top:3px}
+.rel-leg{display:flex;gap:14px;align-items:center;flex-wrap:wrap;font-size:11.5px;color:var(--rel-tinta2);margin-bottom:6px}
+.rel-leg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.rel-svg{width:100%;height:auto;display:block;overflow:visible}
+.rel-hit{fill:transparent;cursor:pointer}
+.rel-hit:hover{fill:var(--rel-grade);fill-opacity:.55}
+#rel-tip{position:fixed;z-index:900;background:#111b21;color:#fff;border-radius:8px;padding:7px 10px;font-size:11.5px;line-height:1.5;pointer-events:none;display:none;box-shadow:0 4px 16px rgba(0,0,0,.25);max-width:230px}
+.rel-tab{width:100%;border-collapse:collapse;font-size:12.5px}
+.rel-tab th{text-align:left;color:var(--rel-tinta3);font-weight:600;font-size:11.5px;padding:6px 8px;border-bottom:1px solid var(--rel-borda)}
+.rel-tab td{padding:7px 8px;border-bottom:1px solid var(--rel-grade);color:var(--rel-tinta);font-variant-numeric:tabular-nums}
+.rel-fun{display:flex;align-items:center;gap:10px;padding:5px 0}
+.rel-fun-nome{flex:0 0 34%;font-size:12.5px;color:var(--rel-tinta2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rel-fun-bar{flex:1;height:16px;background:var(--rel-grade);border-radius:4px;overflow:hidden}
+.rel-fun-bar div{height:100%;background:var(--rel-sai);border-radius:4px}
+.rel-fun-n{flex:0 0 76px;text-align:right;font-size:12.5px;color:var(--rel-tinta);font-variant-numeric:tabular-nums}
+.rel-vazio{font-size:12.5px;color:var(--rel-tinta3);padding:14px 2px;text-align:center}
+@media(max-width:820px){#rel-page{left:0;bottom:56px}.rel-fun-nome{flex:0 0 30%}}
+
 /* Computador: o trilho de ferramentas fica SEMPRE visível, mesmo com uma tela
    cheia aberta — o trilho sobe acima e as telas cheias começam depois dele
    (vale para QUALQUER largura de janela no PC — mouse/trackpad) */
@@ -1950,7 +1995,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v351</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v352</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -1978,6 +2023,7 @@ window.addEventListener('load', initAuth);
   <div class="mpm-item" onclick="mnavGo(openNewLead)"><i class=ic-user></i> Adicionar contato</div>
   <div class="mpm-item" onclick="mnavGo(openPipeline)"><i class=ic-chart></i> Pipeline</div>
   <div class="mpm-item" onclick="mnavGo(openTasksPage)" style="position:relative"><i class=ic-task></i> Tarefas<span class="task-badge" style="top:14px;left:96px;right:auto"></span></div>
+  <div class="mpm-item" data-adm onclick="mnavGo(openRelatorios)"><i class=ic-chart></i> Relatórios</div>
   <div class="mpm-sep"></div>
   <div class="mpm-item" data-adm onclick="mnavGo(openBotsList)"><i class=ic-bot></i> Bots</div>
   <div class="mpm-item" data-adm onclick="mnavGo(openFaqPage)"><i class=ic-ai></i> IA</div>
@@ -2078,6 +2124,7 @@ window.addEventListener('load', initAuth);
   <button class="rail-btn is-on" data-rail="chat" onclick="railOn(this);goToChat()" title="Conversas"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.3 8.7 8.7 0 0 1-3.8-.9L3 20l1.1-4.6A8.2 8.2 0 0 1 3 11.5 8.4 8.4 0 0 1 11.5 3.2h.5a8.4 8.4 0 0 1 9 8.3z"/></svg></span>Chat</button>
   <button class="rail-btn" data-rail="pipe" onclick="railOn(this);openPipeline()" title="Pipeline"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="5" height="18" rx="1.2"/><rect x="10" y="3" width="5" height="12" rx="1.2"/><rect x="17" y="3" width="4" height="15" rx="1.2"/></svg></span>Pipeline</button>
   <button class="rail-btn" data-rail="tasks" onclick="railOn(this);openTasksPage()" title="Tarefas" style="position:relative"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m8 12 3 3 5-6"/></svg></span>Tarefas<span class="task-badge"></span></button>
+  <button class="rail-btn" data-rail="rel" onclick="railOn(this);openRelatorios()" title="Relatórios (conversas, funil e desempenho)"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l3.5-4 3 3L21 7"/></svg></span>Relatórios</button>
   <div class="rail-sep"></div>
   <button class="rail-btn" data-rail="bots" onclick="railOn(this);openBotsList()" title="Bots"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="2.5"/><path d="M12 8V4M8 4h8"/><circle cx="9" cy="14" r="1.2" fill="currentColor" stroke="none"/><circle cx="15" cy="14" r="1.2" fill="currentColor" stroke="none"/></svg></span>Bots</button>
   <button class="rail-btn" data-rail="ia" onclick="railOn(this);openFaqPage()" title="IA / FAQ"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5.5a3 3 0 0 0-5.7-1.3A2.8 2.8 0 0 0 4.2 8.6 2.9 2.9 0 0 0 5 13.7a3 3 0 0 0 3.6 3.6A2.6 2.6 0 0 0 12 18.5z"/><path d="M12 5.5a3 3 0 0 1 5.7-1.3 2.8 2.8 0 0 1 2.1 4.4 2.9 2.9 0 0 1-.8 5.1 3 3 0 0 1-3.6 3.6A2.6 2.6 0 0 1 12 18.5z"/><path d="M12 5.5v13"/></svg></span>IA</button>
@@ -2181,7 +2228,7 @@ window.addEventListener('load', initAuth);
       <button onclick="closeConfigModal()" style="background:none;border:none;font-size:20px;color:#667781;cursor:pointer">✕</button>
     </div>
     <div id="cfg-shell">
-      <div id="cfg-nav"><button class="cfg-tab on" data-pane="integ" onclick="cfgTab('integ')"><i class=ic-link></i> Integração</button><button class="cfg-tab" data-pane="dup" onclick="cfgTab('dup')"><i class=ic-layers></i> Chats duplicados</button><button class="cfg-tab" data-pane="bill" onclick="cfgTab('bill')"><i class=ic-card></i> Faturamento</button><button class="cfg-tab" data-pane="equipe" onclick="cfgTab('equipe')"><i class=ic-users></i> Equipe</button><button class="cfg-tab" data-pane="apar" onclick="cfgTab('apar')"><i class=ic-moon></i> Aparência</button><button class="cfg-tab" data-pane="termos" onclick="cfgTab('termos')"><i class=ic-doc></i> Termos e privacidade</button><button class="cfg-tab" data-pane="diag" onclick="cfgTab('diag')"><i class=ic-bandage></i> Diagnóstico</button><button class="cfg-tab" data-pane="adm" style="display:none" onclick="cfgTab('adm')"><i class=ic-crown></i> Painel do fornecedor</button></div>
+      <div id="cfg-nav"><button class="cfg-tab on" data-pane="integ" onclick="cfgTab('integ')"><i class=ic-link></i> Integração</button><button class="cfg-tab" data-pane="dup" onclick="cfgTab('dup')"><i class=ic-layers></i> Chats duplicados</button><button class="cfg-tab" data-pane="bill" onclick="cfgTab('bill')"><i class=ic-card></i> Faturamento</button><button class="cfg-tab" data-pane="equipe" onclick="cfgTab('equipe')"><i class=ic-users></i> Equipe</button><button class="cfg-tab" data-pane="apar" onclick="cfgTab('apar')"><i class=ic-moon></i> Aparência</button><button class="cfg-tab" data-pane="termos" onclick="cfgTab('termos')"><i class=ic-doc></i> Termos e privacidade</button><button class="cfg-tab" data-pane="reg" onclick="cfgTab('reg')"><i class=ic-id></i> Registro</button><button class="cfg-tab" data-pane="diag" onclick="cfgTab('diag')"><i class=ic-bandage></i> Diagnóstico</button><button class="cfg-tab" data-pane="adm" style="display:none" onclick="cfgTab('adm')"><i class=ic-crown></i> Painel do fornecedor</button></div>
       <div id="cfg-panes">
 <div class="cfg-pane" data-pane="equipe">
     <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
@@ -2285,6 +2332,14 @@ window.addEventListener('load', initAuth);
         <button class="pf-topbtn" onclick="abrirHistoricoConfig()" title="Voltar uma configuração para como ela estava antes">Versões anteriores</button>
       </div>
       <div id="cfg-backup-status" style="font-size:12px;color:#54656f;margin-top:6px;min-height:14px"></div>
+      <div style="margin-top:14px;border-top:1px solid #f0f2f5;padding-top:12px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <div style="flex:1;font-size:12.5px;font-weight:700;color:#131c20">Cópias automáticas</div>
+          <button class="pf-topbtn" onclick="backupAgora(this)">Copiar agora</button>
+        </div>
+        <p style="font-size:11.5px;color:#667781;margin:0 0 8px;line-height:1.5">O VETRA guarda sozinho uma cópia das suas configurações por dia e mantém os últimos 30 dias. Você não precisa lembrar de nada.</p>
+        <div id="cfg-bkp-auto" style="font-size:12.5px;color:#54656f">Carregando…</div>
+      </div>
     </div>
 </div>
 <div class="cfg-pane" data-pane="pipe">
@@ -2320,6 +2375,18 @@ window.addEventListener('load', initAuth);
       <div id="trm-aceite" style="font-size:12.5px;color:#54656f;margin-top:10px"></div>
     </div>
 </div>
+<div class="cfg-pane" data-pane="reg">
+    <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <div style="flex:1;font-size:14px;font-weight:700;color:#131c20">Quem fez o quê</div>
+        <button class="pf-topbtn" onclick="carregaAuditoria(true)">Atualizar</button>
+        <button class="pf-topbtn" onclick="limparAuditoria()" style="color:#c0392b">Limpar</button>
+      </div>
+      <p style="font-size:12px;color:#667781;margin:0 0 10px;line-height:1.5">Fica registrado tudo o que apaga ou muda alguma coisa: conversa, número, bot, etapa, modelo, equipe e restauração de backup. Conteúdo de conversa nunca entra aqui.</p>
+      <input id="reg-busca" placeholder="Buscar por pessoa ou ação…" oninput="renderAuditoria()" style="width:100%;box-sizing:border-box;background:#fff;border:1px solid #d1d7db;border-radius:8px;padding:9px 11px;font-size:13px;outline:none;margin-bottom:8px">
+      <div id="reg-lista" style="font-size:13px;color:#54656f">Carregando…</div>
+    </div>
+</div>
 <div class="cfg-pane" data-pane="diag">
     <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
       <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">Diagnóstico da publicação</div>
@@ -2345,6 +2412,11 @@ window.addEventListener('load', initAuth);
       <div id="adm-status" style="font-size:12px;color:#00a884;min-height:16px;margin-top:6px"></div>
       <div id="adm-tentativas" style="margin-top:8px"></div>
       <div id="adm-liberados" style="margin-top:8px;font-size:13px;color:#54656f">Carregando…</div>
+    </div>
+    <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
+      <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">Cobrança automática</div>
+      <p style="font-size:12px;color:#667781;margin:0 0 10px;line-height:1.5">Cole o link de pagamento no plano de cada cliente (em "Plano"). Ele paga por ali, o serviço de pagamento avisa o VETRA e a validade anda sozinha. Se preferir, dá para registrar o pagamento na mão.</p>
+      <div id="adm-pag" style="font-size:13px;color:#54656f">Carregando…</div>
     </div>
     <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
@@ -2577,6 +2649,20 @@ window.addEventListener('load', initAuth);
 </div>
 
 <!-- TASKS PAGE (global) -->
+<div id="rel-page">
+  <div id="rel-topbar">
+    <button class="btn-secondary" onclick="closeRelatorios()">← Voltar</button>
+    <h2>Relatórios</h2>
+    <select id="rel-periodo" onchange="carregaRelatorios()" style="background:var(--rel-cartao);border:1px solid var(--rel-borda);color:var(--rel-tinta);border-radius:8px;padding:7px 10px;font-size:13px;font-family:inherit;outline:none">
+      <option value="7">Últimos 7 dias</option>
+      <option value="15">Últimos 15 dias</option>
+      <option value="30">Últimos 30 dias</option>
+    </select>
+    <button class="btn-secondary" onclick="carregaRelatorios(true)" title="Buscar os números de novo">Atualizar</button>
+  </div>
+  <div id="rel-corpo">Carregando…</div>
+</div>
+<div id="rel-tip"></div>
 <div id="tasks-page">
   <div id="tasks-page-topbar">
     <button class="btn-secondary" onclick="closeTasksPage()">← Voltar</button>
@@ -2675,7 +2761,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v351</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v352</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2729,7 +2815,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 351;
+const APP_VER = 352;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -9251,7 +9337,14 @@ function _telaSemLiberacao() {
       <div style="font-size:30px;color:#f0b400;margin-bottom:8px"><i class=ic-lock></i></div>
       <div style="font-size:17px;font-weight:700;color:#131c20;margin-bottom:10px">Acesso ainda não liberado</div>
       <p style="font-size:13.5px;color:#54656f;line-height:1.65;margin:0 0 8px">O e-mail <b>${escHtml((window._acesso && window._acesso.email) || '')}</b> entrou, mas ainda não tem permissão para usar o VETRA.</p>
-      <p style="font-size:13px;color:#667781;line-height:1.65;margin:0 0 20px">Fale com quem te forneceu o sistema. Assim que ele liberar, basta entrar de novo — nada precisa ser refeito.</p>
+      <p style="font-size:13px;color:#667781;line-height:1.65;margin:0 0 16px">Se você quer contratar, deixe os seus dados abaixo — o pedido chega direto a quem libera.</p>
+      <div id="sl-form" style="display:flex;flex-direction:column;gap:7px;text-align:left;margin-bottom:16px">
+        <input id="sl-nome" placeholder="Seu nome" style="background:#fff;border:1px solid #d1d7db;border-radius:8px;padding:10px 12px;font-size:13px;outline:none">
+        <input id="sl-empresa" placeholder="Nome da empresa" style="background:#fff;border:1px solid #d1d7db;border-radius:8px;padding:10px 12px;font-size:13px;outline:none">
+        <input id="sl-whats" placeholder="WhatsApp com DDD" style="background:#fff;border:1px solid #d1d7db;border-radius:8px;padding:10px 12px;font-size:13px;outline:none">
+        <button class="btn-save" onclick="pedirAcesso(this)">Quero contratar</button>
+      </div>
+      <div id="sl-status" style="font-size:12.5px;color:#00a884;min-height:18px;margin-bottom:10px"></div>
       <button class="btn-cancel" onclick="logoutCRM()">Sair</button>
     </div>`;
   document.body.appendChild(d);
@@ -9259,7 +9352,7 @@ function _telaSemLiberacao() {
 function _aplicaPapel() {
   const atend = !podeAdmin();
   // Trilho do computador
-  ['bots', 'ia', 'auto', 'acc'].forEach(k => {
+  ['bots', 'ia', 'auto', 'acc', 'rel'].forEach(k => {
     const b = document.querySelector('#side-rail [data-rail="' + k + '"]');
     if (b) b.style.display = atend ? 'none' : '';
   });
@@ -9270,7 +9363,7 @@ function _aplicaPapel() {
   // Menu do celular e itens marcados com data-adm
   document.querySelectorAll('[data-adm]').forEach(el => { el.style.display = atend ? 'none' : ''; });
   // Abas de Configurações que mexem na conta (Aparência e Termos ficam para todos)
-  ['integ', 'dup', 'bill', 'equipe', 'diag'].forEach(k => {
+  ['integ', 'dup', 'bill', 'equipe', 'diag', 'reg'].forEach(k => {
     const t = document.querySelector('#cfg-nav .cfg-tab[data-pane="' + k + '"]');
     if (t) t.style.display = atend ? 'none' : '';
   });
@@ -9326,6 +9419,13 @@ function _avisaPlano() {
     f.textContent = 'O plano venceu em ' + (p.validade_br || '—') + '. Você ainda envia por ' + (resta > 0 ? resta : 0) + ' dia(s).';
   } else {
     f.textContent = 'Seu plano vence em ' + p.dias_restantes + ' dia(s) — ' + (p.validade_br || '—') + '.';
+  }
+  if (p.link_pagamento) {
+    const a = document.createElement('a');
+    a.href = p.link_pagamento; a.target = '_blank'; a.rel = 'noopener noreferrer';
+    a.textContent = 'Pagar agora';
+    a.style.cssText = 'display:inline-block;margin-left:8px;color:inherit;font-weight:700;text-decoration:underline';
+    f.appendChild(a);
   }
 }
 
@@ -9453,8 +9553,15 @@ async function carregaFaturamento() {
     html += linha('Validade', escHtml(i.validade_br || 'não definida'));
     if (i.limite_numeros) html += linha('Números incluídos', i.limite_numeros);
     if (i.limite_msgs_mes) html += linha('Mensagens por mês', Number(i.limite_msgs_mes).toLocaleString('pt-BR'));
+    if (i.valor) html += linha('Valor', escHtml(i.valor));
     if (i.contato) html += linha('Suporte do seu plano', escHtml(i.contato));
+    if (i.link_pagamento) html += `<div style="margin-top:12px"><a href="${escHtml(i.link_pagamento)}" target="_blank" rel="noopener noreferrer" class="btn-save" style="display:inline-block;text-decoration:none">Pagar agora</a>
+        <span style="font-size:11.5px;color:#8696a0;margin-left:8px">abre a página de pagamento</span></div>`;
     if (i.obs) html += `<div style="font-size:12px;color:#667781;margin-top:8px">${escHtml(i.obs)}</div>`;
+    if ((i.pagamentos || []).length) {
+      html += `<div style="margin-top:12px;font-size:12.5px;font-weight:700;color:#131c20">Últimas renovações</div>`
+        + i.pagamentos.slice(0, 4).map(p => `<div style="font-size:11.5px;color:#667781;padding:3px 0">${escHtml(_acessoTexto(p.quando))} — mais ${p.dias} dia(s), até ${escHtml(String(p.ate || '').split('-').reverse().join('/'))}</div>`).join('');
+    }
     if (i.bloqueado) html += `<div style="margin-top:10px;background:#fdecea;border:1px solid #f5b7b1;border-radius:8px;padding:10px 12px;font-size:12.5px;color:#a93226;line-height:1.6">
         <b>${escHtml(i.motivo || 'Conta suspensa.')}</b> O envio de mensagens está pausado. <b>Nada foi apagado</b>: conversas, leads, bots e configurações continuam aqui e voltam a funcionar assim que o plano for reativado.</div>`;
     else if (i.vencido) html += `<div style="margin-top:10px;background:#fff7e6;border:1px solid #ffd591;border-radius:8px;padding:10px 12px;font-size:12.5px;color:#8c6d1f;line-height:1.6">
@@ -9605,6 +9712,205 @@ async function _perguntaTermos() {
 // 🛰️ PAINEL DO FORNECEDOR — todos os clientes numa tela (só você)
 // ═══════════════════════════════════════════════════════════════════
 
+
+// ═══════════════════════════════════════════════════════════════════
+// 📜 REGISTRO DE ATIVIDADES (quem fez o quê)
+// ═══════════════════════════════════════════════════════════════════
+let _auditItens = null;
+async function carregaAuditoria(forcar) {
+  const el = document.getElementById('reg-lista'); if (!el) return;
+  if (_auditItens && !forcar) return renderAuditoria();
+  el.textContent = 'Carregando…';
+  try {
+    const d = await _apiJson(SERVER_URL + '/auditoria' + (forcar ? '?t=' + Date.now() : ''));
+    _auditItens = d.itens || [];
+  } catch (e) { el.innerHTML = '<div style="color:#ef4444">' + escHtml(e.message || 'Não consegui carregar.') + '</div>'; return; }
+  renderAuditoria();
+}
+function renderAuditoria() {
+  const el = document.getElementById('reg-lista'); if (!el || !_auditItens) return;
+  const q = ((document.getElementById('reg-busca') || {}).value || '').trim().toLowerCase();
+  const itens = q ? _auditItens.filter(i => (i.quem + ' ' + i.acao + ' ' + (i.detalhe || '')).toLowerCase().includes(q)) : _auditItens;
+  if (!itens.length) {
+    el.innerHTML = '<div style="font-size:12.5px;color:#8696a0;padding:6px 2px">' + (q ? 'Nada encontrado com esse texto.' : 'Nada registrado ainda — o que for apagado ou alterado a partir de agora aparece aqui.') + '</div>';
+    return;
+  }
+  // agrupado por dia, igual aos Avisos
+  let ultimoDia = '';
+  el.innerHTML = itens.map(i => {
+    const dia = _avDia ? _avDia(i.ts) : '';
+    const cab = dia !== ultimoDia ? `<div style="font-size:11.5px;font-weight:700;color:#8696a0;margin:10px 0 5px">${escHtml(dia)}</div>` : '';
+    ultimoDia = dia;
+    const apaga = /apagad|apagou|removid|restaur/i.test(i.acao);
+    return cab + `<div style="display:flex;gap:9px;align-items:flex-start;padding:8px 11px;background:#f7f8fa;border:1px solid #e9edef;border-radius:8px;margin-bottom:5px">
+      <span style="color:${apaga ? '#c0392b' : '#54656f'};margin-top:1px"><i class=${apaga ? 'ic-trash' : 'ic-pencil'}></i></span>
+      <span style="flex:1;min-width:0">
+        <span style="display:block;font-size:12.5px;color:#131c20"><b>${escHtml(i.acao)}</b>${i.detalhe ? ' — ' + escHtml(i.detalhe) : ''}</span>
+        <span style="display:block;font-size:11.5px;color:#667781;word-break:break-all">${escHtml(i.quem || '—')}${i.papel && i.papel !== 'dono' ? ' (' + escHtml(i.papel) + ')' : ''} · ${escHtml(_avHora ? _avHora(i.ts) : '')}</span>
+      </span></div>`;
+  }).join('');
+}
+async function limparAuditoria() {
+  if (!await vConfirm({ titulo: 'Limpar o registro', texto: 'Apaga a lista de atividades. As conversas, leads e configurações não são afetados.', confirmar: 'Limpar', perigo: true })) return;
+  try { await _apiJson(SERVER_URL + '/auditoria', { method: 'DELETE' }); _auditItens = []; renderAuditoria(); }
+  catch (e) { showToast(e.message || 'Não consegui limpar.', 'err'); }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// 🗄️ CÓPIAS AUTOMÁTICAS (uma por dia, guardadas 30 dias)
+// ═══════════════════════════════════════════════════════════════════
+async function carregaBackupAuto() {
+  const el = document.getElementById('cfg-bkp-auto'); if (!el) return;
+  el.textContent = 'Carregando…';
+  let d;
+  try { d = await _apiJson(SERVER_URL + '/backup/auto?t=' + Date.now()); }
+  catch (e) { el.innerHTML = '<div style="color:#ef4444">' + escHtml(e.message || 'Não consegui carregar.') + '</div>'; return; }
+  const its = d.itens || [];
+  if (!its.length) { el.innerHTML = '<div style="color:#8696a0;font-size:12.5px">A primeira cópia é feita automaticamente ainda hoje. Se quiser uma agora, use o botão acima.</div>'; return; }
+  el.innerHTML = its.slice(0, 12).map(i => `<div style="display:flex;gap:8px;align-items:center;padding:7px 10px;background:#f7f8fa;border:1px solid #e9edef;border-radius:8px;margin-bottom:5px;flex-wrap:wrap">
+      <span style="color:#00a884"><i class=ic-save></i></span>
+      <span style="flex:1;min-width:120px;font-size:12.5px;color:#131c20">${escHtml(i.dia.split('-').reverse().join('/'))}${i.quando ? ` <span style="color:#8696a0;font-size:11.5px">· ${escHtml(_acessoTexto(i.quando))}</span>` : ''}</span>
+      <button class="pf-topbtn" style="padding:4px 9px;font-size:11.5px" onclick="baixarBackupDia('${_jsAttr(i.dia)}')">Baixar</button>
+      <button class="pf-topbtn" style="padding:4px 9px;font-size:11.5px" onclick="restaurarBackupDia('${_jsAttr(i.dia)}')">Restaurar</button>
+    </div>`).join('')
+    + (its.length > 12 ? `<div style="font-size:11.5px;color:#8696a0;margin-top:4px">e mais ${its.length - 12} dia(s) guardados.</div>` : '');
+}
+async function backupAgora(btn) {
+  const st = document.getElementById('cfg-backup-status');
+  if (btn) btn.disabled = true;
+  try {
+    const d = await _apiJson(SERVER_URL + '/backup/auto/agora', { method: 'POST' });
+    if (st) { st.style.color = '#00a884'; st.textContent = 'Cópia de hoje (' + d.dia.split('-').reverse().join('/') + ') guardada.'; }
+    carregaBackupAuto();
+  } catch (e) { if (st) { st.style.color = '#ef4444'; st.textContent = e.message || 'Não consegui copiar.'; } }
+  finally { if (btn) btn.disabled = false; setTimeout(() => { if (st) st.textContent = ''; }, 5000); }
+}
+async function baixarBackupDia(dia) {
+  try {
+    const d = await _apiJson(SERVER_URL + '/backup/auto/' + encodeURIComponent(dia));
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(d, null, 2)], { type: 'application/json' }));
+    a.download = 'vetra-backup-' + dia + '.json';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  } catch (e) { showToast(e.message || 'Não consegui baixar.', 'err'); }
+}
+async function restaurarBackupDia(dia) {
+  const ok = await vConfirm({
+    titulo: 'Voltar para ' + dia.split('-').reverse().join('/'),
+    texto: 'As respostas rápidas, etiquetas, automações por etapa, gotejamento e planilha voltam para como estavam nesse dia.\n\nConversas, leads, bots e etapas NÃO são tocados. E antes de trocar, o VETRA guarda uma cópia de hoje — dá para voltar atrás.',
+    confirmar: 'Voltar para esse dia', perigo: true
+  });
+  if (!ok) return;
+  const st = document.getElementById('cfg-backup-status');
+  try {
+    const d = await _apiJson(SERVER_URL + '/backup/auto/restaurar', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dia })
+    });
+    if (st) { st.style.color = '#00a884'; st.textContent = 'Pronto: ' + (d.restaurados || []).length + ' configuração(ões) voltaram para ' + dia.split('-').reverse().join('/') + '.'; }
+    carregaBackupAuto();
+  } catch (e) { if (st) { st.style.color = '#ef4444'; st.textContent = e.message || 'Não consegui restaurar.'; } }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// 🚪 QUERO CONTRATAR (na tela de quem não foi liberado)
+// ═══════════════════════════════════════════════════════════════════
+async function pedirAcesso(btn) {
+  const st = document.getElementById('sl-status');
+  const v = id => (document.getElementById(id) || {}).value || '';
+  const nome = v('sl-nome').trim();
+  if (!nome) { if (st) { st.style.color = '#ef4444'; st.textContent = 'Escreva pelo menos o seu nome.'; } return; }
+  if (btn) btn.disabled = true;
+  try {
+    await _apiJson(SERVER_URL + '/solicitar-acesso', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nome, empresa: v('sl-empresa').trim(), whatsapp: v('sl-whats').trim() })
+    });
+    const f = document.getElementById('sl-form'); if (f) f.style.display = 'none';
+    if (st) { st.style.color = '#00a884'; st.innerHTML = '<b>Pedido enviado.</b> Assim que liberarem, é só entrar de novo.'; }
+  } catch (e) {
+    if (st) { st.style.color = '#ef4444'; st.textContent = e.message || 'Não consegui enviar o pedido.'; }
+    if (btn) btn.disabled = false;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// 💰 COBRANÇA AUTOMÁTICA (painel do fornecedor)
+// ═══════════════════════════════════════════════════════════════════
+async function carregaPagamento() {
+  const el = document.getElementById('adm-pag'); if (!el) return;
+  el.textContent = 'Carregando…';
+  let d;
+  try { d = await _apiJson(SERVER_URL + '/admin/pagamento?t=' + Date.now()); }
+  catch (e) { el.innerHTML = '<div style="color:#ef4444">' + escHtml(e.message || 'Não consegui carregar.') + '</div>'; return; }
+  const url = d.token ? (SERVER_URL + '/pagamento/webhook?token=' + d.token) : '';
+  let html = `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+      <span style="font-size:12.5px;color:#667781">Renovar por</span>
+      <input id="pag-ciclo" type="number" min="1" max="400" value="${escHtml(String(d.ciclo_dias || 30))}" style="width:80px;background:#fff;border:1px solid #d1d7db;border-radius:8px;padding:7px 9px;font-size:13px;outline:none">
+      <span style="font-size:12.5px;color:#667781">dias a cada pagamento</span>
+      <button class="pf-topbtn" onclick="salvarCiclo(this)">Salvar</button>
+    </div>`;
+  if (url) {
+    html += `<div style="font-size:12.5px;font-weight:700;color:#131c20;margin:10px 0 4px">Endereço para o serviço de pagamento avisar</div>
+      <p style="font-size:11.5px;color:#667781;margin:0 0 6px;line-height:1.5">Cole isto no campo de <b>webhook</b> (ou "notificação", "callback") do Mercado Pago, Asaas ou PagSeguro. Guarde como senha: quem tiver este endereço consegue renovar planos.</p>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <code style="flex:1;min-width:200px;background:#f0f2f5;border:1px solid #e9edef;border-radius:6px;padding:8px 10px;font-size:11.5px;color:#131c20;word-break:break-all">${escHtml(url)}</code>
+        <button class="pf-topbtn" onclick="copiarTexto('${_jsAttr(url)}',this)">Copiar</button>
+        <button class="pf-topbtn" onclick="gerarTokenPag()" title="Cria um endereço novo e invalida o antigo">Gerar outro</button>
+      </div>
+      <p style="font-size:11.5px;color:#667781;margin:8px 0 0;line-height:1.5">No link de pagamento, coloque o <b>e-mail do cliente</b> no campo de referência externa (<i>external_reference</i>). É por ele que o VETRA sabe qual plano renovar.</p>`;
+  } else {
+    html += `<div style="background:#fff7e6;border:1px solid #ffd591;border-radius:8px;padding:10px 12px;font-size:12.5px;color:#8c6d1f;line-height:1.55">
+        Ainda não existe endereço de aviso. Gere um para o serviço de pagamento conseguir renovar os planos sozinho.
+        <div style="margin-top:7px"><button class="btn-save" onclick="gerarTokenPag()">Gerar endereço</button></div></div>`;
+  }
+  const log = d.log || [];
+  html += `<div style="font-size:12.5px;font-weight:700;color:#131c20;margin:14px 0 4px">Últimos avisos recebidos</div>`;
+  html += log.length
+    ? log.slice(0, 10).map(l => {
+        const bom = /renovado/.test(l.resultado || '');
+        return `<div style="display:flex;gap:8px;align-items:baseline;padding:5px 0;border-bottom:1px solid #f0f2f5;flex-wrap:wrap">
+          <span style="color:${bom ? '#00a884' : '#c07b00'}"><i class=${bom ? 'ic-check' : 'ic-alert'}></i></span>
+          <span style="flex:1;min-width:150px;font-size:12px;color:#131c20;word-break:break-all">${escHtml(l.email || '(sem e-mail)')} — ${escHtml(l.resultado || '')}</span>
+          <span style="font-size:11px;color:#8696a0">${escHtml(_acessoTexto(l.quando))}</span></div>`;
+      }).join('')
+    : '<div style="font-size:12px;color:#8696a0">Nenhum aviso ainda. Quando o primeiro pagamento chegar, ele aparece aqui — inclusive se der errado.</div>';
+  el.innerHTML = html;
+}
+async function salvarCiclo(btn) {
+  const v = parseInt((document.getElementById('pag-ciclo') || {}).value, 10) || 30;
+  if (btn) btn.disabled = true;
+  try { await _apiJson(SERVER_URL + '/admin/pagamento', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ciclo_dias: v }) }); showToast('Salvo: ' + v + ' dias por pagamento.', 'ok'); }
+  catch (e) { showToast(e.message || 'Não consegui salvar.', 'err'); }
+  finally { if (btn) btn.disabled = false; }
+}
+async function gerarTokenPag() {
+  const ok = await vConfirm({ titulo: 'Gerar endereço de aviso', texto: 'Cria um endereço novo. Se já existia um configurado no serviço de pagamento, ele para de funcionar até você colar o novo lá.', confirmar: 'Gerar' });
+  if (!ok) return;
+  try { await _apiJson(SERVER_URL + '/admin/pagamento', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ gerar_token: true }) }); carregaPagamento(); }
+  catch (e) { showToast(e.message || 'Não consegui gerar.', 'err'); }
+}
+async function descartarPedido(email) {
+  try { await _apiJson(SERVER_URL + '/admin/acesso/pedido/' + encodeURIComponent(email), { method: 'DELETE' }); carregaAcessoAdmin(); }
+  catch (e) { showToast(e.message || 'Não consegui descartar.', 'err'); }
+}
+async function registrarPagamento(email) {
+  const r = await vCampos({
+    titulo: 'Registrar pagamento de ' + email,
+    texto: 'Use quando o cliente pagou por fora (Pix, transferência, dinheiro). A validade anda a partir da data que já estava lá — ele não perde os dias que sobraram.',
+    campos: [{ id: 'dias', rotulo: 'Quantos dias somar', tipo: 'number', valor: '30' }],
+    confirmar: 'Registrar'
+  });
+  if (!r) return;
+  try {
+    const d = await _apiJson(SERVER_URL + '/admin/pagamento/registrar', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, dias: r.dias })
+    });
+    showToast('Plano de ' + email + ' válido até ' + (d.info?.validade_br || d.validade) + '.', 'ok', 6000);
+    carregaAcessoAdmin(); carregaPainelDono(true);
+  } catch (e) { showToast(e.message || 'Não consegui registrar.', 'err'); }
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // 🚪 PAINEL DO FORNECEDOR — liberar e bloquear quem usa o VETRA
 // ═══════════════════════════════════════════════════════════════════
@@ -9631,11 +9937,25 @@ async function carregaAcessoAdmin() {
          </div>`;
   }
 
-  // ── quem tentou entrar e foi barrado ──
+  // ── quem PEDIU para contratar e quem foi barrado ──
   if (tent) {
+    const pd = d.pedidos || {};
+    const pk = Object.keys(pd).sort((a, b) => String(pd[b].quando).localeCompare(String(pd[a].quando)));
+    const htmlPedidos = pk.length
+      ? `<div style="background:#e7f7ef;border:1px solid #c8ecd9;border-radius:8px;padding:10px 12px;margin-bottom:8px">
+          <div style="font-size:12.5px;font-weight:700;color:#00806a;margin-bottom:6px">Querem contratar (${pk.length})</div>
+          ${pk.map(e => { const p = pd[e] || {}; return `<div style="display:flex;gap:8px;align-items:center;padding:5px 0;flex-wrap:wrap">
+              <span style="flex:1;min-width:170px">
+                <span style="display:block;font-size:12.5px;color:#131c20"><b>${escHtml(p.nome || '(sem nome)')}</b>${p.empresa ? ' · ' + escHtml(p.empresa) : ''}</span>
+                <span style="display:block;font-size:11.5px;color:#54656f;word-break:break-all">${escHtml(e)}${p.whatsapp ? ' · ' + escHtml(p.whatsapp) : ''} · ${escHtml(_acessoTexto(p.quando))}</span>
+              </span>
+              <button class="btn-save" style="padding:4px 10px;font-size:11.5px" onclick="liberarUsuario(this,'${_jsAttr(e)}')">Liberar</button>
+              <button class="btn-cancel" style="padding:4px 10px;font-size:11.5px" onclick="descartarPedido('${_jsAttr(e)}')">Descartar</button>
+            </div>`; }).join('')}
+        </div>` : '';
     const ts = d.tentativas || {};
     const ks = Object.keys(ts).sort((a, b) => String(ts[b]).localeCompare(String(ts[a])));
-    tent.innerHTML = ks.length
+    const htmlBarrados = ks.length
       ? `<div style="background:#fdf6e3;border:1px solid #f0dcae;border-radius:8px;padding:10px 12px">
           <div style="font-size:12.5px;font-weight:700;color:#8c6d1f;margin-bottom:6px">Tentaram entrar e foram barrados (${ks.length})</div>
           ${ks.map(e => `<div style="display:flex;gap:8px;align-items:center;padding:4px 0;flex-wrap:wrap">
@@ -9644,6 +9964,7 @@ async function carregaAcessoAdmin() {
               <button class="btn-save" style="padding:4px 10px;font-size:11.5px" onclick="liberarUsuario(this,'${_jsAttr(e)}')">Liberar</button>
             </div>`).join('')}
         </div>` : '';
+    tent.innerHTML = htmlPedidos + htmlBarrados;
   }
 
   // ── lista de liberados ──
@@ -9662,6 +9983,7 @@ async function carregaAcessoAdmin() {
           <span style="display:block;font-size:11.5px;color:#667781">${escHtml(p.plano || 'VETRA')} · ${escHtml(val)}${em[e] && em[e].desde ? ' · liberado ' + escHtml(_acessoTexto(em[e].desde)) : ''}</span>
         </span>
         <button class="pf-topbtn" style="padding:5px 10px;font-size:11.5px" onclick="admEditarPlano('${_jsAttr(e)}')">Plano</button>
+        <button class="pf-topbtn" style="padding:5px 10px;font-size:11.5px" onclick="registrarPagamento('${_jsAttr(e)}')" title="Somar dias porque o cliente pagou">Pagou</button>
         ${eu ? '' : `<button class="btn-cancel" style="padding:5px 10px;font-size:11.5px" onclick="bloquearUsuario('${_jsAttr(e)}')">Bloquear</button>`}
       </div>`;
     }).join('');
@@ -9788,6 +10110,8 @@ async function admEditarPlano(dono) {
       { id: 'limite_numeros', rotulo: 'Números incluídos (vazio = sem limite)', tipo: 'number', valor: atual.limite_numeros || '' },
       { id: 'limite_msgs_mes', rotulo: 'Mensagens por mês (vazio = sem limite)', tipo: 'number', valor: atual.limite_msgs_mes || '' },
       { id: 'contato', rotulo: 'Contato de suporte mostrado ao cliente', valor: atual.contato || '' },
+      { id: 'link_pagamento', rotulo: 'Link de pagamento (vira o botão "Pagar agora" para o cliente)', valor: atual.link_pagamento || '', dica: 'https://...' },
+      { id: 'valor', rotulo: 'Valor mostrado ao cliente', valor: atual.valor || '', dica: 'ex.: R$ 149/mês' },
       { id: 'suspenso', rotulo: 'Suspender agora?', opcoes: [{ v: '', t: 'Não' }, { v: '1', t: 'Sim, pausar o envio' }], valor: atual.bloqueado && !atual.vencido ? '1' : '' }
     ],
     confirmar: 'Salvar plano'
@@ -9796,11 +10120,227 @@ async function admEditarPlano(dono) {
   try {
     await _apiJson(SERVER_URL + '/billing', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ dono, plano: r.plano, validade: r.validade || null, limite_numeros: r.limite_numeros, limite_msgs_mes: r.limite_msgs_mes, contato: r.contato, suspenso: r.suspenso === '1' })
+      body: JSON.stringify({ dono, plano: r.plano, validade: r.validade || null, limite_numeros: r.limite_numeros, limite_msgs_mes: r.limite_msgs_mes, contato: r.contato, link_pagamento: r.link_pagamento || null, valor: r.valor, suspenso: r.suspenso === '1' })
     });
     showToast('Plano de ' + dono + ' atualizado.');
     carregaPainelDono(true);
   } catch (e) { showToast(e.message || 'Não consegui salvar o plano.'); }
+}
+
+
+// ═══════════════════════════════════════════════════════════════════
+// 📊 RELATÓRIOS — o que o dono da empresa quer ver
+// ═══════════════════════════════════════════════════════════════════
+function openRelatorios() {
+  _closeAllScreens();
+  _telaAtual('relatorios');
+  const p = document.getElementById('rel-page'); if (!p) return;
+  p.style.display = 'flex';
+  carregaRelatorios();
+}
+function closeRelatorios() {
+  const p = document.getElementById('rel-page'); if (!p) return;
+  const ab = p.style.display !== 'none';
+  p.style.display = 'none';
+  _relTipEsconde();
+  if (ab) _telaFechou();
+}
+function _relTipEsconde() { const t = document.getElementById('rel-tip'); if (t) t.style.display = 'none'; }
+function _relTipMostra(ev, html) {
+  const t = document.getElementById('rel-tip'); if (!t) return;
+  t.innerHTML = html;
+  t.style.display = 'block';
+  const r = t.getBoundingClientRect();
+  let x = ev.clientX + 14, y = ev.clientY - r.height - 10;
+  if (x + r.width > window.innerWidth - 8) x = ev.clientX - r.width - 14;
+  if (y < 8) y = ev.clientY + 16;
+  t.style.left = x + 'px'; t.style.top = y + 'px';
+}
+const _relN = v => Number(v || 0).toLocaleString('pt-BR');
+// "2h 15min", "45min", "—"
+function _relDur(min) {
+  if (min == null) return '—';
+  if (min < 1) return 'menos de 1min';
+  if (min < 60) return Math.round(min) + 'min';
+  const h = Math.floor(min / 60), m = Math.round(min % 60);
+  return h + 'h' + (m ? ' ' + m + 'min' : '');
+}
+// Barra com o topo arredondado (4px) e a base encostada na linha de baixo
+function _relBarra(x, y, w, h, r) {
+  const rr = Math.min(r == null ? 4 : r, w / 2, h);
+  if (h <= 0.5) return '';
+  return `M${x} ${y + h} L${x} ${y + rr} Q${x} ${y} ${x + rr} ${y} L${x + w - rr} ${y} Q${x + w} ${y} ${x + w} ${y + rr} L${x + w} ${y + h} Z`;
+}
+let _relDados = null, _relComoTabela = false;
+async function carregaRelatorios(forcar) {
+  const el = document.getElementById('rel-corpo'); if (!el) return;
+  const dias = (document.getElementById('rel-periodo') || {}).value || '7';
+  el.innerHTML = '<div class="rel-vazio">Somando os números…</div>';
+  try {
+    _relDados = await _apiJson(SERVER_URL + '/relatorios?dias=' + dias + (forcar ? '&t=' + Date.now() : ''));
+  } catch (e) {
+    el.innerHTML = '<div class="rel-card"><div style="color:#ef4444;font-size:13px">' + escHtml(e.message || 'Não consegui carregar os relatórios.') + '</div></div>';
+    return;
+  }
+  desenhaRelatorios();
+}
+function desenhaRelatorios() {
+  const el = document.getElementById('rel-corpo'); const d = _relDados;
+  if (!el || !d) return;
+  const t = d.totais || {};
+  const vazio = !t.enviadas && !t.recebidas && !t.leads_total;
+
+  // ── números do topo ──
+  let html = `<div class="rel-tiles">
+    <div class="rel-tile"><b>${_relN(t.conversas)}</b><span>Conversas com movimento</span><small>no período escolhido</small></div>
+    <div class="rel-tile"><b>${_relN(t.recebidas)}</b><span>Mensagens recebidas</span><small>o quanto procuraram vocês</small></div>
+    <div class="rel-tile"><b>${_relN(t.enviadas)}</b><span>Mensagens enviadas</span><small>o quanto vocês responderam</small></div>
+    <div class="rel-tile"><b>${t.leads_novos == null ? '—' : _relN(t.leads_novos)}</b><span>Leads novos</span><small>${t.leads_novos == null ? 'seu banco ainda não guarda a data de entrada' : _relN(t.leads_total) + ' no total'}</small></div>
+    <div class="rel-tile"><b>${_relDur(d.resposta && d.resposta.mediana_min)}</b><span>Tempo até responder</span><small>${d.resposta && d.resposta.amostras ? 'metade das respostas sai antes disso' : 'ainda sem respostas para medir'}</small></div>
+  </div>`;
+
+  if (vazio) {
+    html += `<div class="rel-card"><div class="rel-vazio">Ainda não há movimento neste período.<br>Assim que as conversas começarem, os números aparecem aqui sozinhos.</div></div>`;
+    el.innerHTML = html;
+    return;
+  }
+  if (d.limitado) {
+    html += `<div class="rel-card" style="border-color:#ffd591;background:#fff7e6;color:#8c6d1f;font-size:12.5px;line-height:1.5">
+      Período muito grande: os números foram calculados sobre as 30 mil mensagens mais recentes. Escolha menos dias para um retrato exato.</div>`;
+  }
+
+  // ── movimento por dia ──
+  html += `<div class="rel-card">
+    <h3>Movimento por dia</h3>
+    <div class="rel-sub">Quantas mensagens entraram e saíram em cada dia.</div>
+    <div class="rel-leg">
+      <span><i style="background:var(--rel-entra)"></i>Recebidas</span>
+      <span><i style="background:var(--rel-sai)"></i>Enviadas</span>
+      <button class="pf-topbtn" style="margin-left:auto;padding:4px 9px;font-size:11.5px" onclick="_relComoTabela=!_relComoTabela;desenhaRelatorios()">${_relComoTabela ? 'Ver como gráfico' : 'Ver como tabela'}</button>
+    </div>
+    ${_relComoTabela ? _relTabelaDias(d) : _relGraficoDias(d)}
+  </div>`;
+
+  // ── movimento por hora ──
+  html += `<div class="rel-card">
+    <h3>Horários de maior movimento</h3>
+    <div class="rel-sub">Hora em que as mensagens dos clientes chegam (horário de Brasília). Serve para escalar a equipe.</div>
+    ${_relGraficoHoras(d)}
+  </div>`;
+
+  // ── funil ──
+  const fun = d.funil || [];
+  if (fun.length) {
+    const tot = fun.reduce((sm, f) => sm + f.n, 0) || 1;
+    const mx = Math.max(1, ...fun.map(f => f.n));
+    html += `<div class="rel-card">
+      <h3>Leads por etapa do funil</h3>
+      <div class="rel-sub">Onde os seus leads estão parados agora.</div>
+      ${fun.map(f => `<div class="rel-fun">
+          <span class="rel-fun-nome" title="${escHtml(f.etapa)}">${escHtml(f.etapa)}</span>
+          <span class="rel-fun-bar"><div style="width:${Math.max(f.n ? 2 : 0, Math.round(f.n / mx * 100))}%"></div></span>
+          <span class="rel-fun-n">${_relN(f.n)} · ${Math.round(f.n / tot * 100)}%</span>
+        </div>`).join('')}
+    </div>`;
+  }
+
+  // ── por atendente ──
+  html += `<div class="rel-card">
+    <h3>Por atendente</h3>
+    <div class="rel-sub">Quem respondeu o quê no período.</div>
+    ${_relTabelaAtendentes(d)}
+  </div>`;
+
+  el.innerHTML = html;
+  _relLigaDicas();
+}
+function _relGraficoDias(d) {
+  const dias = d.por_dia || [];
+  if (!dias.length) return '<div class="rel-vazio">Sem dados no período.</div>';
+  const L = 40, R = 8, T = 10, B = 26, W = 720, H = 210;
+  const larg = W - L - R, alt = H - T - B;
+  const mx = Math.max(1, ...dias.map(x => Math.max(x.enviadas, x.recebidas)));
+  const passo = larg / dias.length;
+  const lb = Math.min(13, Math.max(3, (passo - 10) / 2));  // barra fina: o olho compara alturas, não volumes
+  const esc = v => (v / mx) * alt;
+  // linhas de referência discretas
+  const marcas = [0, 0.5, 1].map(f => Math.round(mx * f));
+  let g = marcas.map(v => {
+    const y = T + alt - esc(v);
+    return `<line x1="${L}" y1="${y}" x2="${W - R}" y2="${y}" stroke="var(--rel-grade)" stroke-width="1"/>
+            <text x="${L - 6}" y="${y + 4}" text-anchor="end" font-size="10" fill="var(--rel-tinta3)">${_relN(v)}</text>`;
+  }).join('');
+  const curto = iso => iso.slice(8, 10) + '/' + iso.slice(5, 7);
+  const passoRot = Math.ceil(dias.length / 10);
+  dias.forEach((x, i) => {
+    const cx = L + i * passo + passo / 2;
+    const x1 = cx - lb - 1, x2 = cx + 1;     // 2px de respiro entre as duas barras
+    g += `<path d="${_relBarra(x1, T + alt - esc(x.recebidas), lb, esc(x.recebidas))}" fill="var(--rel-entra)"/>`;
+    g += `<path d="${_relBarra(x2, T + alt - esc(x.enviadas), lb, esc(x.enviadas))}" fill="var(--rel-sai)"/>`;
+    if (i % passoRot === 0 || i === dias.length - 1) {
+      g += `<text x="${cx}" y="${H - 8}" text-anchor="middle" font-size="10" fill="var(--rel-tinta3)">${curto(x.dia)}</text>`;
+    }
+    g += `<rect class="rel-hit" x="${L + i * passo}" y="${T}" width="${passo}" height="${alt}" rx="3"
+        data-dica="&lt;b&gt;${curto(x.dia)}&lt;/b&gt;&lt;br&gt;Recebidas: ${_relN(x.recebidas)}&lt;br&gt;Enviadas: ${_relN(x.enviadas)}${x.leads ? '&lt;br&gt;Leads novos: ' + _relN(x.leads) : ''}"></rect>`;
+  });
+  return `<svg class="rel-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Mensagens recebidas e enviadas por dia">${g}</svg>`;
+}
+function _relTabelaDias(d) {
+  const dias = d.por_dia || [];
+  return `<div style="max-height:260px;overflow-y:auto"><table class="rel-tab">
+    <thead><tr><th>Dia</th><th>Recebidas</th><th>Enviadas</th><th>Leads novos</th></tr></thead>
+    <tbody>${dias.slice().reverse().map(x => `<tr>
+      <td>${x.dia.slice(8, 10)}/${x.dia.slice(5, 7)}</td><td>${_relN(x.recebidas)}</td><td>${_relN(x.enviadas)}</td><td>${x.leads ? _relN(x.leads) : '—'}</td>
+    </tr>`).join('')}</tbody></table></div>`;
+}
+function _relGraficoHoras(d) {
+  const hs = d.horas || [];
+  const total = hs.reduce((s, v) => s + v, 0);
+  if (!total) return '<div class="rel-vazio">Ainda não chegaram mensagens suficientes para desenhar os horários.</div>';
+  const L = 34, R = 8, T = 10, B = 24, W = 720, H = 170;
+  const larg = W - L - R, alt = H - T - B;
+  const mx = Math.max(1, ...hs);
+  const passo = larg / 24, lb = Math.min(15, passo - 6);
+  const pico = hs.indexOf(mx);
+  let g = `<line x1="${L}" y1="${T + alt}" x2="${W - R}" y2="${T + alt}" stroke="var(--rel-grade)" stroke-width="1"/>
+    <text x="${L - 6}" y="${T + 10}" text-anchor="end" font-size="10" fill="var(--rel-tinta3)">${_relN(mx)}</text>`;
+  hs.forEach((v, h) => {
+    const x = L + h * passo + (passo - lb) / 2, alt2 = (v / mx) * alt;
+    g += `<path d="${_relBarra(x, T + alt - alt2, lb, alt2)}" fill="var(--rel-sai)" opacity="${h === pico ? 1 : .72}"/>`;
+    if (h % 3 === 0) g += `<text x="${x + lb / 2}" y="${H - 7}" text-anchor="middle" font-size="10" fill="var(--rel-tinta3)">${String(h).padStart(2, '0')}h</text>`;
+    g += `<rect class="rel-hit" x="${L + h * passo}" y="${T}" width="${passo}" height="${alt}" rx="3"
+        data-dica="&lt;b&gt;${String(h).padStart(2, '0')}h às ${String((h + 1) % 24).padStart(2, '0')}h&lt;/b&gt;&lt;br&gt;${_relN(v)} mensagem(ns) recebida(s)&lt;br&gt;${Math.round(v / total * 100)}% do movimento"></rect>`;
+  });
+  return `<svg class="rel-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Mensagens recebidas por hora do dia">${g}</svg>`
+    + `<div style="font-size:12px;color:var(--rel-tinta2);margin-top:6px">Pico às <b>${String(pico).padStart(2, '0')}h</b> — é a hora com mais gente falando com vocês.</div>`;
+}
+function _relTabelaAtendentes(d) {
+  if (!d.tem_autor) {
+    return `<div style="background:#fff7e6;border:1px solid #ffd591;border-radius:8px;padding:10px 12px;font-size:12.5px;color:#8c6d1f;line-height:1.6">
+      <b>Falta um passo no banco de dados.</b> O VETRA ainda não guarda quem da equipe enviou cada mensagem, então não dá para separar por pessoa.
+      <div style="margin-top:5px">Abra o Supabase → SQL Editor → New query, cole a linha abaixo e clique em Run. É seguro rodar mais de uma vez.</div>
+      <code style="display:block;background:#fff;border:1px solid #f0dcae;border-radius:6px;padding:7px 9px;margin-top:6px;font-size:11.5px;color:#131c20;word-break:break-all">alter table messages add column if not exists sent_by text;</code>
+      <div style="margin-top:5px">Depois disso, as mensagens novas já entram com o autor.</div></div>`;
+  }
+  const a = d.atendentes || [];
+  if (!a.length) return '<div class="rel-vazio">Nenhuma mensagem com autor registrado neste período.<br>Mensagens enviadas por bot ou automação não entram nesta conta.</div>';
+  return `<table class="rel-tab">
+    <thead><tr><th>Pessoa</th><th>Mensagens</th><th>Conversas</th><th>Tempo médio para responder</th></tr></thead>
+    <tbody>${a.map(x => `<tr>
+      <td style="word-break:break-all">${escHtml(x.email)}</td>
+      <td>${_relN(x.enviadas)}</td>
+      <td>${_relN(x.conversas)}</td>
+      <td>${x.respostas ? _relDur(x.resposta_media_min) : '—'}</td>
+    </tr>`).join('')}</tbody></table>
+    <div style="font-size:11.5px;color:var(--rel-tinta3);margin-top:7px">O tempo é medido da mensagem do cliente até a primeira resposta da pessoa.</div>`;
+}
+function _relLigaDicas() {
+  document.querySelectorAll('#rel-corpo .rel-hit').forEach(r => {
+    r.addEventListener('mousemove', ev => _relTipMostra(ev, r.getAttribute('data-dica') || ''));
+    r.addEventListener('mouseleave', _relTipEsconde);
+  });
+  const c = document.getElementById('rel-corpo');
+  if (c) c.addEventListener('scroll', _relTipEsconde);
 }
 
 // Abre Configurações já na aba pedida (usado pelos atalhos do Pipeline)
@@ -9821,10 +10361,11 @@ function cfgTab(k) {
   if (k === 'ids') { const w = document.getElementById('cfg-stage-ids-wrap'); if (w) w.style.display = 'block'; const a = document.getElementById('cfg-stage-ids-arrow'); if (a) a.textContent = '▾'; }
   if (k === 'pipe') carregarLixeiraColunas();
   if (k === 'equipe') equipeCarregar();
-  if (k === 'bill') carregaFaturamento();
+  if (k === 'bill') { carregaFaturamento(); carregaBackupAuto(); }
   if (k === 'diag') carregaDiagnostico();
   if (k === 'termos') carregaTermos();
-  if (k === 'adm') { carregaAcessoAdmin(); carregaPainelDono(); }
+  if (k === 'adm') { carregaAcessoAdmin(); carregaPagamento(); carregaPainelDono(); }
+  if (k === 'reg') carregaAuditoria();
 }
 async function openConfigModal() {
   try { const nav = document.getElementById('cfg-nav'); if (nav) nav.style.display = ''; } catch (_) {}
@@ -9857,7 +10398,7 @@ async function openConfigModal() {
 }
 // Versão do servidor que este app espera. Se o Railway estiver atrás disso,
 // algumas telas não têm como funcionar — e o app avisa em vez de dar erro seco.
-const SERVIDOR_MIN = 250;
+const SERVIDOR_MIN = 251;
 let _verServidor = null;
 async function _servidorVersao() {
   if (_verServidor !== null) return _verServidor;
@@ -10077,6 +10618,7 @@ function _closeAllScreens() {
   try { closeTaskReminderModal(); } catch (_) {}
   try { const ao = document.getElementById('auto-overlay'); if (ao) ao.style.display = 'none'; } catch (_) {}
   try { closeNotices(); } catch (_) {}
+  try { closeRelatorios(); } catch (_) {}
 }
 // Botão "Chat" do trilho: fecha tudo e volta para as conversas
 function goToChat() { _closeAllScreens(); _telaAtual(currentPhone ? 'chat=' + currentPhone : ''); }
@@ -10094,7 +10636,7 @@ function _telaAtual(nome) {
   try { history.replaceState(null, '', location.pathname + location.search + (nome ? '#' + nome : '')); } catch (_) {}
   // Trilho acompanha a tela (inclusive quando a tela é reaberta ao recarregar)
   try {
-    const mapa = { pipeline: 'pipe', tarefas: 'tasks', bots: 'bots', ia: 'ia', automacao: 'auto', modelos: 'tmpl', respostas: 'quick', tags: 'tags', contas: 'acc', config: 'cfg', avisos: 'notice' };
+    const mapa = { pipeline: 'pipe', tarefas: 'tasks', bots: 'bots', ia: 'ia', automacao: 'auto', modelos: 'tmpl', respostas: 'quick', tags: 'tags', contas: 'acc', config: 'cfg', avisos: 'notice', relatorios: 'rel' };
     const k = !nome || nome.startsWith('chat=') ? 'chat' : (mapa[nome] || null);
     if (k) document.querySelectorAll('#side-rail .rail-btn').forEach(b => b.classList.toggle('is-on', b.dataset.rail === k));
   } catch (_) {}
@@ -10104,7 +10646,7 @@ async function _restaurarTela(segundaPassada) {
   const _mostra = () => { try { document.documentElement.classList.remove('tela-restaurando'); } catch (_) {} };
   setTimeout(_mostra, 4000); // segurança: nunca fica escondido para sempre
   if (!h) { _mostra(); return; }
-  const abre = { pipeline: () => openPipeline(), tarefas: () => openTasksPage(), bots: () => openBotsList(), ia: () => openFaqPage(), automacao: () => openAutomationPanel(), modelos: () => openTemplates(), respostas: () => openQRManager(), tags: () => openTagManager(), contas: () => openModal(), config: () => openConfigModal(), avisos: () => openNotices() };
+  const abre = { pipeline: () => openPipeline(), tarefas: () => openTasksPage(), bots: () => openBotsList(), ia: () => openFaqPage(), automacao: () => openAutomationPanel(), modelos: () => openTemplates(), respostas: () => openQRManager(), tags: () => openTagManager(), contas: () => openModal(), config: () => openConfigModal(), avisos: () => openNotices(), relatorios: () => openRelatorios() };
   try {
     if (h.startsWith('chat=')) {
       const ph = decodeURIComponent(h.slice(5));
