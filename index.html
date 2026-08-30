@@ -1950,7 +1950,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v348</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v349</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -1979,15 +1979,15 @@ window.addEventListener('load', initAuth);
   <div class="mpm-item" onclick="mnavGo(openPipeline)"><i class=ic-chart></i> Pipeline</div>
   <div class="mpm-item" onclick="mnavGo(openTasksPage)" style="position:relative"><i class=ic-task></i> Tarefas<span class="task-badge" style="top:14px;left:96px;right:auto"></span></div>
   <div class="mpm-sep"></div>
-  <div class="mpm-item" onclick="mnavGo(openBotsList)"><i class=ic-bot></i> Bots</div>
-  <div class="mpm-item" onclick="mnavGo(openFaqPage)"><i class=ic-ai></i> IA</div>
-  <div class="mpm-item" onclick="mnavGo(openAutomationPanel)"><i class=ic-auto></i> Automação</div>
+  <div class="mpm-item" data-adm onclick="mnavGo(openBotsList)"><i class=ic-bot></i> Bots</div>
+  <div class="mpm-item" data-adm onclick="mnavGo(openFaqPage)"><i class=ic-ai></i> IA</div>
+  <div class="mpm-item" data-adm onclick="mnavGo(openAutomationPanel)"><i class=ic-auto></i> Automação</div>
   <div class="mpm-sep"></div>
   <div class="mpm-item" onclick="mnavGo(openTemplates)"><i class=ic-doc></i> Modelos</div>
   <div class="mpm-item" onclick="mnavGo(openQRManager)"><i class=ic-zap></i> Respostas rápidas</div>
   <div class="mpm-item" onclick="mnavGo(openTagManager)"><i class=ic-tag></i> Etiquetas</div>
   <div class="mpm-sep"></div>
-  <div class="mpm-item" onclick="mnavGo(openModal)"><i class=ic-phone></i> Contas de WhatsApp</div>
+  <div class="mpm-item" data-adm onclick="mnavGo(openModal)"><i class=ic-phone></i> Contas de WhatsApp</div>
   <div class="mpm-item" onclick="mnavGo(openNotices)" style="position:relative"><i class=ic-bell></i> Avisos<span class="notice-dot" style="top:14px;left:90px"></span></div>
   <div class="mpm-item" onclick="mnavGo(openConfigModal)"><i class=ic-cfg></i> Configurações</div>
   <div class="mpm-item" style="color:#ef4444" onclick="mnavGo(logoutCRM)"><i class=ic-exit></i> Sair</div>
@@ -2096,6 +2096,9 @@ window.addEventListener('load', initAuth);
 <div id="layout">
   <!-- SIDEBAR -->
   <div id="sidebar">
+    <div id="faixa-servidor" style="display:none"></div>
+    <div id="faixa-plano" style="display:none"></div>
+    <div id="onb-card" style="display:none"></div>
     <div id="search-box" style="display:flex;gap:6px;align-items:center">
       <input type="text" id="search-input" placeholder="Buscar por nome ou mensagem..." oninput="onSearchInput()" style="flex:1" />
       <button id="filter-toggle" onclick="toggleFilterPanel()" title="Filtros"><i class=ic-filter></i></button>
@@ -2157,7 +2160,7 @@ window.addEventListener('load', initAuth);
   <div class="cm-item" onclick="closeInfoMenu();toggleNotes()"><i class=ic-note></i> Anotações do lead</div>
   <div class="cm-item" onclick="closeInfoMenu();openMediaGallery()"><i class=ic-image></i> Fotos e arquivos</div>
   <div class="cm-item" onclick="closeInfoMenu();openTasks()"><i class=ic-task></i> Tarefas</div>
-  <div class="cm-item" onclick="closeInfoMenu();deleteConversation(currentPhone)" style="color:#ef4444"><i class=ic-trash></i> Apagar conversa</div>
+  <div class="cm-item" data-adm onclick="closeInfoMenu();deleteConversation(currentPhone)" style="color:#ef4444"><i class=ic-trash></i> Apagar conversa</div>
 </div>
 
 <!-- Janela padrão do VETRA (confirmar / perguntar / escolher) -->
@@ -2178,7 +2181,7 @@ window.addEventListener('load', initAuth);
       <button onclick="closeConfigModal()" style="background:none;border:none;font-size:20px;color:#667781;cursor:pointer">✕</button>
     </div>
     <div id="cfg-shell">
-      <div id="cfg-nav"><button class="cfg-tab on" data-pane="integ" onclick="cfgTab('integ')"><i class=ic-link></i> Integração</button><button class="cfg-tab" data-pane="dup" onclick="cfgTab('dup')"><i class=ic-layers></i> Chats duplicados</button><button class="cfg-tab" data-pane="bill" onclick="cfgTab('bill')"><i class=ic-card></i> Faturamento</button><button class="cfg-tab" data-pane="equipe" onclick="cfgTab('equipe')"><i class=ic-users></i> Equipe</button><button class="cfg-tab" data-pane="apar" onclick="cfgTab('apar')"><i class=ic-moon></i> Aparência</button></div>
+      <div id="cfg-nav"><button class="cfg-tab on" data-pane="integ" onclick="cfgTab('integ')"><i class=ic-link></i> Integração</button><button class="cfg-tab" data-pane="dup" onclick="cfgTab('dup')"><i class=ic-layers></i> Chats duplicados</button><button class="cfg-tab" data-pane="bill" onclick="cfgTab('bill')"><i class=ic-card></i> Faturamento</button><button class="cfg-tab" data-pane="equipe" onclick="cfgTab('equipe')"><i class=ic-users></i> Equipe</button><button class="cfg-tab" data-pane="apar" onclick="cfgTab('apar')"><i class=ic-moon></i> Aparência</button><button class="cfg-tab" data-pane="termos" onclick="cfgTab('termos')"><i class=ic-doc></i> Termos e privacidade</button><button class="cfg-tab" data-pane="diag" onclick="cfgTab('diag')"><i class=ic-bandage></i> Diagnóstico</button><button class="cfg-tab" data-pane="adm" style="display:none" onclick="cfgTab('adm')"><i class=ic-crown></i> Painel do fornecedor</button></div>
       <div id="cfg-panes">
 <div class="cfg-pane" data-pane="equipe">
     <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
@@ -2289,6 +2292,53 @@ window.addEventListener('load', initAuth);
       <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">Lixeira: leads e colunas excluídos</div>
       <p style="font-size:12px;color:#667781;margin:0 0 8px">Excluiu sem querer? Leads ficam aqui por 30 dias e voltam com conversa, etapa, etiquetas e notas. Colunas voltam com os leads e com os vínculos (bots, gotejamento, ID externo).</p>
       <div id="cfg-stage-trash" style="font-size:13px;color:#54656f">—</div>
+    </div>
+</div>
+<div class="cfg-pane" data-pane="termos">
+    <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
+      <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">Dados da sua empresa</div>
+      <p style="font-size:12px;color:#667781;margin:0 0 10px;line-height:1.5">Entram automaticamente nos Termos de Uso e na Política de Privacidade abaixo. Preencha uma vez.</p>
+      <div style="display:flex;flex-direction:column;gap:6px;max-width:460px">
+        <input id="emp-nome" placeholder="Razão social ou nome da empresa" style="background:#fff;border:1px solid #d1d7db;border-radius:8px;padding:9px 11px;font-size:13px;outline:none">
+        <input id="emp-cnpj" placeholder="CNPJ (ou CPF)" style="background:#fff;border:1px solid #d1d7db;border-radius:8px;padding:9px 11px;font-size:13px;outline:none">
+        <input id="emp-email" placeholder="E-mail para assuntos de privacidade" style="background:#fff;border:1px solid #d1d7db;border-radius:8px;padding:9px 11px;font-size:13px;outline:none">
+        <input id="emp-cidade" placeholder="Cidade e estado (foro)" style="background:#fff;border:1px solid #d1d7db;border-radius:8px;padding:9px 11px;font-size:13px;outline:none">
+      </div>
+      <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+        <button class="btn-save" onclick="salvarEmpresa(this)">Salvar</button>
+        <button class="pf-topbtn" onclick="baixarTermos()">Baixar os dois documentos</button>
+      </div>
+      <div id="emp-status" style="font-size:12px;color:#00a884;min-height:16px;margin-top:6px"></div>
+    </div>
+    <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <div style="flex:1;font-size:14px;font-weight:700;color:#131c20">Termos de Uso e Política de Privacidade</div>
+        <button class="pf-topbtn" onclick="trmAba('termos')" id="trm-b-termos">Termos</button>
+        <button class="pf-topbtn" onclick="trmAba('priv')" id="trm-b-priv">Privacidade</button>
+      </div>
+      <div id="trm-texto" style="max-height:320px;overflow-y:auto;border:1px solid #f0f2f5;border-radius:8px;padding:12px;font-size:12.5px;color:#3b4a54;line-height:1.65;background:#fbfcfd">Carregando…</div>
+      <div id="trm-aceite" style="font-size:12.5px;color:#54656f;margin-top:10px"></div>
+    </div>
+</div>
+<div class="cfg-pane" data-pane="diag">
+    <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
+      <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">Diagnóstico da publicação</div>
+      <p style="font-size:12px;color:#667781;margin:0 0 10px;line-height:1.5">O VETRA são duas partes: o <b>app</b> (a tela) e o <b>servidor</b> (o motor). Se uma sobe e a outra não, algumas telas param de funcionar. Aqui você vê as duas.</p>
+      <div id="diag-quadro" style="font-size:13px;color:#54656f">Conferindo…</div>
+      <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
+        <button class="pf-topbtn" onclick="carregaDiagnostico(true)">Conferir de novo</button>
+        <button class="pf-topbtn" onclick="copiarTexto(document.getElementById('diag-quadro').innerText,this)">Copiar o resultado</button>
+      </div>
+    </div>
+</div>
+<div class="cfg-pane" data-pane="adm">
+    <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <div style="flex:1;font-size:14px;font-weight:700;color:#131c20">Seus clientes</div>
+        <button class="pf-topbtn" onclick="carregaPainelDono(true)">Atualizar</button>
+      </div>
+      <p style="font-size:12px;color:#667781;margin:0 0 10px;line-height:1.5">Só você enxerga esta aba. Mostra quem está com número desconectado, quem está perto de vencer e quanto cada um usou no mês. Nenhuma conversa de cliente é aberta aqui.</p>
+      <div id="adm-lista" style="font-size:13px;color:#54656f">Carregando…</div>
     </div>
 </div>
 <div class="cfg-pane" data-pane="apar">
@@ -2608,7 +2658,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v348</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v349</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2662,7 +2712,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 348;
+const APP_VER = 349;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2712,6 +2762,9 @@ async function init(url) {
   if (!window._telaPasso1 && location.hash && !location.hash.startsWith('#chat=')) { window._telaPasso1 = true; setTimeout(_restaurarTela, 0); }
   await loadContacts();
   loadAllTags();
+  _carregaAcesso();      // papel, plano, termos e o passo a passo de estreia
+  _avisaServidorNoApp(); // avisa NA HORA se o servidor ficou para trás
+  setInterval(() => { _verServidor = null; _avisaServidorNoApp(); }, 60 * 60 * 1000);
   startPolling();
   refreshNoticesBadge();
   setInterval(refreshNoticesBadge, 5 * 60 * 1000); // bolinha de avisos a cada 5 min
@@ -9075,17 +9128,31 @@ async function equipeCarregar() {
     const meu = `<div style="display:flex;align-items:center;gap:8px;padding:9px 11px;background:#e7f7ef;border:1px solid #c8ecd9;border-radius:8px;margin-bottom:6px">
       <span><i class=ic-crown></i></span><span style="flex:1;font-size:13px;color:#131c20"><b>${escHtml(j.dono || '')}</b> — dona da conta</span></div>`;
     const ac = j.acessos || {};
+    const pp = j.papeis || {};
     const lista = (j.membros || []).map(e => {
       const q = ac[e] ? _acessoTexto(ac[e]) : 'ainda não entrou';
-      return `<div style="display:flex;align-items:center;gap:8px;padding:9px 11px;background:#f7f8fa;border:1px solid #e9edef;border-radius:8px;margin-bottom:6px">
+      const papel = pp[e] === 'atendente' ? 'atendente' : 'admin';
+      const sel = j.papeis
+        ? `<select onchange="equipePapel('${_jsAttr(e)}', this.value)" style="background:#fff;border:1px solid #d1d7db;border-radius:8px;padding:6px 8px;font-size:12px;color:#131c20;font-family:inherit">
+             <option value="admin" ${papel === 'admin' ? 'selected' : ''}>Administrador</option>
+             <option value="atendente" ${papel === 'atendente' ? 'selected' : ''}>Atendente</option>
+           </select>` : '';
+      return `<div style="display:flex;align-items:center;gap:8px;padding:9px 11px;background:#f7f8fa;border:1px solid #e9edef;border-radius:8px;margin-bottom:6px;flex-wrap:wrap">
       <span><i class=ic-user></i></span>
-      <span style="flex:1;min-width:0">
+      <span style="flex:1;min-width:140px">
         <span style="font-size:13px;color:#131c20;display:block;overflow:hidden;text-overflow:ellipsis">${escHtml(e)}</span>
         <span style="font-size:11.5px;color:${ac[e] ? '#667781' : '#c07b00'}">Último acesso: ${escHtml(q)}</span>
       </span>
+      ${sel}
       <button class="btn-cancel" style="padding:6px 12px;font-size:12px" onclick="equipeRemover('${_jsAttr(e)}')">Remover</button></div>`;
     }).join('');
-    el.innerHTML = meu + (lista || '<div style="font-size:12px;color:#8696a0;padding:4px 2px">Ninguém além de você tem acesso a esta conta.</div>');
+    const legenda = j.papeis ? `<div style="font-size:11.5px;color:#667781;line-height:1.6;background:#f7f8fa;border:1px solid #e9edef;border-radius:8px;padding:9px 11px;margin-bottom:8px">
+        <b style="color:#131c20">O que cada acesso faz</b><br>
+        <b>Administrador</b> — mexe em tudo: apaga conversa, número, bot e etapa, e abre as Configurações.<br>
+        <b>Atendente</b> — conversa, cuida de leads, tarefas e etiquetas. Não apaga nem configura nada.<br>
+        Quem entra agora começa como <b>atendente</b>; promova quando quiser.
+      </div>` : '';
+    el.innerHTML = meu + legenda + (lista || '<div style="font-size:12px;color:#8696a0;padding:4px 2px">Ninguém além de você tem acesso a esta conta.</div>');
   } catch (_) { el.innerHTML = '<div style="font-size:12px;color:#ef4444">Não consegui carregar a equipe.</div>'; }
 }
 async function equipeAdicionar() {
@@ -9104,6 +9171,20 @@ async function equipeAdicionar() {
     equipeCarregar();
   } catch (_) { st.style.color = '#ef4444'; st.textContent = 'Erro ao liberar o acesso.'; }
 }
+async function equipePapel(email, papel) {
+  const st = document.getElementById('equipe-status');
+  if (st) { st.style.color = '#667781'; st.textContent = 'Salvando…'; }
+  try {
+    await _apiJson(SERVER_URL + '/equipe/' + encodeURIComponent(email) + '/papel', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ papel })
+    });
+    if (st) { st.style.color = '#00a884'; st.textContent = email + ' agora é ' + (papel === 'atendente' ? 'atendente' : 'administrador') + '.'; }
+    setTimeout(() => { if (st) st.textContent = ''; }, 3000);
+  } catch (e) {
+    if (st) { st.style.color = '#ef4444'; st.textContent = e.message || 'Não consegui trocar o acesso.'; }
+    equipeCarregar();
+  }
+}
 async function equipeRemover(email) {
   if (!await vConfirm({ titulo: 'Remover acesso', texto: `${email} deixa de entrar na sua conta. Os dados continuam todos com você.`, confirmar: 'Remover', perigo: true })) return;
   try {
@@ -9113,6 +9194,437 @@ async function equipeRemover(email) {
     equipeCarregar();
   } catch (_) { alert('Erro ao remover o acesso.'); }
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// 🔐 QUEM ESTÁ USANDO: papel (dono / administrador / atendente) e plano
+// ═══════════════════════════════════════════════════════════════════
+// Se o servidor for antigo e não conhecer /meu-acesso, NADA muda: todo mundo
+// continua com acesso total, exatamente como era antes.
+window._acesso = { papel: 'dono', fornecedor: false, plano: null, carregado: false };
+function podeAdmin() { return (window._acesso && window._acesso.papel) !== 'atendente'; }
+async function _carregaAcesso() {
+  try {
+    const r = await fetch(SERVER_URL + '/meu-acesso');
+    const t = r.headers.get('content-type') || '';
+    if (r.ok && t.indexOf('json') >= 0) {
+      const d = await r.json();
+      if (d && d.papel) window._acesso = { papel: d.papel, fornecedor: !!d.fornecedor, plano: d.plano || null, dono: d.dono || null, email: d.email || null, carregado: true };
+    }
+  } catch (_) {}
+  // A ordem importa: primeiro descobrimos o papel, só depois montamos a tela —
+  // senão o atendente chegava a ver o passo a passo de configuração.
+  try { _aplicaPapel(); } catch (_) {}
+  try { _avisaPlano(); } catch (_) {}
+  try { await _onboardingCheca(); } catch (_) {}
+  try { _perguntaTermos(); } catch (_) {}
+}
+function _aplicaPapel() {
+  const atend = !podeAdmin();
+  // Trilho do computador
+  ['bots', 'ia', 'auto', 'acc'].forEach(k => {
+    const b = document.querySelector('#side-rail [data-rail="' + k + '"]');
+    if (b) b.style.display = atend ? 'none' : '';
+  });
+  // Barra de cima
+  ['btn-accounts', 'btn-bots', 'btn-faq'].forEach(id => {
+    const b = document.getElementById(id); if (b) b.style.display = atend ? 'none' : '';
+  });
+  // Menu do celular e itens marcados com data-adm
+  document.querySelectorAll('[data-adm]').forEach(el => { el.style.display = atend ? 'none' : ''; });
+  // Abas de Configurações que mexem na conta (Aparência e Termos ficam para todos)
+  ['integ', 'dup', 'bill', 'equipe', 'diag'].forEach(k => {
+    const t = document.querySelector('#cfg-nav .cfg-tab[data-pane="' + k + '"]');
+    if (t) t.style.display = atend ? 'none' : '';
+  });
+  // Painel do fornecedor: só para você
+  const pf = document.querySelector('#cfg-nav .cfg-tab[data-pane="adm"]');
+  if (pf) pf.style.display = (window._acesso.fornecedor && !atend) ? '' : 'none';
+  // Selo ao lado do nome, para a pessoa saber que acesso tem
+  const h = document.querySelector('#topbar h1');
+  let selo = document.getElementById('selo-papel');
+  if (atend && h && !selo) {
+    selo = document.createElement('span');
+    selo.id = 'selo-papel';
+    selo.style.cssText = 'margin-left:8px;font-size:10.5px;font-weight:700;color:#54656f;background:#e9edef;border-radius:10px;padding:2px 8px;vertical-align:middle';
+    selo.textContent = 'Atendente';
+    selo.title = 'Você conversa, cuida dos leads, tarefas e etiquetas. Apagar e configurar é com quem administra a conta.';
+    h.appendChild(selo);
+  }
+  if (!atend && selo) selo.remove();
+  // O passo a passo de estreia é de quem configura a conta
+  if (atend) { const c = document.getElementById('onb-card'); if (c) c.style.display = 'none'; }
+}
+
+// ⚠️ Servidor atrasado: agora avisa no app inteiro, não só dentro de Configurações.
+// Era exatamente isso que passava batido: o app subia, o servidor não, e a única
+// pista era uma tela dando erro sem explicação.
+async function _avisaServidorNoApp() {
+  const f = document.getElementById('faixa-servidor'); if (!f) return;
+  let v = 0;
+  try { v = await _servidorVersao(); } catch (_) { return; }
+  if (!v || v >= SERVIDOR_MIN) { f.style.display = 'none'; f.textContent = ''; return; }
+  f.style.cssText = 'display:block;padding:9px 12px;font-size:12.5px;line-height:1.5;background:#fdecea;color:#a93226;border-bottom:1px solid #f5b7b1;cursor:pointer';
+  f.title = 'Abrir o diagnóstico';
+  f.onclick = () => { try { abrirConfigEm('diag'); } catch (_) {} };
+  f.innerHTML = '<b>O servidor não subiu.</b> App v' + APP_VER + ' · servidor v' + v
+    + ' (precisa da v' + SERVIDOR_MIN + '). Algumas telas não vão funcionar. Toque aqui para ver o que fazer.';
+}
+
+// Faixa na lateral quando o plano está perto de vencer, vencido ou suspenso.
+// Vencer NUNCA apaga nada: só pausa o envio de mensagens novas.
+function _avisaPlano() {
+  const f = document.getElementById('faixa-plano'); if (!f) return;
+  const p = window._acesso && window._acesso.plano;
+  const mostra = p && (p.bloqueado || p.vencido || (p.dias_restantes !== null && p.dias_restantes !== undefined && p.dias_restantes <= 7));
+  if (!mostra) { f.style.display = 'none'; f.textContent = ''; return; }
+  const grave = !!(p.bloqueado || p.vencido);
+  f.style.display = 'block';
+  f.style.cssText = 'display:block;padding:9px 12px;font-size:12.5px;line-height:1.5;font-weight:600;border-radius:0;'
+    + (grave ? 'background:#fdecea;color:#a93226;border-bottom:1px solid #f5b7b1' : 'background:#fff7e6;color:#8c6d1f;border-bottom:1px solid #ffd591');
+  if (p.bloqueado) {
+    f.textContent = (p.motivo || 'Plano suspenso.') + ' O envio de mensagens está pausado. Nada foi perdido: conversas, leads e configurações continuam aqui. Fale com quem fornece o VETRA.';
+  } else if (p.vencido) {
+    const resta = (p.tolerancia_dias || 0) + (p.dias_restantes || 0);
+    f.textContent = 'O plano venceu em ' + (p.validade_br || '—') + '. Você ainda envia por ' + (resta > 0 ? resta : 0) + ' dia(s).';
+  } else {
+    f.textContent = 'Seu plano vence em ' + p.dias_restantes + ' dia(s) — ' + (p.validade_br || '—') + '.';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// 🚀 PRIMEIRO ACESSO: o passo a passo de estreia
+// ═══════════════════════════════════════════════════════════════════
+// Some sozinho quando os quatro passos estão feitos. Quem já usa o VETRA há
+// tempo nem chega a ver (todos os passos já estão prontos).
+async function _onboardingCheca() {
+  const card = document.getElementById('onb-card'); if (!card) return;
+  if (!podeAdmin()) { card.style.display = 'none'; return; }
+  try { if (localStorage.getItem('vetra_onb_off') === '1') { card.style.display = 'none'; return; } } catch (_) {}
+  let contas = 0, etapas = 0, bots = 0;
+  try { const a = await (await fetch(SERVER_URL + '/accounts')).json(); contas = Array.isArray(a) ? a.length : 0; } catch (_) {}
+  try { const e = await (await fetch(SERVER_URL + '/pipeline/stages')).json(); etapas = Array.isArray(e) ? e.length : 0; } catch (_) {}
+  try { const b = await (await fetch(SERVER_URL + '/bots')).json(); bots = Array.isArray(b) ? b.length : (b && Array.isArray(b.bots) ? b.bots.length : 0); } catch (_) {}
+  const conversas = (typeof allContacts !== 'undefined' && allContacts) ? allContacts.length : 0;
+  const passos = [
+    { ok: contas > 0,    t: 'Conectar seu número de WhatsApp', d: 'Sem isso nada entra nem sai.', ir: 'openModal' },
+    { ok: etapas > 0,    t: 'Criar as etapas do seu funil',    d: 'Ex.: Novo, Em conversa, Proposta, Fechado.', ir: 'openPipeline' },
+    { ok: conversas > 0, t: 'Receber a primeira conversa',     d: 'Mande uma mensagem para o seu número por outro celular.', ir: 'goToChat' },
+    { ok: bots > 0,      t: 'Montar o primeiro bot',           d: 'Responde sozinho fora do horário ou dá as boas-vindas.', ir: 'openBotsList' }
+  ];
+  const feitos = passos.filter(p => p.ok).length;
+  if (feitos === passos.length) { card.style.display = 'none'; return; }
+  const linhas = passos.map(p => `<div style="display:flex;gap:8px;align-items:flex-start;padding:6px 0">
+      <span style="flex:0 0 16px;margin-top:1px;color:${p.ok ? '#00a884' : '#c7ced2'}"><i class=${p.ok ? 'ic-check' : 'ic-circle'}></i></span>
+      <span style="flex:1;min-width:0">
+        <span style="display:block;font-size:12.5px;font-weight:600;color:${p.ok ? '#8696a0' : '#131c20'};${p.ok ? 'text-decoration:line-through' : ''}">${escHtml(p.t)}</span>
+        ${p.ok ? '' : `<span style="display:block;font-size:11.5px;color:#667781;line-height:1.4">${escHtml(p.d)}</span>`}
+      </span>
+      ${p.ok ? '' : `<button class="pf-topbtn" style="padding:4px 9px;font-size:11.5px;flex:0 0 auto" onclick="try{${p.ir}()}catch(e){}">Ir</button>`}
+    </div>`).join('');
+  card.style.display = 'block';
+  card.style.cssText = 'display:block;margin:8px;padding:11px 12px;background:#f0fbf6;border:1px solid #bfe8d5;border-radius:10px';
+  card.innerHTML = `<div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
+      <b style="flex:1;font-size:13px;color:#00806a">Comece por aqui (${feitos} de ${passos.length})</b>
+      <button title="Não mostrar mais" onclick="onbDispensar()" style="background:none;border:none;color:#8696a0;font-size:15px;cursor:pointer;line-height:1;padding:0 2px">✕</button>
+    </div>
+    <div style="height:5px;background:#d8f0e5;border-radius:3px;overflow:hidden;margin:6px 0 4px">
+      <div style="height:100%;width:${Math.round(feitos / passos.length * 100)}%;background:#00a884"></div>
+    </div>${linhas}`;
+}
+async function onbDispensar() {
+  if (!await vConfirm({ titulo: 'Esconder o passo a passo', texto: 'Ele some deste aparelho. Você continua podendo fazer tudo pelo menu.', confirmar: 'Esconder' })) return;
+  try { localStorage.setItem('vetra_onb_off', '1'); } catch (_) {}
+  const c = document.getElementById('onb-card'); if (c) c.style.display = 'none';
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// 🩺 DIAGNÓSTICO DA PUBLICAÇÃO — app x servidor, lado a lado
+// ═══════════════════════════════════════════════════════════════════
+async function carregaDiagnostico(forcar) {
+  const el = document.getElementById('diag-quadro'); if (!el) return;
+  el.textContent = 'Conferindo…';
+  if (forcar) _verServidor = null;
+  let d = null, erro = null;
+  try { d = await (await fetch(SERVER_URL + '/versao?t=' + Date.now(), { cache: 'no-store' })).json(); }
+  catch (e) { erro = e.message || 'sem resposta'; }
+  const sv = d && d.server ? d.server : 0;
+  const ok = sv >= SERVIDOR_MIN;
+  const linha = (rot, val, cor) => `<div style="display:flex;gap:10px;align-items:baseline;padding:6px 0;border-bottom:1px solid #f0f2f5">
+      <span style="flex:1;color:#667781">${rot}</span><b style="color:${cor || '#131c20'};font-size:14px">${val}</b></div>`;
+  let html = linha('Versão do app (esta tela)', 'v' + APP_VER)
+    + linha('Versão do servidor', erro ? 'não respondeu' : ('v' + (sv || '?')), ok ? '#00a884' : '#ef4444')
+    + linha('Versão de servidor que este app precisa', 'v' + SERVIDOR_MIN);
+  if (d && d.no_ar_desde) {
+    const ms = Date.parse(d.no_ar_desde);
+    const h = isFinite(ms) ? Math.floor((Date.now() - ms) / 3600000) : null;
+    html += linha('Servidor no ar desde', (h === null ? '—' : (h < 1 ? 'menos de 1 hora' : h + ' hora(s)')));
+  }
+  html += linha('Endereço do servidor', '<span style="font-size:11.5px;font-weight:400;word-break:break-all">' + escHtml(SERVER_URL.replace('https://', '')) + '</span>');
+  if (ok && !erro) {
+    html += `<div style="margin-top:10px;background:#e7f7ef;border:1px solid #c8ecd9;border-radius:8px;padding:10px 12px;font-size:12.5px;color:#00806a;line-height:1.6">
+      <b>Tudo publicado.</b> App e servidor estão na mesma página — todas as telas funcionam.</div>`;
+  } else {
+    html += `<div style="margin-top:10px;background:#fdecea;border:1px solid #f5b7b1;border-radius:8px;padding:10px 12px;font-size:12.5px;color:#a93226;line-height:1.6">
+      <b>${erro ? 'O servidor não respondeu.' : 'O servidor está atrás do app.'}</b>
+      <div style="margin-top:6px">Algumas telas não têm como funcionar assim. O que fazer, nesta ordem:</div>
+      <div style="margin-top:4px">1) Rode o <b>DEPLOY.bat</b> e leia o final da janela — ele agora avisa em vermelho se o servidor não subiu.</div>
+      <div>2) Abra o <b>deploy-log.txt</b> na pasta do VETRA: ele diz se o envio do <b>server.js</b> deu certo.</div>
+      <div>3) Se o log estiver certo, o problema é a publicação: abra o Railway → projeto do VETRA → <b>Deployments</b> e veja se o último falhou.</div>
+    </div>`;
+  }
+  el.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// 💳 FATURAMENTO — plano, validade e limites de verdade
+// ═══════════════════════════════════════════════════════════════════
+async function carregaFaturamento() {
+  const b = document.getElementById('cfg-billing'); if (!b) return;
+  b.innerHTML = 'Carregando…';
+  try {
+    const d = await (await fetch(SERVER_URL + '/billing')).json();
+    const i = d.info || null;
+    const v = d.value || {};
+    if (!i) { b.innerHTML = 'Plano: <b>' + escHtml(v.plano || 'VETRA') + '</b> &nbsp;·&nbsp; Validade: <b>' + escHtml(v.validade || '—') + '</b>'; return; }
+    if (window._acesso) { window._acesso.plano = i; try { _avisaPlano(); } catch (_) {} }
+    let cor = '#00a884', selo = 'Ativo';
+    if (i.bloqueado) { cor = '#ef4444'; selo = 'Suspenso'; }
+    else if (i.vencido) { cor = '#ef4444'; selo = 'Vencido'; }
+    else if (i.dias_restantes !== null && i.dias_restantes <= 7) { cor = '#f0b400'; selo = 'Vence em ' + i.dias_restantes + ' dia(s)'; }
+    else if (!i.validade) { cor = '#8696a0'; selo = 'Sem validade definida'; }
+    const linha = (rot, val) => `<div style="display:flex;gap:10px;align-items:baseline;padding:6px 0;border-bottom:1px solid #f0f2f5">
+        <span style="flex:1;color:#667781">${rot}</span><b style="color:#131c20;font-size:14px">${val}</b></div>`;
+    let html = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="font-size:16px;font-weight:700;color:#131c20">${escHtml(i.plano || 'VETRA')}</span>
+        <span style="font-size:11.5px;font-weight:700;color:#fff;background:${cor};border-radius:10px;padding:2px 9px">${escHtml(selo)}</span></div>`;
+    html += linha('Validade', escHtml(i.validade_br || 'não definida'));
+    if (i.limite_numeros) html += linha('Números incluídos', i.limite_numeros);
+    if (i.limite_msgs_mes) html += linha('Mensagens por mês', Number(i.limite_msgs_mes).toLocaleString('pt-BR'));
+    if (i.contato) html += linha('Suporte do seu plano', escHtml(i.contato));
+    if (i.obs) html += `<div style="font-size:12px;color:#667781;margin-top:8px">${escHtml(i.obs)}</div>`;
+    if (i.bloqueado) html += `<div style="margin-top:10px;background:#fdecea;border:1px solid #f5b7b1;border-radius:8px;padding:10px 12px;font-size:12.5px;color:#a93226;line-height:1.6">
+        <b>${escHtml(i.motivo || 'Conta suspensa.')}</b> O envio de mensagens está pausado. <b>Nada foi apagado</b>: conversas, leads, bots e configurações continuam aqui e voltam a funcionar assim que o plano for reativado.</div>`;
+    else if (i.vencido) html += `<div style="margin-top:10px;background:#fff7e6;border:1px solid #ffd591;border-radius:8px;padding:10px 12px;font-size:12.5px;color:#8c6d1f;line-height:1.6">
+        Venceu em ${escHtml(i.validade_br)}. Ainda dá para enviar por mais ${Math.max(0, (i.tolerancia_dias || 0) + (i.dias_restantes || 0))} dia(s) antes de pausar.</div>`;
+    b.innerHTML = html;
+  } catch (_) { b.textContent = 'Plano: VETRA'; }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// 📋 TERMOS DE USO E POLÍTICA DE PRIVACIDADE (LGPD)
+// ═══════════════════════════════════════════════════════════════════
+let _empresa = { nome: '', cnpj: '', email: '', cidade: '' };
+let _trmAbaAtual = 'termos';
+function _emp(campo, padrao) {
+  const v = String(_empresa[campo] || '').trim();
+  return v || padrao;
+}
+function _textoTermos() {
+  const N = _emp('nome', '[preencha a razão social acima]');
+  const C = _emp('cnpj', '[preencha o CNPJ acima]');
+  const E = _emp('email', '[preencha o e-mail acima]');
+  const F = _emp('cidade', '[preencha a cidade acima]');
+  return [
+    ['1. Quem somos', N + ', inscrita no CNPJ/CPF ' + C + ', daqui em diante "a Contratada", fornece o VETRA — um sistema de atendimento e gestão de relacionamento por WhatsApp, usado pela internet.'],
+    ['2. O que o VETRA faz', 'O VETRA organiza conversas de WhatsApp, cadastra contatos e leads, guarda etiquetas e anotações, dispara mensagens e permite automações. O envio e o recebimento acontecem pelas plataformas da Meta (WhatsApp Business Platform) ou por conexão via QR Code, conforme o que você contratar.'],
+    ['3. Sua conta', 'O acesso é pessoal. Você é responsável por quem libera na sua equipe e pelo que essas pessoas fazem dentro da sua conta. Cada e-mail liberado pode ter acesso de administrador (mexe em tudo) ou de atendente (só conversa e cuida dos leads).'],
+    ['4. Uso correto', 'Você se compromete a: (a) só enviar mensagens para quem autorizou receber; (b) respeitar as políticas do WhatsApp e da Meta; (c) não usar o VETRA para spam, fraude, conteúdo ilegal ou perturbação; (d) manter os dados dos seus contatos corretos e atualizados. O descumprimento pode levar ao bloqueio do número pela própria Meta, o que foge do controle da Contratada.'],
+    ['5. Pagamento e vigência', 'O plano contratado tem validade. Depois do vencimento há um prazo de tolerância; passado ele, o ENVIO de mensagens é pausado. Nenhum dado é apagado por falta de pagamento: conversas, leads e configurações continuam guardados e voltam ao normal quando o plano é reativado.'],
+    ['6. Disponibilidade', 'A Contratada trabalha para manter o VETRA no ar, mas não garante funcionamento ininterrupto: existem manutenções, atualizações e falhas de terceiros (Meta, provedores de hospedagem e de banco de dados) fora do seu controle.'],
+    ['7. Limite de responsabilidade', 'A Contratada não responde por lucros cessantes, perda de oportunidade de negócio ou por decisões comerciais tomadas com base nas informações do sistema. A responsabilidade fica limitada ao valor pago pelo serviço nos últimos 12 meses.'],
+    ['8. Encerramento', 'Qualquer das partes pode encerrar a contratação avisando com 30 dias. No encerramento, você pode exportar seus dados; depois de 30 dias do fim do contrato, os dados podem ser eliminados em definitivo.'],
+    ['9. Foro', 'Fica eleito o foro de ' + F + ' para resolver o que não for resolvido de comum acordo.'],
+    ['Contato', 'Dúvidas sobre estes Termos: ' + E + '.']
+  ];
+}
+function _textoPrivacidade() {
+  const N = _emp('nome', '[preencha a razão social acima]');
+  const E = _emp('email', '[preencha o e-mail acima]');
+  return [
+    ['1. Por que este documento existe', 'A Lei Geral de Proteção de Dados (Lei 13.709/2018) exige que fique claro quais dados pessoais são tratados, para quê e por quanto tempo. Este texto explica isso em relação ao VETRA.'],
+    ['2. Papéis', 'Você (cliente) é o CONTROLADOR dos dados dos seus contatos: é você quem decide para quem escrever e por quê. ' + N + ' é a OPERADORA: trata os dados apenas para fazer o sistema funcionar, seguindo as suas instruções.'],
+    ['3. Que dados são tratados', 'Do seu contato final: nome, número de telefone, conteúdo das mensagens trocadas com você, arquivos enviados na conversa, etiquetas e anotações que a sua equipe registrar. Da sua equipe: e-mail de acesso, data e hora dos acessos e o registro de quem enviou cada mensagem.'],
+    ['4. Para que servem', 'Exclusivamente para prestar o atendimento: mostrar a conversa, organizar o funil, disparar as automações que você configurou e gerar os números de uso do seu plano. Os dados NÃO são vendidos, alugados nem usados para treinar sistemas de terceiros.'],
+    ['5. Com quem são compartilhados', 'Só com quem é necessário para o sistema existir: a Meta (WhatsApp Business Platform), o serviço de banco de dados e o serviço de hospedagem contratados. Cada um trata os dados apenas para entregar a própria função.'],
+    ['6. Por quanto tempo ficam guardados', 'Conversas e leads ficam enquanto durar a contratação. Arquivos de mídia são mantidos por até 6 meses e depois removidos automaticamente para poupar espaço. Leads e colunas excluídos ficam 30 dias na lixeira antes de sumirem de vez.'],
+    ['7. Segurança', 'O acesso é por login individual com senha, o tráfego é criptografado (HTTPS) e cada conta enxerga somente os próprios dados. As pessoas da sua equipe recebem o menor acesso possível por padrão (atendente) e só passam a administrador se você promover.'],
+    ['8. Direitos do titular', 'Qualquer pessoa cujos dados estejam aqui pode pedir confirmação, acesso, correção, portabilidade, anonimização ou eliminação. Como o CONTROLADOR é você, o pedido deve ser feito a você; a Operadora ajuda tecnicamente no que for preciso.'],
+    ['9. Incidentes', 'Em caso de incidente de segurança relevante, a Operadora comunica você sem demora, com o que se sabe e o que está sendo feito, para que você possa cumprir os seus deveres perante a ANPD e os titulares.'],
+    ['Encarregado / contato', 'Assuntos de privacidade: ' + E + '.']
+  ];
+}
+function trmAba(k) {
+  _trmAbaAtual = k;
+  const el = document.getElementById('trm-texto'); if (!el) return;
+  const secoes = k === 'priv' ? _textoPrivacidade() : _textoTermos();
+  const titulo = k === 'priv' ? 'Política de Privacidade' : 'Termos de Uso';
+  const hoje = new Date(Date.now() - _BRT_OFFSET);
+  const p = n => String(n).padStart(2, '0');
+  el.innerHTML = `<div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:2px">${escHtml(titulo)} — VETRA</div>
+    <div style="font-size:11px;color:#8696a0;margin-bottom:10px">Versão 1 · gerado em ${p(hoje.getUTCDate())}/${p(hoje.getUTCMonth() + 1)}/${hoje.getUTCFullYear()}</div>`
+    + secoes.map(sc => `<div style="margin-bottom:9px"><b style="color:#131c20">${escHtml(sc[0])}</b><div>${escHtml(sc[1])}</div></div>`).join('');
+  ['termos', 'priv'].forEach(x => {
+    const b = document.getElementById('trm-b-' + x);
+    if (b) { b.style.background = x === k ? '#00a884' : ''; b.style.color = x === k ? '#fff' : ''; b.style.borderColor = x === k ? '#00a884' : ''; }
+  });
+}
+async function carregaTermos() {
+  try {
+    const d = await (await fetch(SERVER_URL + '/settings/empresa_dados')).json();
+    if (d && d.value) _empresa = JSON.parse(d.value);
+  } catch (_) {}
+  ['nome', 'cnpj', 'email', 'cidade'].forEach(k => {
+    const el = document.getElementById('emp-' + k); if (el) el.value = _empresa[k] || '';
+  });
+  trmAba(_trmAbaAtual);
+  const ac = document.getElementById('trm-aceite'); if (!ac) return;
+  try {
+    const a = await (await fetch(SERVER_URL + '/aceite')).json();
+    if (a && a.meu) {
+      const q = _acessoTexto(a.meu.quando);
+      ac.innerHTML = `<span style="color:#00a884"><i class=ic-check></i></span> Você aceitou a versão ${a.meu.versao} <b>${escHtml(q)}</b>.`;
+    } else {
+      ac.innerHTML = `<button class="btn-save" onclick="aceitarTermos(this)">Li e aceito os dois documentos</button>`;
+    }
+  } catch (_) { ac.textContent = ''; }
+}
+async function salvarEmpresa(btn) {
+  const st = document.getElementById('emp-status');
+  const dados = {};
+  ['nome', 'cnpj', 'email', 'cidade'].forEach(k => { const el = document.getElementById('emp-' + k); dados[k] = el ? el.value.trim() : ''; });
+  if (btn) { btn.disabled = true; }
+  try {
+    await _apiJson(SERVER_URL + '/settings/empresa_dados', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ value: JSON.stringify(dados) })
+    });
+    _empresa = dados;
+    trmAba(_trmAbaAtual);
+    if (st) { st.style.color = '#00a884'; st.textContent = 'Salvo. Os documentos abaixo já estão com os seus dados.'; }
+  } catch (e) { if (st) { st.style.color = '#ef4444'; st.textContent = e.message || 'Não consegui salvar.'; } }
+  finally { if (btn) btn.disabled = false; setTimeout(() => { if (st) st.textContent = ''; }, 4000); }
+}
+async function aceitarTermos(btn) {
+  if (btn) btn.disabled = true;
+  try {
+    await _apiJson(SERVER_URL + '/aceite', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    carregaTermos();
+  } catch (e) { if (btn) { btn.disabled = false; } showToast(e.message || 'Não consegui registrar o aceite.'); }
+}
+function baixarTermos() {
+  const bloco = (tit, secoes) => '<h1>' + tit + ' — VETRA</h1>' + secoes.map(sc => '<h2>' + escHtml(sc[0]) + '</h2><p>' + escHtml(sc[1]) + '</p>').join('');
+  const html = '<!doctype html><meta charset="utf-8"><title>VETRA — Termos e Privacidade</title>'
+    + '<style>body{font-family:Segoe UI,Arial,sans-serif;max-width:760px;margin:36px auto;padding:0 20px;color:#222;line-height:1.65}'
+    + 'h1{font-size:20px;border-bottom:2px solid #00a884;padding-bottom:6px;margin-top:36px}h2{font-size:14px;margin:16px 0 4px}p{margin:0 0 8px;font-size:13.5px}</style>'
+    + bloco('Termos de Uso', _textoTermos()) + bloco('Política de Privacidade', _textoPrivacidade());
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
+  a.download = 'VETRA-termos-e-privacidade.html';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+// Na primeira entrada, pede o aceite uma vez. Se o servidor não tiver a rota,
+// não acontece nada — ninguém fica preso numa janela.
+async function _perguntaTermos() {
+  try {
+    if (sessionStorage.getItem('vetra_termos_perg') === '1') return;
+    sessionStorage.setItem('vetra_termos_perg', '1');
+  } catch (_) {}
+  try {
+    const r = await fetch(SERVER_URL + '/aceite');
+    const t = r.headers.get('content-type') || '';
+    if (!r.ok || t.indexOf('json') < 0) return;
+    const a = await r.json();
+    if (!a || !a.pendente) return;
+    const ok = await vConfirm({
+      titulo: 'Termos de Uso e Privacidade',
+      texto: 'Antes de continuar, confirme que você leu os Termos de Uso e a Política de Privacidade do VETRA.\n\nEles explicam o que o sistema guarda, por quanto tempo e quais são os seus direitos e deveres (LGPD). O texto completo fica em Configurações → Termos e privacidade.',
+      confirmar: 'Li e aceito', cancelar: 'Ler primeiro'
+    });
+    if (ok) {
+      try { await _apiJson(SERVER_URL + '/aceite', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }); } catch (_) {}
+    } else {
+      abrirConfigEm('termos');
+    }
+  } catch (_) {}
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// 🛰️ PAINEL DO FORNECEDOR — todos os clientes numa tela (só você)
+// ═══════════════════════════════════════════════════════════════════
+async function carregaPainelDono(forcar) {
+  const el = document.getElementById('adm-lista'); if (!el) return;
+  el.textContent = 'Carregando…';
+  let d;
+  try { d = await _apiJson(SERVER_URL + '/admin/clientes?t=' + Date.now()); }
+  catch (e) { el.innerHTML = '<div style="color:#ef4444">' + escHtml(e.message || 'Não consegui carregar.') + '</div>'; return; }
+  const cs = d.clientes || [];
+  if (!cs.length) { el.innerHTML = '<div style="color:#8696a0">Nenhum cliente encontrado ainda.</div>'; return; }
+  const problemas = cs.filter(c => c.desconectados > 0 || (c.plano && (c.plano.bloqueado || c.plano.vencido)));
+  const cab = `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <span style="font-size:12px;background:#f0f2f5;border-radius:8px;padding:5px 10px"><b>${cs.length}</b> cliente(s)</span>
+      <span style="font-size:12px;background:${problemas.length ? '#fdecea' : '#e7f7ef'};color:${problemas.length ? '#a93226' : '#00806a'};border-radius:8px;padding:5px 10px"><b>${problemas.length}</b> precisando de atenção</span>
+      <span style="font-size:12px;background:#f0f2f5;border-radius:8px;padding:5px 10px">servidor v${d.servidor}</span>
+    </div>`;
+  const cor = c => (c.plano && c.plano.bloqueado) ? '#ef4444'
+    : (c.plano && c.plano.vencido) ? '#ef4444'
+    : (c.desconectados > 0) ? '#f0b400'
+    : (c.plano && c.plano.dias_restantes !== null && c.plano.dias_restantes <= 7) ? '#f0b400' : '#00a884';
+  const ordem = cs.slice().sort((a, b) => {
+    const peso = x => (x.plano && x.plano.bloqueado ? 0 : x.desconectados > 0 ? 1 : x.plano && x.plano.vencido ? 1 : 2);
+    return peso(a) - peso(b) || String(a.dono).localeCompare(String(b.dono));
+  });
+  el.innerHTML = cab + ordem.map(c => {
+    const p = c.plano || {};
+    const nums = (c.numeros || []).map(n => {
+      const bom = n.estado === 'connected';
+      return `<span style="display:inline-block;font-size:11px;border-radius:8px;padding:2px 8px;margin:2px 4px 2px 0;background:${bom ? '#e7f7ef' : '#fdecea'};color:${bom ? '#00806a' : '#a93226'}">${escHtml(n.nome)} · ${n.tipo} · ${bom ? 'conectado' : 'fora do ar'}</span>`;
+    }).join('') || '<span style="font-size:11.5px;color:#8696a0">nenhum número conectado</span>';
+    const val = p.validade_br ? (p.bloqueado ? 'SUSPENSO' : p.vencido ? 'venceu ' + p.validade_br : 'até ' + p.validade_br + (p.dias_restantes !== null ? ' (' + p.dias_restantes + 'd)' : '')) : 'sem validade';
+    const erro = c.ultimo_erro ? `<div style="font-size:11.5px;color:#a93226;margin-top:4px"><i class=ic-alert></i> ${escHtml(c.ultimo_erro.texto)}</div>` : '';
+    return `<div style="border:1px solid #e9edef;border-left:4px solid ${cor(c)};border-radius:8px;padding:10px 12px;margin-bottom:8px;background:#fff">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <b style="flex:1;min-width:160px;font-size:13px;color:#131c20;word-break:break-all">${escHtml(c.dono)}</b>
+        <span style="font-size:11.5px;color:#54656f">${escHtml(p.plano || 'VETRA')} · ${escHtml(val)}</span>
+        <button class="pf-topbtn" style="padding:4px 9px;font-size:11.5px" onclick="admEditarPlano('${_jsAttr(c.dono)}')">Editar plano</button>
+      </div>
+      <div style="margin-top:6px">${nums}</div>
+      <div style="font-size:11.5px;color:#667781;margin-top:5px">
+        ${Number(c.mensagens_mes || 0).toLocaleString('pt-BR')} mensagem(ns) no mês · ${Number(c.leads || 0).toLocaleString('pt-BR')} lead(s) · ${c.equipe} pessoa(s) na equipe · último acesso ${escHtml(c.ultimo_acesso ? _acessoTexto(c.ultimo_acesso) : 'não registrado')}
+      </div>${erro}
+    </div>`;
+  }).join('');
+}
+async function admEditarPlano(dono) {
+  let atual = {};
+  try {
+    const d = await _apiJson(SERVER_URL + '/admin/clientes?t=' + Date.now());
+    const c = (d.clientes || []).find(x => x.dono === dono);
+    if (c) atual = c.plano || {};
+  } catch (_) {}
+  const r = await vCampos({
+    titulo: 'Plano de ' + dono,
+    texto: 'Vencer NÃO apaga nada: passados os ' + (atual.tolerancia_dias || 5) + ' dias de tolerância, só o ENVIO de mensagens é pausado.',
+    campos: [
+      { id: 'plano', rotulo: 'Nome do plano', valor: atual.plano || 'VETRA' },
+      { id: 'validade', rotulo: 'Válido até', tipo: 'date', valor: atual.validade || '' },
+      { id: 'limite_numeros', rotulo: 'Números incluídos (vazio = sem limite)', tipo: 'number', valor: atual.limite_numeros || '' },
+      { id: 'limite_msgs_mes', rotulo: 'Mensagens por mês (vazio = sem limite)', tipo: 'number', valor: atual.limite_msgs_mes || '' },
+      { id: 'contato', rotulo: 'Contato de suporte mostrado ao cliente', valor: atual.contato || '' },
+      { id: 'suspenso', rotulo: 'Suspender agora?', opcoes: [{ v: '', t: 'Não' }, { v: '1', t: 'Sim, pausar o envio' }], valor: atual.bloqueado && !atual.vencido ? '1' : '' }
+    ],
+    confirmar: 'Salvar plano'
+  });
+  if (!r) return;
+  try {
+    await _apiJson(SERVER_URL + '/billing', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dono, plano: r.plano, validade: r.validade || null, limite_numeros: r.limite_numeros, limite_msgs_mes: r.limite_msgs_mes, contato: r.contato, suspenso: r.suspenso === '1' })
+    });
+    showToast('Plano de ' + dono + ' atualizado.');
+    carregaPainelDono(true);
+  } catch (e) { showToast(e.message || 'Não consegui salvar o plano.'); }
+}
+
 // Abre Configurações já na aba pedida (usado pelos atalhos do Pipeline)
 function abrirConfigEm(aba) {
   try { openConfigModal(); } catch (_) {}
@@ -9131,6 +9643,10 @@ function cfgTab(k) {
   if (k === 'ids') { const w = document.getElementById('cfg-stage-ids-wrap'); if (w) w.style.display = 'block'; const a = document.getElementById('cfg-stage-ids-arrow'); if (a) a.textContent = '▾'; }
   if (k === 'pipe') carregarLixeiraColunas();
   if (k === 'equipe') equipeCarregar();
+  if (k === 'bill') carregaFaturamento();
+  if (k === 'diag') carregaDiagnostico();
+  if (k === 'termos') carregaTermos();
+  if (k === 'adm') carregaPainelDono();
 }
 async function openConfigModal() {
   try { const nav = document.getElementById('cfg-nav'); if (nav) nav.style.display = ''; } catch (_) {}
@@ -9143,12 +9659,8 @@ async function openConfigModal() {
     const d = await (await fetch(SERVER_URL + '/integration/token')).json();
     document.getElementById('cfg-token').value = d.token || '';
   } catch (_) {}
-  const b = document.getElementById('cfg-billing');
-  try {
-    const d = await (await fetch(SERVER_URL + '/billing')).json();
-    const v = d.value || {};
-    b.innerHTML = `Plano: <b>${escHtml(v.plano || 'VETRA')}</b> &nbsp;·&nbsp; Validade: <b>${escHtml(v.validade || '—')}</b>`;
-  } catch (_) { b.textContent = 'Plano: VETRA'; }
+  try { _aplicaPapel(); } catch (_) {}
+  carregaFaturamento();
   // Endereço do servidor + exemplo pronto para o n8n / planilha
   try {
     const u = document.getElementById('cfg-server-url'); if (u) u.textContent = SERVER_URL;
@@ -9167,7 +9679,7 @@ async function openConfigModal() {
 }
 // Versão do servidor que este app espera. Se o Railway estiver atrás disso,
 // algumas telas não têm como funcionar — e o app avisa em vez de dar erro seco.
-const SERVIDOR_MIN = 248;
+const SERVIDOR_MIN = 249;
 let _verServidor = null;
 async function _servidorVersao() {
   if (_verServidor !== null) return _verServidor;
