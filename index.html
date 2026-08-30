@@ -1950,7 +1950,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v349</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v350</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2345,6 +2345,9 @@ window.addEventListener('load', initAuth);
     <div style="border:1px solid #e9edef;border-radius:10px;padding:14px">
       <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">Aparência</div>
       <button id="btn-dark" onclick="toggleDark()" style="background:#00a884;color:#fff;border:none;border-radius:8px;padding:9px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;margin-bottom:16px">Ativar modo escuro</button>
+      <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">Passo a passo de estreia</div>
+      <p style="font-size:12px;color:#667781;margin:0 0 8px;line-height:1.5">Aparece sozinho no alto da lista de conversas para quem está começando, e some quando os quatro passos terminam. Use o botão abaixo para ver como o seu cliente vê — ou para trazer de volta se alguém escondeu.</p>
+      <button class="pf-topbtn" style="margin-bottom:16px" onclick="verOnboarding()">Ver o passo a passo</button>
       <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">Suporte</div>
       <div style="font-size:13px;color:#667781">Em breve.</div>
     </div>
@@ -2658,7 +2661,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v349</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v350</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2712,7 +2715,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 349;
+const APP_VER = 350;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -9296,10 +9299,11 @@ function _avisaPlano() {
 // ═══════════════════════════════════════════════════════════════════
 // Some sozinho quando os quatro passos estão feitos. Quem já usa o VETRA há
 // tempo nem chega a ver (todos os passos já estão prontos).
-async function _onboardingCheca() {
+async function _onboardingCheca(forcar) {
   const card = document.getElementById('onb-card'); if (!card) return;
   if (!podeAdmin()) { card.style.display = 'none'; return; }
-  try { if (localStorage.getItem('vetra_onb_off') === '1') { card.style.display = 'none'; return; } } catch (_) {}
+  // forcar = você mandou mostrar em Configurações (para conferir ou reexibir)
+  if (!forcar) { try { if (localStorage.getItem('vetra_onb_off') === '1') { card.style.display = 'none'; return; } } catch (_) {} }
   let contas = 0, etapas = 0, bots = 0;
   try { const a = await (await fetch(SERVER_URL + '/accounts')).json(); contas = Array.isArray(a) ? a.length : 0; } catch (_) {}
   try { const e = await (await fetch(SERVER_URL + '/pipeline/stages')).json(); etapas = Array.isArray(e) ? e.length : 0; } catch (_) {}
@@ -9312,7 +9316,8 @@ async function _onboardingCheca() {
     { ok: bots > 0,      t: 'Montar o primeiro bot',           d: 'Responde sozinho fora do horário ou dá as boas-vindas.', ir: 'openBotsList' }
   ];
   const feitos = passos.filter(p => p.ok).length;
-  if (feitos === passos.length) { card.style.display = 'none'; return; }
+  if (feitos === passos.length && !forcar) { card.style.display = 'none'; return; }
+  const tudoPronto = feitos === passos.length;
   const linhas = passos.map(p => `<div style="display:flex;gap:8px;align-items:flex-start;padding:6px 0">
       <span style="flex:0 0 16px;margin-top:1px;color:${p.ok ? '#00a884' : '#c7ced2'}"><i class=${p.ok ? 'ic-check' : 'ic-circle'}></i></span>
       <span style="flex:1;min-width:0">
@@ -9323,13 +9328,26 @@ async function _onboardingCheca() {
     </div>`).join('');
   card.style.display = 'block';
   card.style.cssText = 'display:block;margin:8px;padding:11px 12px;background:#f0fbf6;border:1px solid #bfe8d5;border-radius:10px';
-  card.innerHTML = `<div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
+  card.innerHTML = `${tudoPronto ? '<div style="font-size:11.5px;color:#667781;background:#fff;border:1px solid #e0eee7;border-radius:6px;padding:6px 8px;margin-bottom:8px;line-height:1.45">Prévia: <b>na sua conta já está tudo pronto</b>, então este cartão não aparece sozinho. É assim que um cliente novo vê.</div>' : ''}
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
       <b style="flex:1;font-size:13px;color:#00806a">Comece por aqui (${feitos} de ${passos.length})</b>
       <button title="Não mostrar mais" onclick="onbDispensar()" style="background:none;border:none;color:#8696a0;font-size:15px;cursor:pointer;line-height:1;padding:0 2px">✕</button>
     </div>
     <div style="height:5px;background:#d8f0e5;border-radius:3px;overflow:hidden;margin:6px 0 4px">
       <div style="height:100%;width:${Math.round(feitos / passos.length * 100)}%;background:#00a884"></div>
     </div>${linhas}`;
+}
+// Mostra o passo a passo mesmo em conta antiga (prévia) e desfaz o "não mostrar mais"
+async function verOnboarding() {
+  try { localStorage.removeItem('vetra_onb_off'); } catch (_) {}
+  try { closeConfigModal(); } catch (_) {}
+  try { goToChat(); } catch (_) {}
+  await _onboardingCheca(true);
+  try {
+    const c = document.getElementById('onb-card');
+    if (c) c.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  } catch (_) {}
+  showToast('O passo a passo está no alto da lista de conversas.', 'ok', 5000);
 }
 async function onbDispensar() {
   if (!await vConfirm({ titulo: 'Esconder o passo a passo', texto: 'Ele some deste aparelho. Você continua podendo fazer tudo pelo menu.', confirmar: 'Esconder' })) return;
