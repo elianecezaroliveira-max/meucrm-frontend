@@ -1950,7 +1950,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v350</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v351</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2333,6 +2333,20 @@ window.addEventListener('load', initAuth);
 </div>
 <div class="cfg-pane" data-pane="adm">
     <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
+      <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">Liberar usuários</div>
+      <p style="font-size:12px;color:#667781;margin:0 0 10px;line-height:1.5">Cadastre aqui o e-mail de cada cliente. Com a portaria ligada, quem não estiver nesta lista até consegue fazer login, mas vê um aviso de "acesso não liberado" em vez do sistema.</p>
+      <div id="adm-trava" style="margin-bottom:10px"></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <input id="adm-novo-email" type="email" placeholder="email@docliente.com" style="flex:1;min-width:190px;box-sizing:border-box;background:#fff;border:1px solid #d1d7db;border-radius:8px;padding:10px 12px;font-size:13px;outline:none">
+        <input id="adm-novo-plano" placeholder="Plano (ex.: VETRA Pro)" style="width:170px;box-sizing:border-box;background:#fff;border:1px solid #d1d7db;border-radius:8px;padding:10px 12px;font-size:13px;outline:none">
+        <input id="adm-novo-validade" type="date" title="Válido até" style="box-sizing:border-box;background:#fff;border:1px solid #d1d7db;border-radius:8px;padding:9px 11px;font-size:13px;outline:none;font-family:inherit">
+        <button class="btn-save" onclick="liberarUsuario(this)">Liberar acesso</button>
+      </div>
+      <div id="adm-status" style="font-size:12px;color:#00a884;min-height:16px;margin-top:6px"></div>
+      <div id="adm-tentativas" style="margin-top:8px"></div>
+      <div id="adm-liberados" style="margin-top:8px;font-size:13px;color:#54656f">Carregando…</div>
+    </div>
+    <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
         <div style="flex:1;font-size:14px;font-weight:700;color:#131c20">Seus clientes</div>
         <button class="pf-topbtn" onclick="carregaPainelDono(true)">Atualizar</button>
@@ -2661,7 +2675,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v350</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v351</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2715,7 +2729,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 350;
+const APP_VER = 351;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2759,13 +2773,16 @@ async function init(url) {
   } catch(e) {
     document.getElementById('server-url-label').textContent = 'erro de conexão';
   }
+  // Portaria primeiro: se este e-mail não foi liberado, nem chegamos a buscar dados
+  await _carregaAcesso();
+  if (window._acesso && window._acesso.liberado === false) return;
   await loadAccounts();
   // Reabre a tela marcada na URL assim que as CONTAS existem (Modelos/Contas dependem
   // delas) e antes das conversas — sem "piscar" o chat
   if (!window._telaPasso1 && location.hash && !location.hash.startsWith('#chat=')) { window._telaPasso1 = true; setTimeout(_restaurarTela, 0); }
   await loadContacts();
   loadAllTags();
-  _carregaAcesso();      // papel, plano, termos e o passo a passo de estreia
+  _onboardingCheca();    // passo a passo de estreia (some quando tudo está pronto)
   _avisaServidorNoApp(); // avisa NA HORA se o servidor ficou para trás
   setInterval(() => { _verServidor = null; _avisaServidorNoApp(); }, 60 * 60 * 1000);
   startPolling();
@@ -9211,15 +9228,33 @@ async function _carregaAcesso() {
     const t = r.headers.get('content-type') || '';
     if (r.ok && t.indexOf('json') >= 0) {
       const d = await r.json();
-      if (d && d.papel) window._acesso = { papel: d.papel, fornecedor: !!d.fornecedor, plano: d.plano || null, dono: d.dono || null, email: d.email || null, carregado: true };
+      if (d && d.papel) window._acesso = { papel: d.papel, fornecedor: !!d.fornecedor, plano: d.plano || null, dono: d.dono || null, email: d.email || null, liberado: d.liberado !== false, portaria: !!d.portaria, carregado: true };
     }
   } catch (_) {}
+  // Sem liberação: o app para aqui e explica, em vez de dar erro em toda tela.
+  if (window._acesso && window._acesso.liberado === false) { _telaSemLiberacao(); return; }
   // A ordem importa: primeiro descobrimos o papel, só depois montamos a tela —
   // senão o atendente chegava a ver o passo a passo de configuração.
   try { _aplicaPapel(); } catch (_) {}
   try { _avisaPlano(); } catch (_) {}
-  try { await _onboardingCheca(); } catch (_) {}
   try { _perguntaTermos(); } catch (_) {}
+}
+
+// Tela cheia para quem entrou com um e-mail que você ainda não liberou.
+// Nada de erro técnico: só o aviso e o botão de sair.
+function _telaSemLiberacao() {
+  if (document.getElementById('sem-lib')) return;
+  const d = document.createElement('div');
+  d.id = 'sem-lib';
+  d.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#f0f2f5;display:flex;align-items:center;justify-content:center;padding:24px';
+  d.innerHTML = `<div style="max-width:430px;background:#fff;border:1px solid #e9edef;border-radius:14px;padding:26px 24px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.10)">
+      <div style="font-size:30px;color:#f0b400;margin-bottom:8px"><i class=ic-lock></i></div>
+      <div style="font-size:17px;font-weight:700;color:#131c20;margin-bottom:10px">Acesso ainda não liberado</div>
+      <p style="font-size:13.5px;color:#54656f;line-height:1.65;margin:0 0 8px">O e-mail <b>${escHtml((window._acesso && window._acesso.email) || '')}</b> entrou, mas ainda não tem permissão para usar o VETRA.</p>
+      <p style="font-size:13px;color:#667781;line-height:1.65;margin:0 0 20px">Fale com quem te forneceu o sistema. Assim que ele liberar, basta entrar de novo — nada precisa ser refeito.</p>
+      <button class="btn-cancel" onclick="logoutCRM()">Sair</button>
+    </div>`;
+  document.body.appendChild(d);
 }
 function _aplicaPapel() {
   const atend = !podeAdmin();
@@ -9569,6 +9604,130 @@ async function _perguntaTermos() {
 // ═══════════════════════════════════════════════════════════════════
 // 🛰️ PAINEL DO FORNECEDOR — todos os clientes numa tela (só você)
 // ═══════════════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════════════
+// 🚪 PAINEL DO FORNECEDOR — liberar e bloquear quem usa o VETRA
+// ═══════════════════════════════════════════════════════════════════
+async function carregaAcessoAdmin() {
+  const box = document.getElementById('adm-liberados'); if (!box) return;
+  const trava = document.getElementById('adm-trava');
+  const tent = document.getElementById('adm-tentativas');
+  box.textContent = 'Carregando…';
+  let d;
+  try { d = await _apiJson(SERVER_URL + '/admin/acesso?t=' + Date.now()); }
+  catch (e) { box.innerHTML = '<div style="color:#ef4444">' + escHtml(e.message || 'Não consegui carregar.') + '</div>'; return; }
+
+  // ── chave da portaria ──
+  if (trava) {
+    const fora = d.ja_usam_sem_liberacao || [];
+    trava.innerHTML = d.ligado
+      ? `<div style="background:#e7f7ef;border:1px solid #c8ecd9;border-radius:8px;padding:10px 12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+           <span style="flex:1;min-width:200px;font-size:12.5px;color:#00806a;line-height:1.5"><b>Portaria ligada.</b> Só os e-mails da lista abaixo conseguem usar o VETRA.</span>
+           <button class="pf-topbtn" onclick="trocarTrava(false)">Desligar</button>
+         </div>`
+      : `<div style="background:#fff7e6;border:1px solid #ffd591;border-radius:8px;padding:10px 12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+           <span style="flex:1;min-width:200px;font-size:12.5px;color:#8c6d1f;line-height:1.5"><b>Portaria desligada.</b> Qualquer pessoa que criar um login hoje ganha uma conta e usa o VETRA de graça.${fora.length ? ' Ao ligar, os <b>' + fora.length + '</b> que já usam são liberados automaticamente — ninguém perde acesso.' : ''}</span>
+           <button class="btn-save" onclick="trocarTrava(true)">Ligar a portaria</button>
+         </div>`;
+  }
+
+  // ── quem tentou entrar e foi barrado ──
+  if (tent) {
+    const ts = d.tentativas || {};
+    const ks = Object.keys(ts).sort((a, b) => String(ts[b]).localeCompare(String(ts[a])));
+    tent.innerHTML = ks.length
+      ? `<div style="background:#fdf6e3;border:1px solid #f0dcae;border-radius:8px;padding:10px 12px">
+          <div style="font-size:12.5px;font-weight:700;color:#8c6d1f;margin-bottom:6px">Tentaram entrar e foram barrados (${ks.length})</div>
+          ${ks.map(e => `<div style="display:flex;gap:8px;align-items:center;padding:4px 0;flex-wrap:wrap">
+              <span style="flex:1;min-width:150px;font-size:12.5px;color:#131c20;word-break:break-all">${escHtml(e)}</span>
+              <span style="font-size:11.5px;color:#8c6d1f">${escHtml(_acessoTexto(ts[e]))}</span>
+              <button class="btn-save" style="padding:4px 10px;font-size:11.5px" onclick="liberarUsuario(this,'${_jsAttr(e)}')">Liberar</button>
+            </div>`).join('')}
+        </div>` : '';
+  }
+
+  // ── lista de liberados ──
+  const em = d.emails || {}, planos = d.planos || {};
+  const ks = Object.keys(em).sort();
+  if (!ks.length) { box.innerHTML = '<div style="color:#8696a0;font-size:12.5px">Ninguém cadastrado ainda.</div>'; return; }
+  box.innerHTML = `<div style="font-size:12.5px;font-weight:700;color:#131c20;margin-bottom:6px">Liberados (${ks.length})</div>`
+    + ks.map(e => {
+      const p = planos[e] || {};
+      const eu = e === d.eu;
+      const val = p.validade_br ? (p.bloqueado ? 'suspenso' : p.vencido ? 'venceu ' + p.validade_br : 'até ' + p.validade_br) : 'sem validade';
+      return `<div style="display:flex;gap:8px;align-items:center;padding:8px 11px;background:#f7f8fa;border:1px solid #e9edef;border-radius:8px;margin-bottom:6px;flex-wrap:wrap">
+        <span style="color:${eu ? '#c79a00' : '#00a884'}"><i class=${eu ? 'ic-crown' : 'ic-check'}></i></span>
+        <span style="flex:1;min-width:150px">
+          <span style="display:block;font-size:13px;color:#131c20;word-break:break-all">${escHtml(e)}${eu ? ' <b style="color:#8696a0">(você)</b>' : ''}</span>
+          <span style="display:block;font-size:11.5px;color:#667781">${escHtml(p.plano || 'VETRA')} · ${escHtml(val)}${em[e] && em[e].desde ? ' · liberado ' + escHtml(_acessoTexto(em[e].desde)) : ''}</span>
+        </span>
+        <button class="pf-topbtn" style="padding:5px 10px;font-size:11.5px" onclick="admEditarPlano('${_jsAttr(e)}')">Plano</button>
+        ${eu ? '' : `<button class="btn-cancel" style="padding:5px 10px;font-size:11.5px" onclick="bloquearUsuario('${_jsAttr(e)}')">Bloquear</button>`}
+      </div>`;
+    }).join('');
+}
+async function liberarUsuario(btn, emailPronto) {
+  const st = document.getElementById('adm-status');
+  const inp = document.getElementById('adm-novo-email');
+  const email = String(emailPronto || (inp ? inp.value : '')).trim().toLowerCase();
+  if (!email) { if (st) { st.style.color = '#ef4444'; st.textContent = 'Escreva o e-mail do cliente.'; } return; }
+  const plano = emailPronto ? '' : (document.getElementById('adm-novo-plano') || {}).value || '';
+  const validade = emailPronto ? '' : (document.getElementById('adm-novo-validade') || {}).value || '';
+  if (btn) btn.disabled = true;
+  if (st) { st.style.color = '#667781'; st.textContent = 'Liberando…'; }
+  try {
+    await _apiJson(SERVER_URL + '/admin/acesso', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, plano: plano || undefined, validade: validade || undefined })
+    });
+    if (!emailPronto && inp) { inp.value = ''; }
+    ['adm-novo-plano', 'adm-novo-validade'].forEach(id => { const e = document.getElementById(id); if (e && !emailPronto) e.value = ''; });
+    if (st) { st.style.color = '#00a884'; st.textContent = email + ' liberado. Ele já pode entrar.'; }
+    carregaAcessoAdmin(); carregaPainelDono(true);
+  } catch (e) { if (st) { st.style.color = '#ef4444'; st.textContent = e.message || 'Não consegui liberar.'; } }
+  finally { if (btn) btn.disabled = false; setTimeout(() => { if (st) st.textContent = ''; }, 5000); }
+}
+async function bloquearUsuario(email) {
+  const ok = await vConfirm({
+    titulo: 'Bloquear acesso',
+    texto: email + ' deixa de conseguir usar o VETRA na próxima vez que abrir.\n\nNADA é apagado: as conversas, leads e configurações dele continuam guardadas e voltam no mesmo lugar se você liberar de novo.',
+    confirmar: 'Bloquear', perigo: true
+  });
+  if (!ok) return;
+  try {
+    await _apiJson(SERVER_URL + '/admin/acesso/' + encodeURIComponent(email), { method: 'DELETE' });
+    showToast(email + ' foi bloqueado.', 'ok');
+    carregaAcessoAdmin(); carregaPainelDono(true);
+  } catch (e) { showToast(e.message || 'Não consegui bloquear.', 'err'); }
+}
+async function trocarTrava(ligar) {
+  if (ligar) {
+    let fora = [];
+    try { const d = await _apiJson(SERVER_URL + '/admin/acesso?t=' + Date.now()); fora = d.ja_usam_sem_liberacao || []; } catch (_) {}
+    const lista = fora.length ? '\n\nJá em uso, serão liberados agora:\n· ' + fora.slice(0, 12).join('\n· ') + (fora.length > 12 ? '\n· e mais ' + (fora.length - 12) : '') : '';
+    const ok = await vConfirm({
+      titulo: 'Ligar a portaria',
+      texto: 'A partir de agora, só os e-mails da sua lista conseguem usar o VETRA. Quem não estiver liberado vê um aviso e não entra.' + lista + '\n\nO seu e-mail nunca é bloqueado.',
+      confirmar: 'Ligar a portaria'
+    });
+    if (!ok) return;
+  } else {
+    const ok = await vConfirm({
+      titulo: 'Desligar a portaria',
+      texto: 'Voltando ao modo aberto, qualquer pessoa que criar um login ganha uma conta e usa o VETRA sem você liberar.',
+      confirmar: 'Desligar', perigo: true
+    });
+    if (!ok) return;
+  }
+  try {
+    const r = await _apiJson(SERVER_URL + '/admin/acesso/trava', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ligado: !!ligar })
+    });
+    showToast(ligar ? ('Portaria ligada' + (r.liberados_automaticamente && r.liberados_automaticamente.length ? ' — ' + r.liberados_automaticamente.length + ' liberado(s) automaticamente' : '')) : 'Portaria desligada', 'ok', 6000);
+    carregaAcessoAdmin();
+  } catch (e) { showToast(e.message || 'Não consegui mudar a portaria.', 'err'); }
+}
+
 async function carregaPainelDono(forcar) {
   const el = document.getElementById('adm-lista'); if (!el) return;
   el.textContent = 'Carregando…';
@@ -9603,6 +9762,7 @@ async function carregaPainelDono(forcar) {
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <b style="flex:1;min-width:160px;font-size:13px;color:#131c20;word-break:break-all">${escHtml(c.dono)}</b>
         <span style="font-size:11.5px;color:#54656f">${escHtml(p.plano || 'VETRA')} · ${escHtml(val)}</span>
+        ${c.liberado === false ? '<span style="font-size:11px;font-weight:700;color:#a93226;background:#fdecea;border-radius:8px;padding:2px 8px">sem liberação</span>' : ''}
         <button class="pf-topbtn" style="padding:4px 9px;font-size:11.5px" onclick="admEditarPlano('${_jsAttr(c.dono)}')">Editar plano</button>
       </div>
       <div style="margin-top:6px">${nums}</div>
@@ -9664,7 +9824,7 @@ function cfgTab(k) {
   if (k === 'bill') carregaFaturamento();
   if (k === 'diag') carregaDiagnostico();
   if (k === 'termos') carregaTermos();
-  if (k === 'adm') carregaPainelDono();
+  if (k === 'adm') { carregaAcessoAdmin(); carregaPainelDono(); }
 }
 async function openConfigModal() {
   try { const nav = document.getElementById('cfg-nav'); if (nav) nav.style.display = ''; } catch (_) {}
@@ -9697,7 +9857,7 @@ async function openConfigModal() {
 }
 // Versão do servidor que este app espera. Se o Railway estiver atrás disso,
 // algumas telas não têm como funcionar — e o app avisa em vez de dar erro seco.
-const SERVIDOR_MIN = 249;
+const SERVIDOR_MIN = 250;
 let _verServidor = null;
 async function _servidorVersao() {
   if (_verServidor !== null) return _verServidor;
