@@ -2001,7 +2001,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v358</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v359</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2767,7 +2767,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v358</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v359</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2821,7 +2821,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 358;
+const APP_VER = 359;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5332,14 +5332,43 @@ document.addEventListener('visibilitychange', () => {
   try { const d = JSON.parse(localStorage.getItem(_uKey('vetra_drafts')) || '{}') || {}; _drafts = d; if (typeof renderContacts === 'function' && Array.isArray(allContacts) && allContacts.length) renderContacts(sortContacts(allContacts)); } catch (_) {}
 });
 // Celular: o iOS pode suspender o app a qualquer momento — salva em TODOS os avisos de saída
-function _persistDraftNow() {
+// Última mensagem enviada (para reconhecer a sobra do teclado) e a janela em que
+// nenhum rascunho pode ser gravado.
+let _ultEnviado = { texto: '', ts: 0, phone: '' };
+let _semRascunhoAte = 0;
+// É sobra do envio? (o texto do campo é um pedaço do que acabou de sair)
+function _sobraDoEnvio(txt, phone) {
+  const t = String(txt || '').trim();
+  if (!t) return false;
+  if (phone && _ultEnviado.phone && phone !== _ultEnviado.phone) return false;
+  if (Date.now() - _ultEnviado.ts > 8000) return false;
+  const env = String(_ultEnviado.texto || '').trim();
+  if (!env) return false;
+  return env === t || env.includes(t);
+}
+// PONTO ÚNICO de gravação de rascunho — todo mundo passa por aqui
+function _persistDraftNow(phoneAlvo) {
   try {
-    if (window._enviandoTexto) return; // no meio de um envio: não regrava o rascunho
+    if (window._enviandoTexto || Date.now() < _semRascunhoAte) return; // envio em curso
     const i = document.getElementById('msg-input');
-    if (i && currentPhone) { if (i.value.trim()) _drafts[currentPhone] = i.value; else delete _drafts[currentPhone]; }
+    const p = phoneAlvo || currentPhone;
+    if (i && p) {
+      const v = i.value;
+      if (_sobraDoEnvio(v, p)) { i.value = ''; try { autoGrowMsgInput(i); } catch (_) {} delete _drafts[p]; }
+      else if (v.trim()) _drafts[p] = v;
+      else delete _drafts[p];
+    }
     _saveDrafts();
   } catch (_) {}
 }
+// O teclado entregou a palavra atrasada, já com o campo limpo: apaga de novo.
+document.addEventListener('compositionend', () => {
+  try {
+    if (Date.now() >= _semRascunhoAte) return;
+    const i = document.getElementById('msg-input');
+    if (i && _sobraDoEnvio(i.value, currentPhone)) { i.value = ''; autoGrowMsgInput(i); updateSendMicButtons(); }
+  } catch (_) {}
+}, true);
 document.addEventListener('visibilitychange', () => { if (document.hidden) _persistDraftNow(); });
 window.addEventListener('pagehide', _persistDraftNow);
 window.addEventListener('blur', _persistDraftNow);
@@ -5442,11 +5471,7 @@ async function selectContact(phone, name, accountId) {
   // Limpa a conversa anterior IMEDIATAMENTE (nada de ver o chat antigo por segundos)
   if (currentPhone !== phone) {
     // Guarda o RASCUNHO da conversa que está saindo
-    const _oi = document.getElementById('msg-input');
-    if (_oi && currentPhone) {
-      if (_oi.value.trim()) _drafts[currentPhone] = _oi.value; else delete _drafts[currentPhone];
-      _saveDrafts();
-    }
+    _persistDraftNow(currentPhone);
     const _ma = document.getElementById('messages-area');
     if (_ma) _ma.innerHTML = '';
     currentMessages = [];
@@ -6285,8 +6310,7 @@ function goBackToSidebar() {
   document.body.classList.remove('mobile-chat-open');
   // Salva o rascunho e atualiza a lista (para o "Rascunho:" verde aparecer)
   try {
-    const _bi = document.getElementById('msg-input');
-    if (_bi && currentPhone) { if (_bi.value.trim()) _drafts[currentPhone] = _bi.value; else delete _drafts[currentPhone]; _saveDrafts(); }
+    _persistDraftNow(currentPhone);
     renderContacts(sortContacts(allContacts));
   } catch (_) {}
   try { _mnavVisible(true); } catch (_) {} // barra inferior volta com a lista
@@ -7905,6 +7929,17 @@ async function sendMessage() {
   const _botDepois = _botPendente; // digitou E escolheu bot: manda o texto e depois dispara
   const savedMessage = message; // guarda antes de limpar
   window._enviandoTexto = true; // trava o "salvar rascunho" durante o envio
+  // Janela de silêncio: nada de rascunho por 2s, tempo de o teclado do celular
+  // terminar de entregar o que estava montando
+  _ultEnviado = { texto: message, ts: Date.now(), phone: currentPhone };
+  _semRascunhoAte = Date.now() + 2000;
+  // e se o teclado entregar algo mesmo assim, o campo é limpo de novo
+  [60, 250, 600, 1200].forEach(ms => setTimeout(() => {
+    try {
+      const i2 = document.getElementById('msg-input');
+      if (i2 && _sobraDoEnvio(i2.value, _ultEnviado.phone)) { i2.value = ''; autoGrowMsgInput(i2); updateSendMicButtons(); }
+    } catch (_) {}
+  }, ms));
   input.value = '';
   autoGrowMsgInput(input); // campo volta à altura normal
   updateSendMicButtons();  // troca enviar→mic NA HORA (o botão alto não segura mais a linha crescida)
@@ -10772,11 +10807,21 @@ function openComposerTool() {
 // Atalho "/" — SÓ no computador (no celular o popup abre pelo ícone acima do campo)
 document.addEventListener('input', function(e) {
   if (e.target.id !== 'msg-input') return;
-  // Rascunho: guarda o que você digitou NESTA conversa, A CADA TECLA (sem atraso)
+  // Rascunho: guarda o que você digitou NESTA conversa, A CADA TECLA (sem atraso).
+  // Só NÃO guarda logo depois de enviar: no celular o teclado ainda entrega a
+  // palavra que estava montando, e esse pedaço virava "Rascunho:" numa conversa
+  // que já tinha sido enviada.
   if (currentPhone) {
-    if (e.target.value && e.target.value.trim()) _drafts[currentPhone] = e.target.value;
-    else delete _drafts[currentPhone];
-    _saveDrafts();
+    const _v = e.target.value;
+    if (window._enviandoTexto || Date.now() < _semRascunhoAte || _sobraDoEnvio(_v, currentPhone)) {
+      if (_sobraDoEnvio(_v, currentPhone)) { e.target.value = ''; try { autoGrowMsgInput(e.target); } catch (_) {} }
+      delete _drafts[currentPhone];
+      _saveDrafts();
+    } else {
+      if (_v && _v.trim()) _drafts[currentPhone] = _v;
+      else delete _drafts[currentPhone];
+      _saveDrafts();
+    }
   }
   const val = e.target.value;
   if (val.startsWith('/')) {
