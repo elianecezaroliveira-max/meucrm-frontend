@@ -2001,7 +2001,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v357</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v358</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2767,7 +2767,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v357</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v358</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2821,7 +2821,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 357;
+const APP_VER = 358;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5651,6 +5651,9 @@ async function selectContact(phone, name, accountId) {
   // Mídia do lead (depois que as mensagens carregaram)
   lpLoadMedia(phone);
   _agAtualizaBarra();
+  // A barra de digitação foi redesenhada agora: garante que o estado da nota
+  // interna e o que aparece na tela sejam a mesma coisa
+  try { _resetNotaAoTrocarDeConversa(); } catch (_) {}
 }
 
 // ══════════════════════════════════════════════
@@ -8218,11 +8221,17 @@ async function confirmMediaSend() {
   closeMediaPreview();
   // NOTA INTERNA LIGADA: o arquivo vira anexo da NOTA — nunca vai ao cliente
   if (_notaModo) { await _enviaNotaComArquivos(lista, caption); return; }
+  // Respondendo alguém? A citação vai na PRIMEIRA foto (como no WhatsApp) e a
+  // barra de resposta some depois, não antes — senão a citação se perdia.
+  const _resp = replyingTo;
+  cancelReply();
   // UM clique envia TODAS, em ordem; a legenda vai na última foto.
   // (a lista só recarrega UMA vez no final — envio bem mais rápido)
   const previas = []; let algumOk = false;
   for (let i = 0; i < lista.length; i++) {
+    _respFoto = (i === 0) ? _resp : null;
     const r = await _sendOneFile(lista[i], i === lista.length - 1 ? caption : '', true);
+    _respFoto = null;
     if (r && r.ok) { algumOk = true; if (r.el) previas.push({ el: r.el, mid: r.media_id || null }); }
   }
   if (algumOk) markAsRead(currentPhone); // só marca como lida se ALGO foi enviado de verdade
@@ -8539,12 +8548,19 @@ async function sendFile() {
   const caption = _mediaCaption || ''; _mediaCaption = '';
   removeFile();
   await _sendOneFile(file, caption);
+  _respFoto = null;
 }
 
+// Mensagem que está sendo respondida no envio de arquivos. Fica separada da
+// replyingTo porque a barra de resposta é fechada quando a prévia da foto abre.
+let _respFoto = null;
 async function _sendOneFile(file, caption, semRecarga) {
   // Última barreira: nada sai para o cliente com a nota interna ligada
   if (_notaModo) { await _enviaNotaComArquivos([file], caption || ''); return { ok: false, nota: true }; }
   if (!file || !currentPhone) return;
+  // Chamada direta (câmera, arrastar um arquivo): se havia uma resposta em
+  // andamento, ela vale para este envio e a barra de resposta fecha aqui.
+  if (!_respFoto && replyingTo) { _respFoto = replyingTo; cancelReply(); }
   _fotoLog('═══ ENVIO INICIADO ═══', file.type);
   // Lê como base64
   const base64 = await new Promise((resolve) => {
@@ -8588,7 +8604,11 @@ async function _sendOneFile(file, caption, semRecarga) {
         caption: caption || undefined,
         fileBase64: base64,
         fileName: file.name,
-        mimeType: file.type || 'application/octet-stream'
+        mimeType: file.type || 'application/octet-stream',
+        // Responder com foto: a citação vai junto, igual à resposta em texto
+        quoted_id:        _respFoto ? _respFoto.id        : null,
+        quoted_content:   _respFoto ? (_respFoto.content || '(mídia)') : null,
+        quoted_direction: _respFoto ? _respFoto.direction : null
       })
     });
     const data = await res.json();
@@ -10444,7 +10464,7 @@ async function openConfigModal() {
 }
 // Versão do servidor que este app espera. Se o Railway estiver atrás disso,
 // algumas telas não têm como funcionar — e o app avisa em vez de dar erro seco.
-const SERVIDOR_MIN = 254;
+const SERVIDOR_MIN = 256;
 let _verServidor = null;
 async function _servidorVersao() {
   if (_verServidor !== null) return _verServidor;
@@ -16545,6 +16565,16 @@ let _notaModo = false;
 function toggleNotaModo() {
   _notaModo = !_notaModo;
   if (_notaModo) { try { _paraDigitando(); } catch (_) {} } // tira o "digitando…" da tela do lead
+  _aplicaNotaVisual();
+}
+// Desliga a nota ao trocar de conversa e repinta a barra depois do redesenho.
+// Uma nota interna é do assunto daquela conversa: levá-la ligada para a próxima
+// é justamente o que fazia a pessoa escrever nota achando que era mensagem.
+function _resetNotaAoTrocarDeConversa() {
+  _notaModo = false;
+  _aplicaNotaVisual();
+}
+function _aplicaNotaVisual() {
   const inp = document.getElementById('msg-input');
   const at = document.getElementById('attach-btn'); if (at) at.title = _notaModo ? 'Anexar à nota interna (o cliente não vê)' : 'Anexar';
   const bt  = document.getElementById('btn-nota');
@@ -16565,7 +16595,7 @@ function toggleNotaModo() {
     inp.focus();
   }
   if (wrap) { wrap.classList.toggle('nota-on', !!_notaModo); wrap.style.boxShadow = ''; }
-  updateSendMicButtons();
+  try { updateSendMicButtons(); } catch (_) {}
 }
 async function deleteNota(id) {
   if (!await vConfirm({ titulo: 'Apagar anotação', texto: 'Esta anotação será removida da conversa.', confirmar: 'Apagar', perigo: true })) return;
