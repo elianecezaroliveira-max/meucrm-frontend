@@ -1995,7 +1995,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v354</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v355</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2761,7 +2761,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v354</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v355</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2815,7 +2815,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 354;
+const APP_VER = 355;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -10398,7 +10398,7 @@ async function openConfigModal() {
 }
 // Versão do servidor que este app espera. Se o Railway estiver atrás disso,
 // algumas telas não têm como funcionar — e o app avisa em vez de dar erro seco.
-const SERVIDOR_MIN = 252;
+const SERVIDOR_MIN = 254;
 let _verServidor = null;
 async function _servidorVersao() {
   if (_verServidor !== null) return _verServidor;
@@ -12312,6 +12312,12 @@ function dripEditar(i) {
         <div class="tmpl-form-group"><label>Para às</label><input id="drip-hf" type="time" value="${escHtml(r.hora_fim || '')}"></div>
       </div>
       <p class="tmpl-hint" style="margin:-6px 0 10px">"Para às" vazio = segue até esvaziar a fila.</p>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#131c20;background:#f7f8fa;border:1px solid #e9edef;border-radius:8px;padding:9px 11px;cursor:pointer;margin-bottom:10px">
+        <input type="checkbox" id="drip-avisar" ${r.avisar_fim === false ? '' : 'checked'}>
+        <span>Avisar quando esta regra terminar
+          <span style="display:block;font-size:11.5px;color:#667781;line-height:1.4">Um aviso por ciclo, só depois que a fila ficar 10 minutos vazia. Desligue se não quiser receber nada.</span>
+        </span>
+      </label>
       <div style="height:6px"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn-cancel" onclick="document.getElementById('drip-edit-overlay').remove()">Cancelar</button><button class="btn-save" onclick="dripConfirmar(${i})">Salvar</button></div>
     </div></div>`);
@@ -12340,13 +12346,14 @@ function dripConfirmar(i) {
   const r = { id: (i >= 0 && _dripRegras[i]) ? _dripRegras[i].id : undefined, nome: document.getElementById('drip-nome').value.trim(), de, para,
     min_seg: Math.min(mn, mx), max_seg: Math.max(mn, mx), numeros,
     hora_ini: document.getElementById('drip-hi').value, hora_fim: document.getElementById('drip-hf').value,
-    dias: (() => { const d = Array.from(document.querySelectorAll('.drip-dia:checked')).map(x => parseInt(x.value, 10)); return d.length === 7 ? [] : d; })() };
+    dias: (() => { const d = Array.from(document.querySelectorAll('.drip-dia:checked')).map(x => parseInt(x.value, 10)); return d.length === 7 ? [] : d; })(),
+    avisar_fim: !!(document.getElementById('drip-avisar') || {}).checked };
   if (!r.dias.length && !document.querySelectorAll('.drip-dia:checked').length) return alert('Marque ao menos um dia da semana.');
   if (i >= 0) _dripRegras[i] = Object.assign({}, _dripRegras[i], r); else _dripRegras.push(Object.assign({ manual: false, agendado: false }, r));
   document.getElementById('drip-edit-overlay').remove();
   // Editar manda SÓ a configuração (nome, etapas, intervalo, dias, horário) —
   // liga/desliga e progresso continuam sendo o que está no servidor
-  if (i >= 0) dripSalvarRegra(i, { nome: r.nome, de: r.de, para: r.para, min_seg: r.min_seg, max_seg: r.max_seg, numeros: r.numeros, hora_ini: r.hora_ini, hora_fim: r.hora_fim, dias: r.dias });
+  if (i >= 0) dripSalvarRegra(i, { nome: r.nome, de: r.de, para: r.para, min_seg: r.min_seg, max_seg: r.max_seg, numeros: r.numeros, hora_ini: r.hora_ini, hora_fim: r.hora_fim, dias: r.dias, avisar_fim: r.avisar_fim });
   else dripCriarRegra(r); // regra NOVA entra sozinha, sem reenviar a lista
 }
 async function _saveStageActions() {
@@ -15299,7 +15306,7 @@ function createNodeEl(node) {
 // Balão azul (estilo WhatsApp/Kommo) desenhado DENTRO do nó de mensagem
 function _nodeMsgBubble(node) {
   const cfg = node.config || {};
-  let txt = '', chip = '';
+  let txt = '', chip = '', rodapeTmpl = '';
   if (cfg.mode === 'template') {
     const _tt = _botTmplCache[(cfg.template_name || '') + '|' + (cfg.language || 'pt_BR')]
            || Object.values(_botTmplCache).find(x => x.name === cfg.template_name);
@@ -15309,6 +15316,8 @@ function _nodeMsgBubble(node) {
       ? `<span style="background:${_sumiu ? '#c0392b' : 'rgba(255,255,255,.25)'};border-radius:6px;padding:1px 7px;font-size:10.5px;font-weight:700"><i class=${_sumiu ? 'ic-alert' : 'ic-bot'}></i> ${escHtml(cfg.template_name)}${_sumiu ? ' · excluído' : ''}</span>` : '';
     const t = _tt;
     txt = ((t && (t.components || []).find(c => c.type === 'BODY')) || {}).text || (cfg.template_name ? (_sumiu ? 'Este modelo foi excluído — escolha outro.' : '') : '(escolha o modelo)');
+    // rodapé do modelo: aparece no balão do quadro igual à mensagem real
+    rodapeTmpl = ((t && (t.components || []).find(c => c.type === 'FOOTER')) || {}).text || '';
   } else {
     // Com FOTO, o texto é a legenda — sem texto não é "sem mensagem"
     txt = cfg.text || (cfg.image_url ? '' : '(sem mensagem)');
@@ -15322,6 +15331,8 @@ function _nodeMsgBubble(node) {
     (cfg.mode === 'template' && cfg.template_name)
       ? `<span style="background:rgba(255,255,255,.22);border-radius:10px;padding:2px 9px;font-size:10.5px;font-weight:700;display:inline-block"><i class=ic-bot></i> ${escHtml(cfg.template_name)}</span><div style="height:7px"></div>` : ''
   }${foto}${escHtml(txt)}${
+    rodapeTmpl ? `<div style="margin-top:6px;font-size:10.5px;opacity:.72;line-height:1.4">${escHtml(rodapeTmpl)}</div>` : ''
+  }${
     btns.length ? '<div style="margin-top:9px;display:flex;flex-direction:column;gap:6px">' + btns.map(b => `<div class="bot-slot-anchor" data-slot="${escHtml(b)}" style="background:rgba(255,255,255,.08);border:1.5px solid rgba(255,255,255,.85);border-radius:999px;text-align:left;padding:5px 12px;font-size:11.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(b)}</div>`).join('') + '</div>' : ''
   }</div>`;
 }
@@ -15522,12 +15533,18 @@ function renderTmplPreview(node){
   if (!t) { el.innerHTML = ''; return; }
   const body = ((t.components || []).find(c => c.type === 'BODY') || {}).text || '';
   if (!body) { el.innerHTML = ''; return; }
+  // O RODAPÉ do modelo (ex.: "Responda SAIR para não receber mais") também vai
+  // junto na mensagem real, então tem de aparecer na prévia — em letra menor e
+  // apagada, exatamente como o WhatsApp mostra.
+  const rodape = ((t.components || []).find(c => c.type === 'FOOTER') || {}).text || '';
   // O modelo tem lacunas ({{1}}, {{2}}…): o VETRA preenche sozinho na hora do envio
   const aviso = body.includes('{{')
     ? '<div style="font-size:11.5px;color:#667781;margin-top:6px;line-height:1.4">As lacunas do modelo são preenchidas na hora do envio: a primeira recebe o nome do lead.</div>'
     : '';
   const btns = node.config.buttons || [];
   el.innerHTML = `<div style="background:linear-gradient(135deg,#4e8cff,#3f7ae0);color:#fff;border-radius:12px;padding:12px 14px;font-size:12.5px;line-height:1.45;white-space:pre-wrap">${escHtml(body)}${
+      rodape ? `<div style="margin-top:7px;font-size:11px;opacity:.75;line-height:1.4">${escHtml(rodape)}</div>` : ''
+    }${
       btns.length ? '<div style="margin-top:9px;display:flex;flex-direction:column;gap:6px">' +
         btns.map(b => `<div style="background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.55);border-radius:8px;text-align:center;padding:5px;font-size:12px">${escHtml(b)}</div>`).join('') + '</div>' : ''
     }</div>` + aviso;
