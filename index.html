@@ -222,6 +222,12 @@
   body.dark #msg-backdrop { color: #e9edef; }
   body.dark #msg-input.fx-on { caret-color: #e9edef; }
   .fx-b { text-shadow: 0.045em 0 0 currentColor; }
+  /* NOTA INTERNA: o amarelo fica no QUADRO, nunca no campo — senão ele cobre a
+     camada-espelho do negrito e o texto some enquanto se digita. */
+  #input-wrap.nota-on { background: #fffbe6; box-shadow: 0 0 0 2px #f2e08a inset; }
+  #input-wrap.nota-on #msg-input { color: #131c20; }
+  #input-wrap.nota-on #msg-input.fx-on { color: transparent; caret-color: #131c20; }
+  #input-wrap.nota-on #msg-backdrop { color: #131c20; }
   .fx-s { text-decoration: line-through; }
   #msg-input { flex: 1; background: transparent; border: none; color: #131c20; padding: 10px 16px; font-family: inherit; font-size: 15px; line-height: 20px; height: 40px; max-height: 120px; overflow-y: auto; resize: none; outline: none; min-width: 0; }
   #msg-input::placeholder { color: #667781; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1995,7 +2001,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v356</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v357</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2761,7 +2767,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v356</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v357</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2815,7 +2821,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 356;
+const APP_VER = 357;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4935,6 +4941,15 @@ async function msgMenuEdit() {
 }
 function msgMenuCopy()   { const id = _msgMenuId; closeMsgMenu(); if (id) copyMsgText(id); }
 // Copia o texto da mensagem (estilo WhatsApp) — funciona no celular e no computador
+// Mesma marcação do WhatsApp virando HTML de verdade: assim o negrito viaja
+// junto ao colar no Word, no e-mail ou no Google Docs.
+function _txtParaHtml(txt) {
+  return escHtml(String(txt || ''))
+    .replace(/\*([^*\n]+)\*/g, '<b>$1</b>')
+    .replace(/(^|[\s(])_([^_\n]+)_(?=$|[\s).,!?])/gm, '$1<i>$2</i>')
+    .replace(/~([^~\n]+)~/g, '<s>$1</s>')
+    .replace(/\n/g, '<br>');
+}
 function copyMsgText(id) {
   let txt = (_msgData[id] && _msgData[id].content) || '';
   if (!txt) {
@@ -4943,6 +4958,29 @@ function copyMsgText(id) {
   }
   if (!txt) { showCopyToast('Nada para copiar nesta mensagem'); return; }
   const done = () => showCopyToast('Mensagem copiada');
+  _copiaComFormato(txt, done);
+}
+// Copia em DOIS formatos ao mesmo tempo:
+//  • texto puro, com os * e _ do jeito que estão (colar no WhatsApp continua
+//    virando negrito lá, como sempre foi);
+//  • HTML com <b>/<i>/<s> (colar no Word, no e-mail ou no Docs já vem em negrito).
+// Quem recebe escolhe o formato que entende. Se o navegador não souber fazer
+// isso, cai no modo antigo — nunca fica sem copiar.
+function _copiaComFormato(txt, done) {
+  const temMarca = /\*[^*\n]+\*|~[^~\n]+~|_[^_\n]+_/.test(txt);
+  try {
+    if (temMarca && navigator.clipboard && window.ClipboardItem && navigator.clipboard.write) {
+      const item = new ClipboardItem({
+        'text/plain': new Blob([txt], { type: 'text/plain' }),
+        'text/html': new Blob(['<div>' + _txtParaHtml(txt) + '</div>'], { type: 'text/html' })
+      });
+      navigator.clipboard.write([item]).then(done).catch(() => {
+        if (navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done).catch(() => _copyFallback(txt, done));
+        else _copyFallback(txt, done);
+      });
+      return;
+    }
+  } catch (_) {}
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(txt).then(done).catch(() => _copyFallback(txt, done));
   } else {
@@ -16523,10 +16561,10 @@ function toggleNotaModo() {
   if (av) av.style.display = _notaModo ? 'flex' : 'none';
   if (inp) {
     inp.placeholder = _notaModo ? 'Nota interna — só você vê' : 'Digite uma mensagem';
-    inp.style.background = _notaModo ? '#fffbe6' : '';
+    inp.style.background = ''; // o amarelo é do quadro (classe nota-on), nunca do campo
     inp.focus();
   }
-  if (wrap) wrap.style.boxShadow = _notaModo ? '0 0 0 2px #f2e08a inset' : '';
+  if (wrap) { wrap.classList.toggle('nota-on', !!_notaModo); wrap.style.boxShadow = ''; }
   updateSendMicButtons();
 }
 async function deleteNota(id) {
