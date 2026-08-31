@@ -1995,7 +1995,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v352</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v354</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2761,7 +2761,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v352</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v354</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2815,7 +2815,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 352;
+const APP_VER = 354;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -10398,7 +10398,7 @@ async function openConfigModal() {
 }
 // Versão do servidor que este app espera. Se o Railway estiver atrás disso,
 // algumas telas não têm como funcionar — e o app avisa em vez de dar erro seco.
-const SERVIDOR_MIN = 251;
+const SERVIDOR_MIN = 252;
 let _verServidor = null;
 async function _servidorVersao() {
   if (_verServidor !== null) return _verServidor;
@@ -11355,6 +11355,25 @@ function hideTemplate(id) {
   if (!id) return;
   const h = getHiddenTemplates();
   if (!h.includes(id)) { h.push(id); _tmplOcultos = h; _salvaOcultos(); }
+  _limpaCacheOcultos();
+}
+// Um modelo escondido/apagado tem de sumir de TODA parte que oferece modelos:
+// a tela de Modelos, o envio pelo chat E o passo "Enviar mensagem" do bot.
+// Antes ele sumia só da tela de Modelos e continuava aparecendo no bot — dava a
+// impressão de que a exclusão não tinha funcionado.
+async function _semOcultos(lista) {
+  try { await _carregaOcultos(); } catch (_) {}
+  const h = getHiddenTemplates();
+  return (Array.isArray(lista) ? lista : []).filter(t => t && !h.includes(t.id));
+}
+// Tira do cache do editor de bots o que já foi escondido (senão a prévia do nó
+// continuava mostrando o texto de um modelo que não existe mais)
+function _limpaCacheOcultos() {
+  try {
+    const h = getHiddenTemplates();
+    if (!h.length || typeof _botTmplCache !== 'object') return;
+    for (const k in _botTmplCache) if (h.includes(_botTmplCache[k] && _botTmplCache[k].id)) delete _botTmplCache[k];
+  } catch (_) {}
 }
 
 function renderTemplateList(templates) {
@@ -11626,10 +11645,31 @@ async function deleteTemplate(templateName, templateId, accountId) {
   });
   if (!escolha) return;
 
+  // Algum bot depende deste modelo? Melhor descobrir AGORA do que quando o
+  // cliente disser "o bot parou de mandar a mensagem".
+  let usoBots = [];
+  try {
+    const u = await _apiJson(SERVER_URL + '/templates/uso?nome=' + encodeURIComponent(templateName));
+    usoBots = u.bots || [];
+    if (usoBots.length) {
+      const ok = await vConfirm({
+        titulo: 'Este modelo está em uso',
+        textoHtml: '<div>O modelo <b>' + escHtml(t ? tmplNome(t) : templateName) + '</b> é usado em ' + (u.passos || usoBots.length) + ' passo(s) destes bots:</div>'
+          + '<div style="margin-top:8px;background:#fff7e6;border:1px solid #ffd591;border-radius:8px;padding:9px 11px;font-size:12.5px;color:#8c6d1f;text-align:left">'
+          + usoBots.map(b => '&bull; ' + escHtml(b)).join('<br>')
+          + '<div style="margin-top:7px">Se remover, esses passos ficam apontando para um modelo que não existe e o bot vai falhar ali. Abra cada bot e escolha outro modelo.</div></div>',
+        confirmar: 'Remover mesmo assim', cancelar: 'Deixar como está', perigo: true
+      });
+      if (!ok) return;
+    }
+  } catch (_) { /* servidor antigo: segue sem o aviso */ }
+
   if (escolha === 'esconder') {
     hideTemplate(templateId);
     loadTemplates();
-    showToast('Modelo escondido. Use "Escondidos" para trazer de volta.', 'ok');
+    showToast(usoBots.length
+      ? 'Modelo escondido. Lembre de trocar o modelo nos bots que usavam ele.'
+      : 'Modelo escondido. Use "Escondidos" para trazer de volta.', 'ok', 7000);
     return;
   }
 
@@ -11910,7 +11950,7 @@ async function loadApprovedTemplates() {
     await carregarApelidosModelos();
     const res = await fetch(SERVER_URL + '/templates?account_id=' + currentAccountId);
     const templates = await res.json();
-    const approved = templates.filter(t => t.status === 'APPROVED');
+    const approved = await _semOcultos((Array.isArray(templates) ? templates : []).filter(t => t.status === 'APPROVED'));
     if (!approved.length) {
       el.innerHTML = '<p style="color:#667781;font-size:13px">Nenhum modelo aprovado. Crie e aguarde a aprovação do Meta.</p>';
       return;
@@ -14422,6 +14462,7 @@ async function openBotEditor(id, isNew=false) {
   // Bots sem layout manual salvo começam organizados (organograma); os demais respeitam as posições salvas
   const _s=botNodes.find(n=>n.type==='start');
   if(!(_s && _s.config && _s.config._manual)) seedBotPositions(true);
+  _carregaColapsados(); // volta com os caminhos que você tinha recolhido
   renderBotList();
   setTimeout(botZoomFit, 30);
   _botSnap = _botEstadoAtual(); // retrato do bot recém-aberto (para avisar se sair sem salvar)
@@ -15116,7 +15157,33 @@ function _botQtdRamo(nodeId, label) { // quantos nós este ramo está escondendo
 function botToggleRamo(nodeId, label) {
   const k = nodeId + '::' + _botNrmLbl(label);
   if (_botColapsados.has(k)) _botColapsados.delete(k); else _botColapsados.add(k);
+  _salvaColapsados();
   renderBotList();
+}
+// ── O que está recolhido fica assim quando você volta ──
+// Antes isto vivia só na memória: fechar o bot (ou salvar e voltar) trazia tudo
+// aberto de novo. É preferência de VISUALIZAÇÃO, então fica guardada neste
+// aparelho — não mexe no fluxo do bot nem viaja para o cliente.
+function _colapsoKey() { return _uKey('botColapso::' + (botEditorId || '')); }
+function _salvaColapsados() {
+  try {
+    if (!botEditorId) return;
+    const arr = [..._botColapsados];
+    if (arr.length) localStorage.setItem(_colapsoKey(), JSON.stringify(arr));
+    else localStorage.removeItem(_colapsoKey());
+  } catch (_) {}
+}
+function _carregaColapsados() {
+  try {
+    if (!botEditorId) return;
+    const v = JSON.parse(localStorage.getItem(_colapsoKey()) || '[]');
+    if (!Array.isArray(v) || !v.length) return;
+    // Só devolve o que ainda existe: passo apagado não pode deixar um ramo
+    // recolhido preso para sempre, sem botão para reabrir
+    const vivos = new Set(botNodes.map(n => String(n.id)));
+    _botColapsados = new Set(v.filter(k => vivos.has(String(k).split('::')[0])));
+    _salvaColapsados();
+  } catch (_) {}
 }
 
 function createNodeEl(node) {
@@ -15234,10 +15301,14 @@ function _nodeMsgBubble(node) {
   const cfg = node.config || {};
   let txt = '', chip = '';
   if (cfg.mode === 'template') {
-    chip = cfg.template_name ? `<span style="background:rgba(255,255,255,.25);border-radius:6px;padding:1px 7px;font-size:10.5px;font-weight:700"><i class=ic-bot></i> ${escHtml(cfg.template_name)}</span>` : '';
-    const t = _botTmplCache[(cfg.template_name || '') + '|' + (cfg.language || 'pt_BR')]
+    const _tt = _botTmplCache[(cfg.template_name || '') + '|' + (cfg.language || 'pt_BR')]
            || Object.values(_botTmplCache).find(x => x.name === cfg.template_name);
-    txt = ((t && (t.components || []).find(c => c.type === 'BODY')) || {}).text || (cfg.template_name ? '' : '(escolha o modelo)');
+    // modelo excluído: o passo fica marcado em vermelho no quadro, não some calado
+    const _sumiu = !!cfg.template_name && _tmplCacheLoaded && !_tt;
+    chip = cfg.template_name
+      ? `<span style="background:${_sumiu ? '#c0392b' : 'rgba(255,255,255,.25)'};border-radius:6px;padding:1px 7px;font-size:10.5px;font-weight:700"><i class=${_sumiu ? 'ic-alert' : 'ic-bot'}></i> ${escHtml(cfg.template_name)}${_sumiu ? ' · excluído' : ''}</span>` : '';
+    const t = _tt;
+    txt = ((t && (t.components || []).find(c => c.type === 'BODY')) || {}).text || (cfg.template_name ? (_sumiu ? 'Este modelo foi excluído — escolha outro.' : '') : '(escolha o modelo)');
   } else {
     // Com FOTO, o texto é a legenda — sem texto não é "sem mensagem"
     txt = cfg.text || (cfg.image_url ? '' : '(sem mensagem)');
@@ -15263,11 +15334,13 @@ async function _loadAllTmplCache() {
     const accs = await (await fetch(SERVER_URL + '/accounts')).json();
     _botAccsCache = Array.isArray(accs) ? accs : [];
     const apiAccs = (Array.isArray(accs) ? accs : []).filter(a => a.type !== 'evolution');
+    await _carregaOcultos();
     const results = await Promise.all(apiAccs.map(async a => {
-      try { const l = await (await fetch(SERVER_URL + '/templates?account_id=' + a.id)).json(); return Array.isArray(l) ? l.filter(t => t.status === 'APPROVED') : []; }
+      try { const l = await (await fetch(SERVER_URL + '/templates?account_id=' + a.id)).json(); return await _semOcultos(Array.isArray(l) ? l.filter(t => t.status === 'APPROVED') : []); }
       catch (_) { return []; }
     }));
     results.flat().forEach(t => { _botTmplCache[t.name + '|' + t.language] = t; });
+    _limpaCacheOcultos();
     _tmplCacheLoaded = true;
     if (!_editingNodeId) renderBotList(); // pinta as prévias dos nós
   } catch (_) {}
@@ -15366,10 +15439,12 @@ async function loadBotTmplOptions(node){
     }
     if(!apiAccs.length){ sel.innerHTML='<option value="">Nenhuma conta da API disponível</option>'; return; }
     await carregarApelidosModelos();
+    await _carregaOcultos();
     const results = await Promise.all(apiAccs.map(async a=>{
       try{
         const list = await (await fetch(SERVER_URL+'/templates?account_id='+a.id)).json();
-        return { acc:a, tmpls: Array.isArray(list) ? list.filter(t=>t.status==='APPROVED') : [] };
+        // modelo excluído no VETRA não pode mais ser oferecido aqui
+        return { acc:a, tmpls: await _semOcultos(Array.isArray(list) ? list.filter(t=>t.status==='APPROVED') : []) };
       }catch(_){ return { acc:a, tmpls:[] }; }
     }));
     // Une e deduplica por nome+idioma, guardando de quais números o modelo veio.
@@ -15386,6 +15461,7 @@ async function loadBotTmplOptions(node){
       }
     }
     const keys = Object.keys(merged).sort((a,b)=>a.localeCompare(b));
+    _avisaModeloSumiu(node, merged);
     if(!keys.length){ sel.innerHTML='<option value="">Nenhum modelo aprovado</option>'; return; }
     sel.innerHTML = '<option value="">-- escolher modelo --</option>' + keys.map(key=>{
       const { t, accounts } = merged[key];
@@ -15407,6 +15483,26 @@ async function loadBotTmplOptions(node){
     }
     renderTmplPreview(node); // prévia aparece assim que os modelos carregam
   }catch(e){ sel.innerHTML='<option value="">Erro ao carregar modelos</option>'; }
+}
+// O passo guarda o NOME do modelo. Se esse modelo foi excluído (aqui ou na Meta),
+// o passo continua apontando para o vazio — e o bot mandaria um erro em silêncio.
+// Este aviso aparece em cima da lista até você escolher outro modelo.
+function _avisaModeloSumiu(node, disponiveis){
+  const sel = document.getElementById('cfg-tmpl-select');
+  if (!sel || !sel.parentElement) return;
+  const velho = document.getElementById('cfg-tmpl-sumiu');
+  if (velho) velho.remove();
+  const nome = node && node.config && node.config.template_name;
+  if (!nome) return;
+  const chave = nome + '|' + ((node.config && node.config.language) || 'pt_BR');
+  const existe = !!(disponiveis && (disponiveis[chave] || Object.values(disponiveis).some(x => x.t && x.t.name === nome)));
+  if (existe) return;
+  const av = document.createElement('div');
+  av.id = 'cfg-tmpl-sumiu';
+  av.style.cssText = 'background:#fdecea;border:1px solid #f5b7b1;border-radius:8px;padding:9px 11px;font-size:12px;color:#a93226;line-height:1.55;margin-bottom:7px';
+  av.innerHTML = '<b>O modelo "' + escHtml(nome) + '" não está mais disponível.</b>'
+    + '<div style="margin-top:4px">Ele foi excluído no VETRA ou na Meta. Enquanto este passo continuar apontando para ele, o bot vai tentar enviar e falhar. Escolha outro modelo abaixo.</div>';
+  sel.parentElement.insertBefore(av, sel);
 }
 function onBotTmplSelect(node, key){
   const t = _botTmplCache[key];
