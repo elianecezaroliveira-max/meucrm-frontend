@@ -2013,7 +2013,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v360</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v361</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2779,7 +2779,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v360</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v361</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2833,7 +2833,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 360;
+const APP_VER = 361;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -10241,6 +10241,123 @@ async function admEditarPlano(dono) {
 }
 
 
+
+// ═══════════════════════════════════════════════════════════════════
+// 💵 CONTADOR DE MENSAGENS COBRADAS PELA META
+// ═══════════════════════════════════════════════════════════════════
+let _custos = null, _custosMes = '';
+function _rs(v) { return 'R$ ' + Number(v || 0).toFixed(2).replace('.', ','); }
+// Preço UNITÁRIO precisa de 4 casas: R$ 0,0350 arredondado para R$ 0,04 confunde
+function _rsUn(v) { return 'R$ ' + Number(v || 0).toFixed(4).replace('.', ','); }
+async function carregaCustos(mes) {
+  const el = document.getElementById('rel-custos'); if (!el) return;
+  el.innerHTML = '<div class="rel-vazio">Somando as mensagens…</div>';
+  try {
+    _custosMes = mes || _custosMes || '';
+    _custos = await _apiJson(SERVER_URL + '/custos' + (_custosMes ? '?mes=' + _custosMes : '?t=' + Date.now()));
+    _custosMes = _custos.mes;
+  } catch (e) {
+    el.innerHTML = '<div style="color:#ef4444;font-size:13px">' + escHtml(e.message || 'Não consegui carregar.') + '</div>';
+    return;
+  }
+  desenhaCustos();
+}
+function _mesesOpcoes(atual) {
+  const hoje = new Date(Date.now() - _BRT_OFFSET);
+  const nomes = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+  let o = '';
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth() - i, 1));
+    const v = d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0');
+    o += `<option value="${v}" ${v === atual ? 'selected' : ''}>${nomes[d.getUTCMonth()]}/${d.getUTCFullYear()}</option>`;
+  }
+  return o;
+}
+function desenhaCustos() {
+  const el = document.getElementById('rel-custos'); const d = _custos;
+  if (!el || !d) return;
+  const t = d.totais || {}, cfg = d.cfg || {};
+  const porNumero = cfg.por === 'numero';
+  const usadas = t.gratis_usadas || 0, teto = t.gratis_total || 0;
+  const pct = teto ? Math.min(100, Math.round(usadas / teto * 100)) : 0;
+  const estourou = (t.servico_cobrado || 0) > 0;
+  const corBarra = estourou ? '#c0392b' : pct >= 80 ? '#b25a00' : 'var(--rel-sai)';
+
+  let html = `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+      <select onchange="carregaCustos(this.value)" style="background:var(--rel-cartao);border:1px solid var(--rel-borda);color:var(--rel-tinta);border-radius:8px;padding:7px 10px;font-size:13px;font-family:inherit;outline:none">${_mesesOpcoes(d.mes)}</select>
+      <button class="pf-topbtn" onclick="carregaCustos()">Atualizar</button>
+      <button class="pf-topbtn" style="margin-left:auto" onclick="editarCustos()">Ajustar valores</button>
+    </div>`;
+
+  // ── números do mês ──
+  html += `<div class="rel-tiles" style="margin-bottom:12px">
+    <div class="rel-tile"><b>${_relN(t.servico)}</b><span>Mensagens de serviço</span><small>suas respostas livres ao cliente</small></div>
+    <div class="rel-tile"><b>${_relN(t.gratis_usadas)}<span style="font-size:14px;color:var(--rel-tinta3)"> de ${_relN(teto)}</span></b><span>Da franquia gratuita</span><small>${porNumero ? 'contando por número' : 'contando por conta (WABA)'}</small></div>
+    <div class="rel-tile"><b style="color:${estourou ? '#c0392b' : 'inherit'}">${_relN(t.servico_cobrado)}</b><span>Serviço acima da franquia</span><small>${estourou ? _rs(t.custo_servico) + ' a pagar' : 'nada a pagar ainda'}</small></div>
+    <div class="rel-tile"><b>${_relN(t.modelo)}</b><span>Modelos enviados</span><small>${_rs(t.custo_modelo)} · já é cobrado hoje</small></div>
+    <div class="rel-tile"><b>${_rs(t.custo_total)}</b><span>Custo estimado do mês</span><small>serviço + modelos</small></div>
+  </div>`;
+
+  // ── barra da franquia ──
+  html += `<div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--rel-tinta2);margin-bottom:4px">
+        <span>Franquia gratuita usada</span><span>${pct}%</span>
+      </div>
+      <div style="height:10px;background:var(--rel-grade);border-radius:5px;overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:${corBarra};border-radius:5px"></div>
+      </div>
+      <div style="font-size:11.5px;color:var(--rel-tinta3);margin-top:5px">
+        ${estourou
+          ? 'A franquia acabou. Cada mensagem de serviço a mais custa ' + _rsUn(cfg.preco_servico) + '.'
+          : 'Ainda restam ' + _relN(Math.max(0, teto - usadas)) + ' mensagem(ns) de serviço grátis neste mês.'}
+      </div>
+    </div>`;
+
+  // ── por número ──
+  const nums = d.numeros || [];
+  if (nums.length) {
+    html += `<table class="rel-tab">
+      <thead><tr><th>Número</th><th>Serviço</th><th>Modelos</th><th>Conta (WABA)</th></tr></thead>
+      <tbody>${nums.map(n => `<tr>
+        <td>${escHtml(n.nome)}${n.numero ? ' <span style="color:var(--rel-tinta3);font-size:11.5px">' + escHtml(n.numero) + '</span>' : ''}
+          ${n.qr ? '<span style="font-size:10.5px;background:var(--rel-grade);color:var(--rel-tinta2);border-radius:8px;padding:1px 7px;margin-left:5px">QR · sem cobrança</span>' : ''}</td>
+        <td>${n.qr ? '—' : _relN(n.servico)}</td>
+        <td>${n.qr ? '—' : _relN(n.modelo)}</td>
+        <td style="font-size:11.5px;color:var(--rel-tinta3);word-break:break-all">${n.qr ? 'não usa a Meta' : escHtml(n.waba_id || '—')}</td>
+      </tr>`).join('')}</tbody></table>`;
+    if (t.qr) html += `<div style="font-size:11.5px;color:var(--rel-tinta3);margin-top:7px">${_relN(t.qr)} mensagem(ns) saíram por número de QR Code — não passam pela Meta e não entram na conta.</div>`;
+  }
+
+  html += `<div style="margin-top:12px;background:#fff7e6;border:1px solid #ffd591;border-radius:8px;padding:10px 12px;font-size:12px;color:#8c6d1f;line-height:1.6">
+      <b>Como esta conta é feita.</b> Entram só as mensagens que <b>saíram</b> por um número da API oficial e não falharam.
+      Não entram: mensagens recebidas, notas internas, mensagens com erro e tudo que passa por número de QR Code.
+      <div style="margin-top:5px">A Meta ainda pode ter regras que o VETRA não enxerga (como a janela gratuita de 72h de anúncios Click-to-WhatsApp). Trate como <b>estimativa próxima</b>, e confira o valor fechado no painel da Meta.</div>
+    </div>`;
+  el.innerHTML = html;
+}
+async function editarCustos() {
+  const c = (_custos && _custos.cfg) || {};
+  const r = await vCampos({
+    titulo: 'Ajustar a calculadora',
+    texto: 'Mude aqui quando a Meta publicar a tabela nova. Isto só muda a CONTA na tela — não altera nada no seu WhatsApp.',
+    campos: [
+      { id: 'preco_servico', rotulo: 'Preço por mensagem de serviço (R$)', valor: String(c.preco_servico ?? 0.035).replace('.', ',') },
+      { id: 'preco_modelo', rotulo: 'Preço por modelo enviado (R$)', valor: String(c.preco_modelo ?? 0.035).replace('.', ',') },
+      { id: 'franquia', rotulo: 'Mensagens de serviço grátis por mês', tipo: 'number', valor: String(c.franquia ?? 1000) },
+      { id: 'por', rotulo: 'A franquia vale por…', opcoes: [{ v: 'waba', t: 'Conta da Meta (WABA) — o mais provável' }, { v: 'numero', t: 'Cada número separadamente' }], valor: c.por || 'waba' }
+    ],
+    confirmar: 'Salvar'
+  });
+  if (!r) return;
+  try {
+    await _apiJson(SERVER_URL + '/custos/config', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ preco_servico: r.preco_servico, preco_modelo: r.preco_modelo, franquia: r.franquia, por: r.por })
+    });
+    carregaCustos();
+  } catch (e) { showToast(e.message || 'Não consegui salvar.', 'err'); }
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // 📊 RELATÓRIOS — o que o dono da empresa quer ver
 // ═══════════════════════════════════════════════════════════════════
@@ -10313,14 +10430,27 @@ function desenhaRelatorios() {
   </div>`;
 
   if (vazio) {
+    html += `<div class="rel-card" id="rel-card-custos">
+      <h3>Mensagens cobradas pela Meta</h3>
+      <div class="rel-sub">Quanto o WhatsApp está custando neste mês, e quanto ainda resta da franquia gratuita.</div>
+      <div id="rel-custos"><div class="rel-vazio">Carregando…</div></div>
+    </div>`;
     html += `<div class="rel-card"><div class="rel-vazio">Ainda não há movimento neste período.<br>Assim que as conversas começarem, os números aparecem aqui sozinhos.</div></div>`;
     el.innerHTML = html;
+    carregaCustos();
     return;
   }
   if (d.limitado) {
     html += `<div class="rel-card" style="border-color:#ffd591;background:#fff7e6;color:#8c6d1f;font-size:12.5px;line-height:1.5">
       Período muito grande: os números foram calculados sobre as 30 mil mensagens mais recentes. Escolha menos dias para um retrato exato.</div>`;
   }
+
+  // ── conta da Meta (cartão próprio, com o mês dele) ──
+  html += `<div class="rel-card" id="rel-card-custos">
+    <h3>Mensagens cobradas pela Meta</h3>
+    <div class="rel-sub">Quanto o WhatsApp está custando neste mês, e quanto ainda resta da franquia gratuita.</div>
+    <div id="rel-custos"><div class="rel-vazio">Carregando…</div></div>
+  </div>`;
 
   // ── movimento por dia ──
   html += `<div class="rel-card">
@@ -10366,6 +10496,7 @@ function desenhaRelatorios() {
 
   el.innerHTML = html;
   _relLigaDicas();
+  carregaCustos();   // o cartão da conta da Meta tem o mês dele, carrega em separado
 }
 function _relGraficoDias(d) {
   const dias = d.por_dia || [];
@@ -10511,7 +10642,7 @@ async function openConfigModal() {
 }
 // Versão do servidor que este app espera. Se o Railway estiver atrás disso,
 // algumas telas não têm como funcionar — e o app avisa em vez de dar erro seco.
-const SERVIDOR_MIN = 256;
+const SERVIDOR_MIN = 258;
 let _verServidor = null;
 async function _servidorVersao() {
   if (_verServidor !== null) return _verServidor;
