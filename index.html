@@ -2013,7 +2013,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v361</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v363</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2779,7 +2779,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v361</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v363</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2833,7 +2833,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 361;
+const APP_VER = 363;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5484,13 +5484,16 @@ async function selectContact(phone, name, accountId) {
   if (currentPhone !== phone) {
     // Guarda o RASCUNHO da conversa que está saindo
     _persistDraftNow(currentPhone);
-    const _ma = document.getElementById('messages-area');
-    if (_ma) _ma.innerHTML = '';
     currentMessages = [];
-    window._msgsReadyFor = null; // reabriu a conversa → espera recarregar antes de mostrar a janela 24h
-    _lastMsgsSig = '';
     const _pb = document.getElementById('pinned-banner'); if (_pb) _pb.style.display = 'none';
   }
+  // Abrir a conversa REMONTA a área de mensagens (mesmo sendo a mesma conversa
+  // de antes). Então a assinatura antiga tem de morrer aqui: senão a atualização
+  // automática acha que "nada mudou" e a conversa fica em branco.
+  const _ma = document.getElementById('messages-area');
+  if (_ma) _ma.innerHTML = '';
+  window._msgsReadyFor = null; // espera recarregar antes de mostrar a janela 24h
+  _lastMsgsSig = '';
   currentPhone = phone;
   currentName = name || phone;
   currentAccountId = accountId || document.getElementById('account-select').value || '';
@@ -6244,11 +6247,26 @@ async function lpLoadTasks(phone){
   const ass = JSON.stringify(mine.map(t => [t.id, t.title, t.due_at, t.done]));
   if (el.dataset.ass === ass && el.dataset.phone === phone) return; // nada mudou: não repinta
   el.dataset.ass = ass; el.dataset.phone = phone;
+  window._lpTasks = mine; // guarda o texto das tarefas (a pergunta de concluir mostra ele)
   el.innerHTML = mine.length ? mine.map(t => `
     <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:7px">
       <button onclick="lpToggleTask('${t.id}',${t.done?'false':'true'},'${phone}')" title="${t.done?'Reabrir':'Concluir'}" style="width:18px;height:18px;border-radius:50%;border:2px solid #00a884;background:${t.done?'#00a884':'transparent'};color:#fff;cursor:pointer;flex-shrink:0;font-size:11px;line-height:14px;padding:0">${t.done?'✓':''}</button>
       <div style="flex:1;min-width:0;font-size:13px;color:#131c20;${t.done?'text-decoration:line-through;opacity:.6':''}">${escHtml(t.title)}${t.due_at?`<div style="font-size:11px;color:#667781"><i class=ic-clock></i> ${fmtTaskDue(t.due_at)}</div>`:(t.created_at?`<div style="font-size:11px;color:#8696a0">Criada ${fmtTaskCreated(t.created_at)}</div>`:'')}</div>
     </div>`).join('') : '<div style="color:#8696a0;font-size:12px">Nenhuma tarefa</div>';
+}
+// Pergunta única de "concluir tarefa", usada pelos três lugares que concluem
+// no dedo. Mostra o texto da tarefa para a pessoa conferir se é aquela mesmo.
+async function _confirmaConcluirTarefa(titulo) {
+  const t = String(titulo || '').trim();
+  return await vConfirm({
+    titulo: 'Concluir tarefa',
+    textoHtml: 'Marcar esta tarefa como concluída?'
+      + (t ? '<div style="margin-top:9px;padding:9px 11px;background:#f0f2f5;border-radius:8px;color:#131c20;font-size:13px;line-height:1.45;word-break:break-word">'
+             + escHtml(t) + '</div>' : '')
+      + '<div style="margin-top:9px;font-size:12px;color:#667781">Ela sai da lista de tarefas em aberto. Dá para reabrir depois.</div>',
+    confirmar: 'Concluir',
+    cancelar: 'Ainda não'
+  });
 }
 // Depois de criar/concluir/excluir uma tarefa em QUALQUER lugar, todos os
 // lugares que a mostram atualizam NA HORA: detalhes do lead (painel), janela de
@@ -6260,6 +6278,10 @@ function _sincTarefas(phone, semPagina){
   try { atualizaBadgeTarefas(); } catch(_){}
 }
 async function lpToggleTask(id, done, phone){
+  if (done) { // concluir pergunta; reabrir não
+    const t = (window._lpTasks || []).find(x => String(x.id) === String(id));
+    if (!await _confirmaConcluirTarefa(t && t.title)) return;
+  }
   try { await fetch(SERVER_URL+'/tasks/'+id, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ done }) }); } catch(_){}
   lpLoadTasks(phone); _sincTarefas(phone);
 }
@@ -7230,7 +7252,10 @@ async function loadMessages(phone, scroll = true) {
     const sig = phone + '::' + msgs.map(m =>
       `${m.id}|${m.status || ''}|${m.reaction || ''}|${m.error_info ? 1 : 0}|${m.starred ? 1 : 0}${m.pinned ? 1 : 0}${m.edited ? 1 : 0}${m.forwarded ? 1 : 0}${m.transcript ? 1 : 0}|${(m.content || '').length}.${String(m.content || '').slice(0, 16)}`).join(';');
     if (!scroll) {
-      if (sig === _lastMsgsSig) return; // nada mudou — não mexe no DOM
+      // "Nada mudou" só vale se a conversa REALMENTE estiver desenhada. Com a
+      // área vazia, pular o desenho é o que deixava a tela em branco.
+      const _temAlgo = area.childElementCount > 0 || !msgs.length;
+      if (sig === _lastMsgsSig && _temAlgo) return; // nada mudou — não mexe no DOM
       const mediaEls = area.querySelectorAll('video, audio');
       const mediaPlaying = Array.from(mediaEls).some(el => !el.paused && !el.ended);
       const inFullscreen = document.fullscreenElement && area.contains(document.fullscreenElement);
@@ -7608,6 +7633,16 @@ async function loadMessages(phone, scroll = true) {
     };
   } catch(e) {
     console.error('[loadMessages] erro ao carregar mensagens:', e);
+    // Falhou e a conversa está vazia? Melhor dizer do que deixar a tela muda.
+    try {
+      const _a = document.getElementById('messages-area');
+      if (_a && !_a.childElementCount && phone === currentPhone) {
+        _lastMsgsSig = ''; // a próxima tentativa desenha de verdade
+        _a.innerHTML = '<div style="text-align:center;color:#667781;font-size:13px;padding:40px 20px;line-height:1.6">'
+          + 'Não consegui carregar esta conversa agora.<br><span style="font-size:12px;color:#8696a0">Pode ser a internet ou o servidor respondendo devagar.</span>'
+          + '<div style="margin-top:14px"><button onclick="loadMessages(currentPhone)" style="background:#00a884;border:none;color:#fff;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Tentar de novo</button></div></div>';
+      }
+    } catch (_) {}
   }
 }
 
@@ -8421,10 +8456,11 @@ function renderTasks() {
     const due = t.due_at ? `<div style="font-size:11px;color:#f59e0b;margin-top:2px"><i class=ic-clock></i> ${fmtTaskDue(t.due_at)}</div>` : '';
     return `<div style="display:flex;align-items:flex-start;gap:10px;padding:10px;background:#ffffff;border-radius:8px;margin-bottom:8px">
       <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask('${t.id}',this.checked)" style="width:18px;height:18px;cursor:pointer;margin-top:2px">
-      <div style="flex:1;min-width:0">
+      <div style="flex:1;min-width:0;cursor:pointer" onclick="editTaskChat('${t.id}')" title="Tocar para editar o texto e o prazo">
         <div style="${t.done?'text-decoration:line-through;opacity:.6':''};word-break:break-word">${escHtml(t.title)}</div>
         ${due}
         ${(!t.due_at && t.created_at) ? `<div style="font-size:11px;color:#8696a0;margin-top:2px">Criada ${fmtTaskCreated(t.created_at)}</div>` : ''}
+        <div style="font-size:11px;color:#00806a;margin-top:3px"><i class=ic-pencil></i> Editar</div>
       </div>
       <button onclick="deleteTask('${t.id}')" title="Excluir" style="background:none;border:none;color:#667781;cursor:pointer;font-size:15px"><i class=ic-trash></i></button>
     </div>`;
@@ -8581,7 +8617,53 @@ async function addTask() {
     _sincTarefas(currentPhone); // detalhes do lead mostram a tarefa NA HORA
   } catch(e) { _toast('Erro ao adicionar tarefa.'); }
 }
+// Tocar na tarefa (dentro da conversa) abre para mudar o texto E o prazo, sem
+// precisar ir até a tela Tarefas.
+async function editTaskChat(id) {
+  const t = (currentTasks || []).find(x => String(x.id) === String(id));
+  if (!t) return;
+  let dData = '', dHora = '09:00';
+  if (t.due_at) { // prazo mostrado no horário de Brasília
+    const d = new Date(parseUTC(t.due_at) - _BRT_OFFSET);
+    dData = d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0') + '-' + String(d.getUTCDate()).padStart(2, '0');
+    dHora = String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0');
+  }
+  const r = await vCampos({
+    titulo: 'Editar tarefa',
+    texto: 'Mude o texto ou o prazo. Deixe a data em branco para ficar sem prazo.',
+    campos: [
+      { id: 'texto', rotulo: 'O que precisa ser feito?', multilinha: true, valor: t.title || '' },
+      { id: 'data', rotulo: 'Prazo — data (opcional)', tipo: 'date', valor: dData },
+      { id: 'hora', rotulo: 'Prazo — hora', tipo: 'time', valor: dHora }
+    ],
+    confirmar: 'Salvar'
+  });
+  if (!r) return; // cancelou
+  const titulo = String(r.texto || '').trim() || 'Tarefa';
+  let due_at = null;
+  if (r.data) {
+    const ms = new Date(r.data + 'T' + (r.hora || '09:00') + ':00.000Z').getTime() + _BRT_OFFSET;
+    if (isFinite(ms)) due_at = new Date(ms).toISOString();
+  }
+  try {
+    const res = await fetch(SERVER_URL + '/tasks/' + id, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: titulo, due_at })
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    t.title = titulo; t.due_at = due_at;
+    const l = document.getElementById('tasks-list'); if (l) l.dataset.ass = ''; // força repintar na próxima busca
+    renderTasks();
+    _sincTarefas(currentPhone);
+    _toast('Tarefa salva!');
+  } catch (e) { _toast('Não consegui salvar a tarefa.'); }
+}
 async function toggleTask(id, done) {
+  if (done) { // concluir pergunta; reabrir não
+    const t = (currentTasks || []).find(x => String(x.id) === String(id));
+    // Se desistir, o quadradinho volta a ficar desmarcado (o redesenho cuida disso)
+    if (!await _confirmaConcluirTarefa(t && t.title)) { renderTasks(); return; }
+  }
   try { await fetch(`${SERVER_URL}/tasks/${id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ done }) }); loadTasks(); _sincTarefas(currentPhone); } catch(e){}
 }
 async function deleteTask(id) {
@@ -14544,6 +14626,10 @@ async function menuPrazoTarefa(id){
 }
 
 async function toggleTaskGlobal(id, done){
+  if (done) { // concluir pergunta; reabrir não
+    const tt = _allTasksCache.find(x => String(x.id) === String(id));
+    if (!await _confirmaConcluirTarefa(tt && tt.title)) return;
+  }
   try{
     await fetch(SERVER_URL+'/tasks/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({done})});
     const t=_allTasksCache.find(x=>String(x.id)===String(id)); if(t) t.done=done;
