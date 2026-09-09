@@ -2013,7 +2013,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v363</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v364</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2779,7 +2779,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v363</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v364</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2833,7 +2833,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 363;
+const APP_VER = 364;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -6251,7 +6251,7 @@ async function lpLoadTasks(phone){
   el.innerHTML = mine.length ? mine.map(t => `
     <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:7px">
       <button onclick="lpToggleTask('${t.id}',${t.done?'false':'true'},'${phone}')" title="${t.done?'Reabrir':'Concluir'}" style="width:18px;height:18px;border-radius:50%;border:2px solid #00a884;background:${t.done?'#00a884':'transparent'};color:#fff;cursor:pointer;flex-shrink:0;font-size:11px;line-height:14px;padding:0">${t.done?'✓':''}</button>
-      <div style="flex:1;min-width:0;font-size:13px;color:#131c20;${t.done?'text-decoration:line-through;opacity:.6':''}">${escHtml(t.title)}${t.due_at?`<div style="font-size:11px;color:#667781"><i class=ic-clock></i> ${fmtTaskDue(t.due_at)}</div>`:(t.created_at?`<div style="font-size:11px;color:#8696a0">Criada ${fmtTaskCreated(t.created_at)}</div>`:'')}</div>
+      <div onclick="editTaskChat('${t.id}')" title="Tocar para editar o texto e o prazo" style="flex:1;min-width:0;font-size:13px;color:#131c20;cursor:pointer;${t.done?'text-decoration:line-through;opacity:.6':''}">${escHtml(t.title)}${t.due_at?`<div style="font-size:11px;color:#667781"><i class=ic-clock></i> ${fmtTaskDue(t.due_at)}</div>`:(t.created_at?`<div style="font-size:11px;color:#8696a0">Criada ${fmtTaskCreated(t.created_at)}</div>`:'')}<div style="font-size:11px;color:#00806a;margin-top:2px"><i class=ic-pencil></i> Editar</div></div>
     </div>`).join('') : '<div style="color:#8696a0;font-size:12px">Nenhuma tarefa</div>';
 }
 // Pergunta única de "concluir tarefa", usada pelos três lugares que concluem
@@ -8620,8 +8620,12 @@ async function addTask() {
 // Tocar na tarefa (dentro da conversa) abre para mudar o texto E o prazo, sem
 // precisar ir até a tela Tarefas.
 async function editTaskChat(id) {
-  const t = (currentTasks || []).find(x => String(x.id) === String(id));
-  if (!t) return;
+  // A mesma tarefa pode ter vindo da janela "Tarefas do lead" ou do painel de
+  // detalhes — procura nas duas listas.
+  const naJanela = (currentTasks || []).find(x => String(x.id) === String(id));
+  const noPainel = (window._lpTasks || []).find(x => String(x.id) === String(id));
+  const t = naJanela || noPainel;
+  if (!t) { _toast('Não achei essa tarefa. Atualize a tela e tente de novo.'); return; }
   let dData = '', dHora = '09:00';
   if (t.due_at) { // prazo mostrado no horário de Brasília
     const d = new Date(parseUTC(t.due_at) - _BRT_OFFSET);
@@ -8652,8 +8656,12 @@ async function editTaskChat(id) {
     });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     t.title = titulo; t.due_at = due_at;
-    const l = document.getElementById('tasks-list'); if (l) l.dataset.ass = ''; // força repintar na próxima busca
-    renderTasks();
+    if (naJanela) { // a janela do chat repinta na hora
+      const l = document.getElementById('tasks-list'); if (l) l.dataset.ass = '';
+      try { renderTasks(); } catch (_) {}
+    }
+    // o painel do lead compara uma "assinatura": zerada, ele repinta na hora
+    const lp = document.getElementById('lp-tasks'); if (lp) lp.dataset.ass = '';
     _sincTarefas(currentPhone);
     _toast('Tarefa salva!');
   } catch (e) { _toast('Não consegui salvar a tarefa.'); }
