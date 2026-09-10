@@ -1503,9 +1503,9 @@ i[class^="ic-"],i[class*=" ic-"]{display:inline-block;width:1.08em;height:1.08em
   body.dark .plist-head { background: #202c33; color: #8696a0; border-color: #2a3942; }
   body.dark .plist-c-name { color: #e9edef; }
   body.dark .plist-row:hover { background: #2a3942; }
-  /* Anotação da tarefa: era cinza-claro sobre branco (não dava para ler) */
-  .task-row .task-note { background: #f7f8fa !important; color: #54656f !important; border-left-color: #d6dde1 !important; }
-  body.dark .task-row .task-note { background: #202c33 !important; color: #cdd6db !important; border-left-color: #2a3942 !important; }
+  /* Tarefa COM comentário: só o botão muda de cor — a linha não cresce */
+  .task-row .task-coment { color: #00806a; font-weight: 600; }
+  body.dark .task-row .task-coment { color: #17a888 !important; }
   body.dark #bots-page, body.dark #tasks-page, body.dark #faq-page, body.dark #pipeline-page, body.dark #kanban-board, body.dark #pipeline-list { background: #111b21; color: #e9edef; }
   body.dark #bots-page-topbar, body.dark #tasks-page-topbar, body.dark #faq-page-topbar { background: #202c33; border-color: #2a3942; }
   body.dark #bots-page-topbar h2, body.dark #tasks-page-topbar h2, body.dark #faq-page-topbar h2, body.dark #pipeline-topbar h2 { color: #e9edef; }
@@ -2027,7 +2027,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v368</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v369</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2793,7 +2793,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v368</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v369</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2847,7 +2847,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 368;
+const APP_VER = 369;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -14675,20 +14675,22 @@ function _taskRowHTML(t){
     ? `<span onclick="menuPrazoTarefa('${t.id}')" title="Mudar ou adiar o prazo" style="color:${overdue?'#ef4444':'#667781'};font-size:12px;cursor:pointer"><i class=ic-clock></i> ${fmtTaskDue(t.due_at)}</span>`
     : `<span onclick="menuPrazoTarefa('${t.id}')" title="Definir um prazo" style="color:#8696a0;font-size:12px;cursor:pointer"><i class=ic-clock></i> Sem prazo</span>`;
   const lead=t.contact_name?`<button onclick="openTaskLead('${t.phone}','${_jsAttr(t.contact_name)}',${t.account_id?`'${t.account_id}'`:'null'})" title="Abrir a conversa e os dados deste lead" style="display:inline-flex;align-items:center;gap:6px;background:#e7f7ef;border:1px solid #00a884;color:#00806a;border-radius:16px;padding:5px 12px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit"><i class=ic-user></i> ${escHtml(t.contact_name)} <span style="font-size:11px">›</span></button>`:'';
-  const noteBlock = t.notes
-    ? `<div class="task-note" style="margin-top:6px;border-left:3px solid #e9edef;border-radius:4px;padding:6px 8px;font-size:12px;white-space:pre-wrap;word-break:break-word">${escHtml(t.notes)}</div>`
-    : '';
+  // O comentário NÃO vira bloco: fica no próprio botão (cor + dica), para que a
+  // linha da tarefa tenha sempre a mesma altura.
+  const _nota = String(t.notes || '').replace(/\s+/g, ' ').trim();
+  const notaBtn = _nota
+    ? `<span class="task-coment" style="font-size:12px;cursor:pointer" onclick="editTaskNote('${t.id}')" title="${escHtml(_nota.slice(0, 400))}"><i class=ic-note></i> Comentário</span>`
+    : `<span style="color:#667781;font-size:12px;cursor:pointer" onclick="editTaskNote('${t.id}')" title="Anotação que só você vê"><i class=ic-note></i> Comentar</span>`;
   return `<div class="task-row${overdue?' overdue':''}">
     ${selBox}
     <button class="task-check" title="${t.done?'Reabrir':'Concluir'}" onclick="toggleTaskGlobal('${t.id}',${t.done?'false':'true'})">${t.done?'✓':''}</button>
     <div style="flex:1;min-width:0">
       ${lead ? `<div style="margin-bottom:5px">${lead}</div>` : ''}
-      <div style="color:#131c20;font-size:14px;${t.done?'text-decoration:line-through;opacity:.6':''}">${escHtml(t.title)}</div>
-      ${noteBlock}
+      <div style="color:#131c20;font-size:14px;font-weight:700;${t.done?'text-decoration:line-through;opacity:.6':''}">${escHtml(t.title)}</div>
       <div style="display:flex;gap:14px;margin-top:4px;flex-wrap:wrap;align-items:center">${due}
         ${(!t.due_at && t.created_at) ? `<span style="color:#8696a0;font-size:12px">criada ${fmtTaskCreatedCurto(t.created_at)}</span>` : ''}
         <span style="color:#667781;font-size:12px;cursor:pointer" onclick="editTaskTitle('${t.id}')"><i class=ic-pencil></i> Editar</span>
-        <span style="color:#667781;font-size:12px;cursor:pointer" onclick="editTaskNote('${t.id}')" title="Anotação que só você vê"><i class=ic-note></i> ${t.notes?'Comentário':'Comentar'}</span>
+        ${notaBtn}
       </div>
     </div>
     <button title="Excluir" onclick="deleteTaskGlobal('${t.id}')" style="background:none;border:none;color:#667781;cursor:pointer;font-size:14px"><i class=ic-trash></i></button>
