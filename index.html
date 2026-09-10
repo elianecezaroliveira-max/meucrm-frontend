@@ -121,7 +121,8 @@
   /* ID externo da etapa (automações) no cabeçalho da coluna do Pipeline */
   .kanban-col-extid { font-size: 10px; color: #8696a0; cursor: pointer; flex-shrink: 1; min-width: 0; max-width: 82px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: rgba(134,150,160,.12); border-radius: 6px; padding: 2px 5px; }
   .kanban-col-extid:hover { background: rgba(134,150,160,.25); color: #54656f; }
-  .contact-swipe-wrap > .contact-item { position: relative; z-index: 1; background: #ffffff; touch-action: pan-y; will-change: transform; }
+  .contact-swipe-wrap > .contact-item { position: relative; z-index: 1; background: #ffffff; touch-action: pan-y; }
+  .contact-swipe-wrap.swiping > .contact-item { will-change: transform; }
   .swipe-action { position: absolute; top: 0; bottom: 0; width: 92px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #fff; font-size: 11px; font-weight: 600; z-index: 0; visibility: hidden; }
   .contact-swipe-wrap.swiping.swipe-dir-r .swipe-action.read { visibility: visible; }
   .contact-swipe-wrap.swiping.swipe-dir-l .swipe-action.fav  { visibility: visible; }
@@ -1078,6 +1079,13 @@ body.dark{
   #layout.mobile-chat-open #sidebar { transform: translateX(-100%); }
   #layout.mobile-chat-open #chat-area { transform: translateX(0); }
 
+  /* ARRASTANDO para fechar: o dedo manda, o CSS não anima nada, e as duas telas
+     ganham camada própria — sem isso o iPhone redesenha a conversa inteira a
+     cada quadro e o gesto parece travado. */
+  #layout.arrastando #chat-area, #layout.arrastando #sidebar {
+    transition: none !important; will-change: transform; backface-visibility: hidden;
+  }
+
   /* Cabeçalho e campo de mensagem FIXOS: só as mensagens rolam (sem "elástico") */
   html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
   body { position: fixed; top: 0; left: 0; width: 100%; height: 100vh; }
@@ -2027,7 +2035,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v371</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v372</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2793,7 +2801,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v371</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v372</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2847,7 +2855,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 371;
+const APP_VER = 372;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5320,7 +5328,15 @@ async function toggleFavorite(phone) {
   if (!list) return;
   const _SWIPE_OK = 40; // distância para valer a ação (era 52)
   let startX = 0, startY = 0, item = null, dx = 0, swiping = false, quietTs = 0, startScroll = 0, touchT0 = 0;
-  const cancelSwipe = () => { if (item) { item.style.transition = ''; item.style.transform = ''; try { item.parentElement.classList.remove('swiping'); } catch (_) {} } item = null; swiping = false; };
+  let _dirAtual = 0, _armadoAtual = false, _raf = 0;
+  const pinta = () => { _raf = 0; if (!item || !swiping) return;
+    item.style.transform = 'translate3d(' + Math.max(-120, Math.min(120, dx)) + 'px,0,0)'; };
+  const agendaPinta = () => { if (!_raf) _raf = requestAnimationFrame(pinta); };
+  const cancelSwipe = () => {
+    if (_raf) { cancelAnimationFrame(_raf); _raf = 0; }
+    if (item) { item.style.transition = ''; item.style.transform = ''; try { item.parentElement.classList.remove('swiping'); } catch (_) {} }
+    item = null; swiping = false; _dirAtual = 0; _armadoAtual = false;
+  };
   list.addEventListener('touchstart', e => {
     // Lista ainda deslizando (inércia)? Este toque é para PARAR/continuar a rolagem — não é swipe
     if (Date.now() - quietTs < 250) { item = null; return; }
@@ -5348,15 +5364,21 @@ async function toggleFavorite(phone) {
     }
     if (swiping) {
       const w = item.parentElement;
-      // Mostra SÓ o lado que está sendo puxado
-      try {
-        w.classList.toggle('swipe-dir-r', dx > 0);
-        w.classList.toggle('swipe-dir-l', dx < 0);
-        const alvo = w.querySelector(dx > 0 ? '.swipe-action.read' : '.swipe-action.fav');
-        w.querySelectorAll('.swipe-action').forEach(a => a.classList.remove('armado'));
-        if (alvo && Math.abs(dx) >= _SWIPE_OK) alvo.classList.add('armado');
-      } catch (_) {}
-      item.style.transform = `translateX(${Math.max(-120, Math.min(120, dx))}px)`;
+      const dir = dx > 0 ? 1 : -1;
+      const armado = Math.abs(dx) >= _SWIPE_OK;
+      // Classes SÓ quando o estado muda de verdade (antes eram trocadas a cada
+      // milímetro, e cada troca obriga o celular a recalcular a linha inteira)
+      if (dir !== _dirAtual || armado !== _armadoAtual) {
+        _dirAtual = dir; _armadoAtual = armado;
+        try {
+          w.classList.toggle('swipe-dir-r', dir > 0);
+          w.classList.toggle('swipe-dir-l', dir < 0);
+          w.querySelectorAll('.swipe-action').forEach(a => a.classList.remove('armado'));
+          const alvo = w.querySelector(dir > 0 ? '.swipe-action.read' : '.swipe-action.fav');
+          if (alvo && armado) alvo.classList.add('armado');
+        } catch (_) {}
+      }
+      agendaPinta(); // um desenho por quadro, nunca vários
     }
   }, { passive: true });
   list.addEventListener('scroll', () => { // a lista rolou = não era swipe (NUNCA, nem engatado)
@@ -5365,7 +5387,9 @@ async function toggleFavorite(phone) {
   }, { passive: true });
   list.addEventListener('touchend', () => {
     if (!item) return;
-    item.style.transition = 'transform .22s ease';
+    if (_raf) { cancelAnimationFrame(_raf); _raf = 0; }
+    _dirAtual = 0; _armadoAtual = false;
+    item.style.transition = 'transform .2s cubic-bezier(.22,.61,.36,1)';
     item.style.transform = '';
     const _wrapEl = item.parentElement;
     setTimeout(() => { try { _wrapEl.classList.remove('swiping', 'swipe-dir-r', 'swipe-dir-l'); _wrapEl.querySelectorAll('.swipe-action').forEach(a => a.classList.remove('armado')); } catch (_) {} }, 240);
@@ -6403,49 +6427,94 @@ function goBackToSidebar() {
   }
   document.getElementById('layout').classList.remove('mobile-chat-open');
   document.body.classList.remove('mobile-chat-open');
-  // Salva o rascunho e atualiza a lista (para o "Rascunho:" verde aparecer)
-  try {
-    _persistDraftNow(currentPhone);
-    renderContacts(sortContacts(allContacts));
-  } catch (_) {}
+  // Salva o rascunho e atualiza a lista (para o "Rascunho:" verde aparecer).
+  // O redesenho espera o deslize terminar — no meio da animação ele travava a
+  // volta e a lista aparecia pela metade.
+  try { _persistDraftNow(currentPhone); } catch (_) {}
+  clearTimeout(window._redesenhaListaT);
+  window._redesenhaListaT = setTimeout(() => {
+    try { renderContacts(sortContacts(allContacts)); } catch (_) {}
+  }, 260);
   try { _mnavVisible(true); } catch (_) {} // barra inferior volta com a lista
 }
 
 // ── Gesto de voltar: arrastar da borda esquerda para a direita (como no WhatsApp) ──
 (function initSwipeBack() {
-  let active = false, horiz = false, sx = 0, sy = 0, dx = 0, chat = null;
+  let active = false, horiz = false, sx = 0, sy = 0, dx = 0, t0 = 0;
+  let chat = null, side = null, layout = null, raf = 0;
+  const larg = () => window.innerWidth || 360;
+  // A lista entra por baixo com um passo menor que o do dedo (30%), como no
+  // WhatsApp/iOS. Antes ela ficava jogada 100% para fora e o que aparecia atrás
+  // da conversa era o BRANCO do fundo.
+  const posLista = (d) => -0.30 * (larg() - d);
+  const pinta = () => {
+    raf = 0;
+    if (!horiz || !chat) return;
+    const d = Math.max(0, Math.min(larg(), dx));
+    chat.style.transform = 'translate3d(' + d + 'px,0,0)';
+    if (side) side.style.transform = 'translate3d(' + posLista(d) + 'px,0,0)';
+  };
+  const agenda = () => { if (!raf) raf = requestAnimationFrame(pinta); };
+  const limpa = () => {
+    if (raf) { cancelAnimationFrame(raf); raf = 0; }
+    if (layout) layout.classList.remove('arrastando');
+    [chat, side].forEach(el => { if (el) { el.style.transform = ''; el.style.transition = ''; } });
+    active = false; horiz = false; chat = null; side = null; layout = null; dx = 0;
+  };
   document.addEventListener('touchstart', e => {
     if (!window.matchMedia('(hover: none)').matches) return; // gesto SÓ no celular
-    const layout = document.getElementById('layout');
-    if (!layout || !layout.classList.contains('mobile-chat-open')) return;
-    // Funciona de qualquer ponto da conversa (a borda é reservada pelo iOS),
-    // exceto sobre player, vídeo, cabeçalho e barra de digitação
+    layout = document.getElementById('layout');
+    if (!layout || !layout.classList.contains('mobile-chat-open')) { layout = null; return; }
     const t = e.touches[0];
-    if (t.clientX > 26) return; // igual WhatsApp: fechar SÓ arrastando da BORDA esquerda
-    if (!e.target.closest('#chat-area')) return;
-    if (e.target.closest('#input-area')) return;
+    if (t.clientX > 26) { layout = null; return; } // igual WhatsApp: só da BORDA esquerda
+    if (!e.target.closest('#chat-area') || e.target.closest('#input-area')) { layout = null; return; }
     chat = document.getElementById('chat-area');
-    if (!chat) return;
-    active = true; horiz = false; sx = t.clientX; sy = t.clientY; dx = 0;
+    side = document.getElementById('sidebar');
+    if (!chat) { layout = null; return; }
+    active = true; horiz = false; sx = t.clientX; sy = t.clientY; dx = 0; t0 = Date.now();
   }, { passive: true });
   document.addEventListener('touchmove', e => {
     if (!active || !chat) return;
     const t = e.touches[0];
     dx = t.clientX - sx;
     const dy = t.clientY - sy;
-    // Engata FÁCIL: basta o movimento ir mais para o lado do que para baixo
     if (!horiz && dx > 14 && Math.abs(dx) > Math.abs(dy)) {
       horiz = true;
-      chat.style.transition = 'none';
+      layout.classList.add('arrastando'); // camada própria + CSS sai da frente
     }
-    if (horiz && dx > 0) chat.style.transform = 'translateX(' + dx + 'px)'; // segue o dedo
+    if (horiz) agenda(); // um desenho por quadro — nunca vários no mesmo
   }, { passive: true });
   const finish = () => {
     if (!active || !chat) return;
-    chat.style.transition = ''; // devolve a animação suave ao CSS
-    chat.style.transform = '';
-    if (horiz && dx > Math.min(70, (window.innerWidth || 360) * 0.2)) goBackToSidebar();
-    active = false; chat = null; dx = 0;
+    if (!horiz) { limpa(); return; }
+    if (raf) { cancelAnimationFrame(raf); raf = 0; }
+    const w = larg();
+    const ms = Math.max(1, Date.now() - t0);
+    // Vale a distância OU um empurrão rápido (igual ao WhatsApp)
+    const fecha = dx > Math.min(70, w * 0.2) || (dx > 24 && dx / ms >= 0.35);
+    const _c = chat, _s = side, _l = layout;
+    _l.classList.remove('arrastando'); // devolve a animação do CSS
+    const suave = 'transform .2s cubic-bezier(.22,.61,.36,1)';
+    _c.style.transition = suave; if (_s) _s.style.transition = suave;
+    if (fecha) {
+      _c.style.transform = 'translate3d(' + w + 'px,0,0)';
+      if (_s) _s.style.transform = 'translate3d(0,0,0)';
+      // No fim do deslize a classe sai: o CSS já deixa tudo no MESMO lugar,
+      // então não há pulo nenhum na troca.
+      setTimeout(() => {
+        try { goBackToSidebar(); } catch (_) {}
+        _c.style.transform = ''; _c.style.transition = '';
+        if (_s) { _s.style.transform = ''; _s.style.transition = ''; }
+      }, 190);
+    } else { // não valeu: volta para o lugar
+      _c.style.transform = 'translate3d(0,0,0)';
+      if (_s) _s.style.transform = 'translate3d(' + posLista(0) + 'px,0,0)';
+      setTimeout(() => {
+        _c.style.transform = ''; _c.style.transition = '';
+        if (_s) { _s.style.transform = ''; _s.style.transition = ''; }
+      }, 210);
+    }
+    active = false; horiz = false; chat = null; side = null; layout = null; dx = 0;
   };
   document.addEventListener('touchend', finish);
   document.addEventListener('touchcancel', finish);
