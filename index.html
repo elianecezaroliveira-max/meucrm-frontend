@@ -1733,7 +1733,11 @@ window.addEventListener('load', initAuth);
         <input id="acc-name" placeholder="Nome da conta (ex.: Valorize 04)" style="width:100%;box-sizing:border-box;background:#fff;border:1px solid #d1d7db;border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit;outline:none;margin-bottom:8px">
         <input id="acc-phone-id" placeholder="ID do número (Phone Number ID) — ex.: 1293622030495570" style="width:100%;box-sizing:border-box;background:#fff;border:1px solid #d1d7db;border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit;outline:none;margin-bottom:8px">
         <input id="acc-waba" placeholder="ID da conta do WhatsApp Business (WABA ID)" style="width:100%;box-sizing:border-box;background:#fff;border:1px solid #d1d7db;border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit;outline:none;margin-bottom:8px">
+        <select id="acc-token-de" onchange="_accTokenDeMudou()" style="width:100%;box-sizing:border-box;background:#fff;border:1px solid #d1d7db;border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit;outline:none;margin-bottom:8px">
+          <option value="">Token: colar um token novo</option>
+        </select>
         <input id="acc-token" placeholder="Token permanente (o mesmo das outras contas)" style="width:100%;box-sizing:border-box;background:#fff;border:1px solid #d1d7db;border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit;outline:none;margin-bottom:10px">
+        <p id="acc-token-aviso" style="display:none;font-size:12px;color:#00806a;background:#e7f7ef;border:1px solid #b7e4d3;border-radius:8px;padding:8px 10px;margin:0 0 10px;line-height:1.5">O VETRA vai usar o token que já está guardado nessa conta. Você não precisa gerar um token novo na Meta.</p>
         <button onclick="addAccount()" style="width:100%;background:#00a884;border:none;color:#fff;padding:11px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">➕ Adicionar conta</button>
       </div>
     </div>
@@ -2023,7 +2027,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v367</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v368</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2789,7 +2793,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v367</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v368</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2843,7 +2847,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 367;
+const APP_VER = 368;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3206,6 +3210,7 @@ async function loadAccounts() {
       sel.appendChild(opt);
     });
     renderAccountsModal(accounts);
+    try { _accPreencheTokenDe(accounts); } catch (_) {}
     // Quantas mensagens saíram por número (não trava a lista se demorar)
     fetch(SERVER_URL + '/accounts/uso').then(r => r.json()).then(u => {
       if (u && typeof u === 'object' && !u.error) { _accUso = u; renderAccountsModal(accounts); }
@@ -3363,25 +3368,49 @@ async function renameAccount(id) {
   } catch(e) { alert('Erro ao conectar ao servidor.'); }
 }
 
+// Escolheu reaproveitar o token de outra conta? O campo de colar some.
+function _accTokenDeMudou() {
+  const de = document.getElementById('acc-token-de');
+  const inp = document.getElementById('acc-token');
+  const av = document.getElementById('acc-token-aviso');
+  const usando = !!(de && de.value);
+  if (inp) { inp.style.display = usando ? 'none' : ''; if (usando) inp.value = ''; }
+  if (av) av.style.display = usando ? 'block' : 'none';
+}
+// Preenche a lista "usar o token de…" com as contas de API que já existem
+function _accPreencheTokenDe(accounts) {
+  const de = document.getElementById('acc-token-de');
+  if (!de) return;
+  const atual = de.value;
+  const api = (accounts || []).filter(x => !x.evolution_instance && x.phone_number_id);
+  de.innerHTML = '<option value="">Token: colar um token novo</option>'
+    + api.map(x => `<option value="${escHtml(x.id)}">Usar o token de: ${escHtml(x.name)}${x.phone_display ? ' (' + escHtml(x.phone_display) + ')' : ''}</option>`).join('');
+  if (atual && api.some(x => String(x.id) === String(atual))) de.value = atual;
+  _accTokenDeMudou();
+}
 async function addAccount() {
   const name = document.getElementById('acc-name').value.trim();
   const phone_number_id = document.getElementById('acc-phone-id').value.trim();
   const token = document.getElementById('acc-token').value.trim();
+  const usar_token_de = (document.getElementById('acc-token-de')?.value || '').trim();
   const waba_id = (document.getElementById('acc-waba')?.value || '').trim();
-  if (!name || !phone_number_id || !token) return alert('Preencha o nome, o ID do número e o token de acesso.');
+  if (!name || !phone_number_id) return alert('Preencha o nome e o ID do número.');
+  if (!token && !usar_token_de) return alert('Cole o token, ou escolha uma conta que já tem token guardado.');
   try {
     const res = await fetch(SERVER_URL + '/accounts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, phone_number_id, token, waba_id: waba_id || undefined })
+      body: JSON.stringify({ name, phone_number_id, waba_id: waba_id || undefined,
+        token: token || undefined, usar_token_de: usar_token_de || undefined })
     });
     const data = await res.json();
     if (data.error) return alert('Erro: ' + data.error);
     document.getElementById('acc-name').value = '';
     document.getElementById('acc-phone-id').value = '';
     document.getElementById('acc-token').value = '';
+    const _w = document.getElementById('acc-waba'); if (_w) _w.value = '';
     await loadAccounts();
-    alert('Conta adicionada com sucesso!');
+    alert('Conta adicionada com sucesso!' + (data.aviso ? '\n\n' + data.aviso : ''));
   } catch(e) { alert('Erro ao conectar ao servidor.'); }
 }
 
@@ -10844,7 +10873,7 @@ async function openConfigModal() {
 }
 // Versão do servidor que este app espera. Se o Railway estiver atrás disso,
 // algumas telas não têm como funcionar — e o app avisa em vez de dar erro seco.
-const SERVIDOR_MIN = 258;
+const SERVIDOR_MIN = 260;
 let _verServidor = null;
 async function _servidorVersao() {
   if (_verServidor !== null) return _verServidor;
