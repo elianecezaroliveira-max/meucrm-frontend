@@ -2027,7 +2027,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v370</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v371</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2793,7 +2793,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v370</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v371</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2847,7 +2847,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 370;
+const APP_VER = 371;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5553,6 +5553,7 @@ async function selectContact(phone, name, accountId) {
   const _ma = document.getElementById('messages-area');
   if (_ma) _ma.innerHTML = '';
   window._msgsReadyFor = null; // espera recarregar antes de mostrar a janela 24h
+  if (window._semTetoMsgs && window._semTetoMsgs !== phone) window._semTetoMsgs = null; // outra conversa volta ao teto
   _lastMsgsSig = '';
   currentPhone = phone;
   currentName = name || phone;
@@ -7278,6 +7279,15 @@ function msgDayKey(dateStr) {
 
 let _lastMsgsSig = ''; // assinatura da última renderização — evita re-render desnecessário
 let _lmSeq = 0; // nº da última consulta iniciada — resposta ATRASADA de uma consulta antiga é descartada
+// Carrega a conversa INTEIRA (só quando você pede). Em conversas gigantes isso
+// pesa no celular — por isso não é o padrão.
+function _verMsgsAntigas() {
+  if (!currentPhone) return;
+  window._semTetoMsgs = currentPhone;
+  _lastMsgsSig = '';
+  try { showToast('Carregando as mensagens antigas…', 'ok'); } catch (_) {}
+  loadMessages(currentPhone);
+}
 async function loadMessages(phone, scroll = true) {
   try {
     // Envio de mídia em andamento: o polling NÃO mexe na tela (a prévia local
@@ -7287,7 +7297,7 @@ async function loadMessages(phone, scroll = true) {
     const meuSeq = ++_lmSeq;
     const res = await fetch(SERVER_URL + '/messages/' + encodeURIComponent(phone));
     if (!res.ok) throw new Error('HTTP ' + res.status);
-    const msgs = await res.json();
+    let msgs = await res.json();
     // CORRIDA: o polling pode ter consultado ANTES do envio ser salvo e responder
     // DEPOIS da recarga do envio — a lista velha (sem a mensagem nova) apagava a
     // bolha recém-enviada, que só voltava no polling seguinte ("some e reaparece")
@@ -7298,6 +7308,13 @@ async function loadMessages(phone, scroll = true) {
     if (!Array.isArray(msgs)) {
       console.error('[loadMessages] resposta inesperada:', msgs);
       return;
+    }
+    // TETO: só as mais recentes ficam na tela (o resto entra por um botão)
+    const _TETO_MSGS = 300;
+    let _msgsAntigas = 0;
+    if (window._semTetoMsgs !== phone && msgs.length > _TETO_MSGS) {
+      _msgsAntigas = msgs.length - _TETO_MSGS;
+      msgs = msgs.slice(-_TETO_MSGS);
     }
     currentMessages = msgs; // guarda para a galeria de mídias
     // Mensagens prontas → agora sim a linha de presença/janela 24h pode aparecer
@@ -7367,6 +7384,8 @@ async function loadMessages(phone, scroll = true) {
     const _multiConta = new Set((msgs || []).map(x => String(x.account_id || '')).filter(Boolean)).size > 1;
     let _prevDir = null; // agrupamento de bolhas (mesmo lado em sequência)
     const parts = [];
+    if (_msgsAntigas > 0) parts.push({ key: 'ver-antigas', html:
+      `<div class="day-divider" data-key="ver-antigas"><span onclick="_verMsgsAntigas()" style="cursor:pointer;color:#00806a;font-weight:700">Ver as ${_msgsAntigas} mensagens mais antigas</span></div>` });
 
     // ÁLBUM: fotos em sequência (mesmo lado, até 90s de intervalo) viram UMA grade
     const _albumSkip = new Set(), _albumStart = {};
@@ -11117,12 +11136,36 @@ function _telaAtual(nome) {
     if (k) document.querySelectorAll('#side-rail .rail-btn').forEach(b => b.classList.toggle('is-on', b.dataset.rail === k));
   } catch (_) {}
 }
+const _BOOT_KEY = 'vetra_boot';
+function _bootConta() {
+  try {
+    const b = JSON.parse(localStorage.getItem(_BOOT_KEY) || '{}');
+    const n = (Date.now() - (b.ts || 0) < 45000) ? (Number(b.n) || 0) + 1 : 1;
+    localStorage.setItem(_BOOT_KEY, JSON.stringify({ n, ts: Date.now() }));
+    return n;
+  } catch (_) { return 1; }
+}
+function _bootOk() { try { localStorage.removeItem(_BOOT_KEY); } catch (_) {} }
+const _BOOT_N = _bootConta();
+setTimeout(_bootOk, 12000); // 12 segundos de pé = o app abriu bem
+
 async function _restaurarTela(segundaPassada) {
   const h = String(location.hash || '').replace(/^#/, '');
   const _mostra = () => { try { document.documentElement.classList.remove('tela-restaurando'); } catch (_) {} };
   setTimeout(_mostra, 4000); // segurança: nunca fica escondido para sempre
   if (!h) { _mostra(); return; }
   const abre = { pipeline: () => openPipeline(), tarefas: () => openTasksPage(), bots: () => openBotsList(), ia: () => openFaqPage(), automacao: () => openAutomationPanel(), modelos: () => openTemplates(), respostas: () => openQRManager(), tags: () => openTagManager(), contas: () => openModal(), config: () => openConfigModal(), avisos: () => openNotices(), relatorios: () => openRelatorios() };
+  // Caiu três vezes seguidas tentando abrir a mesma conversa? Abre na LISTA.
+  if (_BOOT_N >= 3 && h.startsWith('chat=')) {
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (_) {}
+    _bootOk();
+    _mostra();
+    setTimeout(() => { try {
+      vAviso({ titulo: 'Abri na lista de conversas',
+        texto: 'A última conversa fechou o app algumas vezes seguidas — normalmente é uma conversa muito longa, com muitas fotos e vídeos, que não cabe na memória do celular. Abri na lista para você sair do aperto. Ao entrar nela de novo, o VETRA mostra só as mensagens mais recentes e deixa as antigas atrás de um botão.' });
+    } catch (_) {} }, 700);
+    return;
+  }
   try {
     if (h.startsWith('chat=')) {
       const ph = decodeURIComponent(h.slice(5));
