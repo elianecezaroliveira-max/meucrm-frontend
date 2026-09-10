@@ -2027,7 +2027,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v369</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v370</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2793,7 +2793,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v369</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v370</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2847,7 +2847,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 369;
+const APP_VER = 370;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -8797,6 +8797,7 @@ async function editTaskChat(id) {
     });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     t.title = titulo; t.due_at = due_at;
+    try { _tarefaAtualiza(id, { title: titulo, due_at }); } catch (_) {}
     if (naJanela) { // a janela do chat repinta na hora
       const l = document.getElementById('tasks-list'); if (l) l.dataset.ass = '';
       try { renderTasks(); } catch (_) {}
@@ -14438,13 +14439,31 @@ function fmtTaskDue(ts){
   return iso.substring(8,10)+'/'+iso.substring(5,7)+' '+iso.substring(11,16);
 }
 // Bolinha vermelha com a QUANTIDADE de tarefas em aberto (no botão Tarefas)
+// O que EU acabei de salvar vale por 20s por cima do que a busca de fundo
+// trouxer (o banco leva um instante para refletir a gravação).
+const _tarefaEco = {}; // id → { campos, ate }
+function _tarefaAtualiza(id, campos) {
+  _tarefaEco[id] = { campos: Object.assign({}, (_tarefaEco[id] || {}).campos, campos), ate: Date.now() + 20000 };
+  const t = _allTasksCache.find(x => String(x.id) === String(id));
+  if (t) Object.assign(t, campos);   // a tarefa que está na lista AGORA
+  return t;
+}
+function _tarefaAplicaEco(lista) {
+  const agora = Date.now();
+  for (const k in _tarefaEco) if (_tarefaEco[k].ate < agora) delete _tarefaEco[k];
+  (lista || []).forEach(t => { const e = _tarefaEco[t.id]; if (e) Object.assign(t, e.campos); });
+  return lista;
+}
 async function atualizaBadgeTarefas(){
   try{
     const r = await fetch(SERVER_URL + '/tasks');
     const lista = await r.json();
     if (!Array.isArray(lista)) return;
-    _allTasksCache = lista; // aproveita para deixar a lista pronta
-    _pintaBadgeTarefas(lista.filter(t => !t.done).length);
+    _allTasksCache = _tarefaAplicaEco(lista); // aproveita para deixar a lista pronta
+    _pintaBadgeTarefas(_allTasksCache.filter(t => !t.done).length);
+    // Tela de Tarefas aberta? Ela acompanha na hora (antes ficava desatualizada)
+    const _tp = document.getElementById('tasks-page');
+    if (_tp && _tp.style.display !== 'none') { try { renderTasksPage(); } catch (_) {} }
   }catch(_){}
 }
 function _pintaBadgeTarefas(n){
@@ -14468,6 +14487,7 @@ async function openTasksPage(){
     const res=await fetch(SERVER_URL+'/tasks');
     _allTasksCache=await res.json();
     if(!Array.isArray(_allTasksCache)) _allTasksCache=[];
+    _tarefaAplicaEco(_allTasksCache); // o que acabei de salvar não se perde
     renderTasksPage();
     _pintaBadgeTarefas(_allTasksCache.filter(t=>!t.done).length);
   }catch(e){ area.innerHTML='<div style="color:#ef4444;padding:20px">Erro ao carregar tarefas</div>'; }
@@ -14679,7 +14699,7 @@ function _taskRowHTML(t){
   // linha da tarefa tenha sempre a mesma altura.
   const _nota = String(t.notes || '').replace(/\s+/g, ' ').trim();
   const notaBtn = _nota
-    ? `<span class="task-coment" style="font-size:12px;cursor:pointer" onclick="editTaskNote('${t.id}')" title="${escHtml(_nota.slice(0, 400))}"><i class=ic-note></i> Comentário</span>`
+    ? `<span class="task-coment" style="font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;flex:1 1 90px;min-width:0" onclick="editTaskNote('${t.id}')" title="${escHtml(_nota.slice(0, 400))}"><i class=ic-note style="flex-shrink:0"></i><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(_nota)}</span></span>`
     : `<span style="color:#667781;font-size:12px;cursor:pointer" onclick="editTaskNote('${t.id}')" title="Anotação que só você vê"><i class=ic-note></i> Comentar</span>`;
   return `<div class="task-row${overdue?' overdue':''}">
     ${selBox}
@@ -14688,7 +14708,7 @@ function _taskRowHTML(t){
       ${lead ? `<div style="margin-bottom:5px">${lead}</div>` : ''}
       <div style="color:#131c20;font-size:14px;font-weight:700;${t.done?'text-decoration:line-through;opacity:.6':''}">${escHtml(t.title)}</div>
       <div style="display:flex;gap:14px;margin-top:4px;flex-wrap:wrap;align-items:center">${due}
-        ${(!t.due_at && t.created_at) ? `<span style="color:#8696a0;font-size:12px">criada ${fmtTaskCreatedCurto(t.created_at)}</span>` : ''}
+        ${(!t.due_at && t.created_at && !_nota) ? `<span style="color:#8696a0;font-size:12px">criada ${fmtTaskCreatedCurto(t.created_at)}</span>` : ''}
         <span style="color:#667781;font-size:12px;cursor:pointer" onclick="editTaskTitle('${t.id}')"><i class=ic-pencil></i> Editar</span>
         ${notaBtn}
       </div>
@@ -14775,9 +14795,9 @@ async function menuPrazoTarefa(id){
   try{
     const r=await fetch(SERVER_URL+'/tasks/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({ due_at })});
     if(!r.ok) throw new Error('HTTP '+r.status);
-    t.due_at=due_at;
+    const _t2 = _tarefaAtualiza(id, { due_at });
     renderTasksPage();
-    _sincTarefas(t.phone, true);
+    _sincTarefas((_t2 || t || {}).phone, true);
     showToast(due_at?('Prazo: '+fmtTaskDue(due_at)):'Prazo removido','ok');
   }catch(e){ showToast('Não consegui salvar o prazo','err'); }
 }
@@ -14789,7 +14809,7 @@ async function toggleTaskGlobal(id, done){
   }
   try{
     await fetch(SERVER_URL+'/tasks/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({done})});
-    const t=_allTasksCache.find(x=>String(x.id)===String(id)); if(t) t.done=done;
+    const t=_tarefaAtualiza(id, { done });
     renderTasksPage();
     _pintaBadgeTarefas(_allTasksCache.filter(x=>!x.done).length); // atualiza a bolinha
     _sincTarefas(t?.phone, true); // detalhes do lead (se abertos) acompanham
@@ -14803,8 +14823,8 @@ async function editTaskTitle(id){
   const novo=val.trim()||'Tarefa';
   try{
     await fetch(SERVER_URL+'/tasks/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:novo})});
-    if(t) t.title=novo;
-    renderTasksPage(); _sincTarefas(t?.phone, true);
+    const _t2 = _tarefaAtualiza(id, { title: novo });
+    renderTasksPage(); _sincTarefas((_t2 || t || {}).phone, true);
   }catch(e){ alert('Erro ao salvar a tarefa'); }
 }
 async function editTaskNote(id){
@@ -14814,15 +14834,16 @@ async function editTaskNote(id){
   if(val===null) return; // cancelou
   try{
     await fetch(SERVER_URL+'/tasks/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({notes:val})});
-    if(t) t.notes=val.trim()||null;
+    const _t2 = _tarefaAtualiza(id, { notes: val.trim() || null });
     renderTasksPage();
-    _sincTarefas(t&&t.phone, true);
+    _sincTarefas((_t2 || t || {}).phone, true);
   }catch(e){ showToast('Não consegui salvar o comentário','err'); }
 }
 async function deleteTaskGlobal(id){
   if(!await vConfirm({ titulo: 'Excluir tarefa', texto: 'Esta tarefa será removida.', confirmar: 'Excluir', perigo: true })) return;
   try{
     await fetch(SERVER_URL+'/tasks/'+id,{method:'DELETE'});
+    delete _tarefaEco[id];
     _allTasksCache=_allTasksCache.filter(x=>String(x.id)!==String(id));
     renderTasksPage();
     _pintaBadgeTarefas(_allTasksCache.filter(x=>!x.done).length); // atualiza a bolinha
