@@ -790,6 +790,15 @@
     .day-divider.sai { animation-duration: .01s; }
     .msg.nasce { animation: none; }
   }
+  /* Botão "baixar todas" da grade de fotos */
+  .alb-baixar {
+    margin-top: 5px; display: flex; align-items: center; justify-content: center; gap: 6px;
+    background: rgba(11,20,26,.06); border-radius: 7px; padding: 6px 10px;
+    font-size: 12.5px; font-weight: 600; color: #00806a; cursor: pointer; user-select: none;
+  }
+  .alb-baixar:hover { background: rgba(11,20,26,.10); }
+  .alb-baixar i { width: 15px; height: 15px; }
+  body.dark .alb-baixar { background: rgba(255,255,255,.08); color: #53bdeb; }
   /* Divisor do NÚMERO de envio: aparece quando a conversa passa por mais de um número */
   .acc-divider { display: flex; align-items: center; justify-content: center; margin: 12px 0 6px; gap: 8px; }
   .acc-divider span {
@@ -2082,7 +2091,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v402</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v404</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2500,6 +2509,19 @@ window.addEventListener('load', initAuth);
         <button class="pf-topbtn" onclick="copiarTexto(document.getElementById('diag-quadro').innerText,this)">Copiar o resultado</button>
       </div>
     </div>
+    <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
+      <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">Mensagem que pisca</div>
+      <p style="font-size:12px;color:#667781;margin:0 0 10px;line-height:1.5">
+        O VETRA agora vigia as suas mensagens quadro a quadro. Se alguma sumir da tela por um instante,
+        ele a devolve na mesma hora e anota aqui o que aconteceu. Se o pisca voltar, é só me mandar esta lista.
+      </p>
+      <div id="diag-pisca" style="font-size:13px;color:#54656f">—</div>
+      <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
+        <button class="pf-topbtn" onclick="_piscaMostra()">Atualizar</button>
+        <button class="pf-topbtn" onclick="copiarTexto(document.getElementById('diag-pisca').innerText,this)">Copiar</button>
+        <button class="pf-topbtn" onclick="_piscaLimpa()">Limpar</button>
+      </div>
+    </div>
 </div>
 <div class="cfg-pane" data-pane="adm">
     <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
@@ -2864,7 +2886,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v402</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v404</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2918,7 +2940,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 402;
+const APP_VER = 404;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -6439,6 +6461,98 @@ async function _fvShare(url, nome) {
   } catch (_) {} // cancelou a folha de compartilhar — sem erro
 }
 
+// ── BAIXAR UM ÁLBUM INTEIRO ────────────────────────────────────────
+// O .zip é montado aqui, no seu navegador. As fotos já vêm comprimidas (JPEG/
+// PNG), então elas entram no pacote como estão — é instantâneo e o arquivo fica
+// do mesmo tamanho que a soma das fotos.
+const _crcTab = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1); t[n] = c >>> 0; }
+  return t;
+})();
+function _crc32(u8) {
+  let c = 0xFFFFFFFF;
+  for (let i = 0; i < u8.length; i++) c = _crcTab[(c ^ u8[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+function _zipSimples(arquivos) {
+  const enc = new TextEncoder();
+  const u16 = v => [v & 255, (v >> 8) & 255];
+  const u32 = v => [v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255];
+  const d = new Date();
+  const hora = ((d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1)) & 0xFFFF;
+  const data = (((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate()) & 0xFFFF;
+  const corpo = [], central = [];
+  let off = 0, tamCentral = 0;
+  for (const a of arquivos) {
+    const nome = enc.encode(a.nome);
+    const crc = _crc32(a.dados), tam = a.dados.length;
+    const cab = new Uint8Array([...u32(0x04034b50), ...u16(20), ...u16(0), ...u16(0), ...u16(hora), ...u16(data),
+      ...u32(crc), ...u32(tam), ...u32(tam), ...u16(nome.length), ...u16(0)]);
+    corpo.push(cab, nome, a.dados);
+    const cd = new Uint8Array([...u32(0x02014b50), ...u16(20), ...u16(20), ...u16(0), ...u16(0), ...u16(hora), ...u16(data),
+      ...u32(crc), ...u32(tam), ...u32(tam), ...u16(nome.length), ...u16(0), ...u16(0), ...u16(0), ...u16(0), ...u32(0), ...u32(off)]);
+    central.push(cd, nome);
+    tamCentral += cd.length + nome.length;
+    off += cab.length + nome.length + tam;
+  }
+  const fim = new Uint8Array([...u32(0x06054b50), ...u16(0), ...u16(0), ...u16(arquivos.length), ...u16(arquivos.length),
+    ...u32(tamCentral), ...u32(off), ...u16(0)]);
+  return new Blob([...corpo, ...central, fim], { type: 'application/zip' });
+}
+function _albExt(mime) {
+  const m = String(mime || '').toLowerCase();
+  if (m.includes('png')) return 'png';
+  if (m.includes('webp')) return 'webp';
+  if (m.includes('gif')) return 'gif';
+  return 'jpg';
+}
+async function baixarAlbum(el, chave) {
+  const lista = ((window._albuns || {})[chave] || []).filter(g => g.id);
+  if (!lista.length) return;
+  if (el._ocupado) return; el._ocupado = true;
+  const original = el.innerHTML;
+  const acct = encodeURIComponent(currentAccountId || '');
+  const quem = (currentName || currentPhone || 'lead').replace(/[\\/:*?"<>|]/g, '').trim().slice(0, 40);
+  try {
+    const arqs = [];
+    for (let i = 0; i < lista.length; i++) {
+      el.textContent = 'Baixando ' + (i + 1) + ' de ' + lista.length + '…';
+      const g = lista[i];
+      const u = SERVER_URL + '/media-proxy/' + encodeURIComponent(g.id) + '?account_id=' + acct
+        + (g.mime ? '&mime=' + encodeURIComponent(g.mime) : '');
+      const r = await fetch(u);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const bl = await r.blob();
+      arqs.push({ nome: 'foto-' + String(i + 1).padStart(2, '0') + '.' + _albExt(g.mime || bl.type),
+                  dados: new Uint8Array(await bl.arrayBuffer()), tipo: bl.type || 'image/jpeg' });
+    }
+    // CELULAR: a folha de compartilhar deixa salvar tudo direto na galeria
+    try {
+      if (navigator.canShare) {
+        const fs = arqs.map(a => new File([a.dados], a.nome, { type: a.tipo }));
+        if (navigator.canShare({ files: fs })) {
+          el.textContent = 'Abrindo…';
+          await navigator.share({ files: fs, title: 'Fotos de ' + quem });
+          el.innerHTML = original; el._ocupado = false; return;
+        }
+      }
+    } catch (_) { el.innerHTML = original; el._ocupado = false; return; } // cancelou: sem erro
+    // COMPUTADOR: um único .zip
+    el.textContent = 'Montando o arquivo…';
+    const blob = _zipSimples(arqs);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'Fotos ' + quem + ' ' + new Date().toISOString().slice(0, 10) + '.zip';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 6000);
+    try { showToast(arqs.length + ' fotos baixadas.', 'ok'); } catch (_) {}
+  } catch (e) {
+    try { showToast('Não consegui baixar todas as fotos: ' + (e.message || e), 'err'); } catch (_) {}
+  }
+  el.innerHTML = original; el._ocupado = false;
+}
+
 // Baixa o arquivo DIRETO na pasta de downloads do navegador (sem abrir aba
 // nem a janela "Salvar como": traz o arquivo para a memória e salva com o nome certo)
 async function baixarMidia(url, nome, el) {
@@ -7938,8 +8052,14 @@ async function loadMessages(phone, scroll = true) {
           const tk = (ult.direction === 'outbound')
             ? (ult.status === 'read' ? '<span class="msg-ticks read">' + TICK_TWO + '</span>' : ult.status === 'delivered' ? '<span class="msg-ticks delivered">' + TICK_TWO + '</span>' : '<span class="msg-ticks sent">' + TICK_ONE + '</span>') : '';
           const grpA = _prevDir === safeDir; _prevDir = safeDir;
-          parts.push({ key: 'alb-' + safeId, html: `<div class="msg ${safeDir}${grpA ? ' grp' : ''}" style="position:relative" data-key="alb-${safeId}" data-msg-id="${safeId}" data-msg-dir="${safeDir}">
+          // Guarda a lista COMPLETA do álbum (inclusive as que ficam atrás do +N)
+          // para o botão de baixar tudo
+          const chaveAlb = 'alb-' + safeId;
+          (window._albuns || (window._albuns = {}))[chaveAlb] =
+            grupo.map(g => ({ id: g.media_id, mime: g.media_mime_type || '' }));
+          parts.push({ key: chaveAlb, html: `<div class="msg ${safeDir}${grpA ? ' grp' : ''}" style="position:relative" data-key="${chaveAlb}" data-msg-id="${safeId}" data-msg-dir="${safeDir}">
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;width:265px;max-width:100%">${tiles}</div>
+            <div class="alb-baixar" onclick="event.stopPropagation();baixarAlbum(this,'${chaveAlb}')" title="Baixar todas as ${grupo.length} fotos"><i class=ic-down></i> Baixar as ${grupo.length} fotos</div>
             <div class="time">${_brtTime(parseUTC(ult.timestamp))}${tk}</div>
           </div>` });
           continue;
@@ -8100,9 +8220,11 @@ async function loadMessages(phone, scroll = true) {
       for (let i = kids.length; i < parts.length; i++) {
         const nuA = _mkEl(parts[i].html);
         if (nuA.querySelector && nuA.querySelector('img.msg-image')) _fotoLog('bolha NOVA com foto anexada', parts[i].key);
-        // Chegou AGORA, com a conversa aberta: nasce crescendo (ao ABRIR a
-        // conversa não, senão a conversa inteira piscaria de uma vez)
-        if (!scroll && kids.length && nuA.classList && nuA.classList.contains('msg')) {
+        // Chegou AGORA do lead, com a conversa aberta: nasce crescendo. A SUA
+        // mensagem NÃO entra aqui — ela já nasceu quando você tocou em enviar, e
+        // animar de novo seria o próprio pisca.
+        if (!scroll && kids.length && nuA.classList && nuA.classList.contains('msg')
+            && nuA.classList.contains('inbound')) {
           nuA.classList.add('nasce');
           setTimeout(() => { try { nuA.classList.remove('nasce'); } catch (_) {} }, 320);
         }
@@ -8648,6 +8770,70 @@ function _saiDivisoria() {
     }, 300);
   } catch (_) { _clearUnreadMark(); }
 }
+// ── VIGIA DO PISCA ──────────────────────────────────────────────────
+let _vigRec = [];      // mensagens que VOCÊ acabou de enviar (as que o vigia protege)
+let _vigAnt = null;    // o que estava na tela no quadro anterior
+let _vigFone = '';
+let _vigLog = [];
+try { _vigLog = JSON.parse(localStorage.getItem('vetra_pisca') || '[]') || []; } catch (_) { _vigLog = []; }
+const _VIG_JANELA = 90000;   // protege por 90s depois do envio
+const _VIG_MAX_CONSERTO = 4; // se insistir depois disso, para de mexer e só anota
+
+function _vigGuarda(texto, phone) {
+  const t = String(texto || '').trim(); if (!t || !phone) return;
+  const ag = Date.now();
+  _vigRec = _vigRec.filter(r => ag - r.ts < _VIG_JANELA);
+  if (!_vigRec.some(r => r.phone === phone && r.texto === t)) _vigRec.push({ texto: t, phone, ts: ag, n: 0 });
+}
+function _vigEsquece(texto) { // você apagou a mensagem: o vigia não a ressuscita
+  const t = String(texto || '').trim(); if (!t) return;
+  _vigRec = _vigRec.filter(r => r.texto !== t);
+}
+function _vigTexto(el) {
+  try {
+    const a = el.getAttribute('data-msg-content'); if (a) return String(a).trim();
+    const b = el.dataset && el.dataset.rawText; if (b) return String(b).trim();
+    const c = el.querySelector('.msg-text');
+    return c ? String(c.textContent || '').trim() : '';
+  } catch (_) { return ''; }
+}
+function _vigAnota(texto, comoFoi) {
+  try {
+    _vigLog.unshift({ q: new Date().toISOString(), t: String(texto).slice(0, 40), c: comoFoi, v: APP_VER });
+    _vigLog = _vigLog.slice(0, 25);
+    localStorage.setItem('vetra_pisca', JSON.stringify(_vigLog));
+  } catch (_) {}
+}
+function _vigTick() {
+  try {
+    const ag = Date.now();
+    _vigRec = _vigRec.filter(r => ag - r.ts < _VIG_JANELA);
+    const protegidas = _vigRec.filter(r => r.phone === currentPhone);
+    const area = protegidas.length ? document.getElementById('messages-area') : null;
+    if (!area) { _vigAnt = null; _vigFone = ''; return _vigAgenda(); }
+    const mapa = new Map();
+    area.querySelectorAll('.msg.outbound').forEach(el => { const t = _vigTexto(el); if (t) mapa.set(t, el); });
+    if (_vigAnt && _vigFone === currentPhone) {
+      for (const r of protegidas) {
+        if (mapa.has(r.texto)) continue;          // está na tela: nada a fazer
+        const velho = _vigAnt.get(r.texto);
+        if (!velho) continue;                     // já não estava no quadro anterior
+        if (r.n >= _VIG_MAX_CONSERTO) continue;   // insistiu demais: só anota (evita cabo de guerra)
+        r.n++;
+        // ESTAVA na tela e agora NÃO está: devolve no mesmo quadro
+        try {
+          if (!velho.isConnected) { area.appendChild(velho); mapa.set(r.texto, velho); _vigAnota(r.texto, 'devolvida ao fim'); }
+          else _vigAnota(r.texto, 'fora da area');
+        } catch (_) {}
+      }
+    }
+    _vigAnt = mapa; _vigFone = currentPhone;
+  } catch (_) {}
+  _vigAgenda();
+}
+function _vigAgenda() { try { requestAnimationFrame(_vigTick); } catch (_) {} }
+_vigAgenda();
+
 function _clearUnreadMark() {
   if (window._unreadMark) { window._unreadMark = null; _lastMsgsSig = ''; }
 }
@@ -8768,6 +8954,7 @@ async function sendMessage() {
   // Sem delay: a bolha aparece imediatamente; o servidor confirma em seguida
   const reply = replyingTo; cancelReply();
   _pendAdiciona(savedMessage, currentPhone); // a partir daqui, todo redesenho mostra ela
+  _vigGuarda(savedMessage, currentPhone);    // e o vigia devolve na hora se ela sumir
   const tempEl = appendPendingBubble(savedMessage);
   // Enviou → o "digitando…" do cliente some na hora (não fica os 6s restantes)
   _paraDigitando();
@@ -8788,6 +8975,7 @@ async function sendMessage() {
       // Pode ter saído mesmo assim (falha só na resposta): confere antes de
       // devolver o texto ao campo — senão a mensagem enviada vira "rascunho"
       if (await _jaFoiEnviada(savedMessage)) return;
+      _vigEsquece(savedMessage);               // não saiu: o vigia para de protegê-la
       _pendRemove(savedMessage, currentPhone); // não saiu: tira a bolha provisória
       try { if (tempEl && tempEl.parentElement) tempEl.remove(); } catch (_) {}
       input.value = savedMessage;
@@ -10549,6 +10737,27 @@ async function carregaDiagnostico(forcar) {
   el.innerHTML = html;
 }
 
+// O que o vigia anotou (Configurações ▸ Diagnóstico)
+function _piscaMostra() {
+  const el = document.getElementById('diag-pisca'); if (!el) return;
+  if (!_vigLog.length) {
+    el.innerHTML = '<span style="color:#00806a">Nenhum pisca registrado.</span>';
+    return;
+  }
+  el.innerHTML = _vigLog.map(x => {
+    let q = x.q;
+    try { q = new Date(x.q).toLocaleString('pt-BR'); } catch (_) {}
+    return '<div style="padding:5px 0;border-bottom:1px solid #f0f2f5;line-height:1.5">'
+      + '<b>' + escHtml(q) + '</b> · app v' + escHtml(String(x.v || '?'))
+      + '<div style="font-size:12px;color:#667781">' + escHtml(x.c || '') + ' — "' + escHtml(x.t || '') + '"</div></div>';
+  }).join('');
+}
+function _piscaLimpa() {
+  _vigLog = [];
+  try { localStorage.removeItem('vetra_pisca'); } catch (_) {}
+  _piscaMostra();
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // 💳 FATURAMENTO — plano, validade e limites de verdade
 // ═══════════════════════════════════════════════════════════════════
@@ -11522,7 +11731,7 @@ function cfgTab(k) {
     if (_bc) _bc.style.display = _souFornecedor ? '' : 'none';
     if (_souFornecedor) carregaBackupAuto();
   }
-  if (k === 'diag') carregaDiagnostico();
+  if (k === 'diag') { carregaDiagnostico(); _piscaMostra(); }
   if (k === 'termos') carregaTermos();
   if (k === 'adm') { carregaAcessoAdmin(); carregaPagamento(); carregaPainelDono(); }
   if (k === 'reg') carregaAuditoria();
