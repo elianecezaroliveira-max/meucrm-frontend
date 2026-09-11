@@ -2063,7 +2063,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v390</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v391</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2386,8 +2386,21 @@ window.addEventListener('load', initAuth);
       <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:8px">Consumo deste mês</div>
       <div id="cfg-uso" style="font-size:13px;color:#54656f">Carregando…</div>
     </div>
-    <div style="border:1px solid #e9edef;border-radius:10px;padding:14px">
-      <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">Backup das configurações</div>
+    <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
+      <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">Meus dados</div>
+      <p style="font-size:12px;color:#667781;margin:0 0 10px;line-height:1.5">
+        Leve o seu histórico com você: todas as conversas em planilha e a lista de todos os arquivos
+        trocados, com link para baixar cada um. Os dados são gerados na hora — nada fica guardado a mais.
+      </p>
+      <div id="exp-resumo" style="font-size:12.5px;color:#54656f;margin-bottom:9px">—</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="pf-topbtn" onclick="baixarConversas()">Baixar conversas (planilha)</button>
+        <button class="pf-topbtn" onclick="baixarArquivos()">Lista de arquivos</button>
+        <button class="pf-topbtn" onclick="exportarLeads && exportarLeads()">Baixar leads</button>
+      </div>
+    </div>
+    <div id="cfg-backup-card" style="border:1px solid #e9edef;border-radius:10px;padding:14px;display:none">
+      <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">Backup das configurações <span style="font-size:11px;font-weight:600;color:#00806a;background:#e7f7ef;border-radius:8px;padding:2px 7px;margin-left:4px">só fornecedor</span></div>
       <p style="font-size:12px;color:#667781;margin:0 0 10px;line-height:1.5">
         Baixa um arquivo com respostas rápidas, etiquetas, automações por etapa, gotejamento, planilha, bots, etapas do funil e as perguntas da IA.
         Conversas e leads <b>não</b> entram (use Exportar leads no Pipeline).
@@ -2829,7 +2842,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v390</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v391</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2883,7 +2896,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 390;
+const APP_VER = 391;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -11294,7 +11307,15 @@ function cfgTab(k) {
   if (k === 'ids') { const w = document.getElementById('cfg-stage-ids-wrap'); if (w) w.style.display = 'block'; const a = document.getElementById('cfg-stage-ids-arrow'); if (a) a.textContent = '▾'; }
   if (k === 'pipe') carregarLixeiraColunas();
   if (k === 'equipe') equipeCarregar();
-  if (k === 'bill') { carregaFaturamento(); carregaBackupAuto(); }
+  if (k === 'bill') {
+    carregaFaturamento();
+    carregaResumoExport();
+    // Backup das configurações é só do fornecedor
+    const _bc = document.getElementById('cfg-backup-card');
+    const _souFornecedor = !!(window._acesso && window._acesso.fornecedor);
+    if (_bc) _bc.style.display = _souFornecedor ? '' : 'none';
+    if (_souFornecedor) carregaBackupAuto();
+  }
   if (k === 'diag') carregaDiagnostico();
   if (k === 'termos') carregaTermos();
   if (k === 'adm') { carregaAcessoAdmin(); carregaPagamento(); carregaPainelDono(); }
@@ -11331,7 +11352,7 @@ async function openConfigModal() {
 }
 // Versão do servidor que este app espera. Se o Railway estiver atrás disso,
 // algumas telas não têm como funcionar — e o app avisa em vez de dar erro seco.
-const SERVIDOR_MIN = 262;
+const SERVIDOR_MIN = 263;
 let _verServidor = null;
 async function _servidorVersao() {
   if (_verServidor !== null) return _verServidor;
@@ -11400,6 +11421,34 @@ async function _carregaUsoConta() {
     el.innerHTML = html;
   } catch (e) { el.innerHTML = '<span style="color:#ef4444">' + escHtml(e.message || 'Não consegui carregar o consumo.') + '</span>'; }
 }
+// ── 📦 MEUS DADOS (todo cliente) ──
+async function carregaResumoExport() {
+  const el = document.getElementById('exp-resumo'); if (!el) return;
+  try {
+    const d = await _apiJson(SERVER_URL + '/exportar/resumo');
+    const n = x => Number(x || 0).toLocaleString('pt-BR');
+    el.textContent = 'Você tem ' + n(d.mensagens) + ' mensagem(ns), ' + n(d.arquivos) + ' arquivo(s) e ' + n(d.leads) + ' lead(s).';
+  } catch (_) { el.textContent = ''; }
+}
+function _baixaComLogin(url, nome) {
+  // O download precisa ir com o login: busca e entrega o arquivo pronto
+  showToast('Preparando o arquivo…', 'ok', 2500);
+  _apiTexto(url).then(txt => {
+    const bl = new Blob([txt], { type: 'application/octet-stream' });
+    const u = URL.createObjectURL(bl);
+    const el = document.createElement('a'); el.href = u; el.download = nome;
+    document.body.appendChild(el); el.click(); el.remove();
+    setTimeout(() => URL.revokeObjectURL(u), 4000);
+    showToast('Pronto! Arquivo baixado.', 'ok');
+  }).catch(e => showToast('Não consegui gerar: ' + (e.message || e), 'err'));
+}
+async function _apiTexto(url) {
+  const r = await fetch(url); // o login já vai junto (o VETRA anexa em todo fetch)
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return await r.text();
+}
+function baixarConversas() { _baixaComLogin(SERVER_URL + '/exportar/conversas.csv', 'conversas_' + new Date().toISOString().slice(0,10) + '.csv'); }
+function baixarArquivos() { _baixaComLogin(SERVER_URL + '/exportar/arquivos.html', 'arquivos_' + new Date().toISOString().slice(0,10) + '.html'); }
 // Backup das configurações
 async function baixarBackup(btn) {
   const st = document.getElementById('cfg-backup-status');
