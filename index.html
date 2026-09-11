@@ -1138,6 +1138,15 @@ body.dark{
      depois de voltar para a lista. Resultado: chegava mensagem nova nela e a
      linha ficava branca, com só a listra verde na lateral, enquanto as outras
      ficavam verdes. Aqui o verde de não lida volta a valer, aberta ou não. */
+  /* Favorita continua AMARELA mesmo sendo a conversa aberta */
+  .contact-item.is-fav, .contact-swipe-wrap > .contact-item.is-fav,
+  .contact-item.is-fav.active, .contact-swipe-wrap > .contact-item.is-fav.active,
+  .contact-item.is-fav:hover, .contact-swipe-wrap > .contact-item.is-fav:hover
+  { background: #fdf6e3 !important; }
+  body.dark .contact-item.is-fav, body.dark .contact-swipe-wrap > .contact-item.is-fav,
+  body.dark .contact-item.is-fav.active, body.dark .contact-swipe-wrap > .contact-item.is-fav.active
+  { background: #111b21 !important; }
+
   .contact-item.has-unread, .contact-swipe-wrap > .contact-item.has-unread,
   .contact-item.has-unread.active, .contact-swipe-wrap > .contact-item.has-unread.active,
   .contact-item.has-unread.is-fav.active, .contact-swipe-wrap > .contact-item.has-unread.is-fav.active,
@@ -2049,7 +2058,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v380</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v381</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2815,7 +2824,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v380</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v381</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2869,7 +2878,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 380;
+const APP_VER = 381;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
