@@ -2063,7 +2063,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v398</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v399</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2845,7 +2845,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v398</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v399</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2899,7 +2899,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 398;
+const APP_VER = 399;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -7963,6 +7963,15 @@ async function loadMessages(phone, scroll = true) {
         parts.push({ key: errKey, html: `<div class="msg ${m?.direction||'inbound'}" data-key="${errKey}" style="opacity:.5;font-size:12px">[mensagem não pôde ser exibida]</div>` });
       }
     }
+    // ENVIADAS AGORA, ainda não confirmadas pelo servidor: entram no fim do
+    // desenho. É isto que impede a sua mensagem de piscar em qualquer situação.
+    try {
+      let _grpP = _prevDir === 'outbound';
+      for (const p of _pendDaConversa(phone, msgs)) {
+        parts.push({ key: _chavePend(p.texto), html: _htmlPendente(p.texto, _grpP) });
+        _grpP = true;
+      }
+    } catch (_) {}
 
     const prevTop = area.scrollTop;
     const nearBottom = (area.scrollHeight - area.scrollTop - area.clientHeight) < 80;
@@ -8105,9 +8114,8 @@ async function loadMessages(phone, scroll = true) {
       }
     }
 
-    // A bolha provisória do envio: sai no MESMO quadro em que a definitiva
-    // aparece (sem janela de mensagem repetida) e, enquanto a definitiva não
-    // vem, fica sempre por último.
+    // Bolhas provisórias do jeito ANTIGO (se sobrou alguma) somem quando a
+    // definitiva chega — as novas já vêm dentro do desenho, acima.
     try {
       area.querySelectorAll('[data-key^="temp-"]').forEach(t => {
         const bruto = String(t.dataset.rawText || '').trim();
@@ -8506,19 +8514,52 @@ async function deleteMessage(id, btn) {
 }
 
 // Mostra a mensagem NA HORA na conversa (com ), antes da resposta do servidor
+// ── MENSAGENS EM TRÂNSITO (saíram do seu dedo, ainda não voltaram do servidor)
+// Ficam nesta lista até a definitiva aparecer. O desenho da conversa consulta
+// esta lista, então nenhum redesenho faz a sua mensagem sumir.
+let _pendentes = [];
+function _chavePend(texto) { // chave estável, igual na bolha provisória e no desenho
+  let h = 0; const t = String(texto || '');
+  for (let i = 0; i < t.length; i++) { h = (h * 31 + t.charCodeAt(i)) | 0; }
+  return 'pend-' + (h >>> 0).toString(36);
+}
+function _pendAdiciona(texto, phone) {
+  const t = String(texto || '').trim(); if (!t || !phone) return;
+  _pendLimpa();
+  if (!_pendentes.some(p => p.phone === phone && p.texto === t))
+    _pendentes.push({ texto: t, phone, ts: Date.now() });
+}
+function _pendRemove(texto, phone) {
+  const t = String(texto || '').trim();
+  _pendentes = _pendentes.filter(p => !(p.phone === phone && p.texto === t));
+}
+function _pendLimpa() { // nada fica preso: 25s sem a definitiva chegar e a bolha sai
+  const agora = Date.now();
+  _pendentes = _pendentes.filter(p => agora - p.ts < 25000);
+}
+// As pendentes DESTA conversa que ainda não vieram do servidor
+function _pendDaConversa(phone, msgs) {
+  _pendLimpa();
+  return _pendentes.filter(p => p.phone === phone &&
+    !(msgs || []).some(m => m.direction === 'outbound' && String(m.content || '').trim() === p.texto));
+}
+function _htmlPendente(texto, grp) {
+  return `<div class="msg outbound${grp ? ' grp' : ''}" style="position:relative" data-key="${_chavePend(texto)}" data-raw-text="${escHtml(texto)}">`
+    + `<span class="msg-text">${waFormat(texto)}</span>`
+    + `<div class="time">${_brtTime(Date.now())}<span class="msg-ticks pending" title="Enviando…">${TICK_CLOCK}</span></div></div>`;
+}
 function appendPendingBubble(text) {
   const area = document.getElementById('messages-area');
   if (!area) return null;
-  const el = document.createElement('div');
   // IDÊNTICO ao balão definitivo: mesmo agrupamento (grp), mesma formatação de
   // texto e mesma linha de horário — só o relógio muda para ✓/✓✓ depois.
   const _ult = area.lastElementChild;
   const _grpP = !!(_ult && _ult.classList && _ult.classList.contains('msg') && _ult.classList.contains('outbound'));
-  el.className = 'msg outbound' + (_grpP ? ' grp' : '');
-  el.style.position = 'relative';
-  el.dataset.key = 'temp-' + Date.now();
-  el.dataset.rawText = text; // texto ORIGINAL (com *negrito* etc.) para casar com a mensagem real
-  el.innerHTML = `<span class="msg-text">${waFormat(text)}</span><div class="time">${_brtTime(Date.now())}<span class="msg-ticks pending" title="Enviando…">${TICK_CLOCK}</span></div>`;
+  const molde = document.createElement('div');
+  molde.innerHTML = _htmlPendente(text, _grpP);
+  const el = molde.firstElementChild;
+  if (!el) return null;
+  el.dataset.rawText = text; // texto ORIGINAL (com *negrito* etc.) para casar com a real
   area.appendChild(el);
   area.scrollTop = area.scrollHeight; // direto no fim — nada de animação disputando com o render
   return el;
@@ -8643,6 +8684,7 @@ async function sendMessage() {
   try { requestAnimationFrame(() => { if (window._pinTopo) window._pinTopo(); setTimeout(() => window._pinTopo && window._pinTopo(), 120); }); } catch (_) {} // topo da tela nunca some
   // Sem delay: a bolha aparece imediatamente; o servidor confirma em seguida
   const reply = replyingTo; cancelReply();
+  _pendAdiciona(savedMessage, currentPhone); // a partir daqui, todo redesenho mostra ela
   const tempEl = appendPendingBubble(savedMessage);
   // Enviou → o "digitando…" do cliente some na hora (não fica os 6s restantes)
   _paraDigitando();
@@ -8663,6 +8705,8 @@ async function sendMessage() {
       // Pode ter saído mesmo assim (falha só na resposta): confere antes de
       // devolver o texto ao campo — senão a mensagem enviada vira "rascunho"
       if (await _jaFoiEnviada(savedMessage)) return;
+      _pendRemove(savedMessage, currentPhone); // não saiu: tira a bolha provisória
+      try { if (tempEl && tempEl.parentElement) tempEl.remove(); } catch (_) {}
       input.value = savedMessage;
       autoGrowMsgInput(input);
       _drafts[currentPhone] = savedMessage; _saveDrafts();
