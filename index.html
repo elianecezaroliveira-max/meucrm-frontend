@@ -1511,6 +1511,11 @@ i[class^="ic-"],i[class*=" ic-"]{display:inline-block;width:1.08em;height:1.08em
   body.dark .plist-head { background: #202c33; color: #8696a0; border-color: #2a3942; }
   body.dark .plist-c-name { color: #e9edef; }
   body.dark .plist-row:hover { background: #2a3942; }
+  /* Estrela de favorito do bot */
+  .bot-fav { background: none; border: none; cursor: pointer; font-size: 19px; line-height: 1; color: #d3dae0; padding: 2px 4px; flex-shrink: 0; }
+  .bot-fav.on { color: #f5a623; }
+  body.dark .bot-fav { color: #3b4a52; }
+  body.dark .bot-fav.on { color: #f5a623; }
   /* Tarefa COM comentário: só o botão muda de cor — a linha não cresce */
   .task-row .task-coment { color: #00806a; font-weight: 600; }
   body.dark .task-row .task-coment { color: #17a888 !important; }
@@ -2035,7 +2040,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v373</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v375</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2801,7 +2806,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v373</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v375</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2855,7 +2860,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 373;
+const APP_VER = 375;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3951,7 +3956,7 @@ function renderContacts(contacts) {
       <div class="contact-avatar" style="${_avatarCor(c.name||c.phone)}">${escHtml((c.name||'?')[0].toUpperCase())}${c.avatar ? `<img src="${SERVER_URL}/avatar/${encodeURIComponent(String(c.avatar).split('/').pop())}" loading="lazy" alt="" onerror="this.remove()">` : ''}</div>
       <div class="contact-info">
         <div class="contact-row-top">
-          <div class="contact-name">${escHtml(c.name||c.phone)}${c.pinned?'<span style="font-size:11px;margin-left:3px"><i class=ic-pin></i></span>':''}${c.muted?'<span style="font-size:12px;margin-left:3px;opacity:.6"><i class=ic-mute></i></span>':''}${isFav?'<span class="fav-star">★</span>':''}</div>
+          <div class="contact-name">${escHtml(_nomeOuTel(c.name, c.phone))}${c.pinned?'<span style="font-size:11px;margin-left:3px"><i class=ic-pin></i></span>':''}${c.muted?'<span style="font-size:12px;margin-left:3px;opacity:.6"><i class=ic-mute></i></span>':''}${isFav?'<span class="fav-star">★</span>':''}</div>
           <div class="contact-time">${timeStr}</div>
         </div>
         <div class="contact-preview-row">
@@ -4706,7 +4711,7 @@ function _fwLista() {
     .slice(0, 80);
   el.innerHTML = lista.length
     ? lista.map(c => '<div class="cm-item" style="display:flex;align-items:center;border-radius:8px;gap:10px" onclick="_fwEnviar(\'' + escHtml(String(c.phone)) + '\')">'
-        + '<i class=ic-user></i><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(c.name || c.phone) + '</span>'
+        + '<i class=ic-user></i><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(_nomeOuTel(c.name, c.phone)) + '</span>'
         + '<span style="font-size:11px;color:#8696a0">' + escHtml(typeof fmtPhoneBR === 'function' ? fmtPhoneBR(c.phone) : c.phone) + '</span></div>').join('')
     : '<div style="padding:18px;color:#8696a0;font-size:13px;text-align:center">Nenhuma conversa encontrada.</div>';
 }
@@ -5616,7 +5621,7 @@ async function selectContact(phone, name, accountId) {
         </svg>
       </button>
       <div class="info">
-        <div class="name"><span id="chat-name-text">${escHtml(name || phone)}</span></div>
+        <div class="name"><span id="chat-name-text">${escHtml(_nomeOuTel(name, phone))}</span></div>
         <div class="phone" id="chat-presence" style="display:none;color:#00a884"></div>
       </div>
       <button id="btn-chat-search" title="Pesquisar na conversa" onclick="toggleChatSearch()"
@@ -6166,8 +6171,21 @@ async function baixarMidia(url, nome, el) {
 }
 
 // Formata para exibição: (15) 98165-1975 — sem DDI
+function _tel9(raw) {
+  const p = String(raw || '').replace(/\D/g, '');
+  // 55 + DDD + 8 dígitos começando em 6/7/8/9 = celular sem o 9 → repõe
+  if (/^55\d{2}[6-9]\d{7}$/.test(p)) return p.slice(0, 4) + '9' + p.slice(4);
+  // sem o 55 na frente (DDD + 8 dígitos de celular)
+  if (/^\d{2}[6-9]\d{7}$/.test(p)) return p.slice(0, 2) + '9' + p.slice(2);
+  return p;
+}
+// Nome do lead, ou o telefone bonitinho quando ele ainda não tem nome
+function _nomeOuTel(nome, phone) {
+  const n = String(nome || '').trim();
+  return n ? n : fmtPhoneBR(phone);
+}
 function fmtPhoneBR(raw) {
-  let p = String(raw || '').replace(/\D/g, '');
+  let p = _tel9(raw);
   if (p.startsWith('55') && p.length >= 12) p = p.slice(2);
   if (p.length === 11) return `(${p.slice(0,2)}) ${p.slice(2,7)}-${p.slice(7)}`;
   if (p.length === 10) return `(${p.slice(0,2)}) ${p.slice(2,6)}-${p.slice(6)}`;
@@ -6211,7 +6229,7 @@ async function renderLeadPanel(phone){
     <div class="lp-head">
       <div class="lp-avatar" style="${_avatarCor(c.name||phone)}">${escHtml((c.name||phone).charAt(0).toUpperCase())}</div>
       <div style="flex:1;min-width:0">
-        <div class="lp-name" title="${escHtml(c.name||phone)}">${escHtml(c.name||phone)}</div>
+        <div class="lp-name" title="${escHtml(_nomeOuTel(c.name, phone))}">${escHtml(_nomeOuTel(c.name, phone))}</div>
       </div>
       <button class="lp-x" onclick="editLeadName()" title="Editar nome do lead" style="font-size:13px"><i class=ic-pencil></i></button>
       <button class="lp-x" onclick="toggleLeadPanel(false)" title="Ocultar painel">✕</button>
@@ -10963,7 +10981,7 @@ async function openConfigModal() {
 }
 // Versão do servidor que este app espera. Se o Railway estiver atrás disso,
 // algumas telas não têm como funcionar — e o app avisa em vez de dar erro seco.
-const SERVIDOR_MIN = 260;
+const SERVIDOR_MIN = 261;
 let _verServidor = null;
 async function _servidorVersao() {
   if (_verServidor !== null) return _verServidor;
@@ -13325,7 +13343,7 @@ function renderPipelineList(contacts) {
     const sel = selectedLeads.has(c.phone);
     return `<div class="plist-row${sel ? ' sel' : ''}" data-phone="${c.phone}">
       <span class="plist-check">${_pipeSelMode ? `<input type="checkbox" ${sel ? 'checked' : ''} onclick="event.stopPropagation();togglePipelineListSel('${c.phone}',this.checked)">` : ''}</span>
-      <span class="plist-c-name" onclick="openLeadChat('${_jsAttr(c.phone)}','${_jsAttr(c.name || '')}','${_jsAttr(c.account_id || '')}')">${escHtml(c.name || c.phone)}</span>
+      <span class="plist-c-name" onclick="openLeadChat('${_jsAttr(c.phone)}','${_jsAttr(c.name || '')}','${_jsAttr(c.account_id || '')}')">${escHtml(_nomeOuTel(c.name, c.phone))}</span>
       <span class="plist-c-phone">${formatPhone(c.phone)}</span>
       <span class="plist-c-stage"><span class="plist-stage">${escHtml(stName[c.stage_id] || 'Sem etapa')}</span></span>
       <span class="plist-c-tags">${tags}</span>
@@ -13500,7 +13518,7 @@ function cardHTML(c) {
 }
 
 function formatPhone(p) {
-  p = String(p || '').replace(/\D/g, '');
+  p = _tel9(p); // o 9 do celular volta antes de formatar
   if (!p) return '';
   if (p.startsWith('55') && p.length === 13) return `+55 (${p.slice(2,4)}) ${p.slice(4,9)}-${p.slice(9)}`;
   if (p.startsWith('55') && p.length === 12) return `+55 (${p.slice(2,4)}) ${p.slice(4,8)}-${p.slice(8)}`;
@@ -14024,6 +14042,50 @@ function getNodeHeight(node) {
 }
 
 // ── Bot list ──
+// ═══════════════════════════════════════════════════════════════════
+// ⭐ BOTS FAVORITOS — sobem para o topo na hora de escolher
+// ═══════════════════════════════════════════════════════════════════
+// Com muitos bots criados, achar o de sempre na lista vira garimpo. A estrela
+// fica guardada NA CONTA (não no aparelho), então vale no computador e no
+// celular.
+let _botsFav = null; // Set com os ids favoritados
+async function _carregaBotsFav(recarregar) {
+  if (_botsFav && !recarregar) return _botsFav;
+  const novo = new Set();
+  try {
+    const j = await (await fetch(SERVER_URL + '/settings/bots_fav')).json();
+    const arr = j && j.value ? JSON.parse(j.value) : [];
+    if (Array.isArray(arr)) arr.forEach(x => novo.add(String(x)));
+  } catch (_) {}
+  _botsFav = novo;
+  return _botsFav;
+}
+async function _salvaBotsFav() {
+  try {
+    await fetch(SERVER_URL + '/settings/bots_fav', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value: JSON.stringify([..._botsFav]) })
+    });
+  } catch (_) { showToast('Não consegui salvar o favorito', 'err'); }
+}
+function _botEhFav(id) { return !!(_botsFav && _botsFav.has(String(id))); }
+// Favoritos primeiro; dentro de cada grupo, ordem alfabética
+function _ordenaBots(lista) {
+  return [...(lista || [])].sort((x, y) => {
+    const fx = _botEhFav(x.id) ? 0 : 1, fy = _botEhFav(y.id) ? 0 : 1;
+    if (fx !== fy) return fx - fy;
+    return String(x.name || '').localeCompare(String(y.name || ''), 'pt-BR');
+  });
+}
+async function toggleBotFav(id, ev) {
+  if (ev) ev.stopPropagation();
+  await _carregaBotsFav();
+  const k = String(id);
+  if (_botsFav.has(k)) _botsFav.delete(k); else _botsFav.add(k);
+  await _salvaBotsFav();
+  showToast(_botsFav.has(k) ? 'Favoritado — este bot aparece no topo' : 'Tirado dos favoritos', 'ok', 2000);
+  openBotsList();
+}
 async function openBotsList() {
   _closeAllScreens();
   _telaAtual('bots');
@@ -14035,7 +14097,8 @@ async function openBotsList() {
     const [res, sr] = await Promise.all([fetch(SERVER_URL+'/bots?stats=1'), fetch(SERVER_URL + '/pipeline/stages').catch(() => null)]);
     const bots = await res.json();
     try { const ss = sr ? await sr.json() : null; if (Array.isArray(ss)) pipelineStages = ss; } catch (_) {}
-    renderBotsList(bots);
+    await _carregaBotsFav();
+    renderBotsList(_ordenaBots(bots));
   } catch(e) {
     area.innerHTML = '<div style="color:#ef4444;padding:20px">Erro ao carregar bots</div>';
   }
@@ -14700,7 +14763,8 @@ async function openBulkBotMenu(ev){
   if(!phones.length){ alert('Tique ao menos um lead na lista (ou use "Selecionar todos") antes de disparar.'); return; }
   let bots=[];
   try{ bots=((await (await fetch(SERVER_URL+'/bots')).json())||[]); }catch(_){}
-  const ativos = bots.filter(b=>b.active);
+  try{ await _carregaBotsFav(); }catch(_){}
+  const ativos = _ordenaBots(bots.filter(b=>b.active)); // favoritos no topo
   if(!bots.length){ alert('Você ainda não tem nenhum bot criado. Crie um na tela de Bots.'); return; }
   if(!ativos.length){ alert('Nenhum bot está ATIVO. Abra a tela de Bots e ligue o bot que quer disparar.'); return; }
   // ESCOLHA o bot na hora (antes só disparava um bot com nome fixo — se ele
@@ -14709,7 +14773,7 @@ async function openBulkBotMenu(ev){
   if (ativos.length === 1) bot = ativos[0];
   else {
     const escolhido = await vEscolha({ titulo: 'Escolha o bot', texto: `Para ${phones.length} lead(s) selecionado(s):`,
-      opcoes: ativos.map(b => ({ v: b.id, t: b.name })) });
+      opcoes: ativos.map(b => ({ v: b.id, t: (_botEhFav(b.id) ? '★ ' : '') + b.name })) });
     if (!escolhido) return;
     bot = ativos.find(b => b.id === escolhido);
     if (!bot) return;
@@ -14978,6 +15042,7 @@ function renderBotsList(bots) {
     </div>`;
     return;
   }
+  bots = _ordenaBots(bots); // favoritos no topo, sempre
   const stName = {}; (pipelineStages || []).forEach(s => stName[s.id] = s.name);
   const trig = b => b.trigger_type === 'stage_enter'
     ? `<i class=ic-target></i> Ao entrar em <b>${escHtml(stName[b.trigger_stage_id] || 'etapa')}</b>`
@@ -14992,6 +15057,7 @@ function renderBotsList(bots) {
           <div class="bot-card-name" title="${escHtml(b.name)}">${escHtml(b.name)}</div>
           <div class="bot-card-trig">${trig(b)}</div>
         </div>
+        <button class="bot-fav${_botEhFav(b.id) ? ' on' : ''}" title="${_botEhFav(b.id) ? 'Favorito — aparece no topo da lista. Clique para tirar.' : 'Favoritar: este bot passa a aparecer no topo quando você for escolher um.'}" onclick="toggleBotFav('${b.id}', event)">★</button>
         <label class="v-switch" title="${b.active ? 'Ativo — clique para desativar' : 'Inativo — clique para ativar'}" onclick="event.stopPropagation()">
           <input type="checkbox" ${b.active ? 'checked' : ''} onchange="toggleBotAtivo('${b.id}', this.checked, this)"><span></span>
         </label>
@@ -17113,15 +17179,19 @@ async function openBotLauncher() {
   listEl.innerHTML = '<div style="padding:6px 8px;font-size:12px;color:#667781">Carregando...</div>';
   menu.style.display = 'block';
   try {
-    const r = await fetch(SERVER_URL+'/bots');
-    const bots = (await r.json()).filter(b=>b.active);
+    const [r] = await Promise.all([fetch(SERVER_URL+'/bots'), _carregaBotsFav()]);
+    const bots = _ordenaBots((await r.json()).filter(b=>b.active));
     if (!bots.length) { listEl.innerHTML='<div style="padding:6px 8px;font-size:12px;color:#667781">Nenhum bot ativo</div>'; return; }
-    listEl.innerHTML = bots.map(b=>`
-      <div style="padding:7px 10px;cursor:pointer;font-size:13px;color:#131c20;border-radius:5px;transition:background 0.15s"
+    let _viuComum = false; // a linha divisória entra UMA vez, no primeiro não-favorito
+    listEl.innerHTML = bots.map(b=>{
+      const fav = _botEhFav(b.id);
+      let sep = '';
+      if (!fav && !_viuComum) { _viuComum = true; if (_botEhFav(bots[0] && bots[0].id)) sep = '<div style="height:1px;background:#e9edef;margin:5px 6px"></div>'; }
+      return sep + `<div style="padding:7px 10px;cursor:pointer;font-size:13px;color:#131c20;border-radius:5px;transition:background 0.15s;display:flex;align-items:center;gap:7px"
            onmouseover="this.style.background='#e9edef'" onmouseout="this.style.background=''"
            onclick="launchBot('${b.id}','${_jsAttr(b.name)}')">
-        <i class=ic-bot></i> ${escHtml(b.name)}
-      </div>`).join('');
+        <i class=ic-bot></i><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(b.name)}</span>${fav ? '<span style="color:#f5a623;font-size:12px">★</span>' : ''}
+      </div>`; }).join('');
   } catch(e) { listEl.innerHTML='<div style="padding:6px 8px;color:#ef4444;font-size:12px">Erro</div>'; }
 }
 
