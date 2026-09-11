@@ -2063,7 +2063,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v384</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v385</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2829,7 +2829,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v384</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v385</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2883,7 +2883,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 384;
+const APP_VER = 385;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4090,7 +4090,16 @@ function _instalaToqueLongoLista() {
 
 // ── Aviso flutuante de novas mensagens (estilo WhatsApp) ──
 let _pillLastPhone = '', _pillLastTotal = 0, _pillCount = 0;
+// A conversa está mesmo à vista? No celular ela só aparece com o chat aberto;
+// no computador a lista e a conversa convivem na mesma tela.
+function _conversaNaTela() {
+  try {
+    if (!window.matchMedia('(max-width: 768px)').matches) return !!currentPhone;
+    return document.body.classList.contains('mobile-chat-open');
+  } catch (_) { return true; }
+}
 function showNewMsgPill(n) {
+  if (!_conversaNaTela()) { hideNewMsgPill(); return; } // na lista, esse aviso não é da tela
   _pillCount += n;
   const p = document.getElementById('new-msg-pill');
   if (!p) return;
@@ -5789,6 +5798,7 @@ async function selectContact(phone, name, accountId) {
   window._msgsReadyFor = null; // espera recarregar antes de mostrar a janela 24h
   if (window._semTetoMsgs && window._semTetoMsgs !== phone) window._semTetoMsgs = null; // outra conversa volta ao teto
   _lastMsgsSig = '';
+  try { hideNewMsgPill(); } catch (_) {} // aviso da conversa anterior não vem junto
   currentPhone = phone;
   currentName = name || phone;
   currentAccountId = accountId || document.getElementById('account-select').value || '';
@@ -6650,6 +6660,7 @@ function goBackToSidebar() {
   }
   document.getElementById('layout').classList.remove('mobile-chat-open');
   document.body.classList.remove('mobile-chat-open');
+  try { hideNewMsgPill(); } catch (_) {} // o aviso é da conversa, não da lista
   // Salva o rascunho e atualiza a lista (para o "Rascunho:" verde aparecer).
   // O redesenho espera o deslize terminar — no meio da animação ele travava a
   // volta e a lista aparecia pela metade.
