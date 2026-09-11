@@ -2063,7 +2063,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v388</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v389</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2829,7 +2829,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v388</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v389</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2883,7 +2883,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 388;
+const APP_VER = 389;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -8086,8 +8086,28 @@ function _vpEl(id){ return document.getElementById('vp-' + id); }
 function _vpAudio(id){ const w = _vpEl(id); return w ? w.querySelector('audio') : null; }
 function _vpSpeedLabel(){ return _voiceSpeed === 1 ? '1x' : _voiceSpeed + 'x'; }
 function _fmtVoice(s){ s = Math.max(0, s || 0); if(!isFinite(s)) s = 0; return Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0'); }
+// Durações REAIS já medidas (medidas quando o áudio terminou de tocar)
+let _audDur = {};
+try { _audDur = JSON.parse(localStorage.getItem('vetra_audur') || '{}') || {}; } catch (_) { _audDur = {}; }
+function _audId(w) { return w ? String(w.id || '').replace(/^vp-/, '') : ''; }
+function _audDurSalva(w, segs) {
+  try {
+    const k = _audId(w); if (!k || !(segs > 0.5)) return;
+    if (Math.abs((_audDur[k] || 0) - segs) < 0.25) return;
+    _audDur[k] = Math.round(segs * 100) / 100;
+    const ks = Object.keys(_audDur);
+    if (ks.length > 300) ks.slice(0, ks.length - 300).forEach(x => delete _audDur[x]);
+    localStorage.setItem('vetra_audur', JSON.stringify(_audDur));
+  } catch (_) {}
+}
 // Duração CONFIÁVEL do áudio (ver explicação acima)
 function _vpDur(a, w){
+  // 1º de tudo: se este áudio já tocou até o fim alguma vez, o número é EXATO
+  const medida = _audDur[_audId(w)] || 0;
+  if (medida > 0) return Math.max(medida, (a && isFinite(a.currentTime)) ? a.currentTime : 0);
+  return _vpDurEstimada(a, w);
+}
+function _vpDurEstimada(a, w){
   let d = 0;
   if (a && isFinite(a.duration) && a.duration > 0) d = a.duration;
   if (!d && a) {
@@ -8108,10 +8128,14 @@ function voiceDurOk(id){
     if (a.paused && a.currentTime === 0) { const t = w.querySelector('.vp-time'); if (t) t.textContent = _fmtVoice(a.duration); }
   }
 }
-function _vpFill(w, frac){
+function _vpFill(w, frac, podeFechar){
   if (!w) return;
   const bars = w.querySelectorAll('.vp-bars i');
-  const n = Math.round(Math.min(1, Math.max(0, frac || 0)) * bars.length);
+  let f = Math.min(1, Math.max(0, frac || 0));
+  // Enquanto o som não acabou, a barra NÃO chega ao fim. Assim, mesmo que a
+  // duração esteja subestimada, os palitinhos nunca terminam antes do áudio.
+  if (!podeFechar && f > 0.97) f = 0.97;
+  const n = Math.round(f * bars.length);
   bars.forEach((b,i)=> b.classList.toggle('played', i < n));
 }
 // iOS: o corretor de tom do Safari "treme" a voz ao acelerar — desligamos só lá
@@ -8191,8 +8215,9 @@ function voiceTime(id){
   // terminavam antes do som acabar) → usa a MAIOR entre: duração do arquivo,
   // duração gravada na etiqueta e o ponto já tocado
   const dur = _vpDur(a, w);
+  if (isFinite(a.currentTime) && a.currentTime > (parseFloat(w.dataset.maxT || '0') || 0)) w.dataset.maxT = String(a.currentTime);
   w.querySelector('.vp-time').textContent = _fmtVoice(a.currentTime);
-  _vpFill(w, dur ? a.currentTime / dur : 0);
+  _vpFill(w, dur ? a.currentTime / dur : 0, a.ended);
 }
 function voiceMeta(id){
   const a = _vpAudio(id), w = _vpEl(id); if (!a || !w) return;
@@ -8206,10 +8231,18 @@ function voiceMeta(id){
 }
 function voiceEnded(id){
   const a = _vpAudio(id), w = _vpEl(id); if (!w) return;
+  // Acabou de tocar até o fim: ESTE é o tamanho real do áudio. Fica anotado.
+  const real = Math.max(
+    (a && isFinite(a.currentTime)) ? a.currentTime : 0,
+    parseFloat(w.dataset.maxT || '0') || 0,
+    (a && isFinite(a.duration) && a.duration > 0) ? a.duration : 0);
+  _audDurSalva(w, real);
   const btn = w.querySelector('.vp-btn'); if (btn) btn.innerHTML = '▶';
+  _vpFill(w, 1, true);            // fecha a barra no fim, como deve
   if (a) a.currentTime = 0;
-  _vpFill(w, 0);
-  w.querySelector('.vp-time').textContent = _fmtVoice(a ? a.duration : 0);
+  w.dataset.maxT = '0';
+  setTimeout(() => { try { _vpFill(w, 0); } catch (_) {} }, 260); // e volta ao início
+  w.querySelector('.vp-time').textContent = _fmtVoice(real || (a ? a.duration : 0));
 }
 function voiceSpeed(id){
   const cycle = [1, 1.5, 2];
