@@ -2049,7 +2049,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v379</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v380</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2815,7 +2815,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v379</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v380</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2869,7 +2869,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 379;
+const APP_VER = 380;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5097,8 +5097,47 @@ function copyMsgText(id) {
 //  • HTML com <b>/<i>/<s> (colar no Word, no e-mail ou no Docs já vem em negrito).
 // Quem recebe escolhe o formato que entende. Se o navegador não souber fazer
 // isso, cai no modo antigo — nunca fica sem copiar.
+// Copia escrevendo os dois formatos no evento de cópia do próprio navegador.
+// É o caminho de maior compatibilidade (funciona no iPhone, onde o moderno falha).
+function _copiaRico(txt, html) {
+  let ok = false;
+  const escreve = (e) => {
+    try {
+      const d = e.clipboardData || window.clipboardData;
+      if (!d) return;
+      d.setData('text/html', html);
+      d.setData('text/plain', txt);
+      e.preventDefault();
+      ok = true;
+    } catch (_) {}
+  };
+  let alvo = null, selSalva = null;
+  const sel = window.getSelection && window.getSelection();
+  try {
+    if (sel && sel.rangeCount) { try { selSalva = sel.getRangeAt(0).cloneRange(); } catch (_) {} }
+    // O iPhone só dispara a cópia se houver ALGO selecionado: usamos uma caixa
+    // invisível só para isso — o conteúdo real é escrito no evento, acima.
+    alvo = document.createElement('div');
+    alvo.setAttribute('contenteditable', 'true');
+    alvo.textContent = txt;
+    alvo.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;overflow:hidden;white-space:pre-wrap;z-index:-1;-webkit-user-select:text;user-select:text';
+    document.body.appendChild(alvo);
+    const r = document.createRange(); r.selectNodeContents(alvo);
+    if (sel) { sel.removeAllRanges(); sel.addRange(r); }
+    document.addEventListener('copy', escreve, true);
+    try { document.execCommand('copy'); } catch (_) {}
+  } catch (_) {}
+  try { document.removeEventListener('copy', escreve, true); } catch (_) {}
+  try { if (alvo) alvo.remove(); } catch (_) {}
+  try { if (sel) { sel.removeAllRanges(); if (selSalva) sel.addRange(selSalva); } } catch (_) {}
+  return ok;
+}
 function _copiaComFormato(txt, done) {
   const temMarca = /\*[^*\n]+\*|~[^~\n]+~|_[^_\n]+_/.test(txt);
+  if (temMarca) {
+    // 1º: o caminho que funciona em todo lugar, inclusive no iPhone
+    if (_copiaRico(txt, '<div>' + _txtParaHtml(txt) + '</div>')) { done(); return; }
+  }
   try {
     if (temMarca && navigator.clipboard && window.ClipboardItem && navigator.clipboard.write) {
       const item = new ClipboardItem({
