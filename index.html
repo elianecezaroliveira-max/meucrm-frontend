@@ -1138,6 +1138,11 @@ body.dark{
      depois de voltar para a lista. Resultado: chegava mensagem nova nela e a
      linha ficava branca, com só a listra verde na lateral, enquanto as outras
      ficavam verdes. Aqui o verde de não lida volta a valer, aberta ou não. */
+  /* Tela de Tarefas no celular: a linha dos detalhes fica compacta (sem as
+     palavras "criada" e "Editar") para a tarefa ter SEMPRE a mesma altura,
+     com ou sem comentário. No computador os rótulos continuam escritos. */
+  .task-criada .rot, .task-editar .rot { display: none; }
+
   /* Favorita continua AMARELA mesmo sendo a conversa aberta */
   .contact-item.is-fav, .contact-swipe-wrap > .contact-item.is-fav,
   .contact-item.is-fav.active, .contact-swipe-wrap > .contact-item.is-fav.active,
@@ -2058,7 +2063,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v381</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v384</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2571,13 +2576,13 @@ window.addEventListener('load', initAuth);
 </div>
 
 <div id="msg-menu" style="display:none;position:fixed;z-index:700;background:#ffffff;border:1px solid #e9edef;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.25);min-width:170px;padding:4px">
-  <div class="cm-item" onclick="msgMenuReply()">↩ Responder</div>
-  <div class="cm-item" onclick="msgMenuReact()"><i class=ic-chat></i> Reagir</div>
+  <div class="cm-item" id="msg-menu-reply" onclick="msgMenuReply()">↩ Responder</div>
+  <div class="cm-item" id="msg-menu-react" onclick="msgMenuReact()"><i class=ic-chat></i> Reagir</div>
   <div class="cm-item" onclick="msgMenuCopy()"><i class=ic-copy></i> Copiar</div>
-  <div class="cm-item" onclick="msgMenuForward()"><i class=ic-send></i> Encaminhar</div>
+  <div class="cm-item" id="msg-menu-forward" onclick="msgMenuForward()"><i class=ic-send></i> Encaminhar</div>
   <div class="cm-item" id="msg-menu-pinmsg" onclick="msgMenuPinMsg()"><i class=ic-pin></i> Fixar</div>
   <div class="cm-item" id="msg-menu-starmsg" onclick="msgMenuStarMsg()"><i class=ic-star></i> Favoritar</div>
-  <div class="cm-item" onclick="msgMenuSelect()"><i class=ic-task></i> Selecionar</div>
+  <div class="cm-item" id="msg-menu-select" onclick="msgMenuSelect()"><i class=ic-task></i> Selecionar</div>
   <div class="cm-item" id="msg-menu-info" style="display:none" onclick="msgMenuInfo()"><i class=ic-help></i> Dados da mensagem</div>
   <div class="cm-item" id="msg-menu-edit" style="display:none" onclick="msgMenuEdit()"><i class=ic-pencil></i> Editar</div>
   <div class="cm-item" id="msg-menu-revoke" style="display:none;color:#ef4444" onclick="msgMenuRevoke()"><i class=ic-trash></i> Apagar para todos</div>
@@ -2824,7 +2829,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v381</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v384</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2878,7 +2883,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 381;
+const APP_VER = 384;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2954,12 +2959,15 @@ async function _pollTickInner() {
 
   await loadContacts(false); // atualiza allContacts sem renderizar
 
+  // Quem está digitando agora (só conta para números de QR Code)
+  const _digMudou = await _buscaDigitando();
+
   // Detecta se houve mudança visível: novo contato, não lida nova OU a prévia mudou
   // (ex.: resposta do BOT, mensagem enviada por outro aparelho — antes só a não lida contava)
   const hasNewContact = allContacts.length !== prevCount;
   const hasUnreadChange = allContacts.some(c => prev[c.phone] !== _assin(c));
 
-  if (hasNewContact || hasUnreadChange) {
+  if (hasNewContact || hasUnreadChange || _digMudou) {
     const list = document.getElementById('contacts-list');
     const scrollTop = list ? list.scrollTop : 0;
     renderContactsSmartUpdate(); // re-renderiza respeitando filtros ativos
@@ -3951,6 +3959,22 @@ function _pintaLista(list, contacts, htmls) {
     el.replaceWith(nova);
   });
 }
+// Quem está digitando AGORA (telefone → 'composing' | 'recording')
+let _digitando = {}, _digitandoTs = 0;
+async function _buscaDigitando() {
+  try {
+    const j = await (await fetch(SERVER_URL + '/typing-list')).json();
+    const novo = (j && typeof j === 'object' && !j.error) ? j : {};
+    const mudou = JSON.stringify(novo) !== JSON.stringify(_digitando);
+    _digitando = novo; _digitandoTs = Date.now();
+    return mudou;
+  } catch (_) { return false; }
+}
+function _digitandoDe(phone) {
+  // o servidor já descarta o que passou de 12s; aqui vale o último minuto de busca
+  if (!phone || Date.now() - _digitandoTs > 12000) return null;
+  return _digitando[phone] || null;
+}
 let _listaPendente = null;
 function renderContacts(contacts) {
   // Dedo arrastando uma conversa? O redesenho espera — remontar a lista agora
@@ -3997,11 +4021,14 @@ function renderContacts(contacts) {
     let previewHtml = isOut
       ? (stTick ? stTick + shownPrev : `<span style="color:#667781">Você: </span>${shownPrev}`)
       : shownPrev;
+    // O lead está digitando AGORA? Isso vem na frente de tudo (igual WhatsApp)
+    const _dig = _digitandoDe(c.phone);
+    if (_dig) previewHtml = `<span style="color:#00a884;font-weight:600">${_dig === 'recording' ? 'gravando áudio…' : 'digitando…'}</span>`;
     // Rascunho pendente nesta conversa? Mostra em verde, igual WhatsApp.
     // No celular, com a LISTA em cena, mostra até para a conversa "atual"
     // (ela continua marcada como aberta internamente após o voltar).
     const _naLista = window.matchMedia('(max-width: 768px)').matches && !document.body.classList.contains('mobile-chat-open');
-    if (_drafts[c.phone] && (c.phone !== currentPhone || _naLista))
+    if (!_dig && _drafts[c.phone] && (c.phone !== currentPhone || _naLista))
       previewHtml = `<span style="color:#00a884;font-weight:600">Rascunho: </span>${escHtml(String(_drafts[c.phone]).slice(0, 60))}`;
     const isFav = !!c.favorite;
     return `<div class="contact-swipe-wrap" data-phone="${c.phone}">
@@ -4575,7 +4602,8 @@ function openMsgMenu(ev, id) {
   const mh = menu.offsetHeight; // altura REAL do menu → nunca sai da tela
   menu.style.left = Math.max(8, Math.min(r.left - 80, window.innerWidth - 185)) + 'px';
   menu.style.top  = Math.max(48, Math.min(r.bottom + 4, window.innerHeight - mh - 8)) + 'px';
-  _reactBarComMenu(id, menu); // igual WhatsApp: emojis em cima, opções embaixo
+  if (!_ehNota(id)) _reactBarComMenu(id, menu); // igual WhatsApp: emojis em cima, opções embaixo
+  else closeReactPicker(); // nota interna não vai para o cliente: não tem reação
 }
 function closeMsgMenu() {
   const m = document.getElementById('msg-menu');
@@ -4583,9 +4611,34 @@ function closeMsgMenu() {
 }
 // Mostra "Editar" só quando dá: mensagem SUA, de texto, em conversa QR Code,
 // com menos de 15 minutos (janela de edição do WhatsApp)
+function _ehNota(id) {
+  try {
+    const el = document.querySelector(`#messages-area .msg[data-msg-id="${(window.CSS && CSS.escape) ? CSS.escape(String(id)) : String(id)}"]`);
+    return !!(el && el.dataset.msgType === 'note');
+  } catch (_) { return false; }
+}
 function _updateMsgMenuItems(id) {
   const item = document.getElementById('msg-menu-edit');
   if (!item) return;
+  // NOTA INTERNA: só o que faz sentido para uma anotação sua. Ela não sai do
+  // VETRA, então responder/reagir/encaminhar/selecionar ficam escondidos.
+  const nota = _ehNota(id);
+  ['msg-menu-reply', 'msg-menu-react', 'msg-menu-forward', 'msg-menu-select'].forEach(k => {
+    const e = document.getElementById(k); if (e) e.style.display = nota ? 'none' : '';
+  });
+  if (nota) {
+    ['msg-menu-edit', 'msg-menu-info', 'msg-menu-revoke'].forEach(k => {
+      const e = document.getElementById(k); if (e) e.style.display = 'none';
+    });
+    try {
+      const mm = (currentMessages || []).find(x => String(x.id) === String(id));
+      const pi = document.getElementById('msg-menu-pinmsg');
+      if (pi) pi.innerHTML = (mm && mm.pinned) ? '<i class=ic-pin></i> Desafixar' : '<i class=ic-pin></i> Fixar';
+      const si = document.getElementById('msg-menu-starmsg');
+      if (si) si.innerHTML = (mm && mm.starred) ? '<i class=ic-star></i> Desfavoritar' : '<i class=ic-star></i> Favoritar';
+    } catch (_) {}
+    return;
+  }
   let show = false;
   try {
     const el = document.querySelector(`#messages-area .msg[data-msg-id="${(window.CSS && CSS.escape) ? CSS.escape(String(id)) : String(id)}"]`);
@@ -4851,12 +4904,14 @@ async function abrirFavoritas() {
     el.innerHTML = lista.map(m => {
       const quando = (typeof formatDayLabel === 'function' ? formatDayLabel(m.timestamp) : '') + ' ' + _brtTime(parseUTC(m.timestamp));
       const corpo = String(m.content || '').trim() || '(mídia)';
+      const ehNota = m.type === 'note';
       return '<div onclick="_favAbrir(\'' + escHtml(String(m.phone)) + '\')" '
-        + 'style="border:1px solid #e9edef;border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer;background:'
-        + (m.direction === 'outbound' ? '#f6fdf4' : '#fff') + '">'
+        + 'style="border:1px solid ' + (ehNota ? '#f2e08a' : '#e9edef') + ';border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer;background:'
+        + (ehNota ? '#fff6d5' : (m.direction === 'outbound' ? '#f6fdf4' : '#fff')) + '">'
         + '<div style="display:flex;gap:8px;align-items:center;margin-bottom:4px">'
         + '<b style="flex:1;font-size:13px;color:#131c20;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(m.contact_name || m.phone) + '</b>'
         + '<span style="font-size:11px;color:#8696a0;white-space:nowrap">' + escHtml(quando) + '</span></div>'
+        + (ehNota ? '<div style="font-size:11px;color:#a07c00;font-weight:700;margin-bottom:3px"><i class=ic-lock></i> Nota interna</div>' : '')
         + '<div style="color:#3b4a54;font-size:13px;max-height:52px;overflow:hidden">' + escHtml(corpo.slice(0, 240)) + '</div></div>';
     }).join('');
   } catch (e) {
@@ -5194,7 +5249,12 @@ function showCopyToast(texto) {
 }
 function msgMenuReact()  { const a = _msgMenuAnchor, id = _msgMenuId; closeMsgMenu(); if (id) openReactPicker(id, a || document.body); }
 function msgMenuReply()  { const id = _msgMenuId; closeMsgMenu(); if (id) startReply(id); }
-function msgMenuDelete() { const a = _msgMenuAnchor, id = _msgMenuId; closeMsgMenu(); if (id) deleteMessage(id, a); }
+function msgMenuDelete() {
+  const a = _msgMenuAnchor, id = _msgMenuId, nota = _ehNota(id);
+  closeMsgMenu();
+  if (!id) return;
+  if (nota) deleteNota(id); else deleteMessage(id, a); // a nota tem o próprio aviso
+}
 document.addEventListener('click', e => {
   if (Date.now() - (window._msgMenuTs || 0) < 400) return; // ignora o clique fantasma pós-toque longo
   if (!e.target.closest('#msg-menu') && !e.target.closest('.msg-menu-btn')) closeMsgMenu();
@@ -5215,7 +5275,8 @@ function openMsgMenuAt(id, x, y, anchorEl) {
   const mhL = menu.offsetHeight; // altura REAL → nunca corta embaixo
   menu.style.left = Math.max(8, Math.min(x - 60, window.innerWidth - 185)) + 'px';
   menu.style.top  = Math.max(48, Math.min(y + 10, window.innerHeight - mhL - 8)) + 'px';
-  _reactBarComMenu(id, menu); // igual WhatsApp: emojis em cima, opções embaixo
+  if (!_ehNota(id)) _reactBarComMenu(id, menu); // igual WhatsApp: emojis em cima, opções embaixo
+  else closeReactPicker(); // nota interna não vai para o cliente: não tem reação
 }
 // Barra de reações JÁ ABERTA junto com o menu da mensagem (igual WhatsApp)
 function _reactBarComMenu(id, menu) {
@@ -7744,7 +7805,11 @@ async function loadMessages(phone, scroll = true) {
               return `<a href="${u}" target="_blank" rel="noopener" style="display:inline-block;margin-bottom:5px;color:#a07c00;font-weight:600"><i class=ic-clip></i> Abrir arquivo</a>`;
             })() : ''}
             ${m.content && !/^\[(Foto|Arquivo)\]$/.test(m.content) ? `<div style="color:#131c20">${waFormat(m.content)}</div>` : ''}
-            <div class="time" style="color:#a07c00">${timeStr}<span onclick="deleteNota('${safeId}')" title="Apagar nota" style="cursor:pointer;margin-left:8px"><i class=ic-trash></i></span></div>
+            <div class="msg-actions">
+              <button class="msg-menu-btn" title="Opções da nota" onclick="openMsgMenu(event,'${safeId}')">⌄</button>
+            </div>
+            ${m.pinned ? '<div style="font-size:11px;color:#a07c00;margin-bottom:2px"><i class=ic-pin></i> fixada</div>' : ''}
+            <div class="time" style="color:#a07c00">${timeStr}${m.starred ? '<span title="Favorita" style="margin-left:6px"><i class=ic-star></i></span>' : ''}<span onclick="deleteNota('${safeId}')" title="Apagar nota" style="cursor:pointer;margin-left:8px"><i class=ic-trash></i></span></div>
           </div>` });
           continue;
         }
@@ -8833,15 +8898,12 @@ function fmtTaskCreated(iso) {
   if (dia === hoje - 1) return 'ontem às ' + hm;
   return String(d.getUTCDate()).padStart(2, '0') + '/' + String(d.getUTCMonth() + 1).padStart(2, '0') + ' às ' + hm;
 }
-// Versão COMPACTA (tela de Tarefas): só o horário; dias anteriores levam a data curta
+// Versão COMPACTA (tela de Tarefas): dia e hora, sempre — 11/09 14:32
 function fmtTaskCreatedCurto(iso) {
   if (!iso) return '';
   const ms = parseUTC(iso), d = new Date(ms - _BRT_OFFSET);
-  const hoje = Math.floor((Date.now() - _BRT_OFFSET) / 86400000);
-  const dia = Math.floor((ms - _BRT_OFFSET) / 86400000);
-  const hm = String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0');
-  if (dia === hoje) return hm;
-  return String(d.getUTCDate()).padStart(2, '0') + '/' + String(d.getUTCMonth() + 1).padStart(2, '0') + ' ' + hm;
+  return String(d.getUTCDate()).padStart(2, '0') + '/' + String(d.getUTCMonth() + 1).padStart(2, '0')
+    + ' ' + String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0');
 }
 
 function renderTasks() {
@@ -15025,7 +15087,7 @@ function _taskRowHTML(t){
   // linha da tarefa tenha sempre a mesma altura.
   const _nota = String(t.notes || '').replace(/\s+/g, ' ').trim();
   const notaBtn = _nota
-    ? `<span class="task-coment" style="font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;flex:1 1 90px;min-width:0" onclick="editTaskNote('${t.id}')" title="${escHtml(_nota.slice(0, 400))}"><i class=ic-note style="flex-shrink:0"></i><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(_nota)}</span></span>`
+    ? `<span class="task-coment" style="font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;flex:1 1 60px;min-width:0" onclick="editTaskNote('${t.id}')" title="${escHtml(_nota.slice(0, 400))}"><i class=ic-note style="flex-shrink:0"></i><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(_nota)}</span></span>`
     : `<span style="color:#667781;font-size:12px;cursor:pointer" onclick="editTaskNote('${t.id}')" title="Anotação que só você vê"><i class=ic-note></i> Comentar</span>`;
   return `<div class="task-row${overdue?' overdue':''}">
     ${selBox}
@@ -15034,8 +15096,8 @@ function _taskRowHTML(t){
       ${lead ? `<div style="margin-bottom:5px">${lead}</div>` : ''}
       <div style="color:#131c20;font-size:14px;font-weight:700;${t.done?'text-decoration:line-through;opacity:.6':''}">${escHtml(t.title)}</div>
       <div style="display:flex;gap:14px;margin-top:4px;flex-wrap:wrap;align-items:center">${due}
-        ${(!t.due_at && t.created_at && !_nota) ? `<span style="color:#8696a0;font-size:12px">criada ${fmtTaskCreatedCurto(t.created_at)}</span>` : ''}
-        <span style="color:#667781;font-size:12px;cursor:pointer" onclick="editTaskTitle('${t.id}')"><i class=ic-pencil></i> Editar</span>
+        ${t.created_at ? `<span class="task-criada" style="color:#8696a0;font-size:12px;white-space:nowrap" title="Criada em ${escHtml(fmtTaskCreated(t.created_at))}"><span class="rot">criada </span>${fmtTaskCreatedCurto(t.created_at)}</span>` : ''}
+        <span class="task-editar" style="color:#667781;font-size:12px;cursor:pointer;white-space:nowrap" onclick="editTaskTitle('${t.id}')" title="Editar o texto da tarefa"><i class=ic-pencil></i><span class="rot"> Editar</span></span>
         ${notaBtn}
       </div>
     </div>
