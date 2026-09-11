@@ -123,14 +123,21 @@
   .kanban-col-extid:hover { background: rgba(134,150,160,.25); color: #54656f; }
   .contact-swipe-wrap > .contact-item { position: relative; z-index: 1; background: #ffffff; touch-action: pan-y; }
   .contact-swipe-wrap.swiping > .contact-item { will-change: transform; }
-  .swipe-action { position: absolute; top: 0; bottom: 0; width: 92px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #fff; font-size: 11px; font-weight: 600; z-index: 0; visibility: hidden; }
-  .contact-swipe-wrap.swiping.swipe-dir-r .swipe-action.read { visibility: visible; }
-  .contact-swipe-wrap.swiping.swipe-dir-l .swipe-action.fav  { visibility: visible; }
-  /* Passou do ponto de soltar: o botão "acende" para avisar que já vale */
-  .swipe-action.armado { filter: brightness(1.12); }
-  .swipe-action.armado span, .swipe-action.armado { transform: scale(1.06); transition: transform .12s ease; }
+  /* A faixa JÁ NASCE PRONTA, só transparente: aparecer é trocar a opacidade,
+     que o celular resolve sozinho, sem redesenhar nada. (Antes ela era
+     "escondida" e precisava ser desenhada inteira na hora do gesto — era essa
+     a travadinha no momento em que o "Lida" surgia.) */
+  .swipe-action { position: absolute; top: 0; bottom: 0; width: 92px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #fff; font-size: 11px; font-weight: 600; z-index: 0; opacity: 0; pointer-events: none; transition: opacity .09s linear; }
+  .contact-swipe-wrap.swiping.swipe-dir-r .swipe-action.read { opacity: 1; }
+  .contact-swipe-wrap.swiping.swipe-dir-l .swipe-action.fav  { opacity: 1; }
+  /* Passou do ponto de soltar: o botão "acende". Só COR — filtro de brilho
+     obrigava a faixa inteira a ser redesenhada no meio do arraste. */
   .swipe-action.read { left: 0; background: #4a76d0; }
   .swipe-action.fav  { right: 0; background: #f0b400; }
+  .swipe-action.armado.read { background: #3a63b8; }
+  .swipe-action.armado.fav  { background: #d69f00; }
+  .swipe-action i, .swipe-action span { transition: transform .12s ease; }
+  .swipe-action.armado i, .swipe-action.armado span { transform: scale(1.09); }
   .contact-swipe-wrap > .contact-item.is-fav { background: #fdf6e3; }
   .contact-swipe-wrap > .contact-item.is-fav:hover { background: #f8eed2; }
   .fav-star { color: #f0b400; font-size: 13px; margin-left: 5px; flex-shrink: 0; }
@@ -2042,7 +2049,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v377</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v378</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2808,7 +2815,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v377</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v378</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2862,7 +2869,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 377;
+const APP_VER = 378;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5381,7 +5388,7 @@ async function toggleFavorite(phone) {
   };
   const cancelSwipe = () => {
     if (_raf) { cancelAnimationFrame(_raf); _raf = 0; }
-    if (item) { item.style.transition = ''; item.style.transform = ''; try { item.parentElement.classList.remove('swiping'); } catch (_) {} }
+    if (item) { item.style.transition = ''; item.style.transform = ''; item.style.willChange = ''; try { item.parentElement.classList.remove('swiping'); } catch (_) {} }
     item = null; swiping = false; _dirAtual = 0; _armadoAtual = false;
     soltaLista(0);
   };
@@ -5392,7 +5399,9 @@ async function toggleFavorite(phone) {
     item = wrap.querySelector('.contact-item'); dx = 0; swiping = false; touchT0 = Date.now();
     startX = e.touches[0].clientX; startY = e.touches[0].clientY;
     startScroll = list.scrollTop;
-    if (item) item.style.transition = 'none';
+    // Prepara a linha para se mover JÁ no toque: deixar isso para o momento do
+    // engate obrigava o celular a refazer a linha inteira bem na hora do gesto.
+    if (item) { item.style.transition = 'none'; item.style.willChange = 'transform'; }
   }, { passive: true });
   list.addEventListener('touchmove', e => {
     if (!item) return;
@@ -5445,8 +5454,12 @@ async function toggleFavorite(phone) {
     item.style.transition = 'transform .2s cubic-bezier(.22,.61,.36,1)';
     item.style.transform = '';
     soltaLista(240); // a lista só volta a ser redesenhada quando a linha assentar
-    const _wrapEl = item.parentElement;
-    setTimeout(() => { try { _wrapEl.classList.remove('swiping', 'swipe-dir-r', 'swipe-dir-l'); _wrapEl.querySelectorAll('.swipe-action').forEach(a => a.classList.remove('armado')); } catch (_) {} }, 240);
+    const _wrapEl = item.parentElement, _itemEl = item;
+    setTimeout(() => { try {
+      _wrapEl.classList.remove('swiping', 'swipe-dir-r', 'swipe-dir-l');
+      _wrapEl.querySelectorAll('.swipe-action').forEach(a => a.classList.remove('armado'));
+      _itemEl.style.willChange = ''; // a camada só é devolvida com a linha já parada
+    } catch (_) {} }, 240);
     const phone = item.parentElement?.dataset?.phone;
     if (swiping && phone) {
       window._lastSwipeTs = Date.now(); // impede o clique de abrir a conversa junto
