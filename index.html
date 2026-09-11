@@ -2091,7 +2091,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v404</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v405</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2886,7 +2886,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v404</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v405</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2940,7 +2940,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 404;
+const APP_VER = 405;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4998,8 +4998,10 @@ document.addEventListener('keydown', (e) => {
   // Esc fecha o que estiver aberto, um de cada vez
   if (e.key === 'Escape') {
     let fez = false;
+    try { const _as = document.getElementById('alb-sel');
+      if (_as && _as.style.display !== 'none') { _albFecha(); fez = true; } } catch (_) {}
     try { const _fv = document.getElementById('file-viewer');
-      if (_fv && _fv.style.display !== 'none') { fecharArquivo(); fez = true; } } catch (_) {}
+      if (!fez && _fv && _fv.style.display !== 'none') { fecharArquivo(); fez = true; } } catch (_) {}
     try { if (!fez && document.getElementById('fw-overlay'))  { fecharEncaminhar(); fez = true; } } catch (_) {}
     try { if (!fez && document.getElementById('fav-overlay')) { fecharFavoritas(); fez = true; } } catch (_) {}
     try { if (!fez && document.getElementById('react-picker')) { closeReactPicker(); fez = true; } } catch (_) {}
@@ -6507,18 +6509,106 @@ function _albExt(mime) {
   if (m.includes('gif')) return 'gif';
   return 'jpg';
 }
-async function baixarAlbum(el, chave) {
+// ═══════════════════════════════════════════════════════════════════
+// VOCÊ ESCOLHE QUAIS FOTOS QUER
+// ═══════════════════════════════════════════════════════════════════
+// O botão da grade abre uma tela com TODAS as fotos do grupo, já marcadas.
+// Desmarque as que não quiser (ou use "Desmarcar todas" e escolha só uma) e
+// baixe. Uma foto sozinha vem como imagem; várias vêm num único .zip.
+// A folha de compartilhar do sistema só é usada no CELULAR — no computador do
+// Windows ela abria aquela janela "Não foi possível mostrar todas as maneiras
+// de compartilhar" e não baixava nada. E se ela falhar, o .zip entra no lugar.
+let _albSel = null; // { chave, lista, marcadas:Set }
+
+function baixarAlbum(el, chave) {
   const lista = ((window._albuns || {})[chave] || []).filter(g => g.id);
   if (!lista.length) return;
-  if (el._ocupado) return; el._ocupado = true;
-  const original = el.innerHTML;
+  _albSel = { chave, lista, marcadas: new Set(lista.map((_, i) => i)) };
+  if (!document.getElementById('alb-sel')) {
+    document.body.insertAdjacentHTML('beforeend', `<div id="alb-sel" style="position:fixed;inset:0;background:#0b141a;z-index:3200;display:none;flex-direction:column">
+      <div style="display:flex;align-items:center;gap:8px;padding:calc(8px + env(safe-area-inset-top)) 12px 8px;background:#111b21;color:#e9edef;flex-shrink:0">
+        <span onclick="_albFecha()" title="Fechar (Esc)" style="cursor:pointer;font-size:24px;padding:2px 10px;line-height:1">‹</span>
+        <span id="alb-sel-tit" style="flex:1;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+        <span id="alb-sel-todas" onclick="_albTodas()" style="cursor:pointer;font-size:13px;font-weight:600;color:#00a884;padding:6px 4px;user-select:none"></span>
+      </div>
+      <div id="alb-sel-grade" style="flex:1;overflow:auto;-webkit-overflow-scrolling:touch;padding:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px;align-content:start"></div>
+      <div style="flex-shrink:0;background:#111b21;padding:10px 12px calc(10px + env(safe-area-inset-bottom));display:flex;gap:8px;align-items:center">
+        <span style="flex:1;font-size:12px;color:#8696a0">Toque nas fotos para marcar ou desmarcar.</span>
+        <button onclick="_albFecha()" style="background:none;border:1px solid #3b4a54;color:#e9edef;border-radius:8px;padding:9px 14px;font-size:13px;cursor:pointer;font-family:inherit">Cancelar</button>
+        <button id="alb-sel-ok" onclick="_albBaixaSel(this)" style="background:#00a884;border:none;color:#fff;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit"></button>
+      </div>
+    </div>`);
+  }
+  const ov = document.getElementById('alb-sel');
+  ov.style.display = 'flex';
+  const acct = encodeURIComponent(currentAccountId || '');
+  document.getElementById('alb-sel-grade').innerHTML = lista.map((g, i) => {
+    const u = SERVER_URL + '/media-proxy/' + encodeURIComponent(g.id) + '?account_id=' + acct
+      + (g.mime ? '&mime=' + encodeURIComponent(g.mime) : '');
+    const k = String(g.id || '').replace(/['"<>]/g, '');
+    const src = (typeof _thumbGet === 'function' && _thumbGet(k)) || u;
+    return `<span class="alb-item" data-i="${i}" onclick="_albMarca(${i})" style="position:relative;display:block;cursor:pointer">
+        <img src="${src}" loading="lazy" decoding="async" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;display:block;background:rgba(255,255,255,.07)">
+        <span class="alb-tick" style="position:absolute;top:6px;right:6px;width:22px;height:22px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff"></span>
+      </span>`;
+  }).join('');
+  _albPinta();
+}
+function _albPinta() {
+  if (!_albSel) return;
+  const n = _albSel.marcadas.size, tot = _albSel.lista.length;
+  document.querySelectorAll('#alb-sel-grade .alb-item').forEach(it => {
+    const marcada = _albSel.marcadas.has(Number(it.dataset.i));
+    const tick = it.querySelector('.alb-tick'), img = it.querySelector('img');
+    if (tick) { tick.style.background = marcada ? '#00a884' : 'rgba(0,0,0,.35)'; tick.textContent = marcada ? '✓' : ''; }
+    if (img) img.style.opacity = marcada ? '1' : '.45';
+  });
+  const t = document.getElementById('alb-sel-tit');
+  if (t) t.textContent = n + ' de ' + tot + ' selecionada' + (tot > 1 ? 's' : '');
+  const td = document.getElementById('alb-sel-todas');
+  if (td) td.textContent = n === tot ? 'Desmarcar todas' : 'Marcar todas';
+  const ok = document.getElementById('alb-sel-ok');
+  if (ok && !ok._ocupado) {
+    ok.disabled = n === 0;
+    ok.style.opacity = n === 0 ? '.45' : '1';
+    ok.style.cursor = n === 0 ? 'default' : 'pointer';
+    ok.textContent = n === 0 ? 'Baixar' : (n === 1 ? 'Baixar a foto' : 'Baixar as ' + n + ' fotos');
+  }
+}
+function _albMarca(i) {
+  if (!_albSel) return;
+  if (_albSel.marcadas.has(i)) _albSel.marcadas.delete(i); else _albSel.marcadas.add(i);
+  _albPinta();
+}
+function _albTodas() {
+  if (!_albSel) return;
+  if (_albSel.marcadas.size === _albSel.lista.length) _albSel.marcadas.clear();
+  else _albSel.lista.forEach((_, i) => _albSel.marcadas.add(i));
+  _albPinta();
+}
+function _albFecha() {
+  const ov = document.getElementById('alb-sel');
+  if (ov) ov.style.display = 'none';
+  _albSel = null;
+}
+// Celular de verdade (tela de toque): só aí a folha de compartilhar ajuda,
+// porque é ela que salva direto na galeria de fotos.
+function _albEhCelular() {
+  try { return window.matchMedia('(hover: none)').matches && window.matchMedia('(pointer: coarse)').matches; }
+  catch (_) { return false; }
+}
+async function _albBaixaSel(ok) {
+  if (!_albSel || !_albSel.marcadas.size || ok._ocupado) return;
+  ok._ocupado = true; ok.disabled = true;
+  const escolhidas = _albSel.lista.filter((_, i) => _albSel.marcadas.has(i));
   const acct = encodeURIComponent(currentAccountId || '');
   const quem = (currentName || currentPhone || 'lead').replace(/[\\/:*?"<>|]/g, '').trim().slice(0, 40);
+  const dia = new Date().toISOString().slice(0, 10);
   try {
     const arqs = [];
-    for (let i = 0; i < lista.length; i++) {
-      el.textContent = 'Baixando ' + (i + 1) + ' de ' + lista.length + '…';
-      const g = lista[i];
+    for (let i = 0; i < escolhidas.length; i++) {
+      ok.textContent = 'Baixando ' + (i + 1) + ' de ' + escolhidas.length + '…';
+      const g = escolhidas[i];
       const u = SERVER_URL + '/media-proxy/' + encodeURIComponent(g.id) + '?account_id=' + acct
         + (g.mime ? '&mime=' + encodeURIComponent(g.mime) : '');
       const r = await fetch(u);
@@ -6527,30 +6617,45 @@ async function baixarAlbum(el, chave) {
       arqs.push({ nome: 'foto-' + String(i + 1).padStart(2, '0') + '.' + _albExt(g.mime || bl.type),
                   dados: new Uint8Array(await bl.arrayBuffer()), tipo: bl.type || 'image/jpeg' });
     }
-    // CELULAR: a folha de compartilhar deixa salvar tudo direto na galeria
-    try {
-      if (navigator.canShare) {
+    // CELULAR: a folha de compartilhar salva direto na galeria. Se der qualquer
+    // problema (que não seja você cancelar), o .zip entra no lugar.
+    if (_albEhCelular() && navigator.canShare) {
+      let cancelou = false;
+      try {
         const fs = arqs.map(a => new File([a.dados], a.nome, { type: a.tipo }));
         if (navigator.canShare({ files: fs })) {
-          el.textContent = 'Abrindo…';
+          ok.textContent = 'Abrindo…';
           await navigator.share({ files: fs, title: 'Fotos de ' + quem });
-          el.innerHTML = original; el._ocupado = false; return;
+          _albFim(ok, true); return; // deu certo: a tela de escolha pode sair
         }
-      }
-    } catch (_) { el.innerHTML = original; el._ocupado = false; return; } // cancelou: sem erro
-    // COMPUTADOR: um único .zip
-    el.textContent = 'Montando o arquivo…';
-    const blob = _zipSimples(arqs);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'Fotos ' + quem + ' ' + new Date().toISOString().slice(0, 10) + '.zip';
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 6000);
+      } catch (e) { cancelou = e && (e.name === 'AbortError' || /abort|cancel/i.test(e.message || '')); }
+      if (cancelou) { _albFim(ok); return; }
+    }
+    // UMA foto só: vai como imagem mesmo, sem compactar
+    if (arqs.length === 1) {
+      _albSalva(new Blob([arqs[0].dados], { type: arqs[0].tipo }), 'Foto ' + quem + ' ' + dia + '.' + _albExt(arqs[0].tipo));
+      try { showToast('Foto baixada.', 'ok'); } catch (_) {}
+      _albFim(ok, true); return;
+    }
+    ok.textContent = 'Montando o arquivo…';
+    _albSalva(_zipSimples(arqs), 'Fotos ' + quem + ' ' + dia + '.zip');
     try { showToast(arqs.length + ' fotos baixadas.', 'ok'); } catch (_) {}
+    _albFim(ok, true); return;
   } catch (e) {
-    try { showToast('Não consegui baixar todas as fotos: ' + (e.message || e), 'err'); } catch (_) {}
+    try { showToast('Não consegui baixar: ' + (e.message || e), 'err'); } catch (_) {}
   }
-  el.innerHTML = original; el._ocupado = false;
+  _albFim(ok);
+}
+function _albSalva(blob, nome) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = nome;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 8000);
+}
+function _albFim(ok, fecha) {
+  ok._ocupado = false; ok.disabled = false;
+  if (fecha) _albFecha(); else _albPinta();
 }
 
 // Baixa o arquivo DIRETO na pasta de downloads do navegador (sem abrir aba
@@ -8059,7 +8164,7 @@ async function loadMessages(phone, scroll = true) {
             grupo.map(g => ({ id: g.media_id, mime: g.media_mime_type || '' }));
           parts.push({ key: chaveAlb, html: `<div class="msg ${safeDir}${grpA ? ' grp' : ''}" style="position:relative" data-key="${chaveAlb}" data-msg-id="${safeId}" data-msg-dir="${safeDir}">
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;width:265px;max-width:100%">${tiles}</div>
-            <div class="alb-baixar" onclick="event.stopPropagation();baixarAlbum(this,'${chaveAlb}')" title="Baixar todas as ${grupo.length} fotos"><i class=ic-down></i> Baixar as ${grupo.length} fotos</div>
+            <div class="alb-baixar" onclick="event.stopPropagation();baixarAlbum(this,'${chaveAlb}')" title="Escolher e baixar as ${grupo.length} fotos"><i class=ic-down></i> Baixar fotos (${grupo.length})</div>
             <div class="time">${_brtTime(parseUTC(ult.timestamp))}${tk}</div>
           </div>` });
           continue;
