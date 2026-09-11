@@ -2063,7 +2063,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v395</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v396</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2845,7 +2845,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v395</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v396</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2899,7 +2899,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 395;
+const APP_VER = 396;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -6619,28 +6619,38 @@ async function lpSetStage(phone, val){
 }
 // ── 📒 NOTAS INTERNAS do lead, reunidas no painel de detalhes ──
 // Antes era preciso rolar a conversa inteira atrás dos balões amarelos.
+let _lpNotasAberto = false;
+function lpNotasVerTodas(){ _lpNotasAberto = !_lpNotasAberto;
+  const el = document.getElementById('lp-notas'); if (el) el.dataset.ass = '';
+  if (window._lpPhone) lpLoadNotas(window._lpPhone); }
 async function lpLoadNotas(phone){
   const el = document.getElementById('lp-notas'); if (!el) return;
   let notas = [];
   try { notas = await (await fetch(SERVER_URL + '/notas/' + encodeURIComponent(phone))).json(); } catch(_) {}
   if (!Array.isArray(notas)) notas = [];
-  const ass = JSON.stringify(notas.map(n => [n.id, n.content]));
+  const ass = JSON.stringify([_lpNotasAberto, notas.map(n => [n.id, n.content])]);
   if (el.dataset.ass === ass && el.dataset.phone === phone) return; // nada mudou
   el.dataset.ass = ass; el.dataset.phone = phone;
   if (!notas.length) {
     el.innerHTML = '<div style="color:#8696a0;font-size:12px">Nenhuma nota interna ainda. Use o cadeado na barra de digitação para escrever uma.</div>';
     return;
   }
-  el.innerHTML = notas.map(n => {
+  // Fechado: só a mais recente, curtinha. Aberto: todas.
+  const mostra = _lpNotasAberto ? notas : notas.slice(0, 1);
+  const escondidas = notas.length - mostra.length;
+  el.innerHTML = mostra.map(n => {
     const txt = String(n.content || '').trim();
     const anexo = n.media_id ? '<span style="color:#a07c00"><i class=ic-clip></i> anexo</span>' : '';
     const quem = n.sent_by ? ('<span style="color:#a07c00">' + escHtml(String(n.sent_by).split('@')[0]) + '</span> · ') : '';
     return `<div onclick="lpIrNota('${_jsAttr(n.id)}')" title="Ir até esta nota na conversa"
         style="background:#fff6d5;border:1px solid #f2e08a;border-radius:8px;padding:7px 9px;margin-bottom:6px;cursor:pointer">
-        <div style="font-size:12.5px;color:#131c20;line-height:1.45;word-break:break-word;max-height:76px;overflow:hidden">${txt ? waFormat(txt) : '<i style="color:#a07c00">(só anexo)</i>'}</div>
+        <div style="font-size:12.5px;color:#131c20;line-height:1.45;word-break:break-word;${_lpNotasAberto ? 'max-height:76px' : 'display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-clamp:2'};overflow:hidden">${txt ? waFormat(txt) : '<i style="color:#a07c00">(só anexo)</i>'}</div>
         <div style="font-size:11px;color:#a07c00;margin-top:3px">${quem}${escHtml(fmtTaskCreated(n.timestamp))} ${anexo}</div>
       </div>`;
-  }).join('');
+  }).join('')
+  + ((escondidas > 0 || _lpNotasAberto)
+    ? `<div onclick="lpNotasVerTodas()" style="font-size:12px;color:#00806a;font-weight:600;cursor:pointer;padding:2px 1px">${_lpNotasAberto ? '− Ver menos' : '＋ Ver as outras ' + escondidas + ' nota(s)'}</div>`
+    : '');
 }
 // Toca na nota do painel → vai até ela na conversa e pisca
 function lpIrNota(id){
