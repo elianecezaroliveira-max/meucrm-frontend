@@ -2063,7 +2063,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v389</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v390</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2829,7 +2829,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v389</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v390</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2883,7 +2883,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 389;
+const APP_VER = 390;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -7425,7 +7425,7 @@ function renderMessageContent(m) {
           <div class="vp-bars" onclick="voiceSeek('${aid}',event)">${bars}</div>
           <span class="vp-time">${durTxt}</span>
           <button class="vp-speed" onclick="voiceSpeed('${aid}')" title="Velocidade">1x</button>
-          <audio preload="none" data-url="${proxyUrl}" ${temWf ? 'data-haswf="1"' : ''}
+          <audio preload="none" data-url="${proxyUrl}" data-mid="${escHtml(String(m.media_id || ''))}" ${temWf ? 'data-haswf="1"' : ''}
             onloadedmetadata="voiceMeta('${aid}')" ontimeupdate="voiceTime('${aid}')"
             ondurationchange="voiceDurOk('${aid}')" onprogress="voiceTime('${aid}')" oncanplaythrough="voiceDurOk('${aid}')"
             onplay="voiceUI('${aid}',true)" onpause="voiceUI('${aid}',false)" onended="voiceEnded('${aid}')"
@@ -7679,6 +7679,10 @@ async function loadMessages(phone, scroll = true) {
       window._lastMsgCountChat = msgs.length;
     }
     _lastMsgsSig = sig;
+    setTimeout(() => { try { // áudios do fim da conversa: duração pronta antes de você tocar
+      const ps = Array.from(document.querySelectorAll('#messages-area .voice-player')).slice(-6);
+      ps.forEach(w => { if (!(parseFloat(w.dataset.dur || '0') > 0)) _pedeDurAudio(String(w.id).replace(/^vp-/, '')); });
+    } catch (_) {} }, 400);
     setTimeout(_fillLinkPreviews, 60); // cartões de link entram após o render
     setTimeout(_fillPdfPreviews, 90);  // prévias de PDF idem
     setTimeout(() => { // abre a conversa já na divisória de não lidas
@@ -8101,11 +8105,19 @@ function _audDurSalva(w, segs) {
   } catch (_) {}
 }
 // Duração CONFIÁVEL do áudio (ver explicação acima)
-function _vpDur(a, w){
-  // 1º de tudo: se este áudio já tocou até o fim alguma vez, o número é EXATO
+function _vpDur(a, w, querFonte){
+  // Ordem de confiança:
+  //  1) já tocou até o fim alguma vez neste aparelho (exato)
+  //  2) duração medida no servidor e gravada na mensagem (exato, vale na 1ª vez)
+  //  3) o que o navegador informa (quando informa)
+  //  4) palpite pelo trecho já baixado (só aí a barra segura o fim)
   const medida = _audDur[_audId(w)] || 0;
-  if (medida > 0) return Math.max(medida, (a && isFinite(a.currentTime)) ? a.currentTime : 0);
-  return _vpDurEstimada(a, w);
+  if (medida > 0) return querFonte ? { d: Math.max(medida, a ? a.currentTime : 0), firme: true } : Math.max(medida, (a && isFinite(a.currentTime)) ? a.currentTime : 0);
+  const lbl = parseFloat((w && w.dataset.dur) || '0') || 0;
+  if (lbl > 0) { const d = Math.max(lbl, (a && isFinite(a.currentTime)) ? a.currentTime : 0); return querFonte ? { d, firme: true } : d; }
+  if (a && isFinite(a.duration) && a.duration > 0) return querFonte ? { d: a.duration, firme: true } : a.duration;
+  const est = _vpDurEstimada(a, w);
+  return querFonte ? { d: est, firme: false } : est;
 }
 function _vpDurEstimada(a, w){
   let d = 0;
@@ -8171,8 +8183,28 @@ function _computeWf(id, url) {
     }).catch(() => {});
   } catch (_) {}
 }
+// Áudio antigo, sem a duração gravada na mensagem? Pergunta ao servidor (ele
+// mede e guarda). Uma vez só por áudio.
+async function _pedeDurAudio(id) {
+  const a = _vpAudio(id), w = _vpEl(id);
+  if (!a || !w || w.dataset.durPedida) return;
+  if ((parseFloat(w.dataset.dur || '0') || 0) > 0 || (_audDur[_audId(w)] || 0) > 0) return;
+  const mid = a.dataset.mid; if (!mid) return;
+  w.dataset.durPedida = '1';
+  try {
+    const q = '?account_id=' + encodeURIComponent(currentAccountId || '');
+    const j = await (await fetch(SERVER_URL + '/audio-dur/' + encodeURIComponent(mid) + q)).json();
+    const sec = Number(j && j.seconds) || 0;
+    if (sec > 0) {
+      w.dataset.dur = String(sec);
+      const t = w.querySelector('.vp-time');
+      if (t && a.paused && !a.currentTime) t.textContent = _fmtVoice(sec);
+    }
+  } catch (_) {}
+}
 function voiceToggle(id){
   const a = _vpAudio(id), w = _vpEl(id); if (!a) return;
+  _pedeDurAudio(id); // em paralelo: não atrasa o play
   // Carrega o áudio na 1ª reprodução (o src fica em data-url para não baixar tudo ao abrir a conversa)
   if (!a.getAttribute('src') && a.dataset.url) { a.src = a.dataset.url; a.load(); }
   if (!a.dataset.haswf && !a.dataset.wfPedida) { a.dataset.wfPedida = '1'; _computeWf(id, a.dataset.url); }
@@ -8214,10 +8246,12 @@ function voiceTime(id){
   // Alguns áudios do WhatsApp reportam duração MENOR que a real (as barras
   // terminavam antes do som acabar) → usa a MAIOR entre: duração do arquivo,
   // duração gravada na etiqueta e o ponto já tocado
-  const dur = _vpDur(a, w);
+  const f = _vpDur(a, w, true), dur = f.d;
   if (isFinite(a.currentTime) && a.currentTime > (parseFloat(w.dataset.maxT || '0') || 0)) w.dataset.maxT = String(a.currentTime);
   w.querySelector('.vp-time').textContent = _fmtVoice(a.currentTime);
-  _vpFill(w, dur ? a.currentTime / dur : 0, a.ended);
+  // Com duração FIRME a barra acompanha o relógio até o fim; sem ela, segura o
+  // último palitinho para nunca terminar antes do som.
+  _vpFill(w, dur ? a.currentTime / dur : 0, a.ended || f.firme);
 }
 function voiceMeta(id){
   const a = _vpAudio(id), w = _vpEl(id); if (!a || !w) return;
@@ -11297,7 +11331,7 @@ async function openConfigModal() {
 }
 // Versão do servidor que este app espera. Se o Railway estiver atrás disso,
 // algumas telas não têm como funcionar — e o app avisa em vez de dar erro seco.
-const SERVIDOR_MIN = 261;
+const SERVIDOR_MIN = 262;
 let _verServidor = null;
 async function _servidorVersao() {
   if (_verServidor !== null) return _verServidor;
