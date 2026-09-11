@@ -2063,7 +2063,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v391</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v395</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2427,6 +2427,9 @@ window.addEventListener('load', initAuth);
     <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
       <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">Lixeira: leads e colunas excluídos</div>
       <p style="font-size:12px;color:#667781;margin:0 0 8px">Excluiu sem querer? Leads ficam aqui por 30 dias e voltam com conversa, etapa, etiquetas e notas. Colunas voltam com os leads e com os vínculos (bots, gotejamento, ID externo).</p>
+      <div style="font-size:13px;font-weight:700;color:#131c20;margin:2px 0 4px">Conversas e mensagens apagadas</div>
+      <p style="font-size:12px;color:#667781;margin:0 0 8px;line-height:1.5">Tudo o que é apagado fica aqui por <b>30 dias</b> e volta inteiro com um clique. Nada some de vez sem passar por esta lista.</p>
+      <div id="cfg-msg-trash" style="margin-bottom:14px"></div>
       <div id="cfg-stage-trash" style="font-size:13px;color:#54656f">—</div>
     </div>
 </div>
@@ -2842,7 +2845,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v391</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v395</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2896,7 +2899,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 391;
+const APP_VER = 395;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4954,7 +4957,9 @@ document.addEventListener('keydown', (e) => {
   // Esc fecha o que estiver aberto, um de cada vez
   if (e.key === 'Escape') {
     let fez = false;
-    try { if (document.getElementById('fw-overlay'))  { fecharEncaminhar(); fez = true; } } catch (_) {}
+    try { const _fv = document.getElementById('file-viewer');
+      if (_fv && _fv.style.display !== 'none') { fecharArquivo(); fez = true; } } catch (_) {}
+    try { if (!fez && document.getElementById('fw-overlay'))  { fecharEncaminhar(); fez = true; } } catch (_) {}
     try { if (!fez && document.getElementById('fav-overlay')) { fecharFavoritas(); fez = true; } } catch (_) {}
     try { if (!fez && document.getElementById('react-picker')) { closeReactPicker(); fez = true; } } catch (_) {}
     try { if (!fez && document.getElementById('msg-menu')?.style.display === 'block') { closeMsgMenu(); fez = true; } } catch (_) {}
@@ -5664,6 +5669,17 @@ document.addEventListener('visibilitychange', () => {
 // nenhum rascunho pode ser gravado.
 let _ultEnviado = { texto: '', ts: 0, phone: '' };
 let _semRascunhoAte = 0;
+// Você apertou uma tecla de verdade depois de enviar? Então o que está no campo
+// é SEU: ninguém mais apaga nada. (A sobra do teclado do celular não vem de uma
+// tecla — ela é entregue pelo corretor, sem keydown de letra.)
+let _teclouAposEnvio = false;
+document.addEventListener('keydown', (e) => {
+  try {
+    if (!e || !e.target || e.target.id !== 'msg-input') return;
+    // tecla imprimível (letra, número, símbolo) — Enter/Shift/setas não contam
+    if (typeof e.key === 'string' && e.key.length === 1) _teclouAposEnvio = true;
+  } catch (_) {}
+}, true);
 // Compara sem maiúsculas e sem acentos (o corretor do celular devolve a
 // palavra "arrumada", e era isso que escapava da limpeza)
 function _semAcento(x) {
@@ -5673,8 +5689,10 @@ function _semAcento(x) {
 // janelaCurta = para APAGAR o campo (2,5s). Sem ela, só serve para não gravar
 // rascunho (8s) — apagar depois disso poderia comer algo que você digitou.
 function _sobraDoEnvio(txt, phone, janelaCurta) {
+  // Digitou de verdade depois do envio? Nada é apagado, ponto final.
+  if (janelaCurta && _teclouAposEnvio) return false;
   const t = _semAcento(txt);
-  if (!t) return false;
+  if (!t || t.length < 3) return false; // pedaço curto demais: pode ser você digitando
   if (phone && _ultEnviado.phone && phone !== _ultEnviado.phone) return false;
   if (Date.now() - _ultEnviado.ts > (janelaCurta ? 2500 : 8000)) return false;
   const env = _semAcento(_ultEnviado.texto);
@@ -6139,8 +6157,8 @@ function abrirArquivo(url, tipo, nome) {
   let ov = document.getElementById('file-viewer');
   if (!ov) {
     document.body.insertAdjacentHTML('beforeend', `<div id="file-viewer" style="position:fixed;inset:0;background:#0b141a;z-index:3000;display:flex;flex-direction:column">
-      <div style="display:flex;align-items:center;gap:10px;padding:calc(8px + env(safe-area-inset-top)) 14px 8px;background:#111b21;color:#e9edef;flex-shrink:0">
-        <span onclick="fecharArquivo()" style="cursor:pointer;font-size:24px;padding:2px 10px;line-height:1">‹</span>
+      <div id="fv-top" style="display:flex;align-items:center;gap:10px;padding:calc(8px + env(safe-area-inset-top)) 14px 8px;background:#111b21;color:#e9edef;flex-shrink:0">
+        <span onclick="fecharArquivo()" title="Fechar (Esc)" style="cursor:pointer;font-size:24px;padding:2px 10px;line-height:1">‹</span>
         <span id="fv-nome" style="flex:1;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
         <span id="fv-share" style="display:none"></span>
         <span id="fv-baixar" style="display:none"></span>
@@ -6150,6 +6168,14 @@ function abrirArquivo(url, tipo, nome) {
       </div>
     </div>`);
     ov = document.getElementById('file-viewer');
+    // Clique no PRETO em volta fecha (igual a qualquer visualizador de fotos).
+    // Não fecha no zoom: ali o arraste é para mover a imagem.
+    ov.addEventListener('click', (ev) => {
+      const dentro = ev.target.closest && ev.target.closest('#fv-top, img, video, canvas');
+      if (dentro) return;
+      if (typeof _fvS !== 'undefined' && _fvS > 1.05) return; // com zoom, o clique é para mover
+      fecharArquivo();
+    });
     _fvGestos(); // pinça para dar zoom + toque duplo (instala uma única vez)
   }
   ov.style.display = 'flex';
@@ -6510,6 +6536,10 @@ async function renderLeadPanel(phone){
       <div id="lp-tasks"><div style="color:#8696a0;font-size:12px">Carregando...</div></div>
     </div>
     <div class="lp-section">
+      <div class="lp-label">Notas internas <span style="float:right;font-weight:400;color:#8696a0;font-size:11px">só a sua equipe vê</span></div>
+      <div id="lp-notas"><div style="color:#8696a0;font-size:12px">Carregando...</div></div>
+    </div>
+    <div class="lp-section">
       <div class="lp-label">Mídias e arquivos</div>
       <div id="lp-media"><div style="color:#8696a0;font-size:12px">—</div></div>
     </div>`;
@@ -6535,6 +6565,7 @@ async function renderLeadPanel(phone){
   const ntEl = document.getElementById('lp-notes');
   if (ntEl) { ntEl.addEventListener('input', () => { grow(ntEl); deb(); }); grow(ntEl); }
   lpLoadTasks(phone);
+  lpLoadNotas(phone);
   lpLoadMedia(phone);
 }
 // Copia com confirmação discreta: o botão vira "Copiado" (verde) por 1,5s
@@ -6586,6 +6617,42 @@ async function lpSetStage(phone, val){
   renderContacts(allContacts);
   if (typeof pipelineContacts !== 'undefined') { const pc = pipelineContacts.find(x => x.phone === phone); if (pc) pc.stage_id = newStage; }
 }
+// ── 📒 NOTAS INTERNAS do lead, reunidas no painel de detalhes ──
+// Antes era preciso rolar a conversa inteira atrás dos balões amarelos.
+async function lpLoadNotas(phone){
+  const el = document.getElementById('lp-notas'); if (!el) return;
+  let notas = [];
+  try { notas = await (await fetch(SERVER_URL + '/notas/' + encodeURIComponent(phone))).json(); } catch(_) {}
+  if (!Array.isArray(notas)) notas = [];
+  const ass = JSON.stringify(notas.map(n => [n.id, n.content]));
+  if (el.dataset.ass === ass && el.dataset.phone === phone) return; // nada mudou
+  el.dataset.ass = ass; el.dataset.phone = phone;
+  if (!notas.length) {
+    el.innerHTML = '<div style="color:#8696a0;font-size:12px">Nenhuma nota interna ainda. Use o cadeado na barra de digitação para escrever uma.</div>';
+    return;
+  }
+  el.innerHTML = notas.map(n => {
+    const txt = String(n.content || '').trim();
+    const anexo = n.media_id ? '<span style="color:#a07c00"><i class=ic-clip></i> anexo</span>' : '';
+    const quem = n.sent_by ? ('<span style="color:#a07c00">' + escHtml(String(n.sent_by).split('@')[0]) + '</span> · ') : '';
+    return `<div onclick="lpIrNota('${_jsAttr(n.id)}')" title="Ir até esta nota na conversa"
+        style="background:#fff6d5;border:1px solid #f2e08a;border-radius:8px;padding:7px 9px;margin-bottom:6px;cursor:pointer">
+        <div style="font-size:12.5px;color:#131c20;line-height:1.45;word-break:break-word;max-height:76px;overflow:hidden">${txt ? waFormat(txt) : '<i style="color:#a07c00">(só anexo)</i>'}</div>
+        <div style="font-size:11px;color:#a07c00;margin-top:3px">${quem}${escHtml(fmtTaskCreated(n.timestamp))} ${anexo}</div>
+      </div>`;
+  }).join('');
+}
+// Toca na nota do painel → vai até ela na conversa e pisca
+function lpIrNota(id){
+  try {
+    const alvo = document.querySelector('#messages-area .msg[data-msg-id="' + ((window.CSS && CSS.escape) ? CSS.escape(String(id)) : String(id)) + '"]');
+    if (!alvo) { showToast('Essa nota está mais acima na conversa — role para achar.', '', 3000); return; }
+    alvo.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    alvo.style.transition = 'box-shadow .25s';
+    alvo.style.boxShadow = '0 0 0 3px #f5c518';
+    setTimeout(() => { alvo.style.boxShadow = ''; }, 1400);
+  } catch (_) {}
+}
 async function lpLoadTasks(phone){
   const el = document.getElementById('lp-tasks'); if (!el) return;
   let tasks = [];
@@ -6620,6 +6687,7 @@ async function _confirmaConcluirTarefa(titulo) {
 // tarefas do chat, tela Tarefas e a bolinha do menu
 function _sincTarefas(phone, semPagina){
   try { if (window._lpPhone && document.getElementById('lp-tasks') && (!phone || phone === window._lpPhone)) lpLoadTasks(window._lpPhone); } catch(_){}
+  try { if (window._lpPhone && document.getElementById('lp-notas')) lpLoadNotas(window._lpPhone); } catch(_){}
   try { const ov = document.getElementById('tasks-overlay'); if (ov && ov.style.display !== 'none' && (!phone || phone === currentPhone)) loadTasks(); } catch(_){}
   try { const tp = document.getElementById('tasks-page'); if (!semPagina && tp && tp.style.display !== 'none' && typeof openTasksPage === 'function') openTasksPage(); } catch(_){}
   try { atualizaBadgeTarefas(); } catch(_){}
@@ -8549,6 +8617,7 @@ async function sendMessage() {
   // terminar de entregar o que estava montando
   _ultEnviado = { texto: message, ts: Date.now(), phone: currentPhone };
   _semRascunhoAte = Date.now() + 2500;
+  _teclouAposEnvio = false; // começa a janela; a 1ª tecla sua encerra ela
   // e se o teclado entregar algo mesmo assim, o campo é limpo de novo
   [40, 120, 260, 450, 700, 1000, 1400, 1900, 2400].forEach(ms => setTimeout(() => {
     try {
@@ -11352,7 +11421,7 @@ async function openConfigModal() {
 }
 // Versão do servidor que este app espera. Se o Railway estiver atrás disso,
 // algumas telas não têm como funcionar — e o app avisa em vez de dar erro seco.
-const SERVIDOR_MIN = 263;
+const SERVIDOR_MIN = 264;
 let _verServidor = null;
 async function _servidorVersao() {
   if (_verServidor !== null) return _verServidor;
@@ -14034,9 +14103,40 @@ async function restaurarLeads(phones) {
     try { await loadPipeline(); } catch (_) {} try { loadContacts(); } catch (_) {} try { carregarLixeiraColunas(); } catch (_) {}
   } catch (e) { alert('Não consegui restaurar: ' + (e.message || e)); }
 }
+// ── 🗑️ Lixeira de conversas e mensagens apagadas (30 dias) ──
+async function carregarLixeiraMsgs() {
+  const box = document.getElementById('cfg-msg-trash'); if (!box) return;
+  box.innerHTML = '<span style="color:#8696a0;font-size:12.5px">Carregando…</span>';
+  let lista = [];
+  try { lista = await _apiJson(SERVER_URL + '/msg-lixeira?t=' + Date.now()); } catch (e) { box.innerHTML = '<span style="color:#ef4444;font-size:12.5px">' + escHtml(e.message || '') + '</span>'; return; }
+  if (!Array.isArray(lista) || !lista.length) {
+    box.innerHTML = '<span style="color:#8696a0;font-size:12.5px">Nada apagado nos últimos 30 dias. Tudo o que você apagar aparece aqui e pode voltar.</span>';
+    return;
+  }
+  box.innerHTML = '<div style="max-height:240px;overflow:auto;border:1px solid #f0f2f5;border-radius:8px">' + lista.map(x => `
+    <div style="display:flex;align-items:center;gap:8px;padding:7px 9px;border-bottom:1px solid #f0f2f5;font-size:12.5px">
+      <div style="flex:1;min-width:0">
+        <b style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(x.nome || formatPhone(x.phone) || 'Mensagens')}</b>
+        <span style="color:#8696a0;font-size:11.5px">${escHtml(x.oque || '')} · ${x.n} mensagem(ns) · ${new Date(x.quando).toLocaleString('pt-BR')}</span>
+      </div>
+      <button class="pf-topbtn" style="padding:3px 9px !important;font-size:11.5px !important" onclick="restaurarMsgs('${_jsAttr(x.id)}')">↩ Restaurar</button>
+    </div>`).join('') + '</div>';
+}
+async function restaurarMsgs(id) {
+  try {
+    const d = await _apiJson(SERVER_URL + '/msg-lixeira/restaurar', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+    showToast((d.voltaram || 0) + ' mensagem(ns) de volta na conversa', 'ok', 4000);
+    carregarLixeiraMsgs();
+    _lastMsgsSig = '';
+    if (currentPhone) { try { await loadMessages(currentPhone, false); } catch (_) {} }
+    try { await loadContacts(); } catch (_) {}
+  } catch (e) { alert('Não consegui restaurar: ' + (e.message || e)); }
+}
 // Lixeira / recuperação de colunas e leads (Configurações → Pipeline)
 async function carregarLixeiraColunas() {
   const box = document.getElementById('cfg-stage-trash'); if (!box) return;
+  try { carregarLixeiraMsgs(); } catch (_) {}
   box.innerHTML = '<span style="color:#8696a0">Carregando…</span>';
   try {
     const [lixo, orf, leadsLixo] = await Promise.all([(await fetch(SERVER_URL + '/pipeline/stages/trash')).json(), (await fetch(SERVER_URL + '/pipeline/stages/orphans')).json(), (await fetch(SERVER_URL + '/contacts/trash')).json()]);
@@ -17631,12 +17731,14 @@ function _aplicaNotaVisual() {
   if (wrap) { wrap.classList.toggle('nota-on', !!_notaModo); wrap.style.boxShadow = ''; }
   try { updateSendMicButtons(); } catch (_) {}
 }
+async function _atualizaNotasPainel(){ try { if (window._lpPhone && document.getElementById('lp-notas')) { const el=document.getElementById('lp-notas'); if (el) el.dataset.ass=''; lpLoadNotas(window._lpPhone); } } catch(_){} }
 async function deleteNota(id) {
   if (!await vConfirm({ titulo: 'Apagar anotação', texto: 'Esta anotação será removida da conversa.', confirmar: 'Apagar', perigo: true })) return;
   try {
     await fetch(SERVER_URL + '/messages/id/' + id, { method: 'DELETE' });
     _lastMsgsSig = '';
     await loadMessages(currentPhone, false);
+    _atualizaNotasPainel();
   } catch (_) { alert('Erro ao apagar a nota.'); }
 }
 // Anexos da nota interna: sobem para o cofre do VETRA e aparecem só aqui dentro
