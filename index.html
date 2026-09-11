@@ -2063,7 +2063,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v385</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v386</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2829,7 +2829,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v385</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v386</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2883,7 +2883,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 385;
+const APP_VER = 386;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -7949,8 +7949,10 @@ async function loadMessages(phone, scroll = true) {
       const antigos = {};
       kids.forEach(el => { if (el.dataset && el.dataset.key) antigos[el.dataset.key] = el; });
       const validas = new Set(parts.map(p => p.key));
+      const _ehTemp = k => String(k || '').startsWith('temp-');
       kids.forEach(el => {
         const k = el.dataset && el.dataset.key;
+        if (_ehTemp(k)) return; // bolha provisória do envio: NÃO se mexe nela
         if (!k || !validas.has(k)) { if (el.querySelector && el.querySelector('img.msg-image')) _fotoLog('removida bolha que saiu', k || 'sem-chave'); el.remove(); }
       });
       let ref = area.firstElementChild;
@@ -7979,6 +7981,17 @@ async function loadMessages(phone, scroll = true) {
         area.insertBefore(el, ref); // só ESTA bolha se move — o resto fica intocado
       }
     }
+
+    // A bolha provisória do envio: sai no MESMO quadro em que a definitiva
+    // aparece (sem janela de mensagem repetida) e, enquanto a definitiva não
+    // vem, fica sempre por último.
+    try {
+      area.querySelectorAll('[data-key^="temp-"]').forEach(t => {
+        const bruto = String(t.dataset.rawText || '').trim();
+        const jaChegou = bruto && msgs.some(m => m.direction === 'outbound' && String(m.content || '').trim() === bruto);
+        if (jaChegou) t.remove(); else area.appendChild(t);
+      });
+    } catch (_) {}
 
     // NUNCA contra o dedo: só acompanha o fim se você não subiu DE PROPÓSITO
     const _maoLivre = !window._userTouching && Date.now() - (window._scrollUpTs || 0) > 2500;
