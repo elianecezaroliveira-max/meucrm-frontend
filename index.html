@@ -2049,7 +2049,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v378</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v379</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2815,7 +2815,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v378</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v379</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2869,7 +2869,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 378;
+const APP_VER = 379;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3909,6 +3909,39 @@ function setListFilterSel(f) {
 }
 // Ao abrir o app, o seletor mostra o filtro salvo
 setTimeout(() => { const fr = document.getElementById('filter-readstate'); if (fr) fr.value = _listFilter; }, 400);
+// Coloca as linhas na tela SEM jogar fora o que não mudou. E, quando uma linha
+// tem mesmo de ser trocada, a foto de perfil que JÁ está carregada é levada para
+// a linha nova — é isso que acaba com a piscada das fotos.
+function _pintaLista(list, contacts, htmls) {
+  const antigas = Array.from(list.children);
+  // Aproveita uma foto já carregada, se for a mesma
+  const _passaFoto = (velhaImg, linhaNova) => {
+    if (!velhaImg || !velhaImg.complete) return;
+    const nova = linhaNova.querySelector('.contact-avatar img');
+    if (nova && nova.src === velhaImg.src) nova.replaceWith(velhaImg);
+  };
+  const mesmaOrdem = antigas.length === htmls.length &&
+    antigas.every((el, i) => el.dataset && el.dataset.phone === String(contacts[i].phone));
+  if (!mesmaOrdem) {
+    // Mudou a ordem ou a quantidade: guarda as fotos antes de remontar
+    const fotos = {};
+    antigas.forEach(el => { const im = el.querySelector('.contact-avatar img'); if (im && el.dataset.phone) fotos[el.dataset.phone] = im; });
+    list.innerHTML = htmls.join('');
+    Array.from(list.children).forEach((el, i) => { el._html = htmls[i]; _passaFoto(fotos[el.dataset.phone], el); });
+    return;
+  }
+  // Mesma ordem: troca SÓ as linhas que realmente mudaram
+  antigas.forEach((el, i) => {
+    if (el._html === htmls[i]) return; // idêntica: não encosta
+    const molde = document.createElement('div');
+    molde.innerHTML = htmls[i];
+    const nova = molde.firstElementChild;
+    if (!nova) return;
+    _passaFoto(el.querySelector('.contact-avatar img'), nova);
+    nova._html = htmls[i];
+    el.replaceWith(nova);
+  });
+}
 let _listaPendente = null;
 function renderContacts(contacts) {
   // Dedo arrastando uma conversa? O redesenho espera — remontar a lista agora
@@ -3933,7 +3966,7 @@ function renderContacts(contacts) {
       : '<div class="contact-skel"><i class="v-skel"></i><div style="flex:1"><div class="v-skel l" style="margin-bottom:8px"></div><div class="v-skel" style="width:70%"></div></div></div>'.repeat(8); // esqueleto enquanto carrega
     return;
   }
-  list.innerHTML = contacts.map(c => {
+  const _htmlLinhas = contacts.map(c => {
     // Etiquetas não aparecem mais na lista de conversas — só nos detalhes do cliente
     const tagsHtml = '';
     const unread = c.unread_count || 0;
@@ -3981,7 +4014,8 @@ function renderContacts(contacts) {
       <button class="contact-menu-btn" title="Opções" onclick="event.stopPropagation();openContactMenu(event,'${c.phone}')">⋯</button>
       </div>
     </div>`;
-  }).join('');
+  });
+  _pintaLista(list, contacts, _htmlLinhas);
   if (window._selChats) _selPinta(); // re-render da lista mantém as seleções visíveis
   updateAppBadge(); // mantém o número no ícone do app em dia
   _instalaToqueLongoLista(); // celular: segurar o dedo abre o menu da conversa
