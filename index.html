@@ -2063,7 +2063,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v399</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v401</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2845,7 +2845,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v399</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v401</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2899,7 +2899,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 399;
+const APP_VER = 401;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4573,7 +4573,6 @@ function _recReviewSend() {
 }
 async function sendVoiceBlob(blob, durationSecs) {
   if (!currentPhone) return;
-  _clearUnreadMark();
   const base64 = await new Promise(res => {
     const r = new FileReader();
     r.onload = e => res(String(e.target.result).split(',')[1]);
@@ -6758,6 +6757,7 @@ function lpLoadMedia(phone){
 
 // Volta para sidebar no mobile
 function goBackToSidebar() {
+  _clearUnreadMark(); // saiu da conversa: a divisória cumpriu o papel dela
   if (window._veioDasTarefas) { // veio da tela de Tarefas: volta para lá
     window._veioDasTarefas = false;
     document.getElementById('layout').classList.remove('mobile-chat-open');
@@ -7975,6 +7975,16 @@ async function loadMessages(phone, scroll = true) {
 
     const prevTop = area.scrollTop;
     const nearBottom = (area.scrollHeight - area.scrollTop - area.clientHeight) < 80;
+    // Âncora: um balão que está na tela AGORA. Se o redesenho mudar a altura do
+    // que está acima dele, a rolagem é corrigida para ele não sair do lugar.
+    let _anc = null, _ancY = 0;
+    try {
+      const _rA0 = area.getBoundingClientRect();
+      for (const c of area.children) {
+        const r = c.getBoundingClientRect();
+        if (r.bottom > _rA0.top && c.dataset && c.dataset.key) { _anc = c.dataset.key; _ancY = r.top - _rA0.top; break; }
+      }
+    } catch (_) {}
 
     // Atualização INCREMENTAL: mexe só no que mudou — nada de recriar a conversa
     // inteira (que recarregava fotos/áudios e fazia a tela subir/descer sozinha)
@@ -8124,6 +8134,19 @@ async function loadMessages(phone, scroll = true) {
       });
     } catch (_) {}
 
+    // A conversa fica PARADA: se o que está acima da âncora mudou de altura, a
+    // rolagem compensa no mesmo quadro (nada de tranco/pisca na tela).
+    let _ancFeito = false;
+    try {
+      if (_anc && !scroll) {
+        const el = area.querySelector('[data-key="' + (window.CSS && CSS.escape ? CSS.escape(_anc) : _anc) + '"]');
+        if (el) {
+          const dif = (el.getBoundingClientRect().top - area.getBoundingClientRect().top) - _ancY;
+          if (Math.abs(dif) > 1) { area.scrollTop += dif; }
+          _ancFeito = true;
+        }
+      }
+    } catch (_) {}
     // NUNCA contra o dedo: só acompanha o fim se você não subiu DE PROPÓSITO
     const _maoLivre = !window._userTouching && Date.now() - (window._scrollUpTs || 0) > 2500;
     if (scroll || (nearBottom && _maoLivre)) {
@@ -8141,7 +8164,9 @@ async function loadMessages(phone, scroll = true) {
       }
       hideNewMsgPill();
     } else {
-      if (!samePrefix) area.scrollTop = prevTop; // no incremental a posição nem chega a mudar
+      // A âncora já deixou a conversa parada no lugar certo; só quando ela falha
+      // é que a rolagem antiga é restaurada na marra.
+      if (!samePrefix && !_ancFeito) area.scrollTop = prevTop;
       // Chegou mensagem nova enquanto lia antigas? Mostra o aviso flutuante
       const newCount = (_pillLastPhone === phone && _pillLastTotal > 0) ? msgs.length - _pillLastTotal : 0;
       if (newCount > 0) showNewMsgPill(newCount);
@@ -8565,6 +8590,8 @@ function appendPendingBubble(text) {
   return el;
 }
 
+// A divisória de não lidas só é descartada quando você SAI da conversa — nunca
+// com a conversa aberta na sua frente (era o tranco de 50px a cada resposta).
 function _clearUnreadMark() {
   if (window._unreadMark) { window._unreadMark = null; _lastMsgsSig = ''; }
 }
@@ -8639,7 +8666,7 @@ function _mpCaptionGrow(ta) {
   try { _mpAjustaTela(); } catch (_) {} // legenda maior → foto um pouco menor
 }
 async function sendMessage() {
-  _clearUnreadMark(); // você respondeu → a divisória de não lidas some na hora
+  // (a divisória de não lidas FICA — igual ao WhatsApp; some só ao sair e voltar)
   // NOTA INTERNA: fica só para você (não vai para o lead)
   if (_notaModo) {
     // Arquivo escolhido (PDF, planilha, áudio…): vira anexo da nota
@@ -9032,7 +9059,6 @@ function closeMediaPreview() {
   _previewList = [];
 }
 async function confirmMediaSend() {
-  _clearUnreadMark();
   if (!_previewList.length) { closeMediaPreview(); return; }
   const cp = document.getElementById('mp-caption');
   const caption = (cp && cp.value.trim()) || '';
