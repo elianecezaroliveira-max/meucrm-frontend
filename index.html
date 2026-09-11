@@ -771,6 +771,25 @@
     border: 1px solid #e3e6e8;
     white-space: nowrap;
   }
+  /* A divisória "não lidas" SAI encolhendo, empurrada para cima (igual WhatsApp).
+     A altura real é medida na hora e entra como --dh, para o encolhimento
+     começar na primeira fração de segundo — sem "espera" nem tranco. */
+  /* flex: none é obrigatório aqui: dentro da coluna rolável, um item com
+     overflow:hidden pode encolher sozinho até zero — a divisória sumia de uma
+     vez em vez de encolher. Com flex: none quem manda é a animação. */
+  .day-divider.sai { overflow: hidden; flex: 0 0 auto; animation: divSai .26s cubic-bezier(.4,0,.2,1) forwards; }
+  @keyframes divSai {
+    from { max-height: var(--dh, 34px); margin-top: 12px; margin-bottom: 12px; opacity: 1; transform: scale(1); }
+    to   { max-height: 0;               margin-top: 0;    margin-bottom: 0;    opacity: 0; transform: scale(.8); }
+  }
+  /* Balão recém-nascido: cresce até o tamanho normal em vez de "aparecer" */
+  .msg.nasce { animation: msgNasce .19s cubic-bezier(.2,.85,.3,1); transform-origin: bottom right; }
+  .msg.inbound.nasce { transform-origin: bottom left; }
+  @keyframes msgNasce { from { opacity: .3; transform: scale(.84); } to { opacity: 1; transform: scale(1); } }
+  @media (prefers-reduced-motion: reduce) {
+    .day-divider.sai { animation-duration: .01s; }
+    .msg.nasce { animation: none; }
+  }
   /* Divisor do NÚMERO de envio: aparece quando a conversa passa por mais de um número */
   .acc-divider { display: flex; align-items: center; justify-content: center; margin: 12px 0 6px; gap: 8px; }
   .acc-divider span {
@@ -2063,7 +2082,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v401</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v402</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2845,7 +2864,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v401</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v402</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2899,7 +2918,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 401;
+const APP_VER = 402;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4573,6 +4592,7 @@ function _recReviewSend() {
 }
 async function sendVoiceBlob(blob, durationSecs) {
   if (!currentPhone) return;
+  _saiDivisoria();
   const base64 = await new Promise(res => {
     const r = new FileReader();
     r.onload = e => res(String(e.target.result).split(',')[1]);
@@ -8080,6 +8100,12 @@ async function loadMessages(phone, scroll = true) {
       for (let i = kids.length; i < parts.length; i++) {
         const nuA = _mkEl(parts[i].html);
         if (nuA.querySelector && nuA.querySelector('img.msg-image')) _fotoLog('bolha NOVA com foto anexada', parts[i].key);
+        // Chegou AGORA, com a conversa aberta: nasce crescendo (ao ABRIR a
+        // conversa não, senão a conversa inteira piscaria de uma vez)
+        if (!scroll && kids.length && nuA.classList && nuA.classList.contains('msg')) {
+          nuA.classList.add('nasce');
+          setTimeout(() => { try { nuA.classList.remove('nasce'); } catch (_) {} }, 320);
+        }
         _adotaMidia(nuA); area.appendChild(nuA);
       }
     } else {
@@ -8581,17 +8607,47 @@ function appendPendingBubble(text) {
   const _ult = area.lastElementChild;
   const _grpP = !!(_ult && _ult.classList && _ult.classList.contains('msg') && _ult.classList.contains('outbound'));
   const molde = document.createElement('div');
-  molde.innerHTML = _htmlPendente(text, _grpP);
+  const _htm = _htmlPendente(text, _grpP);
+  molde.innerHTML = _htm;
   const el = molde.firstElementChild;
   if (!el) return null;
+  el._html = _htm; // o redesenho reconhece a bolha e NÃO a recria (a animação não repete)
   el.dataset.rawText = text; // texto ORIGINAL (com *negrito* etc.) para casar com a real
+  el.classList.add('nasce'); // nasce crescendo, igual WhatsApp
+  setTimeout(() => { try { el.classList.remove('nasce'); } catch (_) {} }, 320);
   area.appendChild(el);
   area.scrollTop = area.scrollHeight; // direto no fim — nada de animação disputando com o render
   return el;
 }
 
-// A divisória de não lidas só é descartada quando você SAI da conversa — nunca
-// com a conversa aberta na sua frente (era o tranco de 50px a cada resposta).
+// Você respondeu: a divisória vai embora ENCOLHENDO, no mesmo movimento em que o
+// seu balão nasce. Enquanto ela encolhe, a conversa segue colada no fim, então o
+// espaço que ela libera é "engolido" para cima — exatamente como no WhatsApp.
+function _saiDivisoria() {
+  try {
+    if (!window._unreadMark) return;
+    const area = document.getElementById('messages-area');
+    const dv = area && area.querySelector('[data-key="unread-div"]');
+    if (!dv) { _clearUnreadMark(); return; }
+    if (dv.dataset.saindo) return; // já está saindo
+    dv.dataset.saindo = '1';
+    const colado = area.scrollHeight - area.scrollTop - area.clientHeight < 120;
+    dv.style.setProperty('--dh', dv.offsetHeight + 'px');
+    dv.classList.add('sai');
+    // acompanha o encolhimento quadro a quadro: o fim da conversa não escapa
+    const ate = Date.now() + 320;
+    const segue = () => {
+      if (colado) { const a = document.getElementById('messages-area'); if (a) a.scrollTop = a.scrollHeight; }
+      if (Date.now() < ate) requestAnimationFrame(segue);
+    };
+    requestAnimationFrame(segue);
+    // terminou de encolher (altura zero): aí sim sai do desenho, sem nada a saltar
+    setTimeout(() => {
+      _clearUnreadMark();
+      try { if (currentPhone) loadMessages(currentPhone, false); } catch (_) {}
+    }, 300);
+  } catch (_) { _clearUnreadMark(); }
+}
 function _clearUnreadMark() {
   if (window._unreadMark) { window._unreadMark = null; _lastMsgsSig = ''; }
 }
@@ -8666,7 +8722,7 @@ function _mpCaptionGrow(ta) {
   try { _mpAjustaTela(); } catch (_) {} // legenda maior → foto um pouco menor
 }
 async function sendMessage() {
-  // (a divisória de não lidas FICA — igual ao WhatsApp; some só ao sair e voltar)
+  _saiDivisoria(); // a divisória sai encolhendo junto com o balão que nasce
   // NOTA INTERNA: fica só para você (não vai para o lead)
   if (_notaModo) {
     // Arquivo escolhido (PDF, planilha, áudio…): vira anexo da nota
@@ -9059,6 +9115,7 @@ function closeMediaPreview() {
   _previewList = [];
 }
 async function confirmMediaSend() {
+  _saiDivisoria();
   if (!_previewList.length) { closeMediaPreview(); return; }
   const cp = document.getElementById('mp-caption');
   const caption = (cp && cp.value.trim()) || '';
