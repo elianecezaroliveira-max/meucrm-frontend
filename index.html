@@ -2063,7 +2063,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v386</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v388</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2829,7 +2829,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v386</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v388</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2883,7 +2883,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 386;
+const APP_VER = 388;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5651,15 +5651,31 @@ document.addEventListener('visibilitychange', () => {
 // nenhum rascunho pode ser gravado.
 let _ultEnviado = { texto: '', ts: 0, phone: '' };
 let _semRascunhoAte = 0;
-// É sobra do envio? (o texto do campo é um pedaço do que acabou de sair)
-function _sobraDoEnvio(txt, phone) {
-  const t = String(txt || '').trim();
+// Compara sem maiúsculas e sem acentos (o corretor do celular devolve a
+// palavra "arrumada", e era isso que escapava da limpeza)
+function _semAcento(x) {
+  return String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
+}
+// É sobra do envio? (o que está no campo é um pedaço do que acabou de sair)
+// janelaCurta = para APAGAR o campo (2,5s). Sem ela, só serve para não gravar
+// rascunho (8s) — apagar depois disso poderia comer algo que você digitou.
+function _sobraDoEnvio(txt, phone, janelaCurta) {
+  const t = _semAcento(txt);
   if (!t) return false;
   if (phone && _ultEnviado.phone && phone !== _ultEnviado.phone) return false;
-  if (Date.now() - _ultEnviado.ts > 8000) return false;
-  const env = String(_ultEnviado.texto || '').trim();
+  if (Date.now() - _ultEnviado.ts > (janelaCurta ? 2500 : 8000)) return false;
+  const env = _semAcento(_ultEnviado.texto);
   if (!env) return false;
-  return env === t || env.includes(t);
+  if (env === t || env.includes(t)) return true;
+  // Sobra é sempre curta e vem do FIM da mensagem enviada
+  const pe = env.split(' ').filter(Boolean), pt = t.split(' ').filter(Boolean);
+  if (!pt.length || pt.length > 4 || pt.length > pe.length) return false;
+  if (pe.slice(-pt.length).join(' ') === t) return true;
+  // Uma palavra só, e ela estava na mensagem: é sobra
+  if (pt.length === 1 && pe.includes(pt[0])) return true;
+  // Última palavra cortada pela metade ("combina" de "combinado")
+  const ult = pe[pe.length - 1] || '';
+  return pt.length === 1 && t.length >= 3 && ult.startsWith(t);
 }
 // PONTO ÚNICO de gravação de rascunho — todo mundo passa por aqui
 function _persistDraftNow(phoneAlvo) {
@@ -5669,7 +5685,7 @@ function _persistDraftNow(phoneAlvo) {
     const p = phoneAlvo || currentPhone;
     if (i && p) {
       const v = i.value;
-      if (_sobraDoEnvio(v, p)) { i.value = ''; try { autoGrowMsgInput(i); } catch (_) {} delete _drafts[p]; }
+      if (_sobraDoEnvio(v, p, true)) { i.value = ''; try { autoGrowMsgInput(i); } catch (_) {} delete _drafts[p]; }
       else if (v.trim()) _drafts[p] = v;
       else delete _drafts[p];
     }
@@ -5679,9 +5695,9 @@ function _persistDraftNow(phoneAlvo) {
 // O teclado entregou a palavra atrasada, já com o campo limpo: apaga de novo.
 document.addEventListener('compositionend', () => {
   try {
-    if (Date.now() >= _semRascunhoAte) return;
+    if (Date.now() >= _semRascunhoAte + 600) return; // a entrega do teclado chega logo depois
     const i = document.getElementById('msg-input');
-    if (i && _sobraDoEnvio(i.value, currentPhone)) { i.value = ''; autoGrowMsgInput(i); updateSendMicButtons(); }
+    if (i && _sobraDoEnvio(i.value, currentPhone, true)) { i.value = ''; autoGrowMsgInput(i); updateSendMicButtons(); }
   } catch (_) {}
 }, true);
 document.addEventListener('visibilitychange', () => { if (document.hidden) _persistDraftNow(); });
@@ -6059,9 +6075,9 @@ function _pintaPdfPrev(el, dados) {
   if (pg && dados.p) pg.textContent = dados.p + (dados.p > 1 ? ' páginas' : ' página') + ' • PDF';
 }
 async function _fillPdfPreviews() {
-  const els = document.querySelectorAll('#messages-area .pdf-prev:not(.done)');
+  const els = Array.from(document.querySelectorAll('#messages-area .pdf-prev:not(.done)')).reverse();
   if (!els.length) return;
-  for (const el of els) {
+  for (const el of els) { // de baixo para cima: as que você está vendo saem na frente
     el.classList.add('done');
     const key = el.dataset.keyId || el.dataset.pdf;
     const cch = _pdfPrevCache[key];
@@ -7312,6 +7328,10 @@ async function _fillLinkPreviews() {
 // Cache de conteúdo de mensagens para o reply
 const _msgData = {};
 
+// Esta mídia é das mais recentes da conversa? (carrega na frente)
+function _midiaJa(id) {
+  try { return !!(window._midiaPrio && window._midiaPrio.has(String(id))); } catch (_) { return false; }
+}
 function renderMessageContent(m) {
   // Guarda conteúdo para uso no reply.
   // .replace no final: mensagens com BOTÕES vêm com quebras de linha sobrando,
@@ -7350,7 +7370,8 @@ function renderMessageContent(m) {
       const _srcImg = _th || (window._localPrev || {})[String(m.media_id)] || proxyUrl;
       return quotedHtml + `<div class="media-wrap">
         <div style="position:relative;display:inline-block">
-          <img src="${_srcImg}" class="msg-image" alt="Imagem" loading="lazy"${_th ? '' : ' crossorigin="anonymous"'} style="${_dimCss(_midKey)}"
+          <img src="${_srcImg}" class="msg-image" alt="Imagem" decoding="async"
+            loading="${_midiaJa(m.media_id) ? 'eager' : 'lazy'}" fetchpriority="${_midiaJa(m.media_id) ? 'high' : 'auto'}"${_th ? '' : ' crossorigin="anonymous"'} style="${_dimCss(_midKey)}"
             onload="_dimSave('${_midKey}',this);_thumbSave('${_midKey}',this);_keepBottom(this)" onclick="verMidia('${proxyUrl}','img','Imagem')"
             onerror="this.parentElement.innerHTML='<span style=opacity:.6>[Imagem não disponível]</span>'" />
           <a href="#" class="media-dl-btn" title="Baixar imagem" onclick="event.preventDefault();event.stopPropagation();baixarMidia('${dlUrl}','imagem.jpg',this)"><i class=ic-down></i></a>
@@ -7406,6 +7427,7 @@ function renderMessageContent(m) {
           <button class="vp-speed" onclick="voiceSpeed('${aid}')" title="Velocidade">1x</button>
           <audio preload="none" data-url="${proxyUrl}" ${temWf ? 'data-haswf="1"' : ''}
             onloadedmetadata="voiceMeta('${aid}')" ontimeupdate="voiceTime('${aid}')"
+            ondurationchange="voiceDurOk('${aid}')" onprogress="voiceTime('${aid}')" oncanplaythrough="voiceDurOk('${aid}')"
             onplay="voiceUI('${aid}',true)" onpause="voiceUI('${aid}',false)" onended="voiceEnded('${aid}')"
             onwaiting="voiceLoading('${aid}',true)" onplaying="voiceLoading('${aid}',false)" onstalled="voiceLoading('${aid}',true)"></audio>
         </div>
@@ -7691,6 +7713,12 @@ async function loadMessages(phone, scroll = true) {
     // em conversa de um número só, o aviso seria repetição inútil.
     const _multiConta = new Set((msgs || []).map(x => String(x.account_id || '')).filter(Boolean)).size > 1;
     let _prevDir = null; // agrupamento de bolhas (mesmo lado em sequência)
+    // As 12 mídias mais recentes (as que aparecem ao abrir) carregam JÁ
+    window._midiaPrio = new Set();
+    for (let i = msgs.length - 1, n = 0; i >= 0 && n < 12; i--) {
+      const mm = msgs[i];
+      if (mm && mm.media_id) { window._midiaPrio.add(String(mm.media_id)); n++; }
+    }
     const parts = [];
     if (_msgsAntigas > 0) parts.push({ key: 'ver-antigas', html:
       `<div class="day-divider" data-key="ver-antigas"><span onclick="_verMsgsAntigas()" style="cursor:pointer;color:#00806a;font-weight:700">Ver as ${_msgsAntigas} mensagens mais antigas</span></div>` });
@@ -7787,7 +7815,7 @@ async function loadMessages(phone, scroll = true) {
             const extra = (gi === 3 && sobra > 0) ? `<span style="position:absolute;inset:0;background:rgba(11,20,26,.55);color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:600;border-radius:6px;pointer-events:none">+${sobra}</span>` : '';
             // Foto em branco: era o carregamento falhando sem nova tentativa —
             // agora tenta de novo (2x) antes de desistir
-            return `<span style="position:relative;display:block;cursor:pointer" onclick="verMidia('${u}','img','Foto')"><img src="${srcA}" loading="lazy" decoding="async" data-fullsrc="${u}" data-try="0"
+            return `<span style="position:relative;display:block;cursor:pointer" onclick="verMidia('${u}','img','Foto')"><img src="${srcA}" loading="${_midiaJa(g.media_id) ? 'eager' : 'lazy'}" fetchpriority="${_midiaJa(g.media_id) ? 'high' : 'auto'}" decoding="async" data-fullsrc="${u}" data-try="0"
               onload="_thumbSave('${kA}',this)"
               onerror="_albRetry(this)"
               style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;display:block;background:rgba(0,0,0,.06)">${extra}</span>`;
@@ -8058,6 +8086,28 @@ function _vpEl(id){ return document.getElementById('vp-' + id); }
 function _vpAudio(id){ const w = _vpEl(id); return w ? w.querySelector('audio') : null; }
 function _vpSpeedLabel(){ return _voiceSpeed === 1 ? '1x' : _voiceSpeed + 'x'; }
 function _fmtVoice(s){ s = Math.max(0, s || 0); if(!isFinite(s)) s = 0; return Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0'); }
+// Duração CONFIÁVEL do áudio (ver explicação acima)
+function _vpDur(a, w){
+  let d = 0;
+  if (a && isFinite(a.duration) && a.duration > 0) d = a.duration;
+  if (!d && a) {
+    try { if (a.seekable && a.seekable.length) { const e = a.seekable.end(a.seekable.length - 1); if (isFinite(e) && e > 0) d = e; } } catch (_) {}
+    try { if (a.buffered && a.buffered.length) { const e = a.buffered.end(a.buffered.length - 1); if (isFinite(e) && e > d) d = e; } } catch (_) {}
+  }
+  const lbl  = parseFloat((w && w.dataset.dur)   || '0') || 0;
+  const bom  = parseFloat((w && w.dataset.durOk) || '0') || 0;
+  d = Math.max(d, lbl, bom, (a && isFinite(a.currentTime)) ? a.currentTime : 0);
+  if (w && d > bom) w.dataset.durOk = String(d); // o melhor valor nunca encolhe
+  return d;
+}
+// O arquivo finalmente informou a duração de verdade: ela passa a mandar
+function voiceDurOk(id){
+  const a = _vpAudio(id), w = _vpEl(id); if (!a || !w) return;
+  if (isFinite(a.duration) && a.duration > 0) {
+    w.dataset.durOk = String(a.duration);
+    if (a.paused && a.currentTime === 0) { const t = w.querySelector('.vp-time'); if (t) t.textContent = _fmtVoice(a.duration); }
+  }
+}
 function _vpFill(w, frac){
   if (!w) return;
   const bars = w.querySelectorAll('.vp-bars i');
@@ -8140,8 +8190,7 @@ function voiceTime(id){
   // Alguns áudios do WhatsApp reportam duração MENOR que a real (as barras
   // terminavam antes do som acabar) → usa a MAIOR entre: duração do arquivo,
   // duração gravada na etiqueta e o ponto já tocado
-  const lbl = parseFloat(w.dataset.dur || '0') || 0;
-  const dur = Math.max((isFinite(a.duration) && a.duration > 0) ? a.duration : 0, lbl, a.currentTime);
+  const dur = _vpDur(a, w);
   w.querySelector('.vp-time').textContent = _fmtVoice(a.currentTime);
   _vpFill(w, dur ? a.currentTime / dur : 0);
 }
@@ -8172,8 +8221,7 @@ function voiceSpeed(id){
 function voiceSeek(id, ev){
   const a = _vpAudio(id), w = _vpEl(id); if (!a || !w) return;
   if (!a.getAttribute('src') && a.dataset.url) { a.src = a.dataset.url; a.load(); }
-  const lblS = parseFloat(w.dataset.dur || '0') || 0;
-  const dur = Math.max((isFinite(a.duration) && a.duration > 0) ? a.duration : 0, lblS); if (!dur) return;
+  const dur = _vpDur(a, w); if (!dur) return;
   const barsEl = w.querySelector('.vp-bars'), r = barsEl.getBoundingClientRect();
   const frac = Math.min(1, Math.max(0, (ev.clientX - r.left) / r.width));
   a.currentTime = frac * dur; _vpFill(w, frac);
@@ -8420,12 +8468,12 @@ async function sendMessage() {
   // Janela de silêncio: nada de rascunho por 2s, tempo de o teclado do celular
   // terminar de entregar o que estava montando
   _ultEnviado = { texto: message, ts: Date.now(), phone: currentPhone };
-  _semRascunhoAte = Date.now() + 2000;
+  _semRascunhoAte = Date.now() + 2500;
   // e se o teclado entregar algo mesmo assim, o campo é limpo de novo
-  [60, 250, 600, 1200].forEach(ms => setTimeout(() => {
+  [40, 120, 260, 450, 700, 1000, 1400, 1900, 2400].forEach(ms => setTimeout(() => {
     try {
       const i2 = document.getElementById('msg-input');
-      if (i2 && _sobraDoEnvio(i2.value, _ultEnviado.phone)) { i2.value = ''; autoGrowMsgInput(i2); updateSendMicButtons(); }
+      if (i2 && _sobraDoEnvio(i2.value, _ultEnviado.phone, true)) { i2.value = ''; autoGrowMsgInput(i2); updateSendMicButtons(); }
     } catch (_) {}
   }, ms));
   input.value = '';
@@ -11555,7 +11603,7 @@ document.addEventListener('input', function(e) {
   if (currentPhone) {
     const _v = e.target.value;
     if (window._enviandoTexto || Date.now() < _semRascunhoAte || _sobraDoEnvio(_v, currentPhone)) {
-      if (_sobraDoEnvio(_v, currentPhone)) { e.target.value = ''; try { autoGrowMsgInput(e.target); } catch (_) {} }
+      if (_sobraDoEnvio(_v, currentPhone, true)) { e.target.value = ''; try { autoGrowMsgInput(e.target); } catch (_) {} }
       delete _drafts[currentPhone];
       _saveDrafts();
     } else {
