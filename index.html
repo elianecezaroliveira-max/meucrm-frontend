@@ -1174,14 +1174,14 @@ body.dark{
   #msg-input { font-size: 16px; line-height: 20px; height: 40px; padding: 10px 12px; }
   /* PRÉVIA DA FOTO: tela cheia e a legenda SEMPRE acima do teclado.
      A altura de verdade quem manda é o JS (área visível da tela). */
-  #media-preview-overlay { padding: 0; align-items: stretch; }
+  #media-preview-overlay { padding: 0 !important; align-items: stretch !important; }
   #media-preview-overlay .mp-card { max-width: 100% !important; width: 100%; height: 100%; max-height: none !important; border-radius: 0 !important; background: #0b141a !important; }
   #media-preview-overlay .mp-top { border-bottom: none !important; background: rgba(11,20,26,.55); }
   #media-preview-overlay .mp-top b { color: #fff; }
   #media-preview-overlay .mp-top span { color: #e9edef !important; }
   #media-preview-overlay .mp-bar { background: rgba(11,20,26,.9); }
-  #media-preview-overlay #mp-caption { background: rgba(255,255,255,.13); border-color: rgba(255,255,255,.2); color: #fff; }
-  #media-preview-overlay #mp-caption::placeholder { color: #b8c4c9; }
+  #media-preview-overlay #mp-caption { background: #ffffff !important; border-color: #d1d7db !important; color: #131c20 !important; caret-color: #131c20; }
+  #media-preview-overlay #mp-caption::placeholder { color: #8696a0 !important; }
   /* Celular: alvos de toque maiores (evita apagar tarefa/etiqueta sem querer) */
   .task-row button, .qr-manage-btn { min-width: 40px; min-height: 40px; }
   .lp-tag span[onclick] { padding: 6px 8px; display: inline-block; }
@@ -2035,7 +2035,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v372</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v373</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2801,7 +2801,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v372</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v373</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2855,7 +2855,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 372;
+const APP_VER = 373;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -8096,7 +8096,8 @@ function _mpAjustaTela() {
   const ov = document.getElementById('media-preview-overlay');
   if (!ov || ov.style.display !== 'flex') return;
   const vv = window.visualViewport;
-  const noCelular = window.matchMedia('(max-width: 768px)').matches;
+  // MESMA condição da folha de estilo — os dois têm de concordar sempre
+  const noCelular = window.matchMedia('(max-width: 768px) and (pointer: coarse)').matches;
   if (!noCelular || !vv) { // computador: nada disso é preciso
     ov.style.top = ''; ov.style.height = ''; ov.style.bottom = '';
     document.documentElement.style.removeProperty('--mp-img');
