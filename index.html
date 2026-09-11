@@ -2091,7 +2091,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v405</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v406</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2886,7 +2886,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v405</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v406</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2940,7 +2940,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 405;
+const APP_VER = 406;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -6463,45 +6463,7 @@ async function _fvShare(url, nome) {
   } catch (_) {} // cancelou a folha de compartilhar — sem erro
 }
 
-// ── BAIXAR UM ÁLBUM INTEIRO ────────────────────────────────────────
-// O .zip é montado aqui, no seu navegador. As fotos já vêm comprimidas (JPEG/
-// PNG), então elas entram no pacote como estão — é instantâneo e o arquivo fica
-// do mesmo tamanho que a soma das fotos.
-const _crcTab = (() => {
-  const t = new Uint32Array(256);
-  for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1); t[n] = c >>> 0; }
-  return t;
-})();
-function _crc32(u8) {
-  let c = 0xFFFFFFFF;
-  for (let i = 0; i < u8.length; i++) c = _crcTab[(c ^ u8[i]) & 0xFF] ^ (c >>> 8);
-  return (c ^ 0xFFFFFFFF) >>> 0;
-}
-function _zipSimples(arquivos) {
-  const enc = new TextEncoder();
-  const u16 = v => [v & 255, (v >> 8) & 255];
-  const u32 = v => [v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255];
-  const d = new Date();
-  const hora = ((d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1)) & 0xFFFF;
-  const data = (((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate()) & 0xFFFF;
-  const corpo = [], central = [];
-  let off = 0, tamCentral = 0;
-  for (const a of arquivos) {
-    const nome = enc.encode(a.nome);
-    const crc = _crc32(a.dados), tam = a.dados.length;
-    const cab = new Uint8Array([...u32(0x04034b50), ...u16(20), ...u16(0), ...u16(0), ...u16(hora), ...u16(data),
-      ...u32(crc), ...u32(tam), ...u32(tam), ...u16(nome.length), ...u16(0)]);
-    corpo.push(cab, nome, a.dados);
-    const cd = new Uint8Array([...u32(0x02014b50), ...u16(20), ...u16(20), ...u16(0), ...u16(0), ...u16(hora), ...u16(data),
-      ...u32(crc), ...u32(tam), ...u32(tam), ...u16(nome.length), ...u16(0), ...u16(0), ...u16(0), ...u16(0), ...u32(0), ...u32(off)]);
-    central.push(cd, nome);
-    tamCentral += cd.length + nome.length;
-    off += cab.length + nome.length + tam;
-  }
-  const fim = new Uint8Array([...u32(0x06054b50), ...u16(0), ...u16(0), ...u16(arquivos.length), ...u16(arquivos.length),
-    ...u32(tamCentral), ...u32(off), ...u16(0)]);
-  return new Blob([...corpo, ...central, fim], { type: 'application/zip' });
-}
+// ── BAIXAR AS FOTOS DE UM ÁLBUM ────────────────────────────────────
 function _albExt(mime) {
   const m = String(mime || '').toLowerCase();
   if (m.includes('png')) return 'png';
@@ -6533,7 +6495,7 @@ function baixarAlbum(el, chave) {
       </div>
       <div id="alb-sel-grade" style="flex:1;overflow:auto;-webkit-overflow-scrolling:touch;padding:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px;align-content:start"></div>
       <div style="flex-shrink:0;background:#111b21;padding:10px 12px calc(10px + env(safe-area-inset-bottom));display:flex;gap:8px;align-items:center">
-        <span style="flex:1;font-size:12px;color:#8696a0">Toque nas fotos para marcar ou desmarcar.</span>
+        <span style="flex:1;font-size:12px;color:#8696a0">Toque nas fotos para marcar ou desmarcar. Cada foto é salva como imagem.</span>
         <button onclick="_albFecha()" style="background:none;border:1px solid #3b4a54;color:#e9edef;border-radius:8px;padding:9px 14px;font-size:13px;cursor:pointer;font-family:inherit">Cancelar</button>
         <button id="alb-sel-ok" onclick="_albBaixaSel(this)" style="background:#00a884;border:none;color:#fff;border-radius:8px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit"></button>
       </div>
@@ -6602,27 +6564,31 @@ async function _albBaixaSel(ok) {
   ok._ocupado = true; ok.disabled = true;
   const escolhidas = _albSel.lista.filter((_, i) => _albSel.marcadas.has(i));
   const acct = encodeURIComponent(currentAccountId || '');
-  const quem = (currentName || currentPhone || 'lead').replace(/[\\/:*?"<>|]/g, '').trim().slice(0, 40);
-  const dia = new Date().toISOString().slice(0, 10);
+  const quem = (currentName || currentPhone || 'lead').replace(/[\\/:*?"<>|]/g, '').trim().slice(0, 40); // só para o título da folha de compartilhar
   try {
     const arqs = [];
     for (let i = 0; i < escolhidas.length; i++) {
-      ok.textContent = 'Baixando ' + (i + 1) + ' de ' + escolhidas.length + '…';
+      ok.textContent = 'Buscando ' + (i + 1) + ' de ' + escolhidas.length + '…';
       const g = escolhidas[i];
       const u = SERVER_URL + '/media-proxy/' + encodeURIComponent(g.id) + '?account_id=' + acct
         + (g.mime ? '&mime=' + encodeURIComponent(g.mime) : '');
       const r = await fetch(u);
       if (!r.ok) throw new Error('HTTP ' + r.status);
       const bl = await r.blob();
-      arqs.push({ nome: 'foto-' + String(i + 1).padStart(2, '0') + '.' + _albExt(g.mime || bl.type),
-                  dados: new Uint8Array(await bl.arrayBuffer()), tipo: bl.type || 'image/jpeg' });
+      const ext = _albExt(g.mime || bl.type);
+      // SEM renomear: o mesmo nome de quando você baixa a foto sozinha. Se
+      // repetir, quem numera é o navegador (imagem.jpg, imagem (1).jpg…).
+      arqs.push({
+        nome: 'imagem.' + ext,
+        blob: bl.type ? bl : new Blob([bl], { type: 'image/' + (ext === 'jpg' ? 'jpeg' : ext) }),
+      });
     }
-    // CELULAR: a folha de compartilhar salva direto na galeria. Se der qualquer
-    // problema (que não seja você cancelar), o .zip entra no lugar.
+    // CELULAR: a folha de compartilhar salva direto na galeria (é o jeito de a
+    // foto ir para o rolo da câmera). Se falhar, as fotos são baixadas uma a uma.
     if (_albEhCelular() && navigator.canShare) {
       let cancelou = false;
       try {
-        const fs = arqs.map(a => new File([a.dados], a.nome, { type: a.tipo }));
+        const fs = arqs.map(a => new File([a.blob], a.nome, { type: a.blob.type || 'image/jpeg' }));
         if (navigator.canShare({ files: fs })) {
           ok.textContent = 'Abrindo…';
           await navigator.share({ files: fs, title: 'Fotos de ' + quem });
@@ -6631,15 +6597,15 @@ async function _albBaixaSel(ok) {
       } catch (e) { cancelou = e && (e.name === 'AbortError' || /abort|cancel/i.test(e.message || '')); }
       if (cancelou) { _albFim(ok); return; }
     }
-    // UMA foto só: vai como imagem mesmo, sem compactar
-    if (arqs.length === 1) {
-      _albSalva(new Blob([arqs[0].dados], { type: arqs[0].tipo }), 'Foto ' + quem + ' ' + dia + '.' + _albExt(arqs[0].tipo));
-      try { showToast('Foto baixada.', 'ok'); } catch (_) {}
-      _albFim(ok, true); return;
+    // CADA FOTO COMO FOTO: uma de cada vez, direto na pasta de downloads.
+    // (Na primeira vez o navegador pergunta se pode baixar vários arquivos —
+    //  permita uma vez e ele lembra para o VETRA.)
+    for (let i = 0; i < arqs.length; i++) {
+      ok.textContent = 'Salvando ' + (i + 1) + ' de ' + arqs.length + '…';
+      _albSalva(arqs[i].blob, arqs[i].nome);
+      if (i < arqs.length - 1) await new Promise(r => setTimeout(r, 320)); // o navegador engasga se vierem todas de uma vez
     }
-    ok.textContent = 'Montando o arquivo…';
-    _albSalva(_zipSimples(arqs), 'Fotos ' + quem + ' ' + dia + '.zip');
-    try { showToast(arqs.length + ' fotos baixadas.', 'ok'); } catch (_) {}
+    try { showToast(arqs.length === 1 ? 'Foto baixada.' : arqs.length + ' fotos baixadas.', 'ok'); } catch (_) {}
     _albFim(ok, true); return;
   } catch (e) {
     try { showToast('Não consegui baixar: ' + (e.message || e), 'err'); } catch (_) {}
