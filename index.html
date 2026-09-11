@@ -2042,7 +2042,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v376</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v377</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2808,7 +2808,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v376</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v377</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2862,7 +2862,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 376;
+const APP_VER = 377;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5362,11 +5362,14 @@ async function toggleFavorite(phone) {
 (function initContactSwipe() {
   const list = document.getElementById('contacts-list');
   if (!list) return;
-  const _SWIPE_OK = 40; // distância para valer a ação (era 52)
+  const _SWIPE_OK = 40;   // distância para valer a ação
+  const _ENGATE = 6;      // pixels até a linha começar a andar (era 12)
   let startX = 0, startY = 0, item = null, dx = 0, swiping = false, quietTs = 0, startScroll = 0, touchT0 = 0;
   let _dirAtual = 0, _armadoAtual = false, _raf = 0;
   const pinta = () => { _raf = 0; if (!item || !swiping) return;
-    item.style.transform = 'translate3d(' + Math.max(-120, Math.min(120, dx)) + 'px,0,0)'; };
+    // desconta o engate: sem isso a linha "pulava" os primeiros pixels de uma vez
+    const d = dx > 0 ? Math.max(0, dx - _ENGATE) : Math.min(0, dx + _ENGATE);
+    item.style.transform = 'translate3d(' + Math.max(-120, Math.min(120, d)) + 'px,0,0)'; };
   const agendaPinta = () => { if (!_raf) _raf = requestAnimationFrame(pinta); };
   // Libera a lista e executa o redesenho que ficou esperando o dedo sair
   const soltaLista = (atraso) => {
@@ -5384,7 +5387,7 @@ async function toggleFavorite(phone) {
   };
   list.addEventListener('touchstart', e => {
     // Lista ainda deslizando (inércia)? Este toque é para PARAR/continuar a rolagem — não é swipe
-    if (Date.now() - quietTs < 250) { item = null; return; }
+    if (Date.now() - quietTs < 120) { item = null; return; }
     const wrap = e.target.closest('.contact-swipe-wrap'); if (!wrap) return;
     item = wrap.querySelector('.contact-item'); dx = 0; swiping = false; touchT0 = Date.now();
     startX = e.touches[0].clientX; startY = e.touches[0].clientY;
@@ -5401,13 +5404,14 @@ async function toggleFavorite(phone) {
     }
     // REGRA ABSOLUTA: a lista rolou (mais de 3px) = é rolagem, nunca swipe — mesmo já engatado
     if (Math.abs(list.scrollTop - startScroll) > 3) { cancelSwipe(); return; }
-    if (!swiping && Date.now() - quietTs < 250) { cancelSwipe(); return; }
-    // Engate FÁCIL: pouca distância, pouco tempo e ângulo tolerante
-    if (!swiping && Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.3 && Date.now() - touchT0 >= 45) {
+    if (!swiping && Date.now() - quietTs < 120) { cancelSwipe(); return; }
+    // Engate NA HORA: seis pixels para o lado e pronto — sem espera de tempo
+    if (!swiping && Math.abs(dx) > _ENGATE && Math.abs(dx) > Math.abs(dy) * 1.2) {
       swiping = true;
       window._arrastandoLista = true; // segura qualquer redesenho da lista
       clearTimeout(window._travaListaT);
       window._travaListaT = setTimeout(() => soltaLista(0), 4000); // nunca trava para sempre
+      item.style.transition = 'none'; // o dedo manda; nada de animação atrasando
       try { item.parentElement.classList.add('swiping'); } catch (_) {} // só AGORA os botões passam a existir
     }
     if (swiping) {
