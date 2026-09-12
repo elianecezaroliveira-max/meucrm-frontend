@@ -1,131 +1,116 @@
 <!DOCTYPE html>
-
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Termos de Serviço — MeuCRM</title>
-  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700&family=DM+Sans:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet"/>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --bg: #0d0f14; --surface: #151820; --border: #1f2430;
-      --accent: #4f8ef7; --accent-dim: rgba(79,142,247,0.12);
-      --text: #e8eaf0; --muted: #7a7f96;
-      --heading-font: 'Sora', sans-serif; --body-font: 'DM Sans', sans-serif;
-    }
-    html { scroll-behavior: smooth; }
-    body { background: var(--bg); color: var(--text); font-family: var(--body-font); font-weight: 300; line-height: 1.8; font-size: 15px; min-height: 100vh; }
-    body::before { content: ''; position: fixed; inset: 0; background-image: linear-gradient(rgba(79,142,247,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(79,142,247,0.03) 1px, transparent 1px); background-size: 40px 40px; pointer-events: none; z-index: 0; }
-    header { position: relative; z-index: 1; border-bottom: 1px solid var(--border); padding: 28px 48px; display: flex; align-items: center; gap: 14px; }
-    .logo-mark { width: 36px; height: 36px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-family: var(--heading-font); font-weight: 700; font-size: 16px; color: #fff; flex-shrink: 0; }
-    header h1 { font-family: var(--heading-font); font-size: 18px; font-weight: 600; letter-spacing: -0.3px; }
-    header span { color: var(--muted); font-weight: 300; margin-left: 4px; }
-    main { position: relative; z-index: 1; max-width: 760px; margin: 0 auto; padding: 64px 48px 96px; }
-    .hero { margin-bottom: 56px; padding-bottom: 48px; border-bottom: 1px solid var(--border); }
-    .badge { display: inline-block; background: var(--accent-dim); color: var(--accent); font-family: var(--heading-font); font-size: 11px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; padding: 5px 12px; border-radius: 4px; margin-bottom: 20px; }
-    .hero h2 { font-family: var(--heading-font); font-size: clamp(28px, 4vw, 40px); font-weight: 700; line-height: 1.2; letter-spacing: -0.8px; margin-bottom: 16px; }
-    .hero h2 em { font-style: normal; color: var(--accent); }
-    .hero p { color: var(--muted); font-size: 14px; }
-    section { margin-bottom: 40px; }
-    section h3 { font-family: var(--heading-font); font-size: 16px; font-weight: 600; letter-spacing: -0.2px; margin-bottom: 12px; display: flex; align-items: center; gap: 10px; }
-    section h3::before { content: ''; display: block; width: 3px; height: 16px; background: var(--accent); border-radius: 2px; flex-shrink: 0; }
-    section p, section li { color: #b0b5c8; font-size: 14.5px; line-height: 1.85; }
-    section ul { list-style: none; padding-left: 0; margin-top: 8px; }
-    section ul li { padding: 4px 0 4px 20px; position: relative; }
-    section ul li::before { content: '–'; position: absolute; left: 0; color: var(--accent); }
-    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-top: 12px; }
-    .card strong { font-family: var(--heading-font); font-size: 13px; font-weight: 600; color: var(--text); display: block; margin-bottom: 4px; }
-    .card a { color: var(--accent); text-decoration: none; font-size: 14px; }
-    .card a:hover { text-decoration: underline; }
-    footer { position: relative; z-index: 1; border-top: 1px solid var(--border); padding: 28px 48px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
-    footer p { color: var(--muted); font-size: 13px; }
-    footer a { color: var(--accent); text-decoration: none; font-size: 13px; }
-    footer a:hover { text-decoration: underline; }
-    @media (max-width: 600px) { header, footer { padding: 20px 24px; } main { padding: 40px 24px 72px; } }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Termos de Uso — VETRA</title>
+<meta name="description" content="Termos de Uso do VETRA — sistema de atendimento e gestão de relacionamento por WhatsApp.">
+<link rel="icon" href="/icons/icon-192.png">
+<style>
+  :root { --verde:#00a884; --tinta:#131c20; --cinza:#54656f; --claro:#8696a0; --linha:#e9edef; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#f0f2f5; color:var(--tinta);
+         font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+         line-height:1.65; -webkit-font-smoothing:antialiased; }
+  header { background:var(--verde); color:#fff; padding:30px 20px 26px; }
+  .capa { max-width:760px; margin:0 auto; }
+  .marca { font-size:22px; font-weight:800; letter-spacing:.5px; }
+  .sub { opacity:.92; font-size:14px; margin-top:3px; }
+  main { max-width:760px; margin:0 auto; padding:0 20px 60px; }
+  .cartao { background:#fff; border:1px solid var(--linha); border-radius:14px;
+            padding:26px 26px 20px; margin-top:-16px; box-shadow:0 2px 12px rgba(0,0,0,.05); }
+  h1 { font-size:22px; margin:0 0 2px; }
+  .selo { font-size:12px; color:var(--claro); margin-bottom:20px; }
+  h2 { font-size:15px; margin:24px 0 4px; color:var(--tinta); }
+  p { margin:0 0 4px; color:var(--cinza); font-size:14.5px; }
+  .quem { background:#f6f8f9; border:1px solid var(--linha); border-radius:10px;
+          padding:13px 15px; font-size:14px; color:var(--cinza); margin:16px 0 4px; }
+  .quem b { color:var(--tinta); }
+  a { color:#00806a; }
+  .pe { max-width:760px; margin:0 auto; padding:22px 20px 0; font-size:13px; color:var(--claro); }
+  .pe a { color:var(--claro); }
+  @media (max-width:560px) { .cartao { padding:20px 17px 16px; } header { padding:24px 17px 24px; } main { padding:0 14px 44px; } }
+</style>
 </head>
 <body>
-
-<header>
-  <div class="logo-mark">M</div>
-  <h1>MeuCRM <span>/ Termos de Serviço</span></h1>
-</header>
+<header><div class="capa">
+  <div class="marca">VETRA</div>
+  <div class="sub">Atendimento e gestão de relacionamento por WhatsApp</div>
+</div></header>
 
 <main>
-  <div class="hero">
-    <span class="badge">Termos &amp; Condições</span>
-    <h2>Termos de <em>Serviço</em></h2>
-    <p>Última atualização: 13 de maio de 2026 &nbsp;·&nbsp; Versão 1.0</p>
+<div class="cartao">
+  <h1>Termos de Uso</h1>
+  <div class="selo">Versão 1</div>
+
+  <div class="quem">
+    Fornecedora do VETRA: <b id="emp-nome">Eliane Cezar Oliveira</b><span id="emp-cnpj"></span>.
+    Contato: <b><a href="mailto:elianecezaroliveira@gmail.com">elianecezaroliveira@gmail.com</a></b>.
   </div>
 
-  <section>
-    <h3>1. Aceitação dos termos</h3>
-    <p>Ao acessar ou utilizar o MeuCRM, você concorda com estes Termos de Serviço. Caso não concorde, não utilize a plataforma.</p>
-  </section>
+  <h2>1. Quem somos</h2>
+  <p><span class="nome-emp">Eliane Cezar Oliveira</span><span class="cnpj-frase"></span>, daqui em diante “a Contratada”, fornece o VETRA — um sistema de atendimento e gestão de relacionamento por WhatsApp, usado pela internet.</p>
 
-  <section>
-    <h3>2. Descrição do serviço</h3>
-    <p>O MeuCRM é uma plataforma de gestão de relacionamento com clientes (CRM) desenvolvida para auxiliar na organização de leads, oportunidades e acompanhamento de clientes, com foco em operações de correspondência bancária e crédito consignado.</p>
-  </section>
+  <h2>2. O que o VETRA faz</h2>
+  <p>O VETRA organiza conversas de WhatsApp, cadastra contatos e leads, guarda etiquetas e anotações, dispara mensagens e permite automações. O envio e o recebimento acontecem pelas plataformas da Meta (WhatsApp Business Platform) ou por conexão via QR Code, conforme o que você contratar.</p>
 
-  <section>
-    <h3>3. Uso permitido</h3>
-    <p>Você se compromete a utilizar o MeuCRM exclusivamente para fins lícitos e em conformidade com a legislação brasileira vigente. É vedado:</p>
-    <ul>
-      <li>Usar a plataforma para atividades ilegais ou fraudulentas</li>
-      <li>Tentar acessar contas de outros usuários</li>
-      <li>Realizar engenharia reversa ou copiar o sistema</li>
-      <li>Enviar spam ou conteúdo malicioso por meio da plataforma</li>
-    </ul>
-  </section>
+  <h2>3. Sua conta</h2>
+  <p>O acesso é pessoal. Você é responsável por quem libera na sua equipe e pelo que essas pessoas fazem dentro da sua conta. Cada e-mail liberado pode ter acesso de administrador (mexe em tudo) ou de atendente (só conversa e cuida dos leads).</p>
 
-  <section>
-    <h3>4. Dados e privacidade</h3>
-    <p>O tratamento dos seus dados é regido pela nossa <a href="/privacy.html" style="color:var(--accent);">Política de Privacidade</a>, em conformidade com a Lei Geral de Proteção de Dados (LGPD — Lei nº 13.709/2018).</p>
-  </section>
+  <h2>4. Uso correto</h2>
+  <p>Você se compromete a: (a) só enviar mensagens para quem autorizou receber; (b) respeitar as políticas do WhatsApp e da Meta; (c) não usar o VETRA para spam, fraude, conteúdo ilegal ou perturbação; (d) manter os dados dos seus contatos corretos e atualizados. O descumprimento pode levar ao bloqueio do número pela própria Meta, o que foge do controle da Contratada.</p>
 
-  <section>
-    <h3>5. Integrações com terceiros</h3>
-    <p>O MeuCRM pode se integrar com plataformas de terceiros (Meta, WhatsApp Business, etc.). O uso dessas integrações está sujeito também aos termos e políticas de cada plataforma. Não nos responsabilizamos por alterações nas políticas de terceiros.</p>
-  </section>
+  <h2>5. Pagamento e vigência</h2>
+  <p>O plano contratado tem validade. Depois do vencimento há um prazo de tolerância; passado ele, o ENVIO de mensagens é pausado. Nenhum dado é apagado por falta de pagamento: conversas, leads e configurações continuam guardados e voltam ao normal quando o plano é reativado.</p>
 
-  <section>
-    <h3>6. Disponibilidade do serviço</h3>
-    <p>Nos esforçamos para manter o serviço disponível, porém não garantimos disponibilidade ininterrupta. Poderemos realizar manutenções programadas com aviso prévio sempre que possível.</p>
-  </section>
+  <h2>6. Disponibilidade</h2>
+  <p>A Contratada trabalha para manter o VETRA no ar, mas não garante funcionamento ininterrupto: existem manutenções, atualizações e falhas de terceiros (Meta, provedores de hospedagem e de banco de dados) fora do seu controle.</p>
 
-  <section>
-    <h3>7. Limitação de responsabilidade</h3>
-    <p>O MeuCRM não se responsabiliza por perdas de dados decorrentes de uso indevido, falhas de terceiros ou eventos fora do nosso controle. Recomendamos que o usuário mantenha backups independentes de informações críticas.</p>
-  </section>
+  <h2>7. Limite de responsabilidade</h2>
+  <p>A Contratada não responde por lucros cessantes, perda de oportunidade de negócio ou por decisões comerciais tomadas com base nas informações do sistema. A responsabilidade fica limitada ao valor pago pelo serviço nos últimos 12 meses.</p>
 
-  <section>
-    <h3>8. Modificações</h3>
-    <p>Podemos atualizar estes termos a qualquer momento. Mudanças relevantes serão comunicadas pelo e-mail cadastrado ou por aviso na plataforma. O uso continuado após as alterações implica aceitação dos novos termos.</p>
-  </section>
+  <h2>8. Encerramento</h2>
+  <p>Qualquer das partes pode encerrar a contratação avisando com 30 dias. No encerramento, você pode exportar seus dados; depois de 30 dias do fim do contrato, os dados podem ser eliminados em definitivo.</p>
 
-  <section>
-    <h3>9. Foro e legislação</h3>
-    <p>Estes termos são regidos pelas leis da República Federativa do Brasil. Fica eleito o foro da comarca do domicílio do usuário para dirimir eventuais controvérsias.</p>
-  </section>
+  <h2>9. Privacidade</h2>
+  <p>O tratamento de dados pessoais está descrito na <a href="/privacy.html">Política de Privacidade</a>, que faz parte destes Termos.</p>
 
-  <section>
-    <h3>10. Contato</h3>
-    <div class="card">
-      <strong>MeuCRM — Eliane Cezar de Oliveira</strong>
-      <a href="mailto:elianecezaroliveira@gmail.com">elianecezaroliveira@gmail.com</a>
-    </div>
-  </section>
+  <h2>10. Foro</h2>
+  <p id="foro">Fica eleito o foro da comarca do domicílio da Contratada para resolver o que não for resolvido de comum acordo.</p>
+
+  <h2>Contato</h2>
+  <p>Dúvidas sobre estes Termos: <a href="mailto:elianecezaroliveira@gmail.com">elianecezaroliveira@gmail.com</a>.</p>
+</div>
+
+<div class="pe">
+  <a href="/privacy.html">Política de Privacidade</a> · <a href="/">Entrar no VETRA</a>
+</div>
 </main>
 
-<footer>
-  <p>© 2026 MeuCRM · Eliane Cezar de Oliveira</p>
-  <div style="display:flex;gap:20px;">
-    <a href="/privacy.html">Política de Privacidade</a>
-    <a href="/data-deletion.html">Exclusão de Dados</a>
-  </div>
-</footer>
-
+<script>
+// Razão social, CNPJ e cidade vêm de Configurações ▸ Termos e privacidade,
+// dentro do VETRA. Sem resposta do servidor, a página já está completa.
+(function () {
+  var SRV = 'https://meucrm-backend-production-d4f4.up.railway.app';
+  try {
+    fetch(SRV + '/publico/empresa').then(function (r) { return r.json(); }).then(function (d) {
+      if (!d) return;
+      if (d.nome) {
+        var n = document.getElementById('emp-nome'); if (n) n.textContent = d.nome;
+        var todos = document.querySelectorAll('.nome-emp');
+        for (var i = 0; i < todos.length; i++) todos[i].textContent = d.nome;
+      }
+      if (d.cnpj) {
+        var c = document.getElementById('emp-cnpj'); if (c) c.textContent = ', inscrita no CNPJ/CPF ' + d.cnpj;
+        var f = document.querySelector('.cnpj-frase'); if (f) f.textContent = ', inscrita no CNPJ/CPF ' + d.cnpj;
+      }
+      if (d.cidade) {
+        var fo = document.getElementById('foro');
+        if (fo) fo.textContent = 'Fica eleito o foro de ' + d.cidade + ' para resolver o que não for resolvido de comum acordo.';
+      }
+    }).catch(function () {});
+  } catch (e) {}
+})();
+</script>
 </body>
 </html>
