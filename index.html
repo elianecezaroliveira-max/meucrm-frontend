@@ -790,6 +790,13 @@
     .day-divider.sai { animation-duration: .01s; }
     .msg.nasce { animation: none; }
   }
+  /* O aviso "N nova(s) mensagem(ns)" pertence à CONVERSA. Estas duas regras
+     fazem ele desaparecer no instante em que a conversa sai da tela — inclusive
+     no meio do deslize de voltar — para nunca aparecer por cima da lista. */
+  body.voltando #new-msg-pill { display: none !important; }
+  @media (max-width: 768px) {
+    body:not(.mobile-chat-open) #new-msg-pill { display: none !important; }
+  }
   /* Grade de fotos em sequência — mesmas formas do WhatsApp.
      A largura é a MESMA de uma foto sozinha (330px), então uma sequência não
      aparece menor que uma foto só. */
@@ -2102,7 +2109,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v408</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v409</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2897,7 +2904,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v408</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v409</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2951,7 +2958,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 408;
+const APP_VER = 409;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -6974,6 +6981,7 @@ function lpLoadMedia(phone){
 // Volta para sidebar no mobile
 function goBackToSidebar() {
   _clearUnreadMark(); // saiu da conversa: a divisória cumpriu o papel dela
+  try { hideNewMsgPill(); } catch (_) {} // o aviso é da conversa — some em QUALQUER saída
   if (window._veioDasTarefas) { // veio da tela de Tarefas: volta para lá
     window._veioDasTarefas = false;
     document.getElementById('layout').classList.remove('mobile-chat-open');
