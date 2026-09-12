@@ -2109,7 +2109,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v409</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v410</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2904,7 +2904,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v409</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v410</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2958,7 +2958,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 409;
+const APP_VER = 410;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -7984,6 +7984,11 @@ async function loadMessages(phone, scroll = true) {
       // Adia o re-render enquanto o usuário assiste/ouve (sem atualizar a assinatura,
       // para renderizar assim que a reprodução terminar)
       if (mediaPlaying || inFullscreen) return;
+      // DEDO DESLIZANDO PARA FECHAR O CHAT: nada de redesenhar nem mexer na
+      // rolagem no meio do gesto. Redesenhar uma conversa comprida custa alguns
+      // quadros — e no meio do deslize isso vira a travada que você sente. A
+      // assinatura não é atualizada, então o desenho acontece assim que soltar.
+      try { if (document.body.classList.contains('voltando')) return; } catch (_) {}
     }
     // Botão de descer: conta mensagens novas enquanto você está rolada para cima
     const _nearBottom = area.scrollHeight - area.scrollTop - area.clientHeight < 120;
@@ -8004,7 +8009,7 @@ async function loadMessages(phone, scroll = true) {
       if (window._unreadMark && !window._unreadMark.scrolled && window._unreadMark.msgId) {
         window._unreadMark.scrolled = true;
         const dv = document.querySelector('#messages-area [data-key="unread-div"]');
-        if (dv) dv.scrollIntoView({ block: 'center' });
+        if (dv) dv.scrollIntoView({ block: 'start' });
       }
     }, 120);
 
@@ -8404,7 +8409,7 @@ async function loadMessages(phone, scroll = true) {
       if (_dvNL) {
         window._unreadMark.scrolled = true;
         const _rD = _dvNL.getBoundingClientRect(), _rA = area.getBoundingClientRect();
-        area.scrollTop += (_rD.top - _rA.top) - Math.max(0, (area.clientHeight - _rD.height) / 2);
+        area.scrollTop += (_rD.top - _rA.top) - 8; // divisória no TOPO: tudo abaixo dela é novo
       } else {
         area.scrollTop = area.scrollHeight; // direto no fim, determinístico
       }
@@ -8426,7 +8431,10 @@ async function loadMessages(phone, scroll = true) {
       if (fl) {
         const aR = area.getBoundingClientRect();
         let lab = null;
-        area.querySelectorAll('.day-divider').forEach(dv => { if (dv.getBoundingClientRect().top - aR.top < 34) lab = dv.textContent; });
+        area.querySelectorAll('.day-divider').forEach(dv => {
+          if (dv.dataset.key === 'unread-div') return; // a faixa do topo é do DIA, não do aviso de não lidas
+          if (dv.getBoundingClientRect().top - aR.top < 34) lab = dv.textContent;
+        });
         if (lab) {
           fl.textContent = lab;
           fl.style.top = (aR.top + 8) + 'px';
@@ -8902,13 +8910,29 @@ function _vigAnota(texto, comoFoi) {
     localStorage.setItem('vetra_pisca', JSON.stringify(_vigLog));
   } catch (_) {}
 }
+// O vigia só trabalha quando a conversa muda. Este observador é quem avisa.
+let _vigSujo = true, _vigObs = null, _vigArea = null;
+function _vigObserva(area) {
+  if (_vigArea === area) return;
+  try { if (_vigObs) _vigObs.disconnect(); } catch (_) {}
+  try {
+    _vigObs = new MutationObserver(() => { _vigSujo = true; });
+    _vigObs.observe(area, { childList: true });
+  } catch (_) { _vigObs = null; }
+  _vigArea = area; _vigSujo = true;
+}
 function _vigTick() {
   try {
     const ag = Date.now();
     _vigRec = _vigRec.filter(r => ag - r.ts < _VIG_JANELA);
     const protegidas = _vigRec.filter(r => r.phone === currentPhone);
     const area = protegidas.length ? document.getElementById('messages-area') : null;
-    if (!area) { _vigAnt = null; _vigFone = ''; return _vigAgenda(); }
+    if (!area) { _vigAnt = null; _vigFone = ''; _vigArea = null; return _vigAgenda(); }
+    _vigObserva(area);
+    // Nada mudou na conversa desde a última olhada? Então não há o que conferir.
+    // (É isto que devolve o deslize: quadro nenhum gasta tempo à toa.)
+    if (!_vigSujo && _vigFone === currentPhone) return _vigAgenda();
+    _vigSujo = false;
     const mapa = new Map();
     area.querySelectorAll('.msg.outbound').forEach(el => { const t = _vigTexto(el); if (t) mapa.set(t, el); });
     if (_vigAnt && _vigFone === currentPhone) {
