@@ -790,6 +790,17 @@
     .day-divider.sai { animation-duration: .01s; }
     .msg.nasce { animation: none; }
   }
+  /* Grade de fotos em sequência — mesmas formas do WhatsApp.
+     A largura é a MESMA de uma foto sozinha (330px), então uma sequência não
+     aparece menor que uma foto só. */
+  /* largura FIXA de propósito: dentro de uma bolha que encolhe para caber no
+     conteúdo, um "100%" não tem de quem medir e a grade sai do tamanho errado. */
+  .alb { display: grid; gap: 3px; width: 330px; max-width: 100%; grid-template-columns: 1fr 1fr; }
+  .alb-t { position: relative; display: block; cursor: pointer; aspect-ratio: 1; overflow: hidden; }
+  /* 2 fotos: lado a lado */
+  /* 3 fotos: uma larga em cima, duas embaixo (nada de buraco de 4ª foto) */
+  .alb-3 .alb-t:first-child { grid-column: 1 / -1; aspect-ratio: 16 / 9; }
+  /* 4 ou mais: 2x2, com +N na última */
   /* Botão "baixar todas" da grade de fotos */
   .alb-baixar {
     margin-top: 5px; display: flex; align-items: center; justify-content: center; gap: 6px;
@@ -2091,7 +2102,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v407</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v408</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2886,7 +2897,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v407</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v408</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2940,7 +2951,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 407;
+const APP_VER = 408;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -8035,7 +8046,10 @@ async function loadMessages(phone, scroll = true) {
         if (parseUTC(b.timestamp) - parseUTC(grupo[grupo.length - 1].timestamp) > 90000) break;
         grupo.push(b);
       }
-      if (grupo.length >= 3) {
+      // Duas já formam grade (igual WhatsApp). Mas se DUAS OU MAIS tiverem
+      // legenda, cada uma segue sozinha — juntar apagaria um dos textos.
+      const _comLegenda = grupo.filter(x => x.content && !String(x.content).startsWith('[Imagem')).length;
+      if (grupo.length >= 2 && _comLegenda <= 1) {
         _albumStart[a.id] = grupo;
         grupo.slice(1).forEach(x => _albumSkip.add(x.id));
       }
@@ -8104,21 +8118,23 @@ async function loadMessages(phone, scroll = true) {
           const grupo = _albumStart[m.id];
           const ult = grupo[grupo.length - 1];
           const acctA = encodeURIComponent(currentAccountId || '');
-          const vis = grupo.slice(0, 4);
-          const sobra = grupo.length - 4;
+          const _qtd = grupo.length;
+          const _mostra = _qtd === 3 ? 3 : Math.min(_qtd, 4); // 3 fotos = 3 quadros (1 larga + 2)
+          const vis = grupo.slice(0, _mostra);
+          const sobra = _qtd - _mostra;
           const tiles = vis.map((g, gi) => {
             const mp = g.media_mime_type ? `&mime=${encodeURIComponent(g.media_mime_type)}` : '';
             const u = `${SERVER_URL}/media-proxy/${encodeURIComponent(g.media_id)}?account_id=${acctA}${mp}`;
             const kA = String(g.media_id || g.id || '').replace(/['"<>]/g, '');
             const srcA = _thumbGet(kA) || u; // miniatura local = aparece na hora
             // O selo +N não pode "comer" o toque (antes o clique nele não abria a foto)
-            const extra = (gi === 3 && sobra > 0) ? `<span style="position:absolute;inset:0;background:rgba(11,20,26,.55);color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:600;border-radius:6px;pointer-events:none">+${sobra}</span>` : '';
+            const extra = (gi === vis.length - 1 && sobra > 0) ? `<span style="position:absolute;inset:0;background:rgba(11,20,26,.55);color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:600;border-radius:6px;pointer-events:none">+${sobra}</span>` : '';
             // Foto em branco: era o carregamento falhando sem nova tentativa —
             // agora tenta de novo (2x) antes de desistir
-            return `<span style="position:relative;display:block;cursor:pointer" onclick="verMidia('${u}','img','Foto')"><img src="${srcA}" loading="${_midiaJa(g.media_id) ? 'eager' : 'lazy'}" fetchpriority="${_midiaJa(g.media_id) ? 'high' : 'auto'}" decoding="async" data-fullsrc="${u}" data-try="0"
+            return `<span class="alb-t" onclick="verMidia('${u}','img','Foto')"><img src="${srcA}" loading="${_midiaJa(g.media_id) ? 'eager' : 'lazy'}" fetchpriority="${_midiaJa(g.media_id) ? 'high' : 'auto'}" decoding="async" data-fullsrc="${u}" data-try="0"
               onload="_thumbSave('${kA}',this)"
               onerror="_albRetry(this)"
-              style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;display:block;background:rgba(0,0,0,.06)">${extra}</span>`;
+              style="width:100%;height:100%;object-fit:cover;border-radius:6px;display:block;background:rgba(0,0,0,.06)">${extra}</span>`;
           }).join('');
           const tk = (ult.direction === 'outbound')
             ? (ult.status === 'read' ? '<span class="msg-ticks read">' + TICK_TWO + '</span>' : ult.status === 'delivered' ? '<span class="msg-ticks delivered">' + TICK_TWO + '</span>' : '<span class="msg-ticks sent">' + TICK_ONE + '</span>') : '';
@@ -8128,9 +8144,12 @@ async function loadMessages(phone, scroll = true) {
           const chaveAlb = 'alb-' + safeId;
           (window._albuns || (window._albuns = {}))[chaveAlb] =
             grupo.map(g => ({ id: g.media_id, mime: g.media_mime_type || '' }));
+          // Legenda: se uma das fotos tiver, ela vale para a sequência inteira
+          const _legAlb = (grupo.find(x => x.content && !String(x.content).startsWith('[Imagem')) || {}).content || '';
+          const _capAlb = _legAlb ? `<div class="media-caption">${waFormat(_legAlb)}</div>` : '';
           parts.push({ key: chaveAlb, html: `<div class="msg ${safeDir}${grpA ? ' grp' : ''}" style="position:relative" data-key="${chaveAlb}" data-msg-id="${safeId}" data-msg-dir="${safeDir}">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;width:265px;max-width:100%">${tiles}</div>
-            <div class="alb-baixar" onclick="event.stopPropagation();baixarAlbum(this,'${chaveAlb}')" title="Escolher e baixar as ${grupo.length} fotos"><i class=ic-down></i> Baixar fotos (${grupo.length})</div>
+            <div class="alb alb-${Math.min(_qtd, 4)}">${tiles}</div>${_capAlb}
+            <div class="alb-baixar" onclick="event.stopPropagation();baixarAlbum(this,'${chaveAlb}')" title="Escolher e baixar as ${_qtd} fotos"><i class=ic-down></i> Baixar fotos (${_qtd})</div>
             <div class="time">${_brtTime(parseUTC(ult.timestamp))}${tk}</div>
           </div>` });
           continue;
