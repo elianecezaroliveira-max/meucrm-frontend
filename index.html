@@ -1777,8 +1777,8 @@ window.addEventListener('load', initAuth);
 <div id="setup-overlay">
   <div id="setup-box">
     <h2>Configurar VETRA</h2>
-    <p>Cole a URL do seu servidor Railway para conectar à interface. Você só precisa fazer isso uma vez.</p>
-    <label>URL DO SERVIDOR (RAILWAY)</label>
+    <p>Cole o endereço do seu servidor para conectar à interface. Você só precisa fazer isso uma vez.</p>
+    <label>ENDEREÇO DO SERVIDOR</label>
     <input type="text" id="setup-url" placeholder="https://meucrm-backend-xxxx.up.railway.app" />
     <button id="setup-btn" onclick="saveServer()">Conectar →</button>
   </div>
@@ -2109,7 +2109,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v412</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v413</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2904,7 +2904,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v412</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v413</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2934,6 +2934,15 @@ window.addEventListener('load', initAuth);
 // Assim, em vez de "não funciona", vemos a mensagem real e corrigimos na hora.
 function _showErrToast(msg) {
   try {
+    // O cliente não vê mensagem de código (nome de arquivo, linha, pilha de
+    // erro). Ele recebe uma frase curta, e no máximo uma por minuto, para a tela
+    // não virar um paredão vermelho. A mensagem técnica fica para você.
+    if (typeof _souDev === 'function' && !_souDev()) {
+      const ag = Date.now();
+      if (ag - (window._errAvisoTs || 0) < 60000) return;
+      window._errAvisoTs = ag;
+      msg = 'Algo não funcionou nesta tela. Se continuar, avise o suporte.';
+    }
     let t = document.getElementById('js-err-toast');
     if (!t) {
       t = document.createElement('div');
@@ -2943,6 +2952,7 @@ function _showErrToast(msg) {
       document.body.appendChild(t);
     }
     t.textContent = msg + ' — toque para fechar';
+    if (typeof _souDev === 'function' && !_souDev()) setTimeout(() => { try { t.remove(); } catch (_) {} }, 6000);
   } catch (_) {}
 }
 window.addEventListener('error', function (ev) {
@@ -2958,7 +2968,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 412;
+const APP_VER = 413;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -2994,7 +3004,9 @@ function saveServer() {
 async function init(url) {
   SERVER_URL = url;
   document.getElementById('server-url-label').textContent = url.replace('https://', '');
-  const _ss = document.getElementById('server-status'); if (_ss) _ss.title = 'Servidor conectado: ' + url.replace('https://', '');
+  // O endereço do servidor é infraestrutura: fica no aviso só para você.
+  const _ss = document.getElementById('server-status');
+  if (_ss) _ss.title = _souDev() ? ('Servidor conectado: ' + url.replace('https://', '')) : 'Conectado';
   document.getElementById('setup-overlay').classList.remove('open');
   try {
     await fetch(url + '/');
@@ -3943,6 +3955,7 @@ function formatContactTime(isoStr) {
 // MODO DIAGNÓSTICO (toque no número da versão): pinta cada caixa com uma cor
 // e mostra as medidas — para enxergarmos EXATAMENTE qual caixa cria a borda.
 function toggleDiag() {
+  if (!_souDev()) return; // modo de depuração é ferramenta sua, não do cliente
   const on = !window._diagOn; window._diagOn = on;
   const els = { layout: document.getElementById('layout'), sidebar: document.getElementById('sidebar'), lista: document.getElementById('contacts-list') };
   document.documentElement.style.background = on ? '#ff3b30' : ''; // FUNDO VERMELHO = área fora do app
@@ -10457,7 +10470,9 @@ async function carregarSheetsStatus() {
     const d = await (await fetch(SERVER_URL + '/sheets/status')).json();
     robo.innerHTML = d.robo_configurado
       ? `Robô do Google pronto. Compartilhe a planilha (como <b>Leitor</b>) com: <span style="font-family:monospace;user-select:all;background:#f0f2f5;padding:1px 4px;border-radius:4px">${escHtml(d.robo_email)}</span>`
-      : 'Falta configurar a variável <b>GOOGLE_SA_JSON</b> no Railway (a chave do robô do Google). Peça o passo a passo.';
+      : (_souDev()
+          ? 'Falta configurar a variável <b>GOOGLE_SA_JSON</b> no Railway (a chave do robô do Google). Peça o passo a passo.'
+          : 'A importação por planilha ainda não está liberada nesta conta. Fale com o suporte.');
     if (d.spreadsheet_id) document.getElementById('cfg-sheets-url').value = 'https://docs.google.com/spreadsheets/d/' + d.spreadsheet_id + '/edit';
     document.getElementById('cfg-sheets-aba').value = d.sheet_name || 'DISPARO';
     document.getElementById('cfg-sheets-auto').checked = !!d.auto;
@@ -10673,6 +10688,11 @@ async function equipeRemover(email) {
 // continua com acesso total, exatamente como era antes.
 window._acesso = { papel: 'dono', fornecedor: false, plano: null, carregado: false };
 function podeAdmin() { return (window._acesso && window._acesso.papel) !== 'atendente'; }
+// SÓ VOCÊ (a conta fornecedora) vê assunto de bastidor: versão do servidor,
+// DEPLOY, Railway, diagnóstico, endereço do servidor. Enquanto o acesso não
+// carregou, vale NÃO mostrar — melhor esconder de você por um segundo do que
+// mostrar para um cliente.
+function _souDev() { return !!(window._acesso && window._acesso.fornecedor); }
 async function _carregaAcesso() {
   try {
     const r = await fetch(SERVER_URL + '/meu-acesso');
@@ -10716,6 +10736,12 @@ function _telaSemLiberacao() {
 }
 function _aplicaPapel() {
   const atend = !podeAdmin();
+  // O tooltip do servidor é escrito na abertura, ANTES de sabermos quem entrou.
+  // Agora que sabemos, ele é reescrito: endereço só para você.
+  try {
+    const _ss = document.getElementById('server-status');
+    if (_ss) _ss.title = _souDev() ? ('Servidor conectado: ' + String(SERVER_URL || '').replace('https://', '')) : 'Conectado';
+  } catch (_) {}
   // Trilho do computador
   ['bots', 'ia', 'auto', 'acc', 'rel'].forEach(k => {
     const b = document.querySelector('#side-rail [data-rail="' + k + '"]');
@@ -10728,13 +10754,16 @@ function _aplicaPapel() {
   // Menu do celular e itens marcados com data-adm
   document.querySelectorAll('[data-adm]').forEach(el => { el.style.display = atend ? 'none' : ''; });
   // Abas de Configurações que mexem na conta (Aparência e Termos ficam para todos)
-  ['integ', 'dup', 'bill', 'equipe', 'diag', 'reg'].forEach(k => {
+  ['integ', 'dup', 'bill', 'equipe', 'reg'].forEach(k => {
     const t = document.querySelector('#cfg-nav .cfg-tab[data-pane="' + k + '"]');
     if (t) t.style.display = atend ? 'none' : '';
   });
-  // Painel do fornecedor: só para você
-  const pf = document.querySelector('#cfg-nav .cfg-tab[data-pane="adm"]');
-  if (pf) pf.style.display = (window._acesso.fornecedor && !atend) ? '' : 'none';
+  // Painel do fornecedor e Diagnóstico: só para você. O Diagnóstico fala de
+  // versão de servidor, DEPLOY e Railway — assunto de bastidor, não do cliente.
+  ['adm', 'diag'].forEach(k => {
+    const t = document.querySelector('#cfg-nav .cfg-tab[data-pane="' + k + '"]');
+    if (t) t.style.display = (_souDev() && !atend) ? '' : 'none';
+  });
   // Selo ao lado do nome, para a pessoa saber que acesso tem
   const h = document.querySelector('#topbar h1');
   let selo = document.getElementById('selo-papel');
@@ -10756,6 +10785,7 @@ function _aplicaPapel() {
 // pista era uma tela dando erro sem explicação.
 async function _avisaServidorNoApp() {
   const f = document.getElementById('faixa-servidor'); if (!f) return;
+  if (!_souDev()) { f.style.display = 'none'; f.textContent = ''; return; } // bastidor: só para você
   let v = 0;
   try { v = await _servidorVersao(); } catch (_) { return; }
   if (!v || v >= SERVIDOR_MIN) { f.style.display = 'none'; f.textContent = ''; return; }
@@ -10860,6 +10890,7 @@ async function onbDispensar() {
 // ═══════════════════════════════════════════════════════════════════
 async function carregaDiagnostico(forcar) {
   const el = document.getElementById('diag-quadro'); if (!el) return;
+  if (!_souDev()) { el.textContent = ''; return; } // porta trancada, não só escondida
   el.textContent = 'Conferindo…';
   if (forcar) _verServidor = null;
   let d = null, erro = null;
@@ -11939,6 +11970,8 @@ async function _apiJson(url, opts) {
   const r = await fetch(url, opts);
   const tipo = r.headers.get('content-type') || '';
   if (!tipo.includes('json')) {
+    // Para o cliente: uma frase de gente. Para você: o que fazer.
+    if (!_souDev()) throw new Error('Esta parte do sistema está sendo atualizada. Tente de novo daqui a alguns minutos.');
     const v = await _servidorVersao();
     const ondeEsta = v ? ' (ele está na versão ' + v + ')' : '';
     throw new Error('O servidor ainda não tem este recurso' + ondeEsta
@@ -11953,6 +11986,7 @@ async function _apiJson(url, opts) {
 async function _avisaServidorAtrasado() {
   const painel = document.getElementById('cfg-panes');
   if (!painel) return;
+  if (!_souDev()) { const f0 = document.getElementById('cfg-aviso-versao'); if (f0) f0.remove(); return; }
   const v = await _servidorVersao();
   let faixa = document.getElementById('cfg-aviso-versao');
   if (v && v >= SERVIDOR_MIN) { if (faixa) faixa.remove(); return; }
@@ -15333,7 +15367,9 @@ function faqRender(){
   if(_faqMode==='ai'){
     html += '<div style="margin-top:8px;font-size:12px;font-weight:600;' + (_faqAiKey?'color:#00a884':'color:#c0392b') + '">'
       + (_faqAiKey ? '✓ Chave conectada · modelo: ' + _faqEsc(_faqAiModel)
-                   : 'Falta configurar a chave GROQ_API_KEY no servidor (Railway) — sem ela, a IA usa o modo texto.')
+                   : (_souDev()
+                        ? 'Falta configurar a chave GROQ_API_KEY no servidor (Railway) — sem ela, a IA usa o modo texto.'
+                        : 'A resposta por IA ainda não está liberada nesta conta — por enquanto vale o modo texto. Fale com o suporte.'))
       + '</div>'
       + '<div style="display:flex;gap:8px;margin-top:10px">'
       + '<input id="faq-ai-test-in" type="text" placeholder="Testar: escreva uma mensagem de cliente..." style="flex:1;background:#f0f2f5;border:1px solid #e0e4e6;border-radius:8px;padding:8px 10px;font-size:13px;color:#131c20">'
