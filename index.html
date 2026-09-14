@@ -2109,7 +2109,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v410</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v412</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2904,7 +2904,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v410</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v412</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2958,7 +2958,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 410;
+const APP_VER = 412;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5577,12 +5577,46 @@ function _redesenhaListaDepois(ms) {
   clearTimeout(window._listaDepoisT);
   window._listaDepoisT = setTimeout(() => { try { applyFilters(); } catch (_) {} }, ms || 420);
 }
+// Leva UMA linha para o lugar certo na lista, sem redesenhar as outras.
+// Devolve false quando não dá (lista filtrada, busca ativa, linha fora da tela):
+// aí quem chama manda redesenhar do jeito antigo.
+function _moveLinhaContato(phone) {
+  try {
+    if (searchResults) return false;                                   // busca ativa: ordem é outra
+    if (typeof _listFilter !== 'undefined' && _listFilter !== 'all') return false; // filtro pode tirar a linha da lista
+    const lista = document.getElementById('contacts-list'); if (!lista) return false;
+    const esc = v => (window.CSS && CSS.escape) ? CSS.escape(v) : String(v).replace(/["\\]/g, '\\$&');
+    const wrap = lista.querySelector('.contact-swipe-wrap[data-phone="' + esc(phone) + '"]');
+    if (!wrap) return false;
+    const ordem = (allContacts || []).map(c => c.phone);
+    const i = ordem.indexOf(phone); if (i < 0) return false;
+    let ref = null; // a primeira linha que, pela ordem nova, vem DEPOIS desta
+    for (let k = i + 1; k < ordem.length; k++) {
+      const el = lista.querySelector('.contact-swipe-wrap[data-phone="' + esc(ordem[k]) + '"]');
+      if (el && el !== wrap) { ref = el; break; }
+    }
+    if (ref) { if (wrap.nextElementSibling !== ref) lista.insertBefore(wrap, ref); }
+    else if (lista.lastElementChild !== wrap) lista.appendChild(wrap);
+    return true;
+  } catch (_) { return false; }
+}
 async function markContactRead(phone) {
   const c = allContacts.find(x => x.phone === phone);
   if (c) { c.unread_count = 0; c.first_unread_at = null; }
+  const sr = (searchResults || []).find(x => x.phone === phone);
+  if (sr) { sr.unread_count = 0; sr.first_unread_at = null; }
   _ecoRegistra(phone, { lida: true });
-  _pintaLinhaContato(phone);   // muda só esta linha, na hora
-  _redesenhaListaDepois();     // a lista se reorganiza quando o gesto acabar
+  // REORDENA: as não lidas ficam em cima. Sem esta linha a conversa continuava
+  // no lugar dela mesmo depois de lida — e ficava ACIMA de uma não lida logo
+  // abaixo, que é o que você viu. (Quem redesenha não reordena sozinho.)
+  allContacts = sortContacts(allContacts);
+  if (searchResults) searchResults = sortContacts(searchResults);
+  _pintaLinhaContato(phone);   // a linha já fica "lida" na hora, sem esperar nada
+  // A conversa muda de LUGAR na lista. Redesenhar a lista inteira para isso
+  // custava quase um segundo num celular com muitas conversas — e era esse o
+  // "delay" depois do arrasto. Agora só ESTA linha é levada para o lugar novo,
+  // assim que ela termina de voltar ao ponto de partida.
+  setTimeout(() => { if (!_moveLinhaContato(phone)) _redesenhaListaDepois(0); }, 250);
   try { await fetch(`${SERVER_URL}/contacts/${encodeURIComponent(phone)}/read`, { method: 'PUT' }); } catch (_) {}
 }
 async function toggleFavorite(phone) {
@@ -11889,7 +11923,7 @@ async function openConfigModal() {
 }
 // Versão do servidor que este app espera. Se o Railway estiver atrás disso,
 // algumas telas não têm como funcionar — e o app avisa em vez de dar erro seco.
-const SERVIDOR_MIN = 267;
+const SERVIDOR_MIN = 269;
 let _verServidor = null;
 async function _servidorVersao() {
   if (_verServidor !== null) return _verServidor;
@@ -14268,7 +14302,7 @@ function renderPipelineList(contacts) {
   if (!rows.length) { el.innerHTML = '<div style="padding:24px;color:#667781;font-size:14px">Nenhum lead encontrado.</div>'; return; }
   const allSel = rows.length > 0 && rows.every(c => selectedLeads.has(c.phone));
   const header = `<div class="plist-head">
-    <span class="plist-check">${_pipeSelMode ? `<input type="checkbox" ${allSel ? 'checked' : ''} onclick="toggleAllPipelineList(this.checked)" title="Selecionar todos">` : ''}</span>
+    <span class="plist-check"><input type="checkbox" ${allSel ? 'checked' : ''} onclick="toggleAllPipelineList(this.checked)" title="Marcar todos"></span>
     <span class="plist-h-name">Nome</span>
     <span class="plist-h-phone">Telefone</span>
     <span class="plist-h-stage">Etapa</span>
@@ -14278,7 +14312,7 @@ function renderPipelineList(contacts) {
     const tags = (c.tags || []).slice(0, 3).map((t) => `<span class="tag-chip ${_tagCor(t)}" style="font-size:10px;padding:1px 6px">${escHtml(t)}</span>`).join('');
     const sel = selectedLeads.has(c.phone);
     return `<div class="plist-row${sel ? ' sel' : ''}" data-phone="${c.phone}">
-      <span class="plist-check">${_pipeSelMode ? `<input type="checkbox" ${sel ? 'checked' : ''} onclick="event.stopPropagation();togglePipelineListSel('${c.phone}',this.checked)">` : ''}</span>
+      <span class="plist-check"><input type="checkbox" ${sel ? 'checked' : ''} onclick="event.stopPropagation();togglePipelineListSel('${c.phone}',this.checked)"></span>
       <span class="plist-c-name" onclick="openLeadChat('${_jsAttr(c.phone)}','${_jsAttr(c.name || '')}','${_jsAttr(c.account_id || '')}')">${escHtml(_nomeOuTel(c.name, c.phone))}</span>
       <span class="plist-c-phone">${formatPhone(c.phone)}</span>
       <span class="plist-c-stage"><span class="plist-stage">${escHtml(stName[c.stage_id] || 'Sem etapa')}</span></span>
@@ -14828,30 +14862,147 @@ async function bulkDeleteLeads() {
   } catch(e) { alert('Erro ao excluir leads'); }
 }
 
-async function bulkEditTags() {
-  if (selectedLeads.size === 0) return;
-  const raw = await vPrompt({ titulo: 'Etiquetar leads', texto: `${selectedLeads.size} lead(s) selecionados.`, rotulo: 'Etiquetas (separe por vírgula)', dica: 'quente, siape', confirmar: 'Aplicar' });
-  if (raw === null) return;
-  const newTags = raw.split(',').map(t => t.trim()).filter(Boolean);
-  if (!newTags.length) return;
+// ═══════════════════════════════════════════════════════════════════
+// ETIQUETAS DOS LEADS MARCADOS — vê as que eles já têm e muda em massa
+// ═══════════════════════════════════════════════════════════════════
+// A janela mostra, de uma vez: as etiquetas que TODOS os marcados têm, as que
+// só ALGUNS têm, e as demais do seu catálogo. Clicando numa etiqueta você diz o
+// que quer que aconteça com ela em TODOS os leads marcados:
+//   nada  →  + colocar em todos  →  − tirar de todos  →  nada …
+// Nada é gravado até você clicar em Salvar.
+let _btSel = null; // { phones, tags:[{nome,em}], plano:{nome:'add'|'del'} }
+
+function bulkEditTags() {
   const phones = Array.from(selectedLeads);
-  phones.forEach(phone => {
-    const ac = allContacts.find(c => c.phone === phone);
-    const pc = pipelineContacts.find(c => c.phone === phone);
-    const merged = Array.from(new Set([...(ac?.tags || []), ...newTags]));
-    if (ac) ac.tags = merged;
-    if (pc) pc.tags = merged;
-  });
-  _sairSelecaoPipeline();
-  renderContacts(allContacts);
-  showToast(`Tags adicionadas a ${phones.length} lead(s)`, 'ok', 2500);
-  try {
-    await fetch(`${SERVER_URL}/contacts/bulk-tags`, {
-      method: 'PUT',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ phones, tags: newTags })
+  if (!phones.length) return;
+  const _dono = p => (pipelineContacts || []).find(c => c.phone === p) || (allContacts || []).find(c => c.phone === p) || {};
+  const _ch = t => String(t).trim().toLowerCase();
+  // quantos dos marcados têm cada etiqueta
+  const conta = new Map(), nomeDe = new Map();
+  phones.forEach(p => {
+    const vistas = new Set();
+    ((_dono(p).tags) || []).forEach(t => {
+      const k = _ch(t); if (!k || vistas.has(k)) return; vistas.add(k);
+      conta.set(k, (conta.get(k) || 0) + 1);
+      if (!nomeDe.has(k)) nomeDe.set(k, String(t).trim());
     });
-  } catch(e) {}
+  });
+  (allTagsList || []).forEach(t => { const k = _ch(t); if (k && !nomeDe.has(k)) { nomeDe.set(k, String(t).trim()); conta.set(k, conta.get(k) || 0); } });
+  const tags = Array.from(conta.entries())
+    .map(([k, n]) => ({ chave: k, nome: nomeDe.get(k), n, em: n === phones.length ? 'todos' : (n > 0 ? 'alguns' : 'nenhum') }))
+    .sort((x, y) => (y.n - x.n) || x.nome.localeCompare(y.nome));
+  _btSel = { phones, tags, plano: {}, busca: '' };
+
+  if (!document.getElementById('btags-overlay')) {
+    document.body.insertAdjacentHTML('beforeend', `<div id="btags-overlay" onclick="if(event.target===this)_btFecha()" style="display:none;position:fixed;inset:0;background:rgba(11,20,26,.55);z-index:700;align-items:center;justify-content:center;padding:16px">
+      <div style="background:#fff;width:100%;max-width:520px;border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.28);display:flex;flex-direction:column;max-height:86vh">
+        <div style="padding:16px 18px 10px;display:flex;align-items:center;gap:10px">
+          <div style="flex:1;font-size:16px;font-weight:700;color:#131c20">Etiquetas dos leads marcados</div>
+          <span onclick="_btFecha()" style="cursor:pointer;font-size:20px;color:#667781;line-height:1;padding:2px 4px">✕</span>
+        </div>
+        <div style="padding:0 18px">
+          <input id="bt-busca" placeholder="Procurar ou criar etiqueta…" oninput="_btDesenha(this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();_btCria();}"
+            style="width:100%;box-sizing:border-box;background:#fff;border:1px solid #d1d7db;border-radius:8px;padding:10px 12px;font-size:14px;outline:none;font-family:inherit">
+          <div style="font-size:11.5px;color:#8696a0;margin:8px 0 2px;line-height:1.5">
+            Clique numa etiqueta para <b style="color:#00806a">+ colocar em todos</b> ou <b style="color:#c0392b">− tirar de todos</b>. Clique de novo para desfazer.
+          </div>
+        </div>
+        <div id="bt-chips" style="flex:1;overflow-y:auto;padding:10px 18px 4px;display:flex;flex-wrap:wrap;gap:7px;align-content:flex-start"></div>
+        <div style="padding:12px 18px calc(14px + env(safe-area-inset-bottom));border-top:1px solid #f0f2f5;display:flex;align-items:center;gap:10px">
+          <span id="bt-resumo" style="flex:1;font-size:12.5px;color:#667781;line-height:1.4"></span>
+          <button onclick="_btFecha()" style="background:none;border:1px solid #d1d7db;color:#54656f;border-radius:8px;padding:9px 14px;font-size:13px;cursor:pointer;font-family:inherit">Cancelar</button>
+          <button id="bt-salvar" onclick="_btSalva(this)" class="btn-save" style="border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;border:none">Salvar</button>
+        </div>
+      </div>
+    </div>`);
+  }
+  const ov = document.getElementById('btags-overlay');
+  ov.style.display = 'flex';
+  const b = document.getElementById('bt-busca'); if (b) { b.value = ''; setTimeout(() => b.focus(), 60); }
+  _btDesenha('');
+}
+function _btFecha() { const o = document.getElementById('btags-overlay'); if (o) o.style.display = 'none'; _btSel = null; }
+function _btClique(chave) {
+  if (!_btSel) return;
+  const t = _btSel.tags.find(x => x.chave === chave); if (!t) return;
+  const atual = _btSel.plano[chave] || '';
+  // em TODOS: só faz sentido tirar. Nos outros casos: colocar → tirar → nada.
+  if (t.em === 'todos') _btSel.plano[chave] = atual === 'del' ? '' : 'del';
+  else _btSel.plano[chave] = atual === '' ? 'add' : (atual === 'add' ? 'del' : '');
+  if (!_btSel.plano[chave]) delete _btSel.plano[chave];
+  _btDesenha(_btSel.busca);
+}
+function _btCria() {
+  if (!_btSel) return;
+  const cx = document.getElementById('bt-busca'); const nome = (cx.value || '').trim();
+  if (!nome) return;
+  const chave = nome.toLowerCase();
+  if (!_btSel.tags.some(t => t.chave === chave)) _btSel.tags.unshift({ chave, nome, n: 0, em: 'nenhum' });
+  _btSel.plano[chave] = 'add';
+  cx.value = ''; _btDesenha('');
+}
+function _btDesenha(busca) {
+  if (!_btSel) return;
+  _btSel.busca = busca || '';
+  const q = _btSel.busca.trim().toLowerCase();
+  const cx = document.getElementById('bt-chips'); if (!cx) return;
+  const lista = _btSel.tags.filter(t => !q || t.chave.includes(q));
+  const total = _btSel.phones.length;
+  const chip = t => {
+    const acao = _btSel.plano[t.chave] || '';
+    let fundo = '#f0f2f5', cor = '#54656f', borda = '1px solid #e0e4e6', extra = '', risco = '';
+    if (t.em === 'todos') { fundo = '#e7f7ef'; cor = '#00806a'; borda = '1px solid #00a884'; extra = ' <span style="opacity:.65">✓ todos</span>'; }
+    else if (t.em === 'alguns') { borda = '1px dashed #c5a04a'; cor = '#8c6d1f'; fundo = '#fff9e8'; extra = ` <span style="opacity:.7">${t.n} de ${total}</span>`; }
+    if (acao === 'add') { fundo = '#00a884'; cor = '#fff'; borda = '1px solid #00a884'; extra = ' <span style="opacity:.85">+ em todos</span>'; }
+    if (acao === 'del') { fundo = '#fdecea'; cor = '#c0392b'; borda = '1px solid #e6a8a0'; extra = ' <span style="opacity:.8">− de todos</span>'; risco = 'text-decoration:line-through;'; }
+    return `<span onclick="_btClique('${_jsAttr(t.chave)}')" title="${escHtml(t.nome)}"
+      style="background:${fundo};color:${cor};border:${borda};border-radius:14px;padding:5px 11px;font-size:12.5px;font-weight:600;cursor:pointer;user-select:none;max-width:100%;${risco}">${escHtml(t.nome)}${extra}</span>`;
+  };
+  cx.innerHTML = lista.length ? lista.map(chip).join('')
+    : `<span style="font-size:13px;color:#8696a0;padding:6px 2px">Nenhuma etiqueta com “${escHtml(_btSel.busca)}”. Aperte Enter para criar.</span>`;
+  const add = Object.values(_btSel.plano).filter(x => x === 'add').length;
+  const del = Object.values(_btSel.plano).filter(x => x === 'del').length;
+  const r = document.getElementById('bt-resumo');
+  if (r) r.innerHTML = (add || del)
+    ? `Em <b>${total}</b> lead(s): ${add ? '<b style="color:#00806a">+' + add + '</b>' : ''}${add && del ? ' · ' : ''}${del ? '<b style="color:#c0392b">−' + del + '</b>' : ''}`
+    : `<b>${total}</b> lead(s) marcado(s).`;
+  const bs = document.getElementById('bt-salvar');
+  if (bs) { bs.disabled = !(add || del); bs.style.opacity = (add || del) ? '1' : '.45'; bs.style.cursor = (add || del) ? 'pointer' : 'default'; }
+}
+async function _btSalva(btn) {
+  if (!_btSel) return;
+  const entram = _btSel.tags.filter(t => _btSel.plano[t.chave] === 'add').map(t => t.nome);
+  const saem   = _btSel.tags.filter(t => _btSel.plano[t.chave] === 'del').map(t => t.nome);
+  if (!entram.length && !saem.length) return;
+  const phones = _btSel.phones.slice();
+  if (btn) { btn.disabled = true; btn.textContent = 'Salvando…'; }
+  const _ch = t => String(t).trim().toLowerCase();
+  const fora = new Set(saem.map(_ch));
+  // muda já na tela (o servidor confirma em seguida)
+  phones.forEach(p => {
+    [allContacts, pipelineContacts, searchResults].forEach(arr => {
+      const c = (arr || []).find(x => x.phone === p); if (!c) return;
+      const lista = (c.tags || []).filter(t => !fora.has(_ch(t)));
+      entram.forEach(t => { if (!lista.some(x => _ch(x) === _ch(t))) lista.push(t); });
+      c.tags = lista;
+    });
+  });
+  entram.forEach(t => { if (!(allTagsList || []).some(x => _ch(x) === _ch(t))) allTagsList.push(t); });
+  _btFecha();
+  _sairSelecaoPipeline();
+  try { renderContacts(allContacts); } catch (_) {}
+  try { populatePipelineFilterTags && populatePipelineFilterTags(); } catch (_) {}
+  const conta = [entram.length ? '+' + entram.length : '', saem.length ? '−' + saem.length : ''].filter(Boolean).join(' ');
+  try {
+    const r = await fetch(`${SERVER_URL}/contacts/bulk-tags`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phones, add: entram, remove: saem })
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    showToast(`Etiquetas atualizadas (${conta}) em ${phones.length} lead(s).`, 'ok', 2600);
+  } catch (e) {
+    showToast('Mudei na tela, mas o servidor não confirmou. Atualize a página para conferir.', 'err', 5000);
+  }
 }
 
 // ── FILTROS DO PIPELINE ──
