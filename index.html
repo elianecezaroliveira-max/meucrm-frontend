@@ -2137,7 +2137,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v418</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v419</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2932,7 +2932,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v418</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v419</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2996,7 +2996,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 418;
+const APP_VER = 419;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -18373,6 +18373,15 @@ function addRRBranch() {
 function removeRRBranch(idx) {
   const node = botNodes.find(n=>n.id===selectedNodeId); if(!node) return;
   const branches = (node.config.branches||[]).filter((_,i)=>i!==idx);
+  // As setas do rodízio são numeradas pela posição da opção ("0", "1", "2"…).
+  // Tirar a opção do meio SEM renumerar fazia a opção seguinte herdar o caminho
+  // da excluída e o caminho dela ficar solto — era a "bagunça" nos outros nós.
+  botEdges = botEdges.filter(e => !(e.from_node_id === node.id && String(e.label) === String(idx)));
+  botEdges.forEach(e => {
+    if (e.from_node_id !== node.id) return;
+    const n = Number(e.label);
+    if (/^\d+$/.test(String(e.label)) && n > idx) e.label = String(n - 1);
+  });
   updateNodeConfig(node.id, {branches});
   renderConfigPanel(node); _rerenderBotNode(node);
 }
@@ -18413,7 +18422,12 @@ function updateOptionLabel(idx, val) {
   const node = botNodes.find(n=>n.id===selectedNodeId);
   if (!node) return;
   const opts = [...(node.config.options||[])];
+  const antigo = (opts[idx]||{}).label;
   opts[idx] = {label:val};
+  // a seta dessa opção é identificada pelo TEXTO: renomear a opção renomeia a seta
+  // junto (senão o caminho ficava solto e a opção nova nascia sem ligação)
+  if (antigo != null && antigo !== val && !opts.some((o, i) => i !== idx && o.label === antigo))
+    botEdges.forEach(e => { if (e.from_node_id === node.id && e.label === antigo) e.label = val; });
   updateNodeConfig(node.id, {options:opts});
 }
 
@@ -18428,7 +18442,11 @@ function addOption() {
 function removeOption(idx) {
   const node = botNodes.find(n=>n.id===selectedNodeId);
   if (!node) return;
+  const tirada = ((node.config.options||[])[idx]||{}).label;
   const opts = (node.config.options||[]).filter((_,i)=>i!==idx);
+  // a seta que saía dessa opção vai junto (senão ficava uma seta órfã no fluxo)
+  if (tirada != null && !opts.some(o => o.label === tirada))
+    botEdges = botEdges.filter(e => !(e.from_node_id === node.id && e.label === tirada));
   updateNodeConfig(node.id, {options:opts});
   renderConfigPanel(node);
 }
