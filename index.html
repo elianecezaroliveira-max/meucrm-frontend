@@ -2114,7 +2114,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v415</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v416</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2909,7 +2909,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v415</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v416</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2973,7 +2973,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 415;
+const APP_VER = 416;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -11957,7 +11957,7 @@ async function openConfigModal() {
 }
 // Versão do servidor que este app espera. Se o Railway estiver atrás disso,
 // algumas telas não têm como funcionar — e o app avisa em vez de dar erro seco.
-const SERVIDOR_MIN = 269;
+const SERVIDOR_MIN = 270;
 let _verServidor = null;
 async function _servidorVersao() {
   if (_verServidor !== null) return _verServidor;
@@ -15177,9 +15177,9 @@ let _nodeDragState = null;
 let _botStages = [];
 let _activeBotRun = null;
 const NODE_W = 220;
-const NODE_COLORS = { start:'#25D366', message:'#1d9bf0', wait_reply:'#FF9800', pause:'#6B7280', move_stage:'#8B5CF6', end:'#EF4444', round_robin:'#0ea5e9', tags:'#14b8a6', task:'#f59e0b', complete_task:'#16a34a', mark_read:'#22c55e', business_hours:'#f97316', condition:'#7c3aed' };
-const NODE_ICONS  = { start:'<i class=ic-play></i>', message:'<i class=ic-chat></i>', wait_reply:'<i class=ic-help></i>', pause:'<i class=ic-clock></i>', move_stage:'<i class=ic-right></i>', end:'<i class=ic-stop></i>', round_robin:'<i class=ic-shuffle></i>', tags:'<i class=ic-tag></i>', task:'<i class=ic-plus></i>', complete_task:'<i class=ic-task></i>', mark_read:'<i class=ic-check></i>', business_hours:'<i class=ic-clock></i>', condition:'<i class=ic-shuffle></i>' };
-const NODE_LABELS = { start:'Início', message:'Enviar mensagem', wait_reply:'Aguardar resposta', pause:'Cronômetro', move_stage:'Mudar status', end:'Fim', round_robin:'Rodízio de números', tags:'Gerenciar etiquetas', task:'Criar tarefa', complete_task:'Concluir tarefas', mark_read:'Marcar como lida', business_hours:'Horário comercial', condition:'Condição (etiqueta ou etapa)' };
+const NODE_COLORS = { start:'#25D366', message:'#1d9bf0', wait_reply:'#FF9800', pause:'#6B7280', move_stage:'#8B5CF6', end:'#EF4444', round_robin:'#0ea5e9', tags:'#14b8a6', task:'#f59e0b', complete_task:'#16a34a', mark_read:'#22c55e', business_hours:'#f97316', condition:'#7c3aed', wait_until:'#0d9488' };
+const NODE_ICONS  = { start:'<i class=ic-play></i>', message:'<i class=ic-chat></i>', wait_reply:'<i class=ic-help></i>', pause:'<i class=ic-clock></i>', move_stage:'<i class=ic-right></i>', end:'<i class=ic-stop></i>', round_robin:'<i class=ic-shuffle></i>', tags:'<i class=ic-tag></i>', task:'<i class=ic-plus></i>', complete_task:'<i class=ic-task></i>', mark_read:'<i class=ic-check></i>', business_hours:'<i class=ic-clock></i>', condition:'<i class=ic-shuffle></i>', wait_until:'<i class=ic-clock></i>' };
+const NODE_LABELS = { start:'Início', message:'Enviar mensagem', wait_reply:'Aguardar resposta', pause:'Cronômetro', move_stage:'Mudar status', end:'Fim', round_robin:'Rodízio de números', tags:'Gerenciar etiquetas', task:'Criar tarefa', complete_task:'Concluir tarefas', mark_read:'Marcar como lida', business_hours:'Horário comercial', condition:'Condição (etiqueta ou etapa)', wait_until:'Aguardar até um horário' };
 
 function _botGenId() { return 'n' + Date.now().toString(36) + Math.random().toString(36).substring(2,6); }
 
@@ -17253,6 +17253,13 @@ function getNodePreview(node) {
     const ds = isMonFri ? 'Seg–Sex' : days.slice().sort((a,b)=>a-b).map(d=>dn[d]).join(',');
     return `${ds} ${cfg.start||'08:00'}–${cfg.end||'18:00'}`;
   }
+  if (node.type==='wait_until') {
+    const dn=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+    const days=(cfg.days||[1,2,3,4,5]);
+    const isMonFri = days.length===5 && [1,2,3,4,5].every(d=>days.includes(d));
+    const ds = days.length===7 ? 'todo dia' : isMonFri ? 'Seg–Sex' : days.slice().sort((a,b)=>a-b).map(d=>dn[d]).join(',');
+    return `Até as ${cfg.time||'08:00'} · ${ds}`;
+  }
   if (node.type==='mark_read') return 'Zera as não lidas';
   return '';
 }
@@ -17699,6 +17706,7 @@ function botDefaultConfig(type) {
   if (type==='task') c.due_hours=24;
   if (type==='complete_task') c.match='all';
   if (type==='business_hours') { c.days=[1,2,3,4,5]; c.start='08:00'; c.end='18:00'; c.wait=true; }
+  if (type==='wait_until') { c.time='08:00'; c.days=[1,2,3,4,5]; c.ja_passou='proximo'; c.tolerancia_h=2; }
   if (type==='condition') { c.campo='tag'; c.tag=''; c.stage_id=''; c.negar=false; }
   return c;
 }
@@ -17716,6 +17724,7 @@ const STEP_TYPES = [
   ['mark_read','✓ Marcar como lida'],
   ['move_stage','Mudar status'],
   ['pause','■ Cronômetro'],
+  ['wait_until','■ Aguardar até um horário'],
   ['end','■ Fim'],
 ];
 function closeStepMenu(){ const m=document.getElementById('bot-step-menu'); if(m) m.remove(); }
@@ -18196,6 +18205,34 @@ function renderConfigPanel(node) {
     return;
   }
 
+  if (node.type==='wait_until') {
+    const cfg = node.config;
+    const days = cfg.days || [1,2,3,4,5];
+    const dn=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+    const segue = cfg.ja_passou === 'segue';
+    form.innerHTML = `
+      <label class="bot-cfg-label">Aguardar até as</label>
+      <input class="bot-cfg-input" type="time" value="${cfg.time||'08:00'}" onchange="updateNodeConfig('${node.id}',{time:this.value})" style="max-width:140px"/>
+      <label class="bot-cfg-label" style="margin-top:12px">Em quais dias pode seguir</label>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px">
+        ${dn.map((n,i)=>`<label style="display:flex;align-items:center;gap:4px;background:#e9edef;border-radius:6px;padding:5px 9px;font-size:12px;color:#131c20;cursor:pointer">
+          <input type="checkbox" ${days.includes(i)?'checked':''} onchange="toggleBizDay('${node.id}',${i},this.checked)"/> ${n}</label>`).join('')}
+      </div>
+      <label class="bot-cfg-label">Se esse horário já passou hoje</label>
+      <label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;color:#131c20;cursor:pointer;margin-top:4px">
+        <input type="radio" name="cfg-wu-jp" ${!segue?'checked':''} onchange="updateNodeConfig('${node.id}',{ja_passou:'proximo'});_rerenderBotNode()"/>
+        <span>Esperar a <b>próxima vez</b> que der esse horário (às 20:00 esperando as 08:00 = amanhã 08:00)</span>
+      </label>
+      <label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;color:#131c20;cursor:pointer;margin-top:6px">
+        <input type="radio" name="cfg-wu-jp" ${segue?'checked':''} onchange="updateNodeConfig('${node.id}',{ja_passou:'segue'});_rerenderBotNode()"/>
+        <span>Seguir <b>na hora</b> se passou há menos de
+          <input type="number" min="0" max="23" value="${cfg.tolerancia_h!=null?cfg.tolerancia_h:2}" style="width:52px;padding:3px 6px;border:1px solid #d1d7db;border-radius:6px;font-size:13px" onclick="event.stopPropagation()" onchange="updateNodeConfig('${node.id}',{ja_passou:'segue',tolerancia_h:parseInt(this.value)||0})"/> hora(s)</span>
+      </label>
+      <div style="font-size:11px;color:#667781;margin-top:10px">Horário de Brasília (UTC-3). O bot fica parado neste passo e continua pelo próximo <b>na hora marcada</b>, no primeiro dia permitido. Deu a hora há menos de 15 minutos = ainda é a hora, ele segue.<br>
+      Uso típico: no <b>Horário comercial</b> desmarque o "aguardar" para ganhar a saída <b>Fora do expediente</b>, ligue-a a este passo (até as 08:00, Seg–Sex) e depois à mensagem de bom dia.</div>`;
+    return;
+  }
+
   if (node.type==='business_hours') {
     const days = node.config.days || [1,2,3,4,5];
     const dn=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
@@ -18213,7 +18250,7 @@ function renderConfigPanel(node) {
         <input type="checkbox" id="cfg-bh-wait" ${node.config.wait!==false?'checked':''} onchange="onBizWaitChange('${node.id}',this.checked)"/>
         <span>Fora do expediente, <b>aguardar até reabrir</b> e então seguir por "Em expediente"</span>
       </label>
-      <div style="font-size:11px;color:#667781;margin-top:10px">Horário de Brasília (UTC-3).<br>• <b>Em expediente</b>: caminho seguido quando está dentro do horário agora (coloque aqui a mensagem extra do horário comercial).<br>• Se desmarcar o "aguardar", aparece a saída <b>Fora do expediente</b> para tratar fora de hora.</div>`;
+      <div style="font-size:11px;color:#667781;margin-top:10px">Horário de Brasília (UTC-3).<br>• <b>Em expediente</b>: caminho seguido quando está dentro do horário agora (coloque aqui a mensagem extra do horário comercial).<br>• Se desmarcar o "aguardar", aparece a saída <b>Fora do expediente</b> para tratar fora de hora — por exemplo, ligar a um passo <b>Aguardar até um horário</b> (08:00) seguido de uma mensagem de bom dia.</div>`;
     return;
   }
 
