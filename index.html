@@ -122,7 +122,6 @@
   .kanban-col-extid { font-size: 10px; color: #8696a0; cursor: pointer; flex-shrink: 1; min-width: 0; max-width: 82px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: rgba(134,150,160,.12); border-radius: 6px; padding: 2px 5px; }
   .kanban-col-extid:hover { background: rgba(134,150,160,.25); color: #54656f; }
   .contact-swipe-wrap > .contact-item { position: relative; z-index: 1; background: #ffffff; touch-action: pan-y; }
-  .contact-swipe-wrap.swiping > .contact-item { will-change: transform; }
   /* A faixa fica SEMPRE pintada ATRÁS da linha (igual WhatsApp). Ela só
      aparece pela fresta que a própria linha abre ao ser arrastada — e some no
      instante em que a linha volta ao lugar. Não existe classe para "acender"
@@ -137,8 +136,10 @@
   .swipe-action.fav  { right: 0; background: #f0b400; }
   .swipe-action.armado.read { background: #3a63b8; }
   .swipe-action.armado.fav  { background: #d69f00; }
-  .swipe-action i, .swipe-action span { transition: transform .12s ease; }
-  .swipe-action.armado i, .swipe-action.armado span { transform: scale(1.09); }
+  /* NADA de animação/transição dentro da faixa. O ícone é uma máscara SVG: o
+     "crescer 9%" que existia aqui obrigava o iPhone a criar camadas novas no
+     meio do arraste, exatamente aos 40px (metade da faixa azul à mostra) —
+     era essa a travada. A única resposta ao "passou do ponto" é a cor. */
   .contact-swipe-wrap > .contact-item.is-fav { background: #fdf6e3; }
   .contact-swipe-wrap > .contact-item.is-fav:hover { background: #f8eed2; }
   .fav-star { color: #f0b400; font-size: 13px; margin-left: 5px; flex-shrink: 0; }
@@ -2113,7 +2114,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v414</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v415</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2908,7 +2909,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v414</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v415</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2972,7 +2973,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 414;
+const APP_VER = 415;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5669,7 +5670,7 @@ async function toggleFavorite(phone) {
       if (_listaPendente) { const l = _listaPendente; _listaPendente = null; try { renderContacts(l); } catch (_) {} }
     }, atraso || 0);
   };
-  const limpaClasses = (w) => { try { if (!w) return; w.classList.remove('swiping'); w.querySelectorAll('.swipe-action.armado').forEach(a => a.classList.remove('armado')); } catch (_) {} };
+  const limpaClasses = (w) => { try { if (!w) return; w.querySelectorAll('.swipe-action.armado').forEach(a => a.classList.remove('armado')); } catch (_) {} };
   const cancelSwipe = () => {
     if (_raf) { cancelAnimationFrame(_raf); _raf = 0; }
     if (item) { item.style.transition = ''; item.style.transform = ''; item.style.willChange = ''; limpaClasses(item.parentElement); }
@@ -5711,7 +5712,6 @@ async function toggleFavorite(phone) {
       clearTimeout(window._travaListaT);
       window._travaListaT = setTimeout(() => soltaLista(0), 4000); // nunca trava para sempre
       _wrapAtual = item.parentElement;
-      try { _wrapAtual.classList.add('swiping'); } catch (_) {}
     }
     // Só a cor "armado" muda por classe — e só quando o estado muda de verdade
     const armado = Math.abs(dx) >= _SWIPE_OK;
