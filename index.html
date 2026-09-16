@@ -222,6 +222,20 @@
   /* Ferramentas EM CIMA (modelo, anexo, bot, emoji) e o campo inteiro embaixo */
   #input-tools { display: flex; align-items: center; gap: 10px; }
   #input-row { display: flex; align-items: flex-end; gap: 10px; }
+  /* Bandeja de fotos/vídeos ANTES de enviar (computador): miniaturas em cima do
+     campo — o texto digitado é a legenda. No celular continua a prévia grande. */
+  #anexos-tray { display: none; gap: 8px; flex-wrap: wrap; align-items: flex-start; padding: 8px 6px 6px; }
+  #anexos-tray.on { display: flex; }
+  .anx-t { position: relative; width: 92px; height: 92px; border-radius: 10px; border: 1px solid #e3e6ea; background: #f0f2f5; overflow: hidden; flex: none; }
+  .anx-t img, .anx-t video { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .anx-x { position: absolute; top: 3px; right: 3px; width: 20px; height: 20px; border-radius: 50%; background: rgba(11,20,26,.72); color: #fff; font-size: 11px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .anx-x:hover { background: #ef4444; }
+  .anx-vid { position: absolute; left: 5px; bottom: 4px; color: #fff; font-size: 13px; text-shadow: 0 0 3px rgba(0,0,0,.8); pointer-events: none; }
+  .anx-mais { width: 92px; height: 92px; border-radius: 10px; border: 1.5px dashed #b9c0c6; display: flex; align-items: center; justify-content: center; color: #667781; font-size: 26px; cursor: pointer; background: #fff; flex: none; }
+  .anx-mais:hover { border-color: #00a884; color: #00a884; }
+  .anx-dica { width: 100%; font-size: 12px; color: #667781; padding: 0 2px; }
+  body.dark .anx-t { background: #202c33; border-color: #2a3942; }
+  body.dark .anx-mais { background: #111b21; border-color: #3b4a54; }
   #input-wrap { flex: 1; display: flex; align-items: center; background: #ffffff; border: 1px solid #e3e6ea; border-radius: 24px; overflow: hidden; min-width: 0; position: relative; }
   /* NEGRITO NO PRÓPRIO CAMPO (igual WhatsApp): camada-espelho atrás do campo.
      O "negrito" é feito com sombra do texto (engrossa SEM mudar a largura das
@@ -1642,6 +1656,15 @@ i[class^="ic-"],i[class*=" ic-"]{display:inline-block;width:1.08em;height:1.08em
     setTimeout(() => { try { sp.remove(); } catch (_) {} }, 320);
   };
   setTimeout(() => window.hideSplash(), 6000);
+  // A logo é só da PRIMEIRA abertura. Recarga de atualização, ou o próprio
+  // celular recarregando a página no meio de uma conversa, volta DIRETO para
+  // onde estava — sem a tela de abertura.
+  try {
+    const recarga = sessionStorage.getItem('vetra_recarga_silenciosa') === '1' || sessionStorage.getItem('vetra_ja_abriu') === '1';
+    sessionStorage.removeItem('vetra_recarga_silenciosa');
+    sessionStorage.setItem('vetra_ja_abriu', '1');
+    if (recarga) { const sp = document.getElementById('splash'); if (sp) sp.remove(); }
+  } catch (_) {}
   try { if (localStorage.getItem('vetra_dark') === '1') document.body.classList.add('dark'); } catch (_) {}
 </script>
 
@@ -2114,7 +2137,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v416</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v418</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2909,7 +2932,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v416</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v418</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2973,20 +2996,43 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 416;
+const APP_VER = 418;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
     if (!r.ok) return;
     const v = parseInt((await r.text()).trim(), 10);
-    if (Number.isFinite(v) && v > APP_VER) {
-      const ae = document.activeElement;
-      const digitando = ae && (ae.tagName === 'TEXTAREA' || (ae.tagName === 'INPUT' && ae.type !== 'checkbox'));
-      if (!digitando) { location.reload(); return; } // atualiza sozinho
-      try { _showErrToast('Nova versão publicada — será aplicada quando você parar de digitar'); } catch (_) {}
-    }
+    if (Number.isFinite(v) && v > APP_VER) { _atualizacaoPendente = true; _aplicaAtualizacao(); }
   } catch (_) {}
 }
+// A versão nova só é aplicada num MOMENTO PARADO. Antes o app recarregava na
+// hora — e no celular, no meio de uma conversa, a tela de abertura com a logo
+// aparecia "do nada". Regras: nunca dentro de uma conversa aberta no celular,
+// nunca digitando, nunca com menos de 15s sem mexer; à vontade com o app
+// escondido (outra aba / celular bloqueado) — aí ninguém vê.
+let _atualizacaoPendente = false, _ultimaInteracao = Date.now();
+['pointerdown', 'keydown', 'touchstart', 'wheel'].forEach(ev =>
+  document.addEventListener(ev, () => { _ultimaInteracao = Date.now(); }, { passive: true, capture: true }));
+function _podeRecarregarAgora() {
+  if (document.hidden) return true;
+  // campo em foco COM texto = mensagem pela metade (foco vazio não conta: o
+  // campo costuma ficar em foco mesmo depois de voltar para a lista)
+  const ae = document.activeElement;
+  if (ae && (ae.tagName === 'TEXTAREA' || (ae.tagName === 'INPUT' && ae.type !== 'checkbox')) && String(ae.value || '').trim()) return false;
+  if (window.innerWidth <= 768 && document.body.classList.contains('mobile-chat-open')) return false;
+  if (document.body.classList.contains('voltando')) return false;
+  if (typeof _trayAtiva !== 'undefined' && _trayAtiva) return false;
+  if (Date.now() - _ultimaInteracao < 15000) return false;
+  return true;
+}
+function _aplicaAtualizacao() {
+  if (!_atualizacaoPendente) return;
+  if (!_podeRecarregarAgora()) { clearTimeout(window._aplUpdT); window._aplUpdT = setTimeout(_aplicaAtualizacao, 5000); return; }
+  _atualizacaoPendente = false;
+  try { sessionStorage.setItem('vetra_recarga_silenciosa', '1'); } catch (_) {} // sem a tela da logo ao voltar
+  location.reload();
+}
+document.addEventListener('visibilitychange', () => { if (document.hidden && _atualizacaoPendente) _aplicaAtualizacao(); });
 setInterval(_checkAppUpdate, 30000);
 setTimeout(_checkAppUpdate, 5000);
 
@@ -4413,6 +4459,7 @@ function updateSendMicButtons() {
   if (!send || !mic) return;
   const hasContent = (inp && inp.value.trim().length > 0) ||
     (typeof selectedFile !== 'undefined' && selectedFile) ||
+    (typeof _trayAtiva !== 'undefined' && _trayAtiva && _previewList.length) || // fotos na bandeja
     (typeof _botPendente !== 'undefined' && !!_botPendente); // bot no rascunho = mostra ENVIAR
   send.style.display = hasContent ? '' : 'none';
   mic.style.display  = hasContent ? 'none' : '';
@@ -6079,6 +6126,7 @@ async function selectContact(phone, name, accountId) {
         <span id="ag-bar-txt" style="flex:1;font-size:13px;color:#8c6d1f"></span>
         <button onclick="abrirListaAgendadas()" style="background:none;border:none;color:#8c6d1f;font-weight:700;cursor:pointer;font-size:13px;font-family:inherit">Ver</button>
       </div>
+      <div id="anexos-tray"></div>
       <div id="input-row">
       <div id="input-wrap">
         <div id="file-chip">
@@ -6275,7 +6323,7 @@ function abrirArquivo(url, tipo, nome) {
         <span id="fv-baixar" style="display:none"></span>
       </div>
       <div id="fv-body" style="flex:1;overflow:auto;-webkit-overflow-scrolling:touch;padding:10px;touch-action:pan-x pan-y">
-        <div id="fv-zoom" style="transform-origin:0 0;display:flex;flex-direction:column;align-items:center;gap:8px;min-height:100%"></div>
+        <div id="fv-zoom" style="transform-origin:0 0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:100%"></div>
       </div>
     </div>`);
     ov = document.getElementById('file-viewer');
@@ -6383,7 +6431,7 @@ function _fvPintaFoto(url) {
     ? `<span onclick="event.stopPropagation();_fvNav(${dir})" style="position:fixed;${lado}:6px;top:50%;transform:translateY(-50%);width:40px;height:40px;border-radius:50%;background:rgba(0,0,0,.45);color:#fff;font-size:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:5;user-select:none">${dir < 0 ? '‹' : '›'}</span>`
     : '';
   body.innerHTML =
-    `<img src="${url}" style="max-width:100%;height:auto;border-radius:4px">` +
+    `<img src="${url}" style="max-width:100%;max-height:calc(100vh - 78px);max-height:calc(100dvh - 78px);width:auto;height:auto;object-fit:contain;border-radius:4px">` +
     seta('left', -1, tem && _fvIdx > 0) +
     seta('right', 1, tem && _fvIdx < _fvFotos.length - 1) +
     (tem ? `<span style="position:fixed;bottom:calc(10px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:rgba(0,0,0,.45);color:#fff;font-size:12px;border-radius:12px;padding:3px 10px;z-index:5">${_fvIdx + 1} de ${_fvFotos.length}</span>` : '');
@@ -9081,6 +9129,8 @@ function _mpCaptionGrow(ta) {
 }
 async function sendMessage() {
   _saiDivisoria(); // a divisória sai encolhendo junto com o balão que nasce
+  // Fotos na bandeja (computador)? ENVIAR manda as fotos com o texto de legenda
+  if (_trayAtiva && _previewList.length) { await confirmMediaSend(); return; }
   // NOTA INTERNA: fica só para você (não vai para o lead)
   if (_notaModo) {
     // Arquivo escolhido (PDF, planilha, áudio…): vira anexo da nota
@@ -9385,16 +9435,54 @@ function handleFilesSelect(files) {
   const resto = arr.filter(f => !media.includes(f));
   if (!media.length) { handleFileSelect(arr[0]); return; }
   if (resto.length) alert('O envio múltiplo vale para fotos e vídeos — os outros arquivos, envie um por vez.');
-  _previewList = media;
+  // já há fotos esperando? acrescenta (é o "+" da bandeja)
+  const ja = new Set(_previewList.map(f => f.name + '|' + f.size));
+  _previewList = _previewList.concat(media.filter(f => !ja.has(f.name + '|' + f.size)));
   _renderMediaPreview();
 }
+// Computador (tela larga e mouse) = bandeja de miniaturas no campo; celular = prévia grande
+function _trayNoPc() {
+  try { return window.innerWidth > 768 && !(window.matchMedia && window.matchMedia('(pointer: coarse)').matches); } catch (_) { return window.innerWidth > 768; }
+}
+let _trayAtiva = false;
+function _renderAnexosTray() {
+  const tray = document.getElementById('anexos-tray');
+  const inp = document.getElementById('msg-input');
+  if (!tray) return;
+  try { (tray._urls || []).forEach(u => URL.revokeObjectURL(u)); } catch (_) {}
+  tray._urls = [];
+  tray.innerHTML = _previewList.map((f, i) => {
+    const url = URL.createObjectURL(f); tray._urls.push(url);
+    const ehVideo = f.type.startsWith('video/');
+    return `<div class="anx-t" title="${escHtml(f.name || '')}">
+      ${ehVideo ? `<video src="${url}" muted playsinline></video><span class="anx-vid"><i class=ic-video></i></span>` : `<img src="${url}" alt="">`}
+      <span class="anx-x" onclick="_rmPreview(${i})" title="Tirar esta foto">✕</span></div>`;
+  }).join('') +
+    `<div class="anx-mais" onclick="document.getElementById('file-input').click()" title="Adicionar mais fotos">+</div>` +
+    `<div class="anx-dica">${_previewList.length === 1 ? 'Escreva a legenda no campo abaixo (ou envie sem legenda)' : _previewList.length + ' arquivos — a legenda vai no último'} · Enter envia · Esc cancela</div>`;
+  tray.classList.add('on');
+  _trayAtiva = true;
+  if (inp) { inp.placeholder = 'Legenda (opcional)'; setTimeout(() => { try { inp.focus({ preventScroll: true }); } catch (_) {} }, 40); }
+  updateSendMicButtons();
+}
+function _fechaAnexosTray() {
+  const tray = document.getElementById('anexos-tray');
+  const inp = document.getElementById('msg-input');
+  if (tray) { try { (tray._urls || []).forEach(u => URL.revokeObjectURL(u)); } catch (_) {} tray._urls = []; tray.innerHTML = ''; tray.classList.remove('on'); }
+  if (inp && _trayAtiva) inp.placeholder = 'Mensagem';
+  _trayAtiva = false;
+  try { updateSendMicButtons(); } catch (_) {}
+}
+// Esc com a bandeja aberta = cancela as fotos
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && _trayAtiva) { e.preventDefault(); closeMediaPreview(); } });
 function _renderMediaPreview() {
+  if (!_previewList.length) { closeMediaPreview(); return; }
+  if (_trayNoPc()) { _renderAnexosTray(); return; }
   const ov = document.getElementById('media-preview-overlay');
   const hd = document.getElementById('mp-holder');
   const tt = document.getElementById('mp-title');
   const cp = document.getElementById('mp-caption');
   if (!ov || !hd) return;
-  if (!_previewList.length) { closeMediaPreview(); return; }
   if (tt) tt.textContent = _previewList.length === 1
     ? (_previewList[0].type.startsWith('image/') ? 'Enviar foto' : 'Enviar vídeo')
     : `Enviar ${_previewList.length} arquivos`;
@@ -9415,7 +9503,12 @@ function _renderMediaPreview() {
           ${f.type.startsWith('video/') ? '<span style="position:absolute;bottom:6px;left:6px;font-size:14px"><i class=ic-video></i></span>' : ''}</div>`;
       }).join('') + `</div>`;
   }
-  if (cp && ov.style.display !== 'flex') cp.value = ''; cp.style.height = '42px'; cp._lastLen = 0;
+  if (cp && ov.style.display !== 'flex') {
+    // o que já estava digitado no campo vira a legenda (não precisa escolher a foto antes)
+    const _ji = document.getElementById('msg-input');
+    cp.value = (_ji && _ji.value.trim()) || '';
+  }
+  cp.style.height = '42px'; cp._lastLen = 0;
   ov.style.display = 'flex';
   _mpLigaTeclado();
   _mpAjustaTela();
@@ -9442,10 +9535,10 @@ function handleFileSelect(file) {
   }
   // Foto/vídeo: mostra a PRÉVIA com campo de legenda antes de enviar (igual WhatsApp)
   if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
-    _previewList = [file];
+    const ja = _previewList.some(f => f.name === file.name && f.size === file.size);
+    _previewList = _trayAtiva && !ja ? _previewList.concat([file]) : [file];
     _renderMediaPreview();
-    const cp = document.getElementById('mp-caption');
-    setTimeout(() => { if (cp) cp.focus(); }, 60);
+    if (!_trayAtiva) { const cp = document.getElementById('mp-caption'); setTimeout(() => { if (cp) cp.focus(); }, 60); }
     return;
   }
   selectedFile = file;
@@ -9467,6 +9560,7 @@ function handleFileSelect(file) {
 }
 
 function closeMediaPreview() {
+  _fechaAnexosTray();
   const ov = document.getElementById('media-preview-overlay');
   if (ov) ov.style.display = 'none';
   _mpDesligaTeclado();
@@ -9478,9 +9572,16 @@ async function confirmMediaSend() {
   _saiDivisoria();
   if (!_previewList.length) { closeMediaPreview(); return; }
   const cp = document.getElementById('mp-caption');
-  const caption = (cp && cp.value.trim()) || '';
+  const _inp = document.getElementById('msg-input');
+  const caption = _trayAtiva ? ((_inp && _inp.value.trim()) || '') : ((cp && cp.value.trim()) || '');
   const lista = _previewList.slice();
   closeMediaPreview();
+  // o texto do campo virou a legenda: esvazia o campo (e o rascunho) como num envio normal
+  if (_inp && (_trayAtiva || _inp.value.trim() === caption)) {
+    _inp.value = ''; try { autoGrowMsgInput(_inp); } catch (_) {}
+    try { if (currentPhone) { delete _drafts[currentPhone]; _saveDrafts(); } } catch (_) {}
+    try { updateSendMicButtons(); } catch (_) {}
+  }
   // NOTA INTERNA LIGADA: o arquivo vira anexo da NOTA — nunca vai ao cliente
   if (_notaModo) { await _enviaNotaComArquivos(lista, caption); return; }
   // Respondendo alguém? A citação vai na PRIMEIRA foto (como no WhatsApp) e a
