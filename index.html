@@ -2137,7 +2137,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v420</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v421</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2932,12 +2932,12 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v420</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v421</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
   <div id="bot-editor-body">
-    <div id="bot-canvas-wrap" style="flex:1;position:relative;overflow:hidden;background:#f0f2f5;cursor:grab">
+    <div id="bot-canvas-wrap" style="flex:1;position:relative;overflow:hidden;background:#f0f2f5;cursor:default">
       <div id="bot-canvas-stage" style="position:absolute;top:0;left:0;transform-origin:0 0;transform:translate(40px,40px) scale(1)">
         <svg id="bot-edges-svg" style="position:absolute;top:0;left:0;overflow:visible;pointer-events:none"></svg>
         <div id="bot-nodes-layer" style="position:absolute;top:0;left:0"></div>
@@ -2996,7 +2996,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 420;
+const APP_VER = 421;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -16789,8 +16789,9 @@ function _redrawBotEdges(){
   svg.innerHTML='';
   const byId=id=>botNodes.find(n=>n.id===id);
   const mk=(sx,sy,tx,ty,color,dash)=>{ const dx=Math.max(40,(tx-sx)/2); const p=document.createElementNS('http://www.w3.org/2000/svg','path'); p.setAttribute('d',`M ${sx} ${sy} C ${sx+dx} ${sy}, ${tx-dx} ${ty}, ${tx} ${ty}`); p.setAttribute('fill','none'); p.setAttribute('stroke',color||'#94a3b8'); p.setAttribute('stroke-width','2'); if(dash) p.setAttribute('stroke-dasharray','5 4'); svg.appendChild(p); };
+  const _oc=_botOcultos(); // nós escondidos por caminho recolhido: nem linha
   botNodes.forEach(node=>{
-    if(node.type==='end' || node.pos_x==null) return;
+    if(node.type==='end' || node.pos_x==null || _oc.has(node.id)) return;
     const slots=botOutSlots(node), n=slots.length;
     slots.forEach((slot,i)=>{
       const elN=document.querySelector('#bot-nodes-layer [data-node-id="'+node.id+'"]');
@@ -16800,7 +16801,8 @@ function _redrawBotEdges(){
       if(anc) sy=node.pos_y+_ancMeio(anc, elN);
       const isFail=slot.label==='__failed__';
       const edge=botChildEdge(node.id, slot.label); const to=edge?byId(edge.to_node_id):null;
-      if(to && to.pos_x!=null) mk(sx,sy,to.pos_x,to.pos_y+Math.min(_bnH(to.id)/2,BOT_NH/2+10), isFail?'#ef4444':'#94a3b8', isFail);
+      if(to && _botColapsados.has(node.id+'::'+_botNrmLbl(slot.label))) mk(sx,sy,sx+BOT_HG,sy, isFail?'#ef4444':'#00a884', true); // recolhido: só o toquinho
+      else if(to && to.pos_x!=null) mk(sx,sy,to.pos_x,to.pos_y+Math.min(_bnH(to.id)/2,BOT_NH/2+10), isFail?'#ef4444':'#94a3b8', isFail);
       else mk(sx,sy,sx+BOT_HG,sy, isFail?'#ef4444':'#274d3d', true);
     });
   });
@@ -16923,9 +16925,12 @@ function renderBotList(){
         // ── Barra que aparece ao passar o mouse na linha: ＋ inserir · ✕ desprender · esconder ──
         const traco = svg.lastElementChild; // a curva recém-desenhada
         const hit = faixaDaLinha(sx,sy,tx,ty);
-        const mx=(sx+tx)/2, my=(sy+ty)/2;
+        // A barra fica COLADA na saída, na altura da opção (perto da bolinha).
+        // No meio da linha, as barras de linhas vizinhas se sobrepunham e o ✕ de
+        // uma ficava debaixo do 👁 da outra — "esconder" virava "desprender".
+        const mx=Math.min(sx+58, (sx+tx)/2), my=sy;
         const barra=document.createElement('div');
-        barra.style.cssText=`position:absolute;left:${mx}px;top:${my}px;transform:translate(-50%,-50%);display:flex;gap:4px;z-index:8;opacity:0;pointer-events:none;transition:opacity .12s ease`;
+        barra.style.cssText=`position:absolute;left:${mx}px;top:${my}px;transform:translate(0,-50%);display:flex;gap:4px;z-index:8;opacity:0;pointer-events:none;transition:opacity .12s ease`;
         const _mkB=(txt,dica,cor,fn)=>{
           const b=document.createElement('button');
           b.innerHTML=txt; b.title=dica;
@@ -16935,12 +16940,18 @@ function renderBotList(){
           barra.appendChild(b);
         };
         _mkB('＋','Inserir um passo aqui','#00a884',(e)=>menuInserirNaLigacao(edge.id, e));
-        _mkB('✕','Desprender esta ligação (não apaga nenhum passo)','#ef4444',()=>{ botEdges=botEdges.filter(x=>x!==edge); renderBotList(); });
+        _mkB('✕','Desprender esta ligação (não apaga nenhum passo)','#ef4444',async()=>{
+          if(!(await vConfirm({ titulo:'Desprender ligação', texto:'A ligação entre estes passos sai. Os passos continuam no quadro, só desligados.', confirmar:'Desprender', perigo:true }))) return;
+          botEdges=botEdges.filter(x=>x!==edge); renderBotList();
+        });
         _mkB('<i class=ic-eye-off></i>','Esconder os passos deste caminho','#94a3b8',()=>botToggleRamo(node.id, slot.label));
         layer.appendChild(barra);
         let _t=null;
-        const _mostra=()=>{ if(_t){clearTimeout(_t);_t=null;} barra.style.opacity='1'; barra.style.pointerEvents='auto'; if(traco) traco.setAttribute('stroke-width','3'); };
-        const _some=()=>{ _t=setTimeout(()=>{ barra.style.opacity='0'; barra.style.pointerEvents='none'; if(traco) traco.setAttribute('stroke-width','2'); },200); };
+        // Linha em destaque ao passar o mouse: verde, mais grossa e por cima das outras
+        const _corOrig = traco ? traco.getAttribute('stroke') : '#94a3b8';
+        const _mostra=()=>{ if(_t){clearTimeout(_t);_t=null;} barra.style.opacity='1'; barra.style.pointerEvents='auto';
+          if(traco){ traco.setAttribute('stroke-width','3.5'); traco.setAttribute('stroke', isFail?'#ef4444':'#00a884'); try{ svg.appendChild(traco); svg.appendChild(hit); }catch(_){} } };
+        const _some=()=>{ _t=setTimeout(()=>{ barra.style.opacity='0'; barra.style.pointerEvents='none'; if(traco){ traco.setAttribute('stroke-width','2'); traco.setAttribute('stroke', _corOrig); } },200); };
         hit.addEventListener('mouseenter',_mostra); hit.addEventListener('mouseleave',_some);
         barra.addEventListener('mouseenter',_mostra); barra.addEventListener('mouseleave',_some);
         hit.addEventListener('touchstart',(e)=>{ e.stopPropagation(); _mostra(); setTimeout(_some,2800); },{passive:true});
@@ -17002,7 +17013,7 @@ function botNodeEl(node,x,y){
   const summary=node.type==='start'?'Início do fluxo':(getNodePreview(node)||'');
   const el=document.createElement('div');
   el.dataset.nodeId=node.id;
-  el.style.cssText=`position:absolute;left:${x}px;top:${y}px;width:${BOT_NW}px;min-height:${BOT_NH}px;box-sizing:border-box;background:#ffffff;border:2px solid ${node.id===selectedNodeId?'#00a884':'#e9edef'};border-radius:12px;padding:10px 12px;cursor:grab;display:flex;gap:10px;align-items:flex-start;z-index:3`;
+  el.style.cssText=`position:absolute;left:${x}px;top:${y}px;width:${BOT_NW}px;min-height:${BOT_NH}px;box-sizing:border-box;background:#ffffff;border:2px solid ${node.id===selectedNodeId?'#00a884':'#e9edef'};border-radius:12px;padding:10px 12px;cursor:default;display:flex;gap:10px;align-items:flex-start;z-index:3`;
   if (node.type==='message') {
     // Visual estilo Kommo: nº do passo + canal no cabeçalho, balão ocupando o cartão
     const idx = botNodes.indexOf(node) + 1;
@@ -17061,7 +17072,7 @@ function botNodeEl(node,x,y){
     }
     function up(){
       window.removeEventListener('mousemove',mv); window.removeEventListener('mouseup',up);
-      el.style.cursor='grab';
+      el.style.cursor='default';
       if(moved){ _markBotManual(); renderBotList(); }
       else if(connectingFrom && connectingFrom.nodeId!==node.id){ connectExisting(connectingFrom.nodeId, connectingFrom.portLabel, node.id); }
       else selectNode(node.id);
@@ -17096,7 +17107,7 @@ function setupBotCanvasPanZoom(){
     dragging=true; sx=e.clientX; sy=e.clientY; ox=botPanX; oy=botPanY; wrap.style.cursor='grabbing';
   });
   window.addEventListener('mousemove',(e)=>{ if(!dragging) return; botPanX=ox+(e.clientX-sx); botPanY=oy+(e.clientY-sy); applyBotTransform(); });
-  window.addEventListener('mouseup',()=>{ dragging=false; wrap.style.cursor='grab'; });
+  window.addEventListener('mouseup',()=>{ dragging=false; wrap.style.cursor='default'; });
   wrap.addEventListener('wheel',(e)=>{
     e.preventDefault();
     const rect=wrap.getBoundingClientRect();
