@@ -2137,7 +2137,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v419</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v420</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2932,7 +2932,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v419</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v420</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2996,7 +2996,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 419;
+const APP_VER = 420;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -16797,7 +16797,7 @@ function _redrawBotEdges(){
       const wN=elN?elN.offsetWidth:_bnW(node.id), hN=elN?elN.offsetHeight:_bnH(node.id);
       const sx=node.pos_x+wN; let sy=node.pos_y+hN/2+(i-(n-1)/2)*BOT_SP;
       const anc=elN?Array.from(elN.querySelectorAll('.bot-slot-anchor')).find(a=>a.dataset.slot===slot.label):null;
-      if(anc) sy=node.pos_y+anc.offsetTop+anc.offsetHeight/2;
+      if(anc) sy=node.pos_y+_ancMeio(anc, elN);
       const isFail=slot.label==='__failed__';
       const edge=botChildEdge(node.id, slot.label); const to=edge?byId(edge.to_node_id):null;
       if(to && to.pos_x!=null) mk(sx,sy,to.pos_x,to.pos_y+Math.min(_bnH(to.id)/2,BOT_NH/2+10), isFail?'#ef4444':'#94a3b8', isFail);
@@ -16887,10 +16887,15 @@ function renderBotList(){
       let sy=node.pos_y+BOT_NH/2+(i-(n-1)/2)*BOT_SP; // padrão (nós sem âncora)
       const anc = anchors.find(a=>a.dataset.slot===slot.label);
       const temAncora = !!anc;
-      if (anc) sy = node.pos_y + anc.offsetTop + anc.offsetHeight/2; // fio na altura exata
+      if (anc) sy = node.pos_y + _ancMeio(anc, nodeEl); // fio na altura exata
       const isFail=slot.label==='__failed__';
       const edge=botChildEdge(node.id, slot.label);
       const to=edge?byId(edge.to_node_id):null;
+      if (temAncora) { // bolinha na borda: é DAQUI que a linha desta opção sai
+        const dot=document.createElement('div');
+        dot.style.cssText=`position:absolute;left:${sx-5}px;top:${sy-5}px;width:10px;height:10px;border-radius:50%;background:${isFail?'#ef4444':(to?'#94a3b8':'#00a884')};border:2px solid #fff;box-shadow:0 0 0 1px #d1d7db;z-index:4;pointer-events:none`;
+        layer.appendChild(dot);
+      }
       // Caminho RECOLHIDO: no lugar dos passos aparece um botão +N para reabrir
       if(to && _botColapsados.has(node.id+'::'+_botNrmLbl(slot.label))){
         const bx=sx+BOT_HG, by=sy;
@@ -16957,6 +16962,39 @@ function renderBotList(){
   setupBotCanvasPanZoom();
 }
 
+// Rodízio de números e Aguardar resposta: cada opção vira UMA LINHA dentro do
+// cartão (estilo Kommo) e o fio nasce exatamente na altura dela, na borda do
+// cartão. Antes os nomes ficavam soltos ao lado e todas as linhas nasciam no
+// mesmo canto: com 9 opções não dava para saber qual era dona de qual linha.
+// Altura (em unidades do quadro) do meio de uma saída escrita no cartão. Medida
+// pela geometria real, não por offsetTop (inteiro): com zoom, o arredondamento
+// somava e o fio nascia 2-3px fora da linha da opção.
+function _ancMeio(anc, cardEl){
+  try {
+    const a = anc.getBoundingClientRect(), c = cardEl.getBoundingClientRect();
+    return (a.top - c.top + a.height/2) / (botZoom || 1);
+  } catch (_) { return anc.offsetTop + anc.offsetHeight/2; }
+}
+function _nodeSaidasNoCartao(node){
+  if (node.type!=='round_robin' && node.type!=='wait_reply') return '';
+  const slots = botOutSlots(node);
+  if (!slots.length) return '';
+  const accs = _botAccsCache || [];
+  const branches = (node.config||{}).branches || [];
+  return '<div style="margin:8px -30px 0 -40px">' + slots.map((s,i)=>{
+    let sub = '';
+    if (node.type==='round_robin') {
+      const b = branches[i] || {};
+      const a = accs.find(x => x.id === b.account_id);
+      sub = a ? (a.label || a.phone_number || '') : '';
+    }
+    const cor = s.label==='__other__' ? '#667781' : '#000000';
+    return `<div class="bot-slot-anchor" data-slot="${escHtml(s.label)}" style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px 6px 40px;border-top:1px solid #f0f2f5;font-size:12.5px;font-weight:700;color:${cor};line-height:1.25">
+      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(s.display||s.label||'')}</span>
+      ${sub ? `<span style="font-size:10.5px;font-weight:600;color:#8696a0;white-space:nowrap;flex-shrink:0">${escHtml(sub)}</span>` : ''}
+    </div>`;
+  }).join('') + '</div>';
+}
 function botNodeEl(node,x,y){
   const color=NODE_COLORS[node.type]||'#667781';
   const icon=NODE_ICONS[node.type]||'●';
@@ -16999,6 +17037,7 @@ function botNodeEl(node,x,y){
       <div style="flex:1;min-width:0">
         <div style="font-size:13px;font-weight:600;color:#131c20">${title}</div>
         ${summary?`<div style="font-size:11px;color:#667781;margin-top:2px;word-break:break-word;max-height:32px;overflow:hidden">${escHtml(summary)}</div>`:''}
+        ${_nodeSaidasNoCartao(node)}
       </div>
       ${node.type!=='start'?`<button title="Remover" style="background:none;border:none;color:#667781;cursor:pointer;font-size:13px;flex-shrink:0"><i class=ic-trash></i></button>`:''}`;
   }
