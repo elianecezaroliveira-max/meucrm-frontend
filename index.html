@@ -739,6 +739,15 @@
   body.dark .lf-chip { background: #202c33; color: #8696a0; }
   .msg-ticks.failed   { color:#ef4444; font-size:11px; }
   .msg.nao-enviada { opacity: .78; } /* não enviada: fica na conversa, um pouco apagada, com o ⚠ */
+  /* ✨ cartão de sugestão da IA (acima do campo): toque põe no campo, só o ENVIAR manda */
+  #ia-sug-bar { display:none; flex-direction:column; gap:5px; background:#f1f7f4; border-left:3px solid #00a884; border-radius:6px; padding:7px 10px; margin-bottom:6px; max-height:38vh; overflow:auto; }
+  .ia-sug-cab { display:flex; align-items:center; gap:8px; font-size:12px; color:#00806a; font-weight:700; }
+  .ia-sug-cab small { flex:1; min-width:0; font-weight:500; color:#667781; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .ia-sug-cab button { background:none; border:none; color:#667781; cursor:pointer; font-size:15px; padding:2px 5px; line-height:1; font-family:inherit; }
+  .ia-sug-item { background:#fff; border:1px solid #d9ebe3; border-radius:9px; padding:6px 10px; font-size:13px; line-height:1.35; color:#131c20; cursor:pointer; white-space:pre-wrap; word-break:break-word; }
+  .ia-sug-item:hover { background:#e7f7ef; }
+  .ia-sug-item.usada { opacity:.45; text-decoration:line-through; }
+  .ia-sug-item.no-campo { border-color:#00a884; box-shadow:0 0 0 1px #00a884 inset; }
   .msg-ticks.pending  { color:#8696a0; font-size:11px; }
   /* Ações de mensagem (reply + delete) */
   /* Setinha de opções da mensagem (estilo WhatsApp Web) — some para não atrapalhar áudio/vídeo */
@@ -2168,7 +2177,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v462</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v463</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2979,7 +2988,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v462</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v463</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3043,7 +3052,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 462;
+const APP_VER = 463;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3754,6 +3763,7 @@ async function loadContacts(render = true, buscaJaIniciada = null) {
     if (!Array.isArray(lista)) return;
     allContacts = sortContacts(_ecoAplica(lista));
     window._contactsLoaded = true;
+    if (!window._iaStatusPedido) { window._iaStatusPedido = true; _iaSugCarregaStatus(); } // ✨ sugestões ligadas?
     _listaGuarda(lista);
     if (render) { renderContacts(allContacts); populateFilterOptions(); }
     window.hideSplash && window.hideSplash();
@@ -4613,6 +4623,120 @@ function notifyTypingThrottled() {
   }, 2500);
 }
 // Saiu da conversa, trocou de tela ou minimizou o app → "digitando…" some na hora
+// ═══════════════════════ ✨ SUGESTÕES DE RESPOSTA (IA) ═══════════════════════
+// Quando o lead fala por último, o servidor escreve uma sugestão no jeito dela e
+// ela aparece num cartão acima do campo. Tocar põe o texto no campo (dá para
+// editar); só o ENVIAR manda. Cada envio com o cartão aberto vira exemplo novo
+// na memória ("sugerido → enviado") — é assim que a IA aprende com ela.
+let _iaSug = null;              // { phone, chave, msgs, usadas:Set, noCampo, enviadas:[], lead, contexto }
+const _iaSugFeitas = new Set(); // "fone|idDaÚltimaMsg" já pedidos — nunca pede duas vezes a mesma
+let _iaSugStatus = null;        // { ligada, chave, memoria } vindo do servidor
+let _iaSugTimer = null;
+async function _iaSugCarregaStatus() {
+  try { const r = await fetch(SERVER_URL + '/ia/status'); _iaSugStatus = r.ok ? await r.json() : null; }
+  catch (_) { _iaSugStatus = null; }
+  if (!_iaSugAtiva()) _iaSug = null;
+  try { _iaSugPinta(); } catch (_) {}
+}
+function _iaSugAtiva() { return !!(_iaSugStatus && _iaSugStatus.ligada && _iaSugStatus.chave); }
+function _iaSugSobrou() { return !!(_iaSug && _iaSug.msgs.some((_, i) => !_iaSug.usadas.has(i))); }
+function _iaSugAvalia(phone, msgs) {
+  if (!phone || !Array.isArray(msgs)) return;
+  if (!_iaSugAtiva()) { _iaSug = null; _iaSugPinta(); return; }
+  const reais = msgs.filter(m => m && m.type !== 'note');
+  const ult = reais[reais.length - 1];
+  if (!ult || ult.direction === 'outbound') {
+    // eu falei por último: o cartão só fica se ainda sobrou sugestão por usar
+    if (_iaSug && _iaSug.phone === phone && !_iaSugSobrou()) _iaSug = null;
+    _iaSugPinta(); return;
+  }
+  const chave = phone + '|' + ult.id;
+  if (_iaSugFeitas.has(chave)) { _iaSugPinta(); return; }
+  _iaSugFeitas.add(chave);
+  clearTimeout(_iaSugTimer);
+  // 1,5 s de folga: o lead costuma mandar duas ou três mensagens seguidas
+  _iaSugTimer = setTimeout(() => _iaSugPede(phone, chave, false), 1500);
+}
+async function _iaSugPede(phone, chave, forcar) {
+  if (forcar) { const b = document.getElementById('ia-sug-bar'); if (b) { b.style.display = 'flex'; b.innerHTML = '<div class="ia-sug-cab"><span>✨ Sugestão</span><small>pensando…</small></div>'; } }
+  let d = null;
+  try {
+    const r = await fetch(SERVER_URL + '/ia/sugerir', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone, forcar: !!forcar }) });
+    d = r.ok ? await r.json() : null;
+  } catch (_) { d = null; }
+  if (!d || !Array.isArray(d.mensagens) || !d.mensagens.length) {
+    if (forcar) showToast(d && d.motivo ? 'Sem sugestão: ' + d.motivo : 'Sem sugestão agora', 'erro');
+    _iaSugPinta(); return;
+  }
+  _iaSug = { phone, chave, msgs: d.mensagens, usadas: new Set(), noCampo: null, enviadas: [], lead: d.lead || [], contexto: d.contexto || [] };
+  _iaSugPinta();
+}
+function _iaSugPinta() {
+  const bar = document.getElementById('ia-sug-bar'); if (!bar) return;
+  if (!_iaSug || _iaSug.phone !== currentPhone || !_iaSugSobrou()) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
+  bar.innerHTML = '<div class="ia-sug-cab"><span>✨ Sugestão</span><small>toque para pôr no campo — só vai quando você enviar</small>'
+    + '<button onclick="_iaSugDeNovo()" title="Outra sugestão">↻</button><button onclick="_iaSugFecha()" title="Fechar">✕</button></div>'
+    + _iaSug.msgs.map((t, i) => '<div class="ia-sug-item' + (_iaSug.usadas.has(i) ? ' usada' : '') + (_iaSug.noCampo === i ? ' no-campo' : '') + '" onclick="_iaSugUsar(' + i + ')">' + escHtml(t) + '</div>').join('');
+  bar.style.display = 'flex';
+}
+function _iaSugUsar(i) {
+  if (!_iaSug || _iaSug.usadas.has(i)) return;
+  const inp = document.getElementById('msg-input'); if (!inp) return;
+  _teclouAposEnvio = true; // foi você que pôs: o limpador de "sobra do envio" não mexe
+  inp.value = _iaSug.msgs[i]; _iaSug.noCampo = i;
+  inp.dispatchEvent(new Event('input', { bubbles: true })); // botão enviar, altura, rascunho
+  try { inp.focus({ preventScroll: true }); inp.setSelectionRange(inp.value.length, inp.value.length); } catch (_) {}
+  _iaSugPinta();
+}
+function _iaSugDeNovo() { if (!currentPhone) return; _iaSugPede(currentPhone, (_iaSug && _iaSug.chave) || (currentPhone + '|denovo'), true); }
+function _iaSugFecha() { _iaSug = null; _iaSugPinta(); }
+// Enviou com o cartão aberto → o par vira exemplo (o servidor anonimiza e guarda)
+function _iaSugAprende(texto, phone) {
+  if (!_iaSug || _iaSug.phone !== phone || !texto) return;
+  const usou = _iaSug.noCampo != null;
+  if (usou) _iaSug.usadas.add(_iaSug.noCampo);
+  _iaSug.noCampo = null;
+  _iaSug.enviadas.push(texto);
+  _iaSugPinta();
+  const corpo = { phone, chave: _iaSug.chave, sugerido: _iaSug.msgs, enviado: _iaSug.enviadas.slice(), usou: _iaSug.enviadas.some(t => _iaSug.msgs.includes(t)) || usou, lead: _iaSug.lead, contexto: _iaSug.contexto };
+  fetch(SERVER_URL + '/ia/aprender', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) })
+    .then(r => r.json()).then(d => { if (d && d.total != null && _iaSugStatus && _iaSugStatus.memoria) _iaSugStatus.memoria.exemplos = d.total; }).catch(() => {});
+}
+// ── tela IA: interruptor, memória (importar/exportar) ──
+let _iaPag = null;
+async function iaSugSetOn(on) {
+  try { await _faqPutSetting('ia_sug_on', on ? 'on' : 'off'); } catch (_) { alert('Não foi possível salvar. Tente de novo.'); }
+  await _iaSugCarregaStatus(); _iaPag = _iaSugStatus; faqRender();
+}
+async function iaMemImporta(files) {
+  const out = document.getElementById('ia-mem-msg');
+  const corpo = {}; const nomes = [];
+  for (const f of Array.from(files || [])) {
+    const txt = await f.text(); const n = f.name.toLowerCase();
+    if (/estilo/.test(n)) corpo.estilo = txt; else if (/fluxo/.test(n)) corpo.fluxo = txt; else if (/\.jsonl$/.test(n) || /exemplo/.test(n)) corpo.exemplos = txt; else continue;
+    nomes.push(f.name);
+  }
+  if (!nomes.length) { if (out) out.textContent = 'Escolha estilo.md, fluxo-operacional.md e/ou exemplos.jsonl.'; return; }
+  if (out) out.textContent = 'Importando…';
+  try {
+    const r = await fetch(SERVER_URL + '/ia/memoria', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) });
+    const d = await r.json();
+    if (!r.ok || !d.ok) throw new Error(d.error || 'falha');
+    if (out) out.textContent = 'Memória importada: ' + nomes.join(', ');
+    await _iaSugCarregaStatus(); _iaPag = _iaSugStatus; faqRender();
+    const o2 = document.getElementById('ia-mem-msg'); if (o2) o2.textContent = 'Memória importada: ' + nomes.join(', ');
+  } catch (e) { if (out) out.textContent = 'Não deu para importar: ' + (e.message || e); }
+}
+async function iaMemExporta() {
+  const out = document.getElementById('ia-mem-msg');
+  try {
+    const r = await fetch(SERVER_URL + '/ia/memoria'); const d = await r.json();
+    const baixa = (nome, txt) => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([txt || ''], { type: 'text/plain;charset=utf-8' })); a.download = nome; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000); };
+    baixa('estilo.md', d.estilo); setTimeout(() => baixa('fluxo-operacional.md', d.fluxo), 500); setTimeout(() => baixa('exemplos.jsonl', d.exemplos), 1000);
+    if (out) out.textContent = 'Exportado: estilo.md, fluxo-operacional.md e exemplos.jsonl (' + (d.n_exemplos || 0) + ' exemplos). Esses arquivos servem para qualquer IA.';
+  } catch (e) { if (out) out.textContent = 'Não deu para exportar: ' + (e.message || e); }
+}
+
 function _paraDigitando() {
   clearTimeout(_typingStopTimer); clearTimeout(_typingStartTimer);
   _typingStartTimer = null; _typingLastSent = 0;
@@ -6327,6 +6451,8 @@ async function selectContact(phone, name, accountId) {
         <span id="ag-bar-txt" style="flex:1;font-size:13px;color:#8c6d1f"></span>
         <button onclick="abrirListaAgendadas()" style="background:none;border:none;color:#8c6d1f;font-weight:700;cursor:pointer;font-size:13px;font-family:inherit">Ver</button>
       </div>
+      <!-- ✨ Sugestão da IA: toque para pôr no campo; NADA sai sem o ENVIAR -->
+      <div id="ia-sug-bar"></div>
       <div id="anexos-tray"></div>
       <div id="input-row">
       <div id="input-wrap">
@@ -8459,6 +8585,7 @@ async function loadMessages(phone, scroll = true, opt = null) {
       window._lastMsgCountChat = msgs.length;
     }
     _lastMsgsSig = sig;
+    setTimeout(() => { try { _iaSugAvalia(phone, msgs); } catch (_) {} }, 0); // ✨ o lead falou por último? pede a sugestão
     if (!_doCache) _msgsCacheGuarda(phone, msgs); // guarda as últimas para a próxima abertura ser instantânea
     setTimeout(() => { try { // áudios do fim da conversa: duração pronta antes de você tocar
       const ps = Array.from(document.querySelectorAll('#messages-area .voice-player')).slice(-6);
@@ -9701,6 +9828,7 @@ async function sendMessage() {
   const tempEl = appendPendingBubble(savedMessage, reply, _chavePendDe(_pend));
   // Enviou → o "digitando…" do cliente some na hora (não fica os 6s restantes)
   _paraDigitando();
+  try { _iaSugAprende(savedMessage, currentPhone); } catch (_) {} // ✨ guarda "sugerido → enviado" na memória da IA
   try {
     let res = null, data = {};
     try {
@@ -16159,7 +16287,7 @@ async function openFaqPage(){
   // resto (usa o padrão do que faltou) em vez de bloquear tudo com erro.
   const _j = async (url) => { try { const r = await fetch(url); return await r.json(); } catch (_) { return null; } };
   try{
-    const [t, d, a, accData, fData, wpe, wpa, wpt, wpg, ai] = await Promise.all([
+    const [t, d, a, accData, fData, wpe, wpa, wpt, wpg, ai, ia2] = await Promise.all([
       _j(SERVER_URL + '/settings/faq_enabled'),
       _j(SERVER_URL + '/settings/faq_delay_seconds'),
       _j(SERVER_URL + '/settings/faq_accounts'),
@@ -16169,8 +16297,10 @@ async function openFaqPage(){
       _j(SERVER_URL + '/settings/wrongperson_answer'),
       _j(SERVER_URL + '/settings/wrongperson_tag'),
       _j(SERVER_URL + '/settings/wrongperson_triggers'),
-      _j(SERVER_URL + '/faqs/ai-status')
+      _j(SERVER_URL + '/faqs/ai-status'),
+      _j(SERVER_URL + '/ia/status')
     ]);
+    _iaPag = (ia2 && typeof ia2 === 'object') ? ia2 : null;
     _faqMaster = (t && t.value === 'on');
     const dNum = parseInt(d && d.value, 10);
     _faqDelay = Number.isFinite(dNum) ? dNum : 25;
@@ -16203,6 +16333,24 @@ function closeFaqPage(){
 function faqRender(){
   const area = document.getElementById('faq-list-area');
   let html = '';
+  // ✨ sugestões de resposta (cartão no chat) + memória portátil
+  {
+    const p = _iaPag || {}; const m = p.memoria || {};
+    html += '<div class="faq-master" style="display:block">'
+      + '<div style="display:flex;align-items:center;gap:12px">'
+      + '<div class="faq-master-txt" style="flex:1"><b>✨ Sugestões de resposta</b>'
+      + '<small>' + (p.ligada ? 'Ligada — quando o lead escreve, a sugestão aparece acima do campo. Nada é enviado sem o seu toque.' : 'Desligada — nenhuma sugestão aparece no chat.') + '</small></div>'
+      + '<label class="faq-switch"><input type="checkbox" ' + (p.ligada ? 'checked' : '') + ' onchange="iaSugSetOn(this.checked)"><span class="faq-slider"></span></label>'
+      + '</div>'
+      + '<div style="margin-top:8px;font-size:12px;color:#667781">Memória: estilo ' + (m.estilo ? '✓' : '—') + ' · fluxo ' + (m.fluxo ? '✓' : '—') + ' · ' + (m.exemplos || 0) + ' exemplos (' + (m.aprendidos || 0) + ' aprendidos no uso)'
+      + (p.chave === false && _souDev() ? ' · <span style="color:#c0392b">falta GROQ_API_KEY no servidor</span>' : '') + '</div>'
+      + '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'
+      + '<input type="file" id="ia-mem-arq" multiple accept=".md,.jsonl,.txt" style="display:none" onchange="iaMemImporta(this.files);this.value=\'\'">'
+      + '<button class="btn-secondary" onclick="document.getElementById(\'ia-mem-arq\').click()">Importar memória</button>'
+      + '<button class="btn-secondary" onclick="iaMemExporta()">Exportar memória</button></div>'
+      + '<div id="ia-mem-msg" style="font-size:12px;color:#667781;margin-top:6px"></div>'
+      + '</div>';
+  }
   // interruptor geral
   html += '<div class="faq-master">'
     + '<div class="faq-master-txt"><b>IA de respostas automáticas</b>'
