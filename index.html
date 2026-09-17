@@ -2149,7 +2149,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v433</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v435</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2944,7 +2944,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v433</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v435</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3008,7 +3008,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 433;
+const APP_VER = 435;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -6244,7 +6244,10 @@ async function selectContact(phone, name, accountId) {
     }
   }, 300);
 
-  await loadMessages(phone);
+  // As últimas mensagens guardadas pintam NA HORA; a rede completa em seguida
+  const _cacheMsgs = _msgsCacheLe(phone);
+  if (_cacheMsgs) { try { await loadMessages(phone, true, { msgs: _cacheMsgs }); } catch (_) {} await loadMessages(phone, false, { abrindo: true }); }
+  else await loadMessages(phone);
   // "Enviar de:" automático — pré-seleciona SEMPRE o número em que o lead mandou
   // a ÚLTIMA mensagem recebida (vale para QR e API: se ele trocou de número, a
   // resposta já sai pelo número novo). Sem mensagem recebida, usa a última da conversa.
@@ -8146,16 +8149,60 @@ function _verMsgsAntigas() {
   try { showToast('Carregando as mensagens antigas…', 'ok'); } catch (_) {}
   loadMessages(currentPhone);
 }
-async function loadMessages(phone, scroll = true) {
+// ── CONVERSA INSTANTÂNEA (igual WhatsApp): as últimas mensagens de cada
+// conversa ficam guardadas no aparelho. Ao abrir, elas pintam NA HORA; a rede
+// só completa com o que chegou depois. (Antes a conversa abria em branco e
+// esperava o servidor — no celular, segundos olhando para o nada.)
+const _MSGS_CACHE_N = 60, _MSGS_CACHE_CONVERSAS = 40;
+function _msgsCacheLe(phone) {
+  try {
+    if (!window._userEmail || !phone) return null;
+    const g = JSON.parse(localStorage.getItem(_uKey('vetra_msgs::' + phone)) || 'null');
+    return (g && Array.isArray(g.msgs) && g.msgs.length) ? g.msgs : null;
+  } catch (_) { return null; }
+}
+function _msgsCacheGuarda(phone, msgs) {
+  try {
+    if (!window._userEmail || !phone || !Array.isArray(msgs)) return;
+    const CAMPOS = ['id', 'wamid', 'direction', 'type', 'content', 'timestamp', 'status', 'media_id', 'media_mime_type', 'account_id',
+      'quoted_id', 'quoted_content', 'quoted_direction', 'reaction', 'reaction_by', 'starred', 'pinned', 'edited', 'forwarded', 'error_info', 'read_at', 'duration'];
+    const enx = msgs.slice(-_MSGS_CACHE_N).map(m => { const o = {}; CAMPOS.forEach(k => { if (m[k] != null && m[k] !== false && m[k] !== '') o[k] = m[k]; }); return o; });
+    localStorage.setItem(_uKey('vetra_msgs::' + phone), JSON.stringify({ ts: Date.now(), msgs: enx }));
+    // índice das conversas guardadas: as mais antigas saem (limite de conversas)
+    const kI = _uKey('vetra_msgs_idx');
+    let idx = []; try { idx = JSON.parse(localStorage.getItem(kI) || '[]'); } catch (_) { idx = []; }
+    idx = [phone].concat(idx.filter(p => p !== phone));
+    idx.slice(_MSGS_CACHE_CONVERSAS).forEach(p => { try { localStorage.removeItem(_uKey('vetra_msgs::' + p)); } catch (_) {} });
+    localStorage.setItem(kI, JSON.stringify(idx.slice(0, _MSGS_CACHE_CONVERSAS)));
+  } catch (_) {}
+}
+async function loadMessages(phone, scroll = true, opt = null) {
   try {
     // Envio de mídia em andamento: o polling NÃO mexe na tela (a prévia local
     // fica parada; a real entra de uma vez quando o envio termina — sem piscar)
     if (!scroll && window._enviandoMidia) return;
+    // A ABERTURA da conversa está no ar? A atualização automática espera: antes
+    // ela cancelava a abertura (a resposta que chegava primeiro era descartada)
+    // e a conversa só aparecia na SEGUNDA resposta — o dobro da espera.
+    if (!scroll && !(opt && opt.abrindo) && window._lmAbrindo === phone) return;
     _ensurePresenceWatch();
     const meuSeq = ++_lmSeq;
-    const res = await fetch(SERVER_URL + '/messages/' + encodeURIComponent(phone));
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    let msgs = await res.json();
+    const _doCache = !!(opt && Array.isArray(opt.msgs));
+    let msgs, _maisAntigasHdr = null;
+    if (_doCache) msgs = opt.msgs;
+    else {
+      // Só as recentes (as antigas entram por "Ver as mensagens mais antigas");
+      // servidor antigo ignora o pedido e manda tudo — o teto abaixo cobre
+      const _lim = (window._semTetoMsgs === phone) ? '' : '?limite=300';
+      const _abrindo = scroll || (opt && opt.abrindo);
+      if (_abrindo) window._lmAbrindo = phone;
+      let res;
+      try { res = await fetch(SERVER_URL + '/messages/' + encodeURIComponent(phone) + _lim); }
+      finally { if (_abrindo && window._lmAbrindo === phone) window._lmAbrindo = null; }
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      msgs = await res.json();
+      try { _maisAntigasHdr = res.headers.get('X-Mais-Antigas'); } catch (_) {}
+    }
     // CORRIDA: o polling pode ter consultado ANTES do envio ser salvo e responder
     // DEPOIS da recarga do envio — a lista velha (sem a mensagem nova) apagava a
     // bolha recém-enviada, que só voltava no polling seguinte ("some e reaparece")
@@ -8167,6 +8214,9 @@ async function loadMessages(phone, scroll = true) {
       console.error('[loadMessages] resposta inesperada:', msgs);
       return;
     }
+    // Primeiro desenho da rede depois do cache: completa o que chegou, sem "nascer"
+    const _completandoCache = !_doCache && window._msgsDoCache === phone;
+    window._msgsDoCache = _doCache ? phone : null;
     // A MESMA mensagem gravada duas vezes (mesmo id do WhatsApp, mesma direção)
     // aparece UMA vez — o servidor cura o banco ao abrir a conversa, e aqui a
     // tela nunca mostra a repetição, nem em servidor antigo.
@@ -8181,6 +8231,9 @@ async function loadMessages(phone, scroll = true) {
       _msgsAntigas = msgs.length - _TETO_MSGS;
       msgs = msgs.slice(-_TETO_MSGS);
     }
+    // O servidor já cortou: ele diz quantas ficaram de fora (-1 = há mais, sem contagem)
+    if (_maisAntigasHdr != null && window._semTetoMsgs !== phone) { const n = parseInt(_maisAntigasHdr, 10); if (n > 0) _msgsAntigas = n; else if (n < 0) _msgsAntigas = -1; }
+    if (_doCache && window._semTetoMsgs !== phone) _msgsAntigas = -1; // cache guarda só as últimas: há mais no servidor
     currentMessages = msgs; // guarda para a galeria de mídias
     // Mensagens prontas → agora sim a linha de presença/janela 24h pode aparecer
     const _presPronto = window._msgsReadyFor !== phone;
@@ -8219,6 +8272,7 @@ async function loadMessages(phone, scroll = true) {
       window._lastMsgCountChat = msgs.length;
     }
     _lastMsgsSig = sig;
+    if (!_doCache) _msgsCacheGuarda(phone, msgs); // guarda as últimas para a próxima abertura ser instantânea
     setTimeout(() => { try { // áudios do fim da conversa: duração pronta antes de você tocar
       const ps = Array.from(document.querySelectorAll('#messages-area .voice-player')).slice(-6);
       ps.forEach(w => { if (!(parseFloat(w.dataset.dur || '0') > 0)) _pedeDurAudio(String(w.id).replace(/^vp-/, '')); });
@@ -8264,8 +8318,8 @@ async function loadMessages(phone, scroll = true) {
       if (mm && mm.media_id) { window._midiaPrio.add(String(mm.media_id)); n++; }
     }
     const parts = [];
-    if (_msgsAntigas > 0) parts.push({ key: 'ver-antigas', html:
-      `<div class="day-divider" data-key="ver-antigas"><span onclick="_verMsgsAntigas()" style="cursor:pointer;color:#00806a;font-weight:700">Ver as ${_msgsAntigas} mensagens mais antigas</span></div>` });
+    if (_msgsAntigas > 0 || _msgsAntigas === -1) parts.push({ key: 'ver-antigas', html:
+      `<div class="day-divider" data-key="ver-antigas"><span onclick="_verMsgsAntigas()" style="cursor:pointer;color:#00806a;font-weight:700">Ver ${_msgsAntigas > 0 ? 'as ' + _msgsAntigas + ' mensagens' : 'as mensagens'} mais antigas</span></div>` });
 
     // ÁLBUM: fotos em sequência (mesmo lado, até 90s de intervalo) viram UMA grade
     const _albumSkip = new Set(), _albumStart = {};
@@ -8547,7 +8601,7 @@ async function loadMessages(phone, scroll = true) {
         // mensagem NÃO entra aqui — ela já nasceu quando você tocou em enviar, e
         // animar de novo seria o próprio pisca.
         if (!scroll && kids.length && nuA.classList && nuA.classList.contains('msg')
-            && nuA.classList.contains('inbound')) {
+            && nuA.classList.contains('inbound') && !_completandoCache) {
           nuA.classList.add('nasce');
           setTimeout(() => { try { nuA.classList.remove('nasce'); } catch (_) {} }, 320);
         }
@@ -8620,12 +8674,14 @@ async function loadMessages(phone, scroll = true) {
     } catch (_) {}
     // NUNCA contra o dedo: só acompanha o fim se você não subiu DE PROPÓSITO
     const _maoLivre = !window._userTouching && Date.now() - (window._scrollUpTs || 0) > 2500;
-    if (scroll || (nearBottom && _maoLivre)) {
-      if (scroll) window._openPinTs = Date.now(); // janela de abertura: fica colado no fim enquanto as mídias carregam
+    // A faixa de não lidas acabou de entrar no desenho (na abertura, ou quando a
+    // rede completa o que veio do cache): a conversa abre nela, seja qual for o render
+    const _abreNaFaixa = !!(window._unreadMark && !window._unreadMark.scrolled && window._unreadMark.msgId);
+    if (scroll || _abreNaFaixa || ((_completandoCache || nearBottom) && _maoLivre)) {
+      if (scroll || _abreNaFaixa || _completandoCache) window._openPinTs = Date.now(); // janela de abertura: fica colado no fim enquanto as mídias carregam
       // Tem não lidas? A conversa JÁ NASCE na divisória — no mesmo quadro do
       // render, sem aparecer o fim antes (nada de "piscar" na última mensagem)
-      const _dvNL = (scroll && window._unreadMark && !window._unreadMark.scrolled && window._unreadMark.msgId)
-        ? area.querySelector('[data-key="unread-div"]') : null;
+      const _dvNL = _abreNaFaixa ? area.querySelector('[data-key="unread-div"]') : null;
       if (_dvNL) {
         window._unreadMark.scrolled = true;
         const _rD = _dvNL.getBoundingClientRect(), _rA = area.getBoundingClientRect();
@@ -9541,20 +9597,8 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-// Ctrl+V — colar imagem do clipboard
-document.addEventListener('paste', (e) => {
-  if (!currentPhone) return;
-  const items = e.clipboardData?.items;
-  if (!items) return;
-  for (const item of items) {
-    if (item.kind === 'file' && item.type.startsWith('image/')) {
-      e.preventDefault();
-      const file = item.getAsFile();
-      if (file) handleFileSelect(file);
-      break;
-    }
-  }
-});
+// (Ctrl+V de foto: tratado UMA vez só, mais abaixo em "Colar print" — havia
+//  dois ouvintes de "paste" e cada um punha a mesma foto na bandeja: duplicava)
 
 // ── ARQUIVO / ANEXO ──
 let selectedFile = null;
@@ -9649,9 +9693,10 @@ function _renderMediaPreview() {
   [120, 350, 700].forEach(ms => setTimeout(() => { try { _mpAjustaTela(); } catch (_) {} }, ms));
 }
 function _rmPreview(i) { _previewList.splice(i, 1); _renderMediaPreview(); }
-// Colar print (Ctrl+V) direto no chat
+// Colar print (Ctrl+V) direto no chat — o ÚNICO ouvinte de colar foto
 document.addEventListener('paste', e => {
   if (!currentPhone) return;
+  if (e._vetraColou) return; e._vetraColou = true; // a mesma colagem nunca entra duas vezes
   const items = (e.clipboardData && e.clipboardData.items) || [];
   for (const it of items) {
     if (it.type && it.type.startsWith('image/')) {
