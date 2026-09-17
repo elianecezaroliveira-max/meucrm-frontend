@@ -94,6 +94,11 @@
   #search-box input::placeholder { color: #667781; }
   #search-x { position:absolute; right:6px; top:50%; transform:translateY(-50%); width:24px; height:24px; border:none; border-radius:50%; background:transparent; color:#667781; font-size:13px; line-height:24px; text-align:center; cursor:pointer; padding:0; }
   #search-x:hover { background:#e0e4e7; color:#111b21; }
+  /* ✕ das outras buscas (respostas rápidas, pipeline, tarefas, modelos, etiquetas) — igual ao da lista */
+  .x-busca-wrap { position:relative; }
+  .x-busca { position:absolute; right:6px; top:50%; transform:translateY(-50%); width:24px; height:24px; border:none; border-radius:50%; background:transparent; color:#667781; font-size:13px; line-height:24px; text-align:center; cursor:pointer; padding:0; display:none; }
+  .x-busca:hover { background:#e0e4e7; color:#111b21; }
+  body.dark .x-busca { color:#8696a0; } body.dark .x-busca:hover { background:#2a3942; color:#e9edef; }
   body.dark #search-x { color:#8696a0; } body.dark #search-x:hover { background:#2a3942; color:#e9edef; }
   #contacts-list { flex: 1; overflow-y: auto; }
   .contact-item { display: flex; align-items: center; gap: 15px; padding: 11px 15px 11px 13px; cursor: pointer; border-bottom: 1px solid #f0f2f5; transition: background 0.15s; }
@@ -2160,7 +2165,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v458</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v459</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2971,7 +2976,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v458</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v459</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3035,7 +3040,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 458;
+const APP_VER = 459;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3843,6 +3848,30 @@ function onSearchInput() {
 function _mostraXBusca() {
   try { const i = document.getElementById('search-input'), x = document.getElementById('search-x'); if (i && x) x.style.display = i.value ? 'block' : 'none'; } catch (_) {}
 }
+// ✕ genérico para as caixas de busca das outras telas: aparece quando há texto,
+// limpa num clique e avisa quem filtra (dispara o mesmo "input" da digitação)
+function _ligaXBusca(id) {
+  try {
+    const i = document.getElementById(id); if (!i || i.dataset.xBusca) return;
+    i.dataset.xBusca = '1';
+    const w = document.createElement('span'); w.className = 'x-busca-wrap';
+    // o envoltório assume o lugar do campo no layout (flex/largura); o campo ocupa 100% dele
+    ['flex', 'minWidth', 'width', 'marginBottom', 'display'].forEach(k => { if (i.style[k]) { w.style[k] = i.style[k]; i.style[k] = ''; } });
+    if (!w.style.display) w.style.display = 'block';
+    i.style.width = '100%'; i.style.boxSizing = 'border-box'; i.style.paddingRight = '32px';
+    i.parentNode.insertBefore(w, i); w.appendChild(i);
+    const x = document.createElement('button'); x.type = 'button'; x.className = 'x-busca'; x.textContent = '✕'; x.title = 'Limpar busca'; x.setAttribute('aria-label', 'Limpar busca');
+    x.onmousedown = e => e.preventDefault(); // não rouba o foco do campo
+    x.onclick = () => { i.value = ''; i.dispatchEvent(new Event('input', { bubbles: true })); i.dispatchEvent(new Event('change', { bubbles: true })); try { i.focus({ preventScroll: true }); } catch (_) {} _xBuscaAtualiza(id); };
+    w.appendChild(x);
+    i.addEventListener('input', () => _xBuscaAtualiza(id));
+    _xBuscaAtualiza(id);
+  } catch (_) {}
+}
+function _xBuscaAtualiza(id) {
+  try { const i = document.getElementById(id); const x = i && i.parentNode && i.parentNode.querySelector('.x-busca'); if (x) x.style.display = i.value ? 'block' : 'none'; } catch (_) {}
+}
+document.addEventListener('DOMContentLoaded', () => { ['pf-name', 'tasks-busca', 'tmpl-busca'].forEach(_ligaXBusca); });
 function limparBusca() {
   const i = document.getElementById('search-input'); if (!i) return;
   i.value = '';
@@ -10695,6 +10724,7 @@ function renderQRManager() {
       oninput="window._qrBusca=this.value;renderQRManager()"
       style="width:100%;box-sizing:border-box;background:#fff;border:1px solid #e9edef;color:#131c20;padding:9px 12px;border-radius:8px;font-size:13px;font-family:inherit;outline:none;margin-bottom:10px"><div id="qr-lista"></div>`;
     lista = document.getElementById('qr-lista');
+    _ligaXBusca('qr-busca');
   }
   lista.innerHTML = (order.length ? order.map(({ r, i }) => `
     <div class="qr-manage-item">
@@ -15175,6 +15205,7 @@ function _pipeEstadoRestaura() {
         stSel.innerHTML = '<option value="">Todas as etapas</option>' + (pipelineStages || []).map(st => `<option value="${st.id}">${escHtml(st.name)}</option>`).join('') + '<option value="__none__">Sem etapa</option>';
     }
     Object.keys(g.filtros || {}).forEach(id => { const el = document.getElementById(id); if (el) el.value = g.filtros[id]; });
+    _xBuscaAtualiza('pf-name');
     (g.tags || []).forEach(t => activePipelineFilterTags.add(t));
     (g.sel || []).forEach(p => selectedLeads.add(p));
     if (Object.keys(g.filtros || {}).length || (g.tags || []).length) document.getElementById('pipeline-filter-btn')?.classList.add('active');
@@ -16418,7 +16449,7 @@ function renderTagManager(){
   // A caixa de busca fica; só o resto é redesenhado (recriar a caixa a cada letra
   // devolvia o cursor ao começo e o texto saía de trás para a frente)
   let resto = document.getElementById('tagmgr-resto');
-  if (!document.getElementById('tagmgr-busca') || !resto) { el.innerHTML = busca + '<div id="tagmgr-resto"></div>'; resto = document.getElementById('tagmgr-resto'); }
+  if (!document.getElementById('tagmgr-busca') || !resto) { el.innerHTML = busca + '<div id="tagmgr-resto"></div>'; resto = document.getElementById('tagmgr-resto'); _ligaXBusca('tagmgr-busca'); }
   resto.innerHTML = avisoRep + corpo;
 }
 async function tagMgrCor(i, cor){
