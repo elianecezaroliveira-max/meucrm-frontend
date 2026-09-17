@@ -360,6 +360,13 @@
   .vdlg-lista { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
   .vdlg-op { display: flex; align-items: center; gap: 10px; text-align: left; background: #f7f8fa; border: 1px solid #e9edef; border-radius: 10px; padding: 11px 13px; font-size: 14px; font-family: inherit; color: #131c20; cursor: pointer; }
   .vdlg-op:hover { background: #eef7f4; border-color: #00a884; }
+  /* Opções coloridas (Salvar = verde claro, Sair sem salvar = vermelho claro) */
+  .vdlg-op.vdlg-op-verde { background: #dcfce7; border-color: #86efac; color: #14532d; }
+  .vdlg-op.vdlg-op-verde:hover { background: #bbf7d0; border-color: #22c55e; }
+  .vdlg-op.vdlg-op-vermelho { background: #fee2e2; border-color: #fca5a5; color: #7f1d1d; }
+  .vdlg-op.vdlg-op-vermelho:hover { background: #fecaca; border-color: #ef4444; }
+  body.dark .vdlg-op.vdlg-op-verde { background: #14532d; border-color: #166534; color: #dcfce7; }
+  body.dark .vdlg-op.vdlg-op-vermelho { background: #7f1d1d; border-color: #991b1b; color: #fee2e2; }
   body.dark #vdlg-box { background: #111b21; color: #e9edef; }
   body.dark #vdlg-text, body.dark #vdlg-campos label { color: #8696a0; }
   body.dark #vdlg-campos input, body.dark #vdlg-campos select, body.dark #vdlg-campos textarea { background: #2a3942; border-color: #2a3942; color: #e9edef; }
@@ -2153,7 +2160,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v452</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v453</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2958,7 +2965,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v452</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v453</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3022,7 +3029,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 452;
+const APP_VER = 453;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -10330,7 +10337,7 @@ function vCampos(o) {
 function vEscolha(o) {
   window._vdlgOpcoes = (o.opcoes || []).map(x => x.v);
   const lista = `<div class="vdlg-lista">${(o.opcoes || []).map((x, i) =>
-    `<button type="button" class="vdlg-op" onclick="_vdlgFecha(window._vdlgOpcoes[${i}])">${x.icone ? escHtml(x.icone) + ' ' : ''}<span style="flex:1">${escHtml(x.t)}</span></button>`).join('')}</div>`;
+    `<button type="button" class="vdlg-op${x.cor === 'verde' ? ' vdlg-op-verde' : x.cor === 'vermelho' ? ' vdlg-op-vermelho' : ''}" onclick="_vdlgFecha(window._vdlgOpcoes[${i}])">${x.icone ? escHtml(x.icone) + ' ' : ''}<span style="flex:1">${escHtml(x.t)}</span></button>`).join('')}</div>`;
   // semCancelar: só as opções da lista (fechar pelo Esc ou clicando fora)
   const btns = o.semCancelar ? '' : `<button class="btn-cancel" onclick="_vdlgFecha(null)">Cancelar</button>`;
   return _vdlgAbre({ titulo: escHtml(o.titulo || 'Escolha'), texto: o.texto || '', campos: lista, botoes: btns });
@@ -14684,7 +14691,7 @@ async function _autoGravaStageActions() {
 }
 async function closeAutomationPanel() {
   if (_autoPend.sujo) { // igual ao editor de bot: pergunta antes de sair com mudança pendente
-    const esc = await vEscolha({ titulo: 'Salvar as automações?', texto: 'Você mexeu nas regras por etapa e ainda não salvou.', opcoes: [{ v: 'salvar', t: 'Salvar e fechar', icone: '💾' }, { v: 'sair', t: 'Sair sem salvar', icone: '↩' }] });
+    const esc = await vEscolha({ titulo: 'Salvar as automações?', texto: 'Você mexeu nas regras por etapa e ainda não salvou.', opcoes: [{ v: 'salvar', t: 'Salvar e continuar', cor: 'verde' }, { v: 'sair', t: 'Sair sem salvar', cor: 'vermelho' }] });
     if (esc === 'salvar') { await autoSalvarTudo(); if (_autoPend.sujo) return; }
     else if (esc === 'sair') { _autoPendZera(); try { const [st, bt] = await Promise.all([fetch(SERVER_URL + '/pipeline/stages').then(r => r.json()), fetch(SERVER_URL + '/bots').then(r => r.json())]); if (Array.isArray(st)) pipelineStages = st; if (Array.isArray(bt)) _autoBots = bt; } catch (_) {} }
     else return; // cancelou: continua no painel
@@ -17083,16 +17090,25 @@ document.addEventListener('click', function (e) {
   try {
     if (window._botSaindoOk) return;
     const alvo = e.target.closest('#side-rail .rail-btn, #mobile-plus-menu .mpm-item, #btn-pipeline, #btn-bots, #btn-tasks-global');
-    if (!alvo || !_botEditorSujo()) return;
+    if (!alvo) return;
+    // A mesma pergunta vale para a Automação do funil ("Regras por etapa") com
+    // mudança pendente: o trilho fica por cima do painel e fechava sem avisar.
+    const autoSujo = !!(typeof _autoPend !== 'undefined' && _autoPend.sujo && document.getElementById('auto-overlay') && getComputedStyle(document.getElementById('auto-overlay')).display !== 'none');
+    if (!_botEditorSujo() && !autoSujo) return;
     e.preventDefault(); e.stopImmediatePropagation();
-    try { _closeNodeEditing(false); } catch (_) {}
+    if (!autoSujo) { try { _closeNodeEditing(false); } catch (_) {} }
     vEscolha({
       titulo: 'Alterações não salvas',
-      texto: 'Você mexeu no fluxo deste bot e ainda não salvou.',
-      opcoes: [{ v: 'salvar', t: 'Salvar e continuar' }, { v: 'descartar', t: 'Sair sem salvar' }],
+      texto: autoSujo ? 'Você mexeu nas regras por etapa e ainda não salvou.' : 'Você mexeu no fluxo deste bot e ainda não salvou.',
+      opcoes: [{ v: 'salvar', t: 'Salvar e continuar', cor: 'verde' }, { v: 'descartar', t: 'Sair sem salvar', cor: 'vermelho' }],
       semCancelar: true
     }).then(async esc => {
-      if (esc === 'salvar') { try { await saveBotFlow(); } catch (_) { alert('Não consegui salvar — confira a internet e tente o Salvar.'); return; } }
+      if (autoSujo) {
+        if (esc === 'salvar') { await autoSalvarTudo(); if (_autoPend.sujo) return; } // não salvou (rede): fica no painel
+        else if (esc === 'descartar') { _autoPendZera(); try { const [st, bt] = await Promise.all([fetch(SERVER_URL + '/pipeline/stages').then(r => r.json()), fetch(SERVER_URL + '/bots').then(r => r.json())]); if (Array.isArray(st)) pipelineStages = st; if (Array.isArray(bt)) _autoBots = bt; } catch (_) {} }
+        else return;
+      }
+      else if (esc === 'salvar') { try { await saveBotFlow(); } catch (_) { alert('Não consegui salvar — confira a internet e tente o Salvar.'); return; } }
       else if (esc === 'descartar') { _botSnap = _botEstadoAtual(); } // descartou: a partir daqui não está mais "sujo"
       else return; // fechou a janela = continua editando
       window._botSaindoOk = true;
@@ -17110,8 +17126,8 @@ async function closeBotEditor() {
         titulo: 'Alterações não salvas',
         texto: 'Você mexeu no fluxo deste bot e ainda não salvou.',
         opcoes: [
-          { v: 'salvar', t: 'Salvar e fechar' },
-          { v: 'descartar', t: 'Sair sem salvar' }
+          { v: 'salvar', t: 'Salvar e fechar', cor: 'verde' },
+          { v: 'descartar', t: 'Sair sem salvar', cor: 'vermelho' }
         ],
         semCancelar: true
       });
