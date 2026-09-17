@@ -2152,7 +2152,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v436</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v438</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2217,7 +2217,7 @@ window.addEventListener('load', initAuth);
 <div id="qr-popup">
   <div id="qr-popup-header">
     <span>Respostas rápidas</span>
-    <span style="font-size:10px">continue digitando para filtrar · ESC fecha</span>
+    <span style="font-size:10px">continue digitando para filtrar · ESC fecha · <b>/</b> respostas · <b>#</b> bots</span>
   </div>
   <div id="qr-popup-list"></div>
 </div>
@@ -2951,7 +2951,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v436</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v438</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3015,7 +3015,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 436;
+const APP_VER = 438;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3094,6 +3094,7 @@ async function init(url) {
   // delas) e antes das conversas — sem "piscar" o chat
   if (!window._telaPasso1 && location.hash && !location.hash.startsWith('#chat=')) { window._telaPasso1 = true; setTimeout(_restaurarTela, 0); }
   await loadContacts(true, _pLista);
+  _preBuscaConversas(allContacts); // as conversas mais recentes já ficam prontas para abrir
   loadAllTags();
   _onboardingCheca();    // passo a passo de estreia (some quando tudo está pronto)
   _avisaServidorNoApp(); // avisa NA HORA se o servidor ficou para trás
@@ -3117,6 +3118,7 @@ async function _pollTickInner() {
   const prevCount = allContacts.length;
 
   await loadContacts(false); // atualiza allContacts sem renderizar
+  _preBuscaConversas(allContacts); // conversas com mensagem nova: já guarda as últimas (abrir = instantâneo e completo)
 
   // Quem está digitando agora (só conta para números de QR Code)
   const _digMudou = await _buscaDigitando();
@@ -8188,12 +8190,45 @@ function _msgsCacheGuarda(phone, msgs) {
       'quoted_id', 'quoted_content', 'quoted_direction', 'reaction', 'reaction_by', 'starred', 'pinned', 'edited', 'forwarded', 'error_info', 'read_at', 'duration'];
     const enx = msgs.slice(-_MSGS_CACHE_N).map(m => { const o = {}; CAMPOS.forEach(k => { if (m[k] != null && m[k] !== false && m[k] !== '') o[k] = m[k]; }); return o; });
     localStorage.setItem(_uKey('vetra_msgs::' + phone), JSON.stringify({ ts: Date.now(), msgs: enx }));
+    (window._msgsCacheUlt = window._msgsCacheUlt || {})[phone] = enx.length ? (parseUTC(enx[enx.length - 1].timestamp) || 0) : -1;
     // índice das conversas guardadas: as mais antigas saem (limite de conversas)
     const kI = _uKey('vetra_msgs_idx');
     let idx = []; try { idx = JSON.parse(localStorage.getItem(kI) || '[]'); } catch (_) { idx = []; }
     idx = [phone].concat(idx.filter(p => p !== phone));
     idx.slice(_MSGS_CACHE_CONVERSAS).forEach(p => { try { localStorage.removeItem(_uKey('vetra_msgs::' + p)); } catch (_) {} });
     localStorage.setItem(kI, JSON.stringify(idx.slice(0, _MSGS_CACHE_CONVERSAS)));
+  } catch (_) {}
+}
+// ── PRÉ-BUSCA (igual WhatsApp): a mensagem nova já está no aparelho ANTES de
+// você abrir a conversa. A cada atualização da lista, as conversas que
+// receberam algo novo têm as últimas mensagens buscadas em segundo plano e
+// guardadas — ao abrir, a conversa pinta completa na hora, sem "atualizar depois".
+const _preBuscaEmCurso = new Set();
+let _preBuscaFeitas = 0;
+function _msgsCacheUltimo(phone) { // horário da última mensagem guardada (em memória, sem reler o disco toda hora)
+  window._msgsCacheUlt = window._msgsCacheUlt || {};
+  if (phone in window._msgsCacheUlt) return window._msgsCacheUlt[phone];
+  const g = _msgsCacheLe(phone);
+  return (window._msgsCacheUlt[phone] = (g && g.length) ? (parseUTC(g[g.length - 1].timestamp) || 0) : -1); // -1 = nunca guardada
+}
+function _preBuscaConversas(lista) {
+  try {
+    if (!window._userEmail || !SERVER_URL || document.hidden) return;
+    const agora = Date.now();
+    const cand = (lista || []).filter(c => {
+      if (!c || !c.phone || c.phone === currentPhone || !c.last_message_at || _preBuscaEmCurso.has(c.phone)) return false;
+      const ult = _msgsCacheUltimo(c.phone), nova = parseUTC(c.last_message_at) || 0;
+      if (ult >= 0) return nova > ult + 1000;                    // guardada, mas chegou coisa nova
+      return _preBuscaFeitas < 40 && agora - nova < 2 * 86400000; // nunca guardada: só as conversas das últimas 48h (e com teto)
+    }).sort((a, b) => (parseUTC(b.last_message_at) || 0) - (parseUTC(a.last_message_at) || 0)).slice(0, 3);
+    cand.forEach(c => {
+      _preBuscaEmCurso.add(c.phone); _preBuscaFeitas++;
+      fetch(SERVER_URL + '/messages/' + encodeURIComponent(c.phone) + '?limite=' + _MSGS_CACHE_N)
+        .then(r => r.ok ? r.json() : null)
+        .then(m => { if (Array.isArray(m) && m.length) _msgsCacheGuarda(c.phone, m); })
+        .catch(() => {})
+        .finally(() => _preBuscaEmCurso.delete(c.phone));
+    });
   } catch (_) {}
 }
 async function loadMessages(phone, scroll = true, opt = null) {
@@ -9452,7 +9487,20 @@ async function sendMessage() {
 }
 
 function handleKey(e) {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    // Lista de "/" (respostas) ou "#" (bots) aberta: Enter escolhe o PRIMEIRO da
+    // lista — nunca manda "/atalho" ou "#bot" como texto para o lead
+    try {
+      const p = document.getElementById('qr-popup');
+      if (p && p.style.display === 'block' && /^[\/#]/.test(String(e.target.value || ''))) {
+        const primeiro = p.querySelector('.qr-item');
+        if (primeiro) primeiro.click();
+        return;
+      }
+    } catch (_) {}
+    sendMessage();
+  }
 }
 
 // No celular, o teclado às vezes "empurra" a página e o cabeçalho da conversa
@@ -10574,8 +10622,49 @@ function showQRPopup(filter, fromSearch) {
 function hideQRPopup() {
   const p = document.getElementById('qr-popup');
   if (p) p.style.display = 'none';
-  // Se sobrou só a "/" da busca no campo, limpa (não vira rascunho nem mensagem)
-  try { const ta = document.getElementById('msg-input'); if (ta && ta.value === '/') { ta.value = ''; if (currentPhone) { delete _drafts[currentPhone]; _saveDrafts(); } if (typeof updateSendMicButtons === 'function') updateSendMicButtons(); } } catch (_) {}
+  _qrPopupCabecalho('Respostas rápidas');
+  // Se sobrou só a "/" (ou o "#" dos bots) no campo, limpa (não vira rascunho nem mensagem)
+  try { const ta = document.getElementById('msg-input'); if (ta && (ta.value === '/' || ta.value === '#')) { ta.value = ''; if (currentPhone) { delete _drafts[currentPhone]; _saveDrafts(); } if (typeof updateSendMicButtons === 'function') updateSendMicButtons(); } } catch (_) {}
+}
+function _qrPopupCabecalho(titulo) {
+  try { const h = document.querySelector('#qr-popup-header span'); if (h) h.textContent = titulo; } catch (_) {}
+}
+// ── ATALHO "#" = BOTS (igual ao "/" das respostas rápidas): digita # e o nome do bot ──
+let _botsAtalho = { lista: null, ts: 0 };
+async function _botsParaAtalho() {
+  if (_botsAtalho.lista && Date.now() - _botsAtalho.ts < 60000) return _botsAtalho.lista;
+  try {
+    const [r] = await Promise.all([fetch(SERVER_URL + '/bots'), (typeof _carregaBotsFav === 'function' ? _carregaBotsFav() : Promise.resolve())]);
+    const bots = (await r.json()).filter(b => b.active);
+    _botsAtalho = { lista: (typeof _ordenaBots === 'function' ? _ordenaBots(bots) : bots), ts: Date.now() };
+  } catch (_) { _botsAtalho = { lista: _botsAtalho.lista || [], ts: Date.now() }; }
+  return _botsAtalho.lista;
+}
+async function showBotPopup(filter) {
+  const popup = document.getElementById('qr-popup');
+  const list = document.getElementById('qr-popup-list');
+  if (!popup || !list) return;
+  _qrPopupCabecalho('Bots');
+  const f = String(filter || '').toLowerCase();
+  if (!_botsAtalho.lista) { list.innerHTML = '<div style="padding:12px 14px;font-size:13px;color:#667781">Carregando bots…</div>'; positionQRPopup(); popup.style.display = 'block'; }
+  const bots = await _botsParaAtalho();
+  const ta = document.getElementById('msg-input');
+  if (!ta || !ta.value.startsWith('#')) return; // fechou/mudou enquanto carregava
+  const filtrados = bots.filter(b => !f || String(b.name || '').toLowerCase().includes(f));
+  if (!bots.length) list.innerHTML = '<div style="padding:12px 14px;font-size:13px;color:#667781">Nenhum bot ativo.</div>';
+  else if (!filtrados.length) list.innerHTML = '<div style="padding:12px 14px;font-size:13px;color:#667781">Nenhum bot com esse nome.</div>';
+  else list.innerHTML = filtrados.map(b => `<div class="qr-item" onclick="_escolheBotAtalho('${_jsAttr(String(b.id))}','${_jsAttr(b.name || 'Bot')}')">
+      <div class="qr-item-title"><i class=ic-bot></i> #${escHtml(b.name || 'Bot')}${(typeof _botEhFav === 'function' && _botEhFav(b.id)) ? ' <span style="color:#f5a623">★</span>' : ''}</div>
+      <div class="qr-item-preview">Enter dispara para este lead</div>
+    </div>`).join('');
+  positionQRPopup();
+  popup.style.display = 'block';
+}
+function _escolheBotAtalho(id, nome) {
+  const ta = document.getElementById('msg-input');
+  if (ta && ta.value.startsWith('#')) { ta.value = ''; try { autoGrowMsgInput(ta); } catch (_) {} if (currentPhone) { delete _drafts[currentPhone]; _saveDrafts(); } }
+  hideQRPopup();
+  launchBot(id, nome); // vira o rascunho de bot: Enter (ou o botão) dispara
 }
 
 // Troca {nome}, {telefone} e {notas} pelos dados do lead (igual aos bots)
@@ -12649,9 +12738,20 @@ document.addEventListener('input', function(e) {
   const val = e.target.value;
   if (val.startsWith('/')) {
     showQRPopup(val.substring(1));
+  } else if (val.startsWith('#')) {
+    showBotPopup(val.substring(1)); // "#" = bots, igual ao "/" das respostas rápidas
   } else {
     hideQRPopup();
   }
+});
+// Ctrl+. (ou Ctrl+;) abre os emojis do VETRA no campo de mensagem — o Win+. é
+// do próprio Windows e o navegador não consegue interceptá-lo.
+document.addEventListener('keydown', function (e) {
+  if (!(e.ctrlKey || e.metaKey) || e.altKey || (e.key !== '.' && e.key !== ';')) return;
+  const ta = document.getElementById('msg-input'); if (!ta || !currentPhone) return;
+  if (document.activeElement !== ta && !document.getElementById('emoji-picker-wrap')?.classList.contains('open')) return;
+  e.preventDefault();
+  try { toggleEmojiPicker(e); } catch (_) {}
 });
 
 document.addEventListener('keydown', function(e) {
