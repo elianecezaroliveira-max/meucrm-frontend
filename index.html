@@ -2160,7 +2160,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v456</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v457</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2965,7 +2965,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v456</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v457</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3029,7 +3029,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 456;
+const APP_VER = 457;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -10726,7 +10726,7 @@ function showQRForm(index) {
       <div>
         <label style="display:flex;align-items:center;gap:8px">Mensagem <button type="button" id="qr-emoji-btn" onclick="abrirEmojiPara('qr-message', this, event)" title="Inserir emoji" style="margin-left:auto;background:#fff;border:1px solid #e9edef;border-radius:8px;padding:3px 9px;font-size:14px;cursor:pointer;line-height:1">😊 Emoji</button></label>
         <textarea id="qr-message" placeholder="Olá, {nome}! Como posso ajudar?">${r.message}</textarea>
-        <div id="qr-var-hint">Use <span onclick="insertQRVar('{nome}')"><b>{nome}</b></span>, <span onclick="insertQRVar('{telefone}')"><b>{telefone}</b></span>, <span onclick="insertQRVar('{notas}')"><b>{notas}</b></span> ou <span onclick="insertQRData()"><b>{data+7}</b></span> — o VETRA troca pelos dados do lead; {data} é hoje e {data+7} é daqui a 7 dias (dd/mm)</div>
+        <div id="qr-var-hint">Use <span onclick="insertQRVar('{nome}')"><b>{nome}</b></span>, <span onclick="insertQRVar('{telefone}')"><b>{telefone}</b></span>, <span onclick="insertQRVar('{notas}')"><b>{notas}</b></span> ou <span onclick="insertQRData()"><b>{data}</b></span> — o VETRA troca pelos dados do lead; em {data} você escolhe os dias (ex.: {daqui a 7 dias} → 24/09)</div>
       </div>
       <div>
         <label>Foto ou arquivo (opcional)</label>
@@ -10792,7 +10792,8 @@ async function insertQRData() {
   if (v === null) return;
   const n = parseInt(String(v).trim(), 10);
   if (isNaN(n)) { showToast('Digite um número de dias (ex.: 7)', 'err'); return; }
-  insertQRVar(n === 0 ? '{data}' : ('{data' + (n > 0 ? '+' : '') + n + '}'));
+  // fica escrito com nome, não com conta: {hoje}, {daqui a 7 dias}, {há 2 dias}
+  insertQRVar(n === 0 ? '{hoje}' : n > 0 ? ('{daqui a ' + n + (n === 1 ? ' dia}' : ' dias}')) : ('{há ' + (-n) + (n === -1 ? ' dia}' : ' dias}')));
 }
 function insertQRVar(v) {
   const ta = document.getElementById('qr-message');
@@ -10971,7 +10972,10 @@ function _qrVars(txt) {
     .replace(/\{nome\}/gi, nome)
     .replace(/\{telefone\}/gi, (typeof fmtPhoneBR === 'function' ? fmtPhoneBR(currentPhone) : (currentPhone || '')))
     .replace(/\{notas?\}/gi, notas)
-    .replace(/\{data\s*([+-]\s*\d+)?\s*\}/gi, (_, d) => _qrData(d)); // {data} = hoje, {data+7} = daqui a 7 dias, {data-1} = ontem
+    .replace(/\{data\s*([+-]\s*\d+)?\s*\}/gi, (_, d) => _qrData(d)) // {data} = hoje, {data+7} = daqui a 7 dias, {data-1} = ontem
+    .replace(/\{hoje\}/gi, () => _qrData(0))
+    .replace(/\{daqui\s+a\s+(\d+)\s+dias?\}/gi, (_, n) => _qrData(n))          // {daqui a 7 dias}
+    .replace(/\{h[aá]\s+(\d+)\s+dias?\}/gi, (_, n) => _qrData(-Number(n)));     // {há 2 dias}
 }
 // Data no horário de Brasília, dd/mm — {data+7} em 17/09 dá 24/09
 function _qrData(desloc) {
