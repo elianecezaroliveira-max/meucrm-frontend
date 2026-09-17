@@ -2160,7 +2160,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v457</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v458</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2346,7 +2346,13 @@ window.addEventListener('load', initAuth);
       <button id="filter-clear" onclick="clearFilters()">✕ Limpar filtros</button>
     </div>
     <div id="contacts-list">
-      <div id="empty-contacts">Nenhuma conversa ainda.<br>Envie uma mensagem pelo WhatsApp para o número de teste.</div>
+      <!-- Enquanto a lista carrega: esqueleto (nunca "Nenhuma conversa" antes de a rede responder) -->
+      <div class="contact-skel"><i class="v-skel"></i><div style="flex:1"><div class="v-skel l" style="margin-bottom:8px"></div><div class="v-skel" style="width:70%"></div></div></div>
+      <div class="contact-skel"><i class="v-skel"></i><div style="flex:1"><div class="v-skel l" style="margin-bottom:8px"></div><div class="v-skel" style="width:70%"></div></div></div>
+      <div class="contact-skel"><i class="v-skel"></i><div style="flex:1"><div class="v-skel l" style="margin-bottom:8px"></div><div class="v-skel" style="width:70%"></div></div></div>
+      <div class="contact-skel"><i class="v-skel"></i><div style="flex:1"><div class="v-skel l" style="margin-bottom:8px"></div><div class="v-skel" style="width:70%"></div></div></div>
+      <div class="contact-skel"><i class="v-skel"></i><div style="flex:1"><div class="v-skel l" style="margin-bottom:8px"></div><div class="v-skel" style="width:70%"></div></div></div>
+      <div class="contact-skel"><i class="v-skel"></i><div style="flex:1"><div class="v-skel l" style="margin-bottom:8px"></div><div class="v-skel" style="width:70%"></div></div></div>
     </div>
   </div>
 
@@ -2965,7 +2971,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v457</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v458</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3029,7 +3035,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 457;
+const APP_VER = 458;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -14398,9 +14404,13 @@ function closePipeline() {
   if (_ab) _telaFechou();
 }
 
+let _pipelineCarregou = false; // só depois da 1ª resposta do servidor a tela pode dizer "nenhum lead"
 async function loadPipeline() {
   const board = document.getElementById('kanban-board');
+  _pipelineCarregou = false;
   if (board) board.innerHTML = '<div style="padding:24px;color:#667781;font-size:14px">Carregando leads...</div>';
+  const lst = document.getElementById('pipeline-list'); if (lst && !lst.querySelector('.plist-row')) lst.innerHTML = '<div style="padding:24px;color:#667781;font-size:14px">Carregando leads...</div>';
+  const pcnt = document.getElementById('pipeline-count'); if (pcnt) pcnt.textContent = 'Carregando…';
   try {
     const [stagesRes, contactsRes] = await Promise.all([
       fetch(SERVER_URL + '/pipeline/stages'),
@@ -14413,6 +14423,7 @@ async function loadPipeline() {
     if (!Array.isArray(_st) && _st && _st.error) throw new Error('Servidor (etapas): ' + _st.error);
     pipelineStages = Array.isArray(_st) ? _st : [];
     pipelineContacts = Array.isArray(_ct) ? _ct : [];
+    _pipelineCarregou = true;
     (pipelineContacts || []).forEach(pc => {
       const ac = (Array.isArray(allContacts) ? allContacts : []).find(c => c.phone === pc.phone);
       if (ac) pc.tags = ac.tags;
@@ -15075,7 +15086,7 @@ function renderPipelineWith(contacts) {
   const pc = document.getElementById('pipeline-count');
   if (pc) {
     const n = contacts.length, tot = pipelineContacts.length;
-    pc.textContent = n === tot ? `${tot} lead${tot === 1 ? '' : 's'}` : `${n} de ${tot} leads`;
+    pc.textContent = !_pipelineCarregou ? 'Carregando…' : (n === tot ? `${tot} lead${tot === 1 ? '' : 's'}` : `${n} de ${tot} leads`);
   }
   const isList = pipelineView === 'list';
   const board = document.getElementById('kanban-board');
@@ -15095,7 +15106,7 @@ function renderPipelineList(contacts) {
   const rows = [...contacts].sort((a, b) =>
     ((stPos[a.stage_id] ?? 999) - (stPos[b.stage_id] ?? 999)) ||
     String(b.last_message_at || '').localeCompare(String(a.last_message_at || '')));
-  if (!rows.length) { el.innerHTML = '<div style="padding:24px;color:#667781;font-size:14px">Nenhum lead encontrado.</div>'; return; }
+  if (!rows.length) { el.innerHTML = '<div style="padding:24px;color:#667781;font-size:14px">' + (_pipelineCarregou ? 'Nenhum lead encontrado.' : 'Carregando leads...') + '</div>'; return; }
   const allSel = rows.length > 0 && rows.every(c => selectedLeads.has(c.phone));
   const header = `<div class="plist-head">
     <span class="plist-check"><input type="checkbox" ${allSel ? 'checked' : ''} onclick="toggleAllPipelineList(this.checked)" title="Marcar todos"></span>
