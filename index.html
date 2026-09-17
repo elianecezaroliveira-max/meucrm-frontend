@@ -2137,7 +2137,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v422</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v423</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2680,7 +2680,7 @@ window.addEventListener('load', initAuth);
 
 <div id="msg-menu" style="display:none;position:fixed;z-index:700;background:#ffffff;border:1px solid #e9edef;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.25);min-width:170px;padding:4px">
   <div class="cm-item" id="msg-menu-reply" onclick="msgMenuReply()">↩ Responder</div>
-  <div class="cm-item" id="msg-menu-react" onclick="msgMenuReact()"><i class=ic-chat></i> Reagir</div>
+  <div class="cm-item" id="msg-menu-react" onclick="msgMenuReact()" style="display:none"><i class=ic-chat></i> Reagir</div><!-- os emojis já abrem junto com o menu: item redundante -->
   <div class="cm-item" onclick="msgMenuCopy()"><i class=ic-copy></i> Copiar</div>
   <div class="cm-item" id="msg-menu-forward" onclick="msgMenuForward()"><i class=ic-send></i> Encaminhar</div>
   <div class="cm-item" id="msg-menu-pinmsg" onclick="msgMenuPinMsg()"><i class=ic-pin></i> Fixar</div>
@@ -2932,7 +2932,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v422</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v423</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2996,7 +2996,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 422;
+const APP_VER = 423;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4037,6 +4037,22 @@ const TICK_CLOCK = '<svg viewBox="0 0 16 16" width="12" height="12" style="verti
 const TICK_ONE = '<svg viewBox="0 0 16 11" width="15" height="11" style="vertical-align:-1px"><path d="M1.5 5.8l3.2 3.2L11 1.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const TICK_TWO = '<svg viewBox="0 0 20 11" width="17" height="11" style="vertical-align:-1px"><path d="M1.5 5.8l3.2 3.2L11 1.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 5.8l3.2 3.2L16.5 1.8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
+// LEGENDA de uma foto/vídeo a partir do texto guardado. O servidor guarda de
+// três jeitos: legenda crua ("olha o contrato"), "[Imagem: legenda]" quando a
+// foto CHEGA pela API, e "[Imagem: nome.jpg]" quando a foto SAI sem legenda.
+// Antes, tudo que começava com "[Imagem" era tratado como "sem legenda" — a
+// legenda que o lead mandava ficava escondida.
+function _legendaMidia(m) {
+  const c = String((m && m.content) || '').trim();
+  if (!c) return '';
+  const mm = c.match(/^\[(?:Imagem|Vídeo|Video)(?::\s*(.*))?\]$/s);
+  if (!mm) return /^\[(?:Imagem|Vídeo|Video)\b/.test(c) ? '' : c; // texto cru = legenda
+  const x = (mm[1] || '').trim();
+  if (!x || /^recebid[ao]$/i.test(x)) return '';
+  if (m && m.direction === 'outbound') return ''; // saída sem legenda guarda o nome do arquivo
+  if (/^[\w\-. ]+\.(jpe?g|png|gif|webp|heic|heif|bmp|mp4|mov|3gp|mkv|avi|webm)$/i.test(x)) return ''; // nome de arquivo
+  return x;
+}
 // Prévia estilo WhatsApp: ícone cinza + "Foto"/"Vídeo"/duração do áudio/nome do arquivo
 function waPreviewHtml(p){
   if (!p) return null;
@@ -4048,8 +4064,8 @@ function waPreviewHtml(p){
   const stk = IC('<path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-3.5 6A1.5 1.5 0 1 1 7 9.5 1.5 1.5 0 0 1 8.5 8zm7 0A1.5 1.5 0 1 1 14 9.5 1.5 1.5 0 0 1 15.5 8zM12 18a6 6 0 0 1-5.2-3h10.4A6 6 0 0 1 12 18z"/>');
   let m;
   if ((m = p.match(/^🎤 Mensagem de voz(?: \((.+)\))?/))) return mic + escHtml(m[1] || 'Áudio');
-  if (/^\[Imagem/.test(p))                                return cam + 'Foto';
-  if (/^\[Vídeo/.test(p))                                 return vid + 'Vídeo';
+  if (/^\[Imagem/.test(p))                                return cam + escHtml(_legendaMidia({ content: p, direction: 'inbound' }) || 'Foto');
+  if (/^\[Vídeo/.test(p))                                 return vid + escHtml(_legendaMidia({ content: p, direction: 'inbound' }) || 'Vídeo');
   if ((m = p.match(/^\[Documento: (.+)\]/)))              return doc + escHtml(m[1]);
   if (/^\[Documento/.test(p))                             return doc + 'Documento';
   if (/^\[Figurinha\]/.test(p))                           return stk + 'Figurinha';
@@ -4772,9 +4788,10 @@ function _updateMsgMenuItems(id) {
   // NOTA INTERNA: só o que faz sentido para uma anotação sua. Ela não sai do
   // VETRA, então responder/reagir/encaminhar/selecionar ficam escondidos.
   const nota = _ehNota(id);
-  ['msg-menu-reply', 'msg-menu-react', 'msg-menu-forward', 'msg-menu-select'].forEach(k => {
+  ['msg-menu-reply', 'msg-menu-forward', 'msg-menu-select'].forEach(k => {
     const e = document.getElementById(k); if (e) e.style.display = nota ? 'none' : '';
   });
+  { const e = document.getElementById('msg-menu-react'); if (e) e.style.display = 'none'; } // a barra de emojis já vem com o menu
   if (nota) {
     ['msg-menu-edit', 'msg-menu-info', 'msg-menu-revoke'].forEach(k => {
       const e = document.getElementById(k); if (e) e.style.display = 'none';
@@ -7774,7 +7791,8 @@ function renderMessageContent(m) {
       </div>`;
 
     } else if (m.type === 'image') {
-      const caption = m.content && !m.content.startsWith('[Imagem') ? `<div class="media-caption">${waFormat(m.content)}</div>` : '';
+      const _legI = _legendaMidia(m);
+      const caption = _legI ? `<div class="media-caption">${waFormat(_legI)}</div>` : '';
       const dlUrl = `${proxyUrl}&download=1&filename=${encodeURIComponent('imagem.jpg')}`;
       const _midKey = String(m.media_id || m.id || '').replace(/['"<>]/g, '');
       // Ordem de prioridade do endereço: MINIATURA local (instantânea, igual
@@ -7850,7 +7868,8 @@ function renderMessageContent(m) {
       </div>`;
 
     } else if (m.type === 'video') {
-      const caption = m.content && !m.content.startsWith('[Vídeo') ? `<div class="media-caption">${waFormat(m.content)}</div>` : '';
+      const _legV = _legendaMidia(m);
+      const caption = _legV ? `<div class="media-caption">${waFormat(_legV)}</div>` : '';
       const dlUrl = `${proxyUrl}&download=1&filename=${encodeURIComponent('video.mp4')}`;
       const _vidKey = String(m.media_id || m.id || '').replace(/['"<>]/g, '');
       const _srcVid = (window._localPrev || {})[String(m.media_id)] || proxyUrl;
@@ -8159,7 +8178,7 @@ async function loadMessages(phone, scroll = true) {
       }
       // Duas já formam grade (igual WhatsApp). Mas se DUAS OU MAIS tiverem
       // legenda, cada uma segue sozinha — juntar apagaria um dos textos.
-      const _comLegenda = grupo.filter(x => x.content && !String(x.content).startsWith('[Imagem')).length;
+      const _comLegenda = grupo.filter(x => _legendaMidia(x)).length;
       if (grupo.length >= 2 && _comLegenda <= 1) {
         _albumStart[a.id] = grupo;
         grupo.slice(1).forEach(x => _albumSkip.add(x.id));
@@ -8256,7 +8275,7 @@ async function loadMessages(phone, scroll = true) {
           (window._albuns || (window._albuns = {}))[chaveAlb] =
             grupo.map(g => ({ id: g.media_id, mime: g.media_mime_type || '' }));
           // Legenda: se uma das fotos tiver, ela vale para a sequência inteira
-          const _legAlb = (grupo.find(x => x.content && !String(x.content).startsWith('[Imagem')) || {}).content || '';
+          const _legAlb = _legendaMidia(grupo.find(x => _legendaMidia(x)) || {});
           const _capAlb = _legAlb ? `<div class="media-caption">${waFormat(_legAlb)}</div>` : '';
           parts.push({ key: chaveAlb, html: `<div class="msg ${safeDir}${grpA ? ' grp' : ''}" style="position:relative" data-key="${chaveAlb}" data-msg-id="${safeId}" data-msg-dir="${safeDir}">
             <div class="alb alb-${Math.min(_qtd, 4)}">${tiles}</div>${_capAlb}
@@ -16939,12 +16958,15 @@ function renderBotList(){
         // A barra fica COLADA na saída, na altura da opção (perto da bolinha).
         // No meio da linha, as barras de linhas vizinhas se sobrepunham e o ✕ de
         // uma ficava debaixo do 👁 da outra — "esconder" virava "desprender".
-        // Linha curta (o próximo cartão está colado)? A barra não pode cair em
-        // cima do cartão de destino: vai um pouco acima da linha, no meio dela.
-        let mx=sx+58, my=sy;
-        if (mx+92 > tx-4) { mx=Math.max(sx+4, (sx+tx)/2-45); my=sy-24; }
+        // A barra fica EM CIMA da linha, a ~75px da saída (ponto medido na
+        // própria curva): o mouse anda pela linha e chega nela sem sair do
+        // caminho. Linha curta (o próximo cartão está colado)? Vai um pouco
+        // acima da linha, no meio, para não cair em cima do cartão de destino.
+        let mx=sx+75, my=sy;
+        try { const _pt=traco.getPointAtLength(Math.min(traco.getTotalLength(), 75)); mx=_pt.x; my=_pt.y; } catch(_){}
+        if (mx+48 > tx-4) { mx=Math.max(sx+50, (sx+tx)/2); my=sy-24; }
         const barra=document.createElement('div');
-        barra.style.cssText=`position:absolute;left:${mx}px;top:${my}px;transform:translate(0,-50%);display:flex;gap:4px;z-index:8;opacity:0;pointer-events:none;transition:opacity .12s ease`;
+        barra.style.cssText=`position:absolute;left:${mx}px;top:${my}px;transform:translate(-50%,-50%);display:flex;gap:4px;z-index:8;opacity:0;pointer-events:none;transition:opacity .12s ease`;
         const _mkB=(txt,dica,cor,fn)=>{
           const b=document.createElement('button');
           b.innerHTML=txt; b.title=dica;
@@ -16971,7 +16993,8 @@ function renderBotList(){
           clearTimeout(d.t); d.t=null; _linhaDestaque=d;
           barra.style.opacity='1'; barra.style.pointerEvents='auto';
           if(traco){ traco.setAttribute('stroke-width','3.5'); traco.setAttribute('stroke', isFail?'#ef4444':'#00a884'); try{ svg.appendChild(traco); }catch(_){} } };
-        const _some=()=>{ clearTimeout(d.t); d.t=setTimeout(()=>_linhaApaga(d),180); };
+        // Sair da linha NÃO apaga na hora: dá meio segundo para chegar nos botões
+        const _some=()=>{ clearTimeout(d.t); d.t=setTimeout(()=>_linhaApaga(d),520); };
         hit.addEventListener('mouseenter',_mostra); hit.addEventListener('mouseleave',_some);
         barra.addEventListener('mouseenter',_mostra); barra.addEventListener('mouseleave',_some);
         hit.addEventListener('touchstart',(e)=>{ e.stopPropagation(); _mostra(); setTimeout(_some,2800); },{passive:true});
@@ -17138,7 +17161,10 @@ function setupBotCanvasPanZoom(){
     if(!_linhaDestaque) return;
     const t=e.target;
     if(t && t.closest && (t.closest('#bot-edges-svg') || t.closest('.bot-linha-barra'))) return;
-    if(!_linhaDestaque.t) _linhaDestaque.t=setTimeout(()=>_linhaApaga(_linhaDestaque),180);
+    // Perto da barra (a caminho dos botões)? Continua acesa.
+    try { const r=_linhaDestaque.barra.getBoundingClientRect();
+      if(e.clientX>r.left-34 && e.clientX<r.right+34 && e.clientY>r.top-30 && e.clientY<r.bottom+30){ clearTimeout(_linhaDestaque.t); _linhaDestaque.t=null; return; } } catch(_){}
+    if(!_linhaDestaque.t) _linhaDestaque.t=setTimeout(()=>_linhaApaga(_linhaDestaque),520);
   });
   wrap.addEventListener('mouseleave',()=>_linhaApaga(_linhaDestaque));
   wrap.addEventListener('wheel',()=>_linhaApaga(_linhaDestaque),{passive:true}); // rolou/zoom: as linhas andam por baixo do mouse sem evento — apaga
