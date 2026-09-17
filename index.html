@@ -2152,7 +2152,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v442</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v443</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2951,7 +2951,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v442</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v443</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3015,7 +3015,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 442;
+const APP_VER = 443;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -8406,6 +8406,37 @@ async function loadMessages(phone, scroll = true, opt = null) {
       }
     }
 
+    // A faixa "N NÃO LIDAS" fica na PRIMEIRA mensagem recebida a partir do horário
+    // marcado. Se uma mensagem mais antiga que a marcada entrar depois (a foto
+    // demorou a baixar e a mensagem seguinte foi gravada antes), a faixa sobe
+    // para ela — nunca deixa uma não lida para trás.
+    try {
+      const _um = window._unreadMark;
+      if (_um && _um.ts) {
+        // pelo horário marcado…
+        let _iA = msgs.findIndex(m => m && m.direction === 'inbound' && !_albumSkip.has(m.id) && (parseUTC(m.timestamp) || 0) >= _um.ts);
+        // …e pela CONTAGEM (N não lidas = as N últimas recebidas): a mais antiga das duas
+        // (o horário marcado pode estar "atrasado" quando a mensagem mais antiga foi gravada depois)
+        let _porConta = false;
+        if (_um.count > 0) {
+          const _inb = []; msgs.forEach((m, i) => { if (m && m.direction === 'inbound') _inb.push(i); });
+          // mensagens que CHEGARAM depois de abrir (mais novas que a mais nova de então)
+          // não entram na conta — senão a faixa desceria e esconderia uma não lida
+          if (_um.tsMax == null) _um.tsMax = _inb.reduce((mx, i) => Math.max(mx, parseUTC(msgs[i].timestamp) || 0), 0);
+          const _novas = _inb.filter(i => (parseUTC(msgs[i].timestamp) || 0) > _um.tsMax).length;
+          let _iC = _inb.length ? _inb[Math.max(0, _inb.length - (_um.count + _novas))] : -1;
+          while (_iC > 0 && _albumSkip.has(msgs[_iC].id)) _iC--; // membro de álbum: sobe até a primeira foto do álbum
+          if (_iC >= 0 && (_iA < 0 || _iC < _iA)) { _iA = _iC; _porConta = true; }
+        }
+        if (_iA >= 0) {
+          const _alvo = msgs[_iA];
+          const _iM = msgs.findIndex(m => m && String(m.id) === String(_um.msgId || ''));
+          // pelo horário: só sobe. Pela contagem: é provisório (a mensagem antiga pode
+          // ainda estar chegando) e acompanha a conta até casar com o horário
+          if (String(_alvo.id) !== String(_um.msgId || '') && (_iM < 0 || _iA < _iM || _um.porConta)) { _um.msgId = _alvo.id; _um.porConta = _porConta; }
+        }
+      }
+    } catch (_) {}
     for (const m of msgs) {
       try {
         if (_albumSkip.has(m.id)) continue; // faz parte de um álbum já desenhado
@@ -12766,7 +12797,7 @@ document.addEventListener('keydown', function(e) {
 });
 
 document.addEventListener('click', function(e) {
-  if (!e.target.closest('#qr-popup') && e.target.id !== 'msg-input' && !e.target.closest('#btn-composer-tool')) hideQRPopup();
+  if (!e.target.closest('#qr-popup') && e.target.id !== 'msg-input' && !e.target.closest('#btn-composer-tool') && !e.target.closest('#btn-start-bot')) hideQRPopup();
 });
 
 // ── NÃO LIDAS ──
@@ -16759,6 +16790,37 @@ function _botEstadoAtual() {
   } catch (_) { return ''; }
 }
 
+// O editor está aberto com alteração não salva?
+function _botEditorSujo() {
+  try {
+    const pg = document.getElementById('bot-editor-page');
+    if (!pg || pg.style.display === 'none' || !botEditorId) return false;
+    return !!(_botSnap && _botEstadoAtual() !== _botSnap);
+  } catch (_) { return false; }
+}
+// Clicou em outra aba (Chat, Pipeline, Tarefas…) com o bot alterado e sem salvar?
+// Segura o clique, pergunta, e só então segue para onde ela clicou.
+document.addEventListener('click', function (e) {
+  try {
+    if (window._botSaindoOk) return;
+    const alvo = e.target.closest('#side-rail .rail-btn, #mobile-plus-menu .mpm-item, #btn-pipeline, #btn-bots, #btn-tasks-global');
+    if (!alvo || !_botEditorSujo()) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    try { _closeNodeEditing(false); } catch (_) {}
+    vEscolha({
+      titulo: 'Alterações não salvas',
+      texto: 'Você mexeu no fluxo deste bot e ainda não salvou.',
+      opcoes: [{ v: 'salvar', t: 'Salvar e continuar' }, { v: 'descartar', t: 'Sair sem salvar' }],
+      semCancelar: true
+    }).then(async esc => {
+      if (esc === 'salvar') { try { await saveBotFlow(); } catch (_) { alert('Não consegui salvar — confira a internet e tente o Salvar.'); return; } }
+      else if (esc === 'descartar') { _botSnap = _botEstadoAtual(); } // descartou: a partir daqui não está mais "sujo"
+      else return; // fechou a janela = continua editando
+      window._botSaindoOk = true;
+      try { alvo.click(); } finally { window._botSaindoOk = false; }
+    });
+  } catch (_) {}
+}, true);
 async function closeBotEditor() {
   try { _closeNodeEditing(false); } catch (_) {} // recolhe edição pendente antes de sair
   // Alterou algo e não salvou? Pergunta antes de sair (OK = salva e sai)
@@ -19092,10 +19154,25 @@ async function stopActiveBotRun() {
   checkActiveBotRun(currentPhone);
 }
 
+// Botão "Iniciar bot": abre a MESMA lista pesquisável do "#" (digite para
+// filtrar pelo nome; Enter escolhe). A lista antiga (sem busca) fica de reserva.
 async function openBotLauncher() {
   const menu = document.getElementById('bot-launcher-menu');
   if (!menu) return;
   _desligaNota('iniciar o bot');
+  try {
+    const ta = document.getElementById('msg-input');
+    const p = document.getElementById('qr-popup');
+    if (ta && p) {
+      if (p.style.display === 'block' && ta.value.startsWith('#')) { hideQRPopup(); return; } // 2º clique fecha
+      if (!ta.value.startsWith('#')) ta.value = '#' + ta.value;
+      ta.focus();
+      try { ta.setSelectionRange(ta.value.length, ta.value.length); } catch (_) {}
+      try { autoGrowMsgInput(ta); updateSendMicButtons(); } catch (_) {}
+      showBotPopup(ta.value.slice(1));
+      return;
+    }
+  } catch (_) {}
   if (menu.style.display!=='none') { menu.style.display='none'; return; }
   const listEl = document.getElementById('bot-launcher-list');
   listEl.innerHTML = '<div style="padding:6px 8px;font-size:12px;color:#667781">Carregando...</div>';
