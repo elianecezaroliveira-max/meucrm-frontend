@@ -2137,7 +2137,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v428</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v431</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2932,7 +2932,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v428</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v431</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2996,7 +2996,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 428;
+const APP_VER = 431;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3927,7 +3927,9 @@ function applyFilters() {
   const serverSearch = searchResults !== null; // backend já casou nome/telefone/mensagem
   const base = serverSearch ? searchResults : allContacts;
   const filtered = base.filter(c => {
-    if (!serverSearch && q && !c.name?.toLowerCase().includes(q) && !c.phone?.includes(q)) return false;
+    // número com máscara "(15) 98165-1975" também acha: compara só os dígitos
+    const qDig = q.replace(/\D/g, '');
+    if (!serverSearch && q && !c.name?.toLowerCase().includes(q) && !c.phone?.includes(q) && !(qDig.length >= 4 && String(c.phone || '').includes(qDig))) return false;
     if (stageId && c.stage_id !== stageId) return false;
     if (activeFilterTags.size > 0 && ![...activeFilterTags].every(t => (c.tags||[]).includes(t))) return false;
     if (dateFrom && c.last_message_at && c.last_message_at < dateFrom) return false;
@@ -7596,29 +7598,47 @@ function _dimCss(id) {
 // MINIATURAS LOCAIS (igual WhatsApp): cada foto já vista fica guardada no
 // aparelho — em toda abertura a foto pinta NA HORA, sem rede e sem redecodificar
 function _thumbGet(id) {
-  try { window._vThumbs = window._vThumbs || JSON.parse(localStorage.getItem(_uKey('vetra_thumb')) || '{}'); return window._vThumbs[String(id)] || null; }
+  try { window._vThumbs = window._vThumbs || JSON.parse(localStorage.getItem(_uKey('vetra_thumb2')) || '{}'); return window._vThumbs[String(id)] || null; }
   catch (_) { return null; }
+}
+// A miniatura ficou PRETA? (no iPhone, foto grande ou ainda não decodificada cai
+// no canvas como nada — e JPEG sem nada é preto). Uma miniatura assim não pode
+// ser guardada: ficava presa no cache e a foto aparecia preta no chat para sempre.
+function _thumbPreta(cv) {
+  try {
+    const p = document.createElement('canvas'); p.width = 12; p.height = 12;
+    const g = p.getContext('2d'); g.drawImage(cv, 0, 0, 12, 12);
+    const d = g.getImageData(0, 0, 12, 12).data;
+    let soma = 0; for (let i = 0; i < d.length; i += 4) soma += d[i] + d[i + 1] + d[i + 2];
+    return soma < 12 * 12 * 3 * 6; // média abaixo de 6/255 = praticamente tudo preto
+  } catch (_) { return true; } // não deu para conferir (canvas "sujo" etc.): não guarda
 }
 function _thumbSave(id, im) {
   try {
     if (!id || !im || !im.naturalWidth) return;
-    const t = window._vThumbs = window._vThumbs || JSON.parse(localStorage.getItem(_uKey('vetra_thumb')) || '{}');
+    const t = window._vThumbs = window._vThumbs || JSON.parse(localStorage.getItem(_uKey('vetra_thumb2')) || '{}');
     if (t[String(id)]) return;
-    const s = Math.min(1, 578 / im.naturalWidth);
-    const cv = document.createElement('canvas');
-    cv.width = Math.max(1, Math.round(im.naturalWidth * s));
-    cv.height = Math.max(1, Math.round(im.naturalHeight * s));
-    cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height);
-    t[String(id)] = cv.toDataURL('image/jpeg', 0.75);
-    const ks = Object.keys(t); if (ks.length > 40) ks.slice(0, ks.length - 40).forEach(k => delete t[k]);
-    localStorage.setItem(_uKey('vetra_thumb'), JSON.stringify(t));
-  } catch (_) {
-    try { // sem espaço → guarda só as 15 mais recentes
-      const t = window._vThumbs || {}; const ks = Object.keys(t);
-      ks.slice(0, Math.max(0, ks.length - 15)).forEach(k => delete t[k]);
-      localStorage.setItem(_uKey('vetra_thumb'), JSON.stringify(t));
-    } catch (_) {}
-  }
+    const desenha = () => { try {
+      const s = Math.min(1, 578 / im.naturalWidth);
+      const cv = document.createElement('canvas');
+      cv.width = Math.max(1, Math.round(im.naturalWidth * s));
+      cv.height = Math.max(1, Math.round(im.naturalHeight * s));
+      cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height);
+      if (_thumbPreta(cv)) return; // veio preta: não guarda (a próxima vez tenta de novo)
+      t[String(id)] = cv.toDataURL('image/jpeg', 0.75);
+      const ks = Object.keys(t); if (ks.length > 40) ks.slice(0, ks.length - 40).forEach(k => delete t[k]);
+      localStorage.setItem(_uKey('vetra_thumb2'), JSON.stringify(t));
+    } catch (_) { _thumbApara(); } };
+    // só desenha com a foto DECODIFICADA (onload no iPhone chega antes de a foto estar pronta)
+    if (im.decode) im.decode().then(desenha, desenha); else desenha();
+  } catch (_) { _thumbApara(); }
+}
+function _thumbApara() {
+  try { // sem espaço → guarda só as 15 mais recentes
+    const t = window._vThumbs || {}; const ks = Object.keys(t);
+    ks.slice(0, Math.max(0, ks.length - 15)).forEach(k => delete t[k]);
+    localStorage.setItem(_uKey('vetra_thumb2'), JSON.stringify(t));
+  } catch (_) {}
 }
 // ── DIAGNÓSTICO TEMPORÁRIO do pisca da foto (botão no canto) ──
 window._fotoDiag = [];
@@ -16396,7 +16416,7 @@ async function deleteBotItem(id) {
 // ── Bot editor ──
 async function openBotEditor(id, isNew=false) {
   botEditorId = id;
-  botNodes = []; botEdges = []; selectedNodeId = null; connectingFrom = null; _botColapsados = new Set();
+  botNodes = []; botEdges = []; selectedNodeId = null; connectingFrom = null; _botColapsados = new Set(); _botSoltosVisiveis = new Set();
   canvasPan = {x:60, y:60};
   botZoom = 1; botPanX = 40; botPanY = 40;
   _botSnap = ''; // sem retrato até o bot certo carregar (não compara com o anterior)
@@ -17027,6 +17047,7 @@ function _renderBotListInterno(){
         _mkB('＋','Inserir um passo aqui','#00a884',(e)=>menuInserirNaLigacao(edge.id, e));
         _mkB('✕','Desprender esta ligação (não apaga nenhum passo)','#ef4444',async()=>{
           if(!(await vConfirm({ titulo:'Desprender ligação', texto:'A ligação entre estes passos sai. Os passos continuam no quadro, só desligados.', confirmar:'Desprender', perigo:true }))) return;
+          _botMarcaSolto(edge.to_node_id); // o passo desprendido continua à vista (não some por estar em sequência recolhida)
           botEdges=botEdges.filter(x=>x!==edge); renderBotList();
         });
         _mkB('<i class=ic-eye-off></i>','Esconder os passos deste caminho','#94a3b8',()=>botToggleRamo(node.id, slot.label));
@@ -17275,6 +17296,11 @@ function _botAlcanceRecolhido() {
   }
   return dentro;
 }
+// Passos SOLTOS que têm de continuar à vista mesmo fazendo parte de uma sequência
+// recolhida: o que você acabou de DESPRENDER ou o que sobrou de um passo APAGADO.
+// (Antes, desprender/apagar fazia o passo seguinte sumir na hora, porque ele
+// também era alcançado por um caminho escondido.)
+let _botSoltosVisiveis = new Set();
 function _botOcultos() {
   const ocultos = new Set();
   if (!_botColapsados.size) return ocultos;
@@ -17284,10 +17310,17 @@ function _botOcultos() {
   // sequência dele na tela, mesmo ela sendo continuação de um caminho recolhido.)
   const dentro = _botAlcanceRecolhido();
   const vis = new Set();
-  const fila = [];
+  // 1) o que você desprendeu/deixou solto há pouco: à vista com tudo que vem dele
+  //    (só uma saída recolhida dele mesmo interrompe)
+  const fila = botNodes.filter(n => _botSoltosVisiveis.has(n.id)).map(n => n.id);
+  while (fila.length) {
+    const id = fila.shift();
+    if (vis.has(id)) continue; vis.add(id);
+    botEdges.filter(e => e.from_node_id === id && !_botColapsados.has(id + '::' + _botNrmLbl(e.label))).forEach(e => fila.push(e.to_node_id));
+  }
+  // 2) o Início e os passos soltos normais (sem seta chegando e fora de sequência recolhida)
   botNodes.forEach(n => {
     if (n.type === 'start') fila.push(n.id);
-    // passo solto (sem seta chegando) que NÃO faz parte de sequência recolhida: continua à vista
     else if (!botEdges.some(e => e.to_node_id === n.id) && !dentro.has(n.id)) fila.push(n.id);
   });
   while (fila.length) {
@@ -17340,7 +17373,12 @@ function _botQtdRamo(nodeId, label) { // quantos nós este ramo está escondendo
 }
 function botToggleRamo(nodeId, label) {
   const k = nodeId + '::' + _botNrmLbl(label);
-  if (_botColapsados.has(k)) _botColapsados.delete(k); else _botColapsados.add(k);
+  if (_botColapsados.has(k)) _botColapsados.delete(k);
+  else {
+    _botColapsados.add(k);
+    // esconder é esconder TUDO que vem depois: passos soltos dessa sequência também
+    try { const guarda = new Set(_botColapsados); _botColapsados = new Set([k]); const seq = _botAlcanceRecolhido(); _botColapsados = guarda; seq.forEach(id => _botSoltosVisiveis.delete(id)); } catch (_) {}
+  }
   _salvaColapsados();
   renderBotList();
 }
@@ -18133,7 +18171,12 @@ function alternarRamoDaLigacao(edgeId){
   if (_botColapsados.has(k)) _botColapsados.delete(k); else _botColapsados.add(k);
   renderBotList();
 }
+// Marca um passo (e o que vem dele) para continuar à vista quando ficar solto
+function _botMarcaSolto(id) {
+  try { if (id && !_botOcultos().has(id)) _botSoltosVisiveis.add(id); } catch (_) {}
+}
 function deleteNode(id) {
+  try { botEdges.filter(e => e.from_node_id === id).forEach(e => _botMarcaSolto(e.to_node_id)); } catch (_) {}
   botNodes = botNodes.filter(n=>n.id!==id);
   botEdges = botEdges.filter(e=>e.from_node_id!==id && e.to_node_id!==id);
   try { [..._botColapsados].forEach(k => { if (k.startsWith(id + '::')) _botColapsados.delete(k); }); _salvaColapsados(); } catch (_) {}
