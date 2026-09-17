@@ -2153,7 +2153,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v448</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v449</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2952,7 +2952,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v448</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v449</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3016,7 +3016,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 448;
+const APP_VER = 449;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5962,21 +5962,47 @@ document.addEventListener('keydown', (e) => {
 // Compara sem maiúsculas e sem acentos (o corretor do celular devolve a
 // palavra "arrumada", e era isso que escapava da limpeza)
 function _semAcento(x) {
-  return String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim();
+  // Sem pontuação também: a digitação por VOZ devolve o texto "arrumado"
+  // ("combinado, então!" no lugar de "combinado então") — e isso escapava.
+  return String(x || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
 }
+// O que está no campo chegou EM BLOCO (várias letras num só evento: voz,
+// corretor, sobra do teclado) ou letra por letra (você digitando)?
+let _campoEmBloco = false, _campoValorAnt = '';
+document.addEventListener('input', (e) => {
+  try {
+    if (!e || !e.target || e.target.id !== 'msg-input') return;
+    const v = String(e.target.value || '');
+    if (v.length - _campoValorAnt.length >= 3) _campoEmBloco = true;      // chegou um pedaço inteiro de uma vez
+    else if (v.length === _campoValorAnt.length + 1) _campoEmBloco = false; // uma letra: é você digitando
+    _campoValorAnt = v;
+  } catch (_) {}
+}, true);
 // É sobra do envio? (o que está no campo é um pedaço do que acabou de sair)
 // janelaCurta = para APAGAR o campo (2,5s). Sem ela, só serve para não gravar
 // rascunho (8s) — apagar depois disso poderia comer algo que você digitou.
 function _sobraDoEnvio(txt, phone, janelaCurta) {
-  // Digitou de verdade depois do envio? Nada é apagado, ponto final.
-  if (janelaCurta && _teclouAposEnvio) return false;
+  // Digitou de verdade depois do envio? É seu: nada é apagado nem deixa de virar rascunho.
+  if (_teclouAposEnvio) return false;
   const t = _semAcento(txt);
   if (!t || t.length < 3) return false; // pedaço curto demais: pode ser você digitando
   if (phone && _ultEnviado.phone && phone !== _ultEnviado.phone) return false;
-  if (Date.now() - _ultEnviado.ts > (janelaCurta ? 2500 : 8000)) return false;
+  // Janela: 2,5 s para o que foi digitado letra a letra; o que chegou EM BLOCO
+  // (voz/corretor entregando depois) vale por 10 s — a voz demora para
+  // "fechar" a frase, e a sobra chegava depois dos 2,5 s, ficava no campo e
+  // virava rascunho ao sair da conversa.
+  const janela = _campoEmBloco ? (janelaCurta ? 10000 : 12000) : (janelaCurta ? 2500 : 4000);
+  if (Date.now() - _ultEnviado.ts > janela) return false;
   const env = _semAcento(_ultEnviado.texto);
   if (!env) return false;
   if (env === t || env.includes(t)) return true;
+  // Voz/corretor devolvendo a frase "arrumada": todas as palavras do campo
+  // estavam na mensagem enviada (na mesma ordem) → é a sobra dela
+  if (_campoEmBloco) {
+    const pe0 = env.split(' ').filter(Boolean), pt0 = t.split(' ').filter(Boolean);
+    let i = 0; for (const w of pt0) { const j = pe0.indexOf(w, i); if (j < 0) { i = -1; break; } i = j + 1; }
+    if (i >= 0 && pt0.length >= 1) return true;
+  }
   // Sobra é sempre curta e vem do FIM da mensagem enviada
   const pe = env.split(' ').filter(Boolean), pt = t.split(' ').filter(Boolean);
   if (!pt.length || pt.length > 4 || pt.length > pe.length) return false;
@@ -6005,7 +6031,7 @@ function _persistDraftNow(phoneAlvo) {
 // O teclado entregou a palavra atrasada, já com o campo limpo: apaga de novo.
 document.addEventListener('compositionend', () => {
   try {
-    if (Date.now() >= _semRascunhoAte + 600) return; // a entrega do teclado chega logo depois
+    if (Date.now() >= _semRascunhoAte + 8000) return; // a entrega do teclado/voz chega logo depois (voz demora mais)
     const i = document.getElementById('msg-input');
     if (i && _sobraDoEnvio(i.value, currentPhone, true)) { i.value = ''; autoGrowMsgInput(i); updateSendMicButtons(); }
   } catch (_) {}
@@ -9581,8 +9607,9 @@ async function sendMessage() {
   _ultEnviado = { texto: message, ts: Date.now(), phone: currentPhone };
   _semRascunhoAte = Date.now() + 2500;
   _teclouAposEnvio = false; // começa a janela; a 1ª tecla sua encerra ela
+  _campoValorAnt = ''; _campoEmBloco = false;
   // e se o teclado entregar algo mesmo assim, o campo é limpo de novo
-  [40, 120, 260, 450, 700, 1000, 1400, 1900, 2400].forEach(ms => setTimeout(() => {
+  [40, 120, 260, 450, 700, 1000, 1400, 1900, 2400, 3200, 4200, 5500, 7000, 8500, 9800].forEach(ms => setTimeout(() => {
     try {
       const i2 = document.getElementById('msg-input');
       if (i2 && _sobraDoEnvio(i2.value, _ultEnviado.phone, true)) { i2.value = ''; autoGrowMsgInput(i2); updateSendMicButtons(); }
@@ -12918,7 +12945,7 @@ document.addEventListener('input', function(e) {
   // que já tinha sido enviada.
   if (currentPhone) {
     const _v = e.target.value;
-    if (window._enviandoTexto || Date.now() < _semRascunhoAte || _sobraDoEnvio(_v, currentPhone)) {
+    if (window._enviandoTexto || (Date.now() < _semRascunhoAte && !_teclouAposEnvio) || _sobraDoEnvio(_v, currentPhone)) {
       if (_sobraDoEnvio(_v, currentPhone, true)) { e.target.value = ''; try { autoGrowMsgInput(e.target); } catch (_) {} }
       delete _drafts[currentPhone];
       _saveDrafts();
