@@ -92,6 +92,9 @@
   #search-box { padding: 8px 12px; background: #ffffff; }
   #search-box input { width: 100%; background: #f0f2f5; border: none; color: #131c20; padding: 9px 14px; border-radius: 8px; font-size: 14px; }
   #search-box input::placeholder { color: #667781; }
+  #search-x { position:absolute; right:6px; top:50%; transform:translateY(-50%); width:24px; height:24px; border:none; border-radius:50%; background:transparent; color:#667781; font-size:13px; line-height:24px; text-align:center; cursor:pointer; padding:0; }
+  #search-x:hover { background:#e0e4e7; color:#111b21; }
+  body.dark #search-x { color:#8696a0; } body.dark #search-x:hover { background:#2a3942; color:#e9edef; }
   #contacts-list { flex: 1; overflow-y: auto; }
   .contact-item { display: flex; align-items: center; gap: 15px; padding: 11px 15px 11px 13px; cursor: pointer; border-bottom: 1px solid #f0f2f5; transition: background 0.15s; }
   .contact-item:hover { background: #f5f6f6; }
@@ -2149,7 +2152,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v435</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v436</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2301,7 +2304,11 @@ window.addEventListener('load', initAuth);
     <div id="faixa-plano" style="display:none"></div>
     <div id="onb-card" style="display:none"></div>
     <div id="search-box" style="display:flex;gap:6px;align-items:center">
-      <input type="text" id="search-input" placeholder="Buscar por nome ou mensagem..." oninput="onSearchInput()" style="flex:1" />
+      <div style="flex:1;position:relative;display:flex;min-width:0">
+        <input type="text" id="search-input" placeholder="Buscar por nome ou mensagem..." oninput="onSearchInput()" style="flex:1;padding-right:34px" />
+        <!-- ✕ limpa a busca inteira num clique (só aparece com texto) -->
+        <button id="search-x" type="button" onclick="limparBusca()" title="Limpar busca" aria-label="Limpar busca" style="display:none">✕</button>
+      </div>
       <button id="filter-toggle" onclick="toggleFilterPanel()" title="Filtros"><i class=ic-filter></i></button>
     </div>
     <div id="filter-panel">
@@ -2944,7 +2951,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v435</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v436</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3008,7 +3015,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 435;
+const APP_VER = 436;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3806,8 +3813,21 @@ function _avatarCor(nome) {
 }
 function railOn(btn) { try { document.querySelectorAll('#side-rail .rail-btn').forEach(b => b.classList.toggle('is-on', b === btn)); } catch (_) {} }
 function onSearchInput() {
+  _mostraXBusca();
   clearTimeout(searchTimer);
   searchTimer = setTimeout(runSearch, 350);
+}
+// O ✕ da busca só aparece quando há texto (igual WhatsApp)
+function _mostraXBusca() {
+  try { const i = document.getElementById('search-input'), x = document.getElementById('search-x'); if (i && x) x.style.display = i.value ? 'block' : 'none'; } catch (_) {}
+}
+function limparBusca() {
+  const i = document.getElementById('search-input'); if (!i) return;
+  i.value = '';
+  clearTimeout(searchTimer);
+  _mostraXBusca();
+  runSearch(); // sem texto: volta a lista completa e apaga os resultados de mensagens
+  try { i.focus({ preventScroll: true }); } catch (_) {}
 }
 
 // TRANSCRIÇÃO DE ÁUDIO: pede ao servidor (Groq Whisper) e mostra embaixo do player
@@ -8214,16 +8234,25 @@ async function loadMessages(phone, scroll = true, opt = null) {
       console.error('[loadMessages] resposta inesperada:', msgs);
       return;
     }
+    // A MESMA mensagem gravada duas vezes (mesmo id do WhatsApp, mesma direção)
+    // aparece UMA vez — o servidor cura o banco ao abrir a conversa, e aqui a
+    // tela nunca mostra a repetição, nem em servidor antigo. Entre as cópias,
+    // fica a que JÁ ESTÁ na tela: trocar de cópia recriava a bolha a cada
+    // atualização (a mensagem "sumia e voltava").
+    try {
+      const _porChave = new Map();
+      msgs.forEach(m => { const k = m && m.wamid ? (String(m.wamid) + '|' + String(m.direction || '')) : null; if (!k) return; if (!_porChave.has(k)) _porChave.set(k, []); _porChave.get(k).push(m); });
+      const _fica = new Set();
+      _porChave.forEach(grupo => {
+        if (grupo.length === 1) { _fica.add(grupo[0]); return; }
+        const naTela = grupo.find(m => { try { return !!area.querySelector('[data-key="' + (window.CSS && CSS.escape ? CSS.escape(String(m.id)) : String(m.id)) + '"]'); } catch (_) { return false; } });
+        _fica.add(naTela || grupo.slice().sort((a, b) => String(a.id).localeCompare(String(b.id)))[0]);
+      });
+      msgs = msgs.filter(m => !(m && m.wamid) || _fica.has(m));
+    } catch (_) {}
     // Primeiro desenho da rede depois do cache: completa o que chegou, sem "nascer"
     const _completandoCache = !_doCache && window._msgsDoCache === phone;
     window._msgsDoCache = _doCache ? phone : null;
-    // A MESMA mensagem gravada duas vezes (mesmo id do WhatsApp, mesma direção)
-    // aparece UMA vez — o servidor cura o banco ao abrir a conversa, e aqui a
-    // tela nunca mostra a repetição, nem em servidor antigo.
-    try {
-      const _v = new Set();
-      msgs = msgs.filter(m => { const k = m && m.wamid ? (String(m.wamid) + '|' + String(m.direction || '')) : null; if (!k) return true; if (_v.has(k)) return false; _v.add(k); return true; });
-    } catch (_) {}
     // TETO: só as mais recentes ficam na tela (o resto entra por um botão)
     const _TETO_MSGS = 300;
     let _msgsAntigas = 0;
