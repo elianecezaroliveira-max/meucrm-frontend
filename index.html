@@ -726,6 +726,7 @@
   body.dark #splash { background: #111b21; }
   body.dark .lf-chip { background: #202c33; color: #8696a0; }
   .msg-ticks.failed   { color:#ef4444; font-size:11px; }
+  .msg.nao-enviada { opacity: .78; } /* não enviada: fica na conversa, um pouco apagada, com o ⚠ */
   .msg-ticks.pending  { color:#8696a0; font-size:11px; }
   /* Ações de mensagem (reply + delete) */
   /* Setinha de opções da mensagem (estilo WhatsApp Web) — some para não atrapalhar áudio/vídeo */
@@ -2152,7 +2153,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v447</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v448</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2951,7 +2952,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v447</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v448</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3015,7 +3016,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 447;
+const APP_VER = 448;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -8622,7 +8623,7 @@ async function loadMessages(phone, scroll = true, opt = null) {
     try {
       let _grpP = _prevDir === 'outbound';
       for (const p of _pendDaConversa(phone, msgs)) {
-        parts.push({ key: _chavePend(p.texto), html: _htmlPendente(p.texto, _grpP, p.reply) });
+        parts.push({ key: _chavePend(p.texto), html: _htmlPendente(p.texto, _grpP, p.reply, p.falhou) });
         _grpP = true;
       }
     } catch (_) {}
@@ -9216,23 +9217,113 @@ function _chavePend(texto) { // chave estável, igual na bolha provisória e no 
   for (let i = 0; i < t.length; i++) { h = (h * 31 + t.charCodeAt(i)) | 0; }
   return 'pend-' + (h >>> 0).toString(36);
 }
-function _pendAdiciona(texto, phone, reply) {
+function _pendAdiciona(texto, phone, reply, corpo) {
   const t = String(texto || '').trim(); if (!t || !phone) return;
   _pendLimpa();
   if (!_pendentes.some(p => p.phone === phone && p.texto === t))
-    _pendentes.push({ texto: t, phone, ts: Date.now(), reply: reply || null }); // reply = a mensagem que você está respondendo
+    _pendentes.push({ texto: t, phone, ts: Date.now(), reply: reply || null, corpo: corpo || null }); // reply = a mensagem que você está respondendo; corpo = o pedido (para reenviar)
 }
 function _pendRemove(texto, phone) {
   const t = String(texto || '').trim();
   _pendentes = _pendentes.filter(p => !(p.phone === phone && p.texto === t));
 }
-function _pendLimpa() { // nada fica preso: 25s sem a definitiva chegar e a bolha sai
+function _pendLimpa() { // nada fica preso: 25s sem a definitiva chegar e a bolha sai — a NÃO ENVIADA fica (até você reenviar ou apagar)
   const agora = Date.now();
-  _pendentes = _pendentes.filter(p => agora - p.ts < 25000);
+  _pendentes = _pendentes.filter(p => p.falhou || agora - p.ts < 25000);
 }
+// ── MENSAGEM NÃO ENVIADA (igual WhatsApp): fica na conversa com o ⚠ vermelho,
+// NUNCA volta para o campo de texto nem vira rascunho. O app reenvia sozinho
+// (2s, 5s, 10s, 20s e quando a internet volta) com o MESMO client_id — o
+// servidor reconhece e não duplica. Tocar na bolha: "Tentar de novo" / "Apagar".
+const _REENVIO_ESPERAS = [2000, 5000, 10000, 20000];
+function _pendPorChave(chave) { return _pendentes.find(p => _chavePend(p.texto) === chave) || null; }
+// As não enviadas sobrevivem a fechar o app (igual WhatsApp): ficam no aparelho
+// e voltam para a conversa — e tentam de novo — na próxima abertura.
+function _pendGuardaFalhas() {
+  try {
+    const lista = _pendentes.filter(p => p.falhou && p.corpo).map(p => ({ texto: p.texto, phone: p.phone, ts: p.ts, reply: p.reply || null, corpo: p.corpo, falhou: p.falhou, definitiva: !!p.definitiva }));
+    if (lista.length) localStorage.setItem(_uKey('vetra_nao_enviadas'), JSON.stringify(lista.slice(-50)));
+    else localStorage.removeItem(_uKey('vetra_nao_enviadas'));
+  } catch (_) {}
+}
+let _pendRestaurou = false;
+function _pendRestaura() {
+  if (_pendRestaurou || !(window._userEmail || window._contactsLoaded)) return; // só depois do login (a chave leva o e-mail)
+  _pendRestaurou = true;
+  try {
+    const lista = JSON.parse(localStorage.getItem(_uKey('vetra_nao_enviadas')) || '[]') || [];
+    lista.forEach(x => {
+      if (!x || !x.texto || !x.phone || !x.corpo) return;
+      if (_pendentes.some(p => p.phone === x.phone && p.texto === x.texto)) return;
+      const p = { texto: x.texto, phone: x.phone, ts: x.ts || Date.now(), reply: x.reply || null, corpo: x.corpo, falhou: x.falhou || 'Não enviada', definitiva: !!x.definitiva };
+      _pendentes.push(p);
+      if (!p.definitiva) _agendaReenvio(p, 0); // voltou a abrir o app: tenta de novo sozinho
+    });
+  } catch (_) {}
+}
+function _pintaPendFalha(p) {
+  try {
+    const el = document.querySelector('#messages-area [data-key="' + _chavePend(p.texto) + '"]');
+    if (!el) return;
+    const tk = el.querySelector('.msg-ticks');
+    if (p.falhou) {
+      if (tk) { tk.className = 'msg-ticks failed'; tk.innerHTML = '<i class=ic-alert></i>'; tk.title = 'Não enviada — toque para tentar de novo'; }
+      el.classList.add('nao-enviada'); el.style.cursor = 'pointer';
+      el.onclick = (ev) => { try { ev.stopPropagation(); } catch (_) {} _pendFalhaClique(_chavePend(p.texto)); };
+    } else {
+      if (tk) { tk.className = 'msg-ticks pending'; tk.innerHTML = TICK_CLOCK; tk.title = 'Enviando…'; }
+      el.classList.remove('nao-enviada'); el.style.cursor = ''; el.onclick = null;
+    }
+  } catch (_) {}
+}
+function _envioFalhou(p, motivoFixo) {
+  if (!p) return;
+  p.falhou = motivoFixo || 'Sem conexão com o servidor';
+  p.definitiva = !!motivoFixo; // recusa (4xx): não adianta insistir sozinho
+  _pintaPendFalha(p); _pendGuardaFalhas();
+  if (!p.definitiva) _agendaReenvio(p, 0);
+}
+function _agendaReenvio(p, tent) {
+  if (tent >= _REENVIO_ESPERAS.length) return; // esgotou: fica com o ⚠ esperando o seu toque (ou a internet voltar)
+  clearTimeout(p._tReenvio);
+  p._tReenvio = setTimeout(() => _reenviaPend(p, tent), _REENVIO_ESPERAS[tent]);
+}
+async function _reenviaPend(p, tent) {
+  if (!p || !p.corpo || !_pendentes.includes(p)) return;
+  if (p._reenviando) return; p._reenviando = true;
+  let res = null, data = {};
+  try {
+    res = await fetch(SERVER_URL + '/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p.corpo) });
+    if (!res.ok) data = await res.json().catch(() => ({}));
+  } catch (_) { res = null; }
+  p._reenviando = false;
+  if (res && res.ok) { await _envioDeuCerto(p); return; }
+  if (res && res.status < 500) { p.falhou = data.error || 'Recusado pelo servidor'; p.definitiva = true; _pintaPendFalha(p); _pendGuardaFalhas(); return; }
+  _agendaReenvio(p, (tent || 0) + 1);
+}
+async function _envioDeuCerto(p) {
+  p.falhou = null; p.definitiva = false; clearTimeout(p._tReenvio);
+  _pintaPendFalha(p); _pendGuardaFalhas();
+  try { markAsRead(p.phone, true); } catch (_) {}
+  try { if (currentPhone === p.phone) await loadMessages(p.phone, false); } catch (_) {}
+  // a definitiva já está na conversa → a provisória sai no redesenho (e a lista some com ela em 25s)
+  p.ts = Date.now();
+}
+async function _pendFalhaClique(chave) {
+  const p = _pendPorChave(chave); if (!p) return;
+  const esc = await vEscolha({ titulo: 'Mensagem não enviada', texto: escHtml(String(p.falhou || 'Não foi possível enviar.')), opcoes: [{ v: 'de-novo', t: 'Tentar de novo', icone: '↻' }, { v: 'apagar', t: 'Apagar mensagem', icone: '🗑' }] });
+  if (esc === 'de-novo') { p.definitiva = false; p.falhou = 'Reenviando…'; _pintaPendFalha(p); clearTimeout(p._tReenvio); _reenviaPend(p, _REENVIO_ESPERAS.length - 1); }
+  else if (esc === 'apagar') {
+    try { _vigEsquece(p.texto); } catch (_) {}
+    _pendentes = _pendentes.filter(x => x !== p); _pendGuardaFalhas();
+    try { const el = document.querySelector('#messages-area [data-key="' + chave + '"]'); if (el) el.remove(); } catch (_) {}
+  }
+}
+// A internet voltou: tudo o que ficou com ⚠ (sem recusa) tenta de novo na hora
+window.addEventListener('online', () => { try { _pendRestaura(); _pendentes.filter(p => p.falhou && !p.definitiva && p.corpo).forEach(p => { clearTimeout(p._tReenvio); _reenviaPend(p, _REENVIO_ESPERAS.length - 1); }); } catch (_) {} });
 // As pendentes DESTA conversa que ainda não vieram do servidor
 function _pendDaConversa(phone, msgs) {
-  _pendLimpa();
+  _pendRestaura(); _pendLimpa();
   return _pendentes.filter(p => p.phone === phone &&
     !(msgs || []).some(m => m.direction === 'outbound' && String(m.content || '').trim() === p.texto));
 }
@@ -9245,11 +9336,15 @@ function _htmlCitacao(reply) {
   const qPreview = qc.length > 90 ? qc.substring(0, 90) + '…' : qc;
   return `<div class="quoted-bubble"${reply.id ? ` onclick="event.stopPropagation();_gotoMsg('${escHtml(String(reply.id))}')"` : ''}><div class="quoted-name">${escHtml(qLabel)}</div><div class="quoted-text">${escHtml(qPreview)}</div></div>`;
 }
-function _htmlPendente(texto, grp, reply) {
-  return `<div class="msg outbound${grp ? ' grp' : ''}" style="position:relative" data-key="${_chavePend(texto)}" data-raw-text="${escHtml(texto)}">`
+function _htmlPendente(texto, grp, reply, falhou) {
+  const ch = _chavePend(texto);
+  const tick = falhou
+    ? `<span class="msg-ticks failed" title="Não enviada — toque para tentar de novo"><i class=ic-alert></i></span>`
+    : `<span class="msg-ticks pending" title="Enviando…">${TICK_CLOCK}</span>`;
+  return `<div class="msg outbound${grp ? ' grp' : ''}${falhou ? ' nao-enviada' : ''}" style="position:relative${falhou ? ';cursor:pointer' : ''}" data-key="${ch}" data-raw-text="${escHtml(texto)}"${falhou ? ` onclick="event.stopPropagation();_pendFalhaClique('${ch}')"` : ''}>`
     + _htmlCitacao(reply)
     + `<span class="msg-text">${waFormat(texto)}</span>`
-    + `<div class="time">${_brtTime(Date.now())}<span class="msg-ticks pending" title="Enviando…">${TICK_CLOCK}</span></div></div>`;
+    + `<div class="time">${_brtTime(Date.now())}${tick}</div></div>`;
 }
 function appendPendingBubble(text, reply) {
   const area = document.getElementById('messages-area');
@@ -9501,35 +9596,32 @@ async function sendMessage() {
   try { requestAnimationFrame(() => { if (window._pinTopo) window._pinTopo(); setTimeout(() => window._pinTopo && window._pinTopo(), 120); }); } catch (_) {} // topo da tela nunca some
   // Sem delay: a bolha aparece imediatamente; o servidor confirma em seguida
   const reply = replyingTo; cancelReply();
-  _pendAdiciona(savedMessage, currentPhone, reply); // a partir daqui, todo redesenho mostra ela (com a citação)
+  // client_id: se a internet cair depois de o envio ter saído, o reenvio leva o
+  // mesmo id e o servidor não duplica a mensagem
+  const _corpo = {
+    to: currentPhone, message, account_id: currentAccountId,
+    client_id: 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10),
+    quoted_id:        reply ? reply.id        : null,
+    quoted_content:   reply ? (reply.content || '(mídia)') : null,
+    quoted_direction: reply ? reply.direction : null,
+  };
+  _pendAdiciona(savedMessage, currentPhone, reply, _corpo); // a partir daqui, todo redesenho mostra ela (com a citação)
   _vigGuarda(savedMessage, currentPhone);    // e o vigia devolve na hora se ela sumir
   const tempEl = appendPendingBubble(savedMessage, reply);
+  const _pend = _pendentes.find(p => p.phone === currentPhone && p.texto === savedMessage) || null;
   // Enviou → o "digitando…" do cliente some na hora (não fica os 6s restantes)
   _paraDigitando();
   try {
-    const res = await fetch(SERVER_URL + '/send', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        to: currentPhone, message, account_id: currentAccountId,
-        quoted_id:        reply ? reply.id        : null,
-        quoted_content:   reply ? (reply.content || '(mídia)') : null,
-        quoted_direction: reply ? reply.direction : null,
-      })
-    });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      if (tempEl && String(tempEl.dataset.key || '').startsWith('temp-')) tempEl.remove();
-      // Pode ter saído mesmo assim (falha só na resposta): confere antes de
-      // devolver o texto ao campo — senão a mensagem enviada vira "rascunho"
-      if (await _jaFoiEnviada(savedMessage)) return;
-      _vigEsquece(savedMessage);               // não saiu: o vigia para de protegê-la
-      _pendRemove(savedMessage, currentPhone); // não saiu: tira a bolha provisória
-      try { if (tempEl && tempEl.parentElement) tempEl.remove(); } catch (_) {}
-      input.value = savedMessage;
-      autoGrowMsgInput(input);
-      _drafts[currentPhone] = savedMessage; _saveDrafts();
-      alert('Erro ao enviar: ' + (data.error || 'Tente novamente'));
+    let res = null, data = {};
+    try {
+      res = await fetch(SERVER_URL + '/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(_corpo) });
+      if (!res.ok) data = await res.json().catch(() => ({}));
+    } catch (_) { res = null; } // sem rede / conexão caiu no meio
+    if (!res || !res.ok) {
+      // Igual WhatsApp: a mensagem FICA na conversa com o ⚠ vermelho e o app
+      // reenvia sozinho. Ela NUNCA volta para o campo nem vira rascunho — era
+      // isso que, no celular, fazia uma mensagem já enviada aparecer como rascunho.
+      _envioFalhou(_pend, (res && res.status < 500) ? (data.error || 'Recusado pelo servidor') : null);
       return;
     }
     markAsRead(currentPhone, true);
@@ -9546,14 +9638,9 @@ async function sendMessage() {
     _voltaTopoCel(); // cabeçalho (nome do cliente + ‹ voltar) de volta à vista
     if (_botDepois) await _disparaBotPendente(); // o bot escolhido entra depois do texto
   } catch(e) {
-    if (tempEl && String(tempEl.dataset.key || '').startsWith('temp-')) tempEl.remove();
-    // Internet oscilou DEPOIS do envio? A mensagem pode ter ido. Só devolve o
-    // texto (e o rascunho) se ela realmente não estiver na conversa.
-    if (await _jaFoiEnviada(savedMessage)) return;
-    input.value = savedMessage; // restaura mensagem se erro de rede
-    autoGrowMsgInput(input);
-    _drafts[currentPhone] = savedMessage; _saveDrafts();
-    alert('Erro ao enviar mensagem.');
+    // Erro DEPOIS de o servidor responder ok (redesenho, rolagem…): a mensagem
+    // já saiu — nada volta para o campo
+    console.warn('Envio: erro após a resposta do servidor', e && e.message);
   } finally {
     window._enviandoTexto = false; // libera o salvamento de rascunho
   }
