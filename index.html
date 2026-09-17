@@ -2152,7 +2152,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v446</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v447</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2951,7 +2951,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v446</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v447</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3015,7 +3015,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 446;
+const APP_VER = 447;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -7139,11 +7139,17 @@ async function _confirmaConcluirTarefa(titulo) {
 // Depois de criar/concluir/excluir uma tarefa em QUALQUER lugar, todos os
 // lugares que a mostram atualizam NA HORA: detalhes do lead (painel), janela de
 // tarefas do chat, tela Tarefas e a bolinha do menu
+// A tela Tarefas está aberta de verdade? Antes olhava só o style.display, que
+// fica VAZIO enquanto a tela nunca foi aberta (ela nasce escondida pelo CSS) —
+// e aí criar uma tarefa pelo chat "abria" a tela Tarefas sem ninguém pedir.
+function _tarefasPaginaAberta(){
+  try { const tp = document.getElementById('tasks-page'); return !!tp && getComputedStyle(tp).display !== 'none'; } catch (_) { return false; }
+}
 function _sincTarefas(phone, semPagina){
   try { if (window._lpPhone && document.getElementById('lp-tasks') && (!phone || phone === window._lpPhone)) lpLoadTasks(window._lpPhone); } catch(_){}
   try { if (window._lpPhone && document.getElementById('lp-notas')) lpLoadNotas(window._lpPhone); } catch(_){}
   try { const ov = document.getElementById('tasks-overlay'); if (ov && ov.style.display !== 'none' && (!phone || phone === currentPhone)) loadTasks(); } catch(_){}
-  try { const tp = document.getElementById('tasks-page'); if (!semPagina && tp && tp.style.display !== 'none' && typeof openTasksPage === 'function') openTasksPage(); } catch(_){}
+  try { if (!semPagina && _tarefasPaginaAberta() && typeof openTasksPage === 'function') openTasksPage(); } catch(_){}
   try { atualizaBadgeTarefas(); } catch(_){}
 }
 async function lpToggleTask(id, done, phone){
@@ -16305,8 +16311,7 @@ async function atualizaBadgeTarefas(){
     _allTasksCache = _tarefaAplicaEco(lista); // aproveita para deixar a lista pronta
     _pintaBadgeTarefas(_allTasksCache.filter(t => !t.done).length);
     // Tela de Tarefas aberta? Ela acompanha na hora (antes ficava desatualizada)
-    const _tp = document.getElementById('tasks-page');
-    if (_tp && _tp.style.display !== 'none') { try { renderTasksPage(); } catch (_) {} }
+    if (_tarefasPaginaAberta()) { try { renderTasksPage(); } catch (_) {} }
   }catch(_){}
 }
 function _pintaBadgeTarefas(n){
@@ -16337,7 +16342,7 @@ async function openTasksPage(){
 }
 function closeTasksPage(){
   const el = document.getElementById('tasks-page');
-  const _ab = el.style.display !== 'none';
+  const _ab = _tarefasPaginaAberta();
   el.style.display='none';
   if (_ab) _telaFechou();
 }
