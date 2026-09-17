@@ -661,8 +661,8 @@
   .rail-sair:hover { background: #fdecec; color: #c0392b; }
   /* Bolinha vermelha de avisos não lidos */
   .notice-dot { display: none; position: absolute; top: 6px; right: 12px; width: 9px; height: 9px; background: #ef4444; border-radius: 50%; border: 2px solid #fff; }
-  /* Quantidade de tarefas EM ABERTO, igual aos avisos do celular */
-  .task-badge { display: none; position: absolute; top: 3px; right: 6px; min-width: 17px; height: 17px; padding: 0 4px;
+  /* Quantidade de tarefas EM ABERTO (e, no Chat, de conversas NÃO LIDAS), igual aos avisos do celular */
+  .task-badge, .chat-badge { display: none; position: absolute; top: 3px; right: 6px; min-width: 17px; height: 17px; padding: 0 4px;
     background: #ef4444; color: #fff; border-radius: 9px; border: 2px solid #fff; font-size: 10.5px; font-weight: 700;
     line-height: 13px; text-align: center; box-sizing: border-box; z-index: 3; }
   /* Os botões do topo saíram de cena (agora vivem no trilho/menu "+") */
@@ -2152,7 +2152,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v444</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v446</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2278,7 +2278,7 @@ window.addEventListener('load', initAuth);
 <!-- LAYOUT -->
 <!-- TRILHO LATERAL (computador): ferramentas SEMPRE visíveis, à esquerda de tudo -->
 <div id="side-rail">
-  <button class="rail-btn is-on" data-rail="chat" onclick="railOn(this);goToChat()" title="Conversas"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.3 8.7 8.7 0 0 1-3.8-.9L3 20l1.1-4.6A8.2 8.2 0 0 1 3 11.5 8.4 8.4 0 0 1 11.5 3.2h.5a8.4 8.4 0 0 1 9 8.3z"/></svg></span>Chat</button>
+  <button class="rail-btn is-on" data-rail="chat" onclick="railOn(this);goToChat()" title="Conversas" style="position:relative"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.3 8.7 8.7 0 0 1-3.8-.9L3 20l1.1-4.6A8.2 8.2 0 0 1 3 11.5 8.4 8.4 0 0 1 11.5 3.2h.5a8.4 8.4 0 0 1 9 8.3z"/></svg></span>Chat<span class="chat-badge"></span></button>
   <button class="rail-btn" data-rail="pipe" onclick="railOn(this);openPipeline()" title="Pipeline"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="5" height="18" rx="1.2"/><rect x="10" y="3" width="5" height="12" rx="1.2"/><rect x="17" y="3" width="4" height="15" rx="1.2"/></svg></span>Pipeline</button>
   <button class="rail-btn" data-rail="tasks" onclick="railOn(this);openTasksPage()" title="Tarefas" style="position:relative"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m8 12 3 3 5-6"/></svg></span>Tarefas<span class="task-badge"></span></button>
   <button class="rail-btn" data-rail="rel" onclick="railOn(this);openRelatorios()" title="Relatórios (conversas, funil e desempenho)"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l3.5-4 3 3L21 7"/></svg></span>Relatórios</button>
@@ -2951,7 +2951,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v444</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v446</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3015,7 +3015,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 444;
+const APP_VER = 446;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3969,18 +3969,25 @@ async function verificarDuplicados() {
     }
   } catch (e) { if (box) box.textContent = (e.message || e); }
 }
+let _buscaVez = 0; // nº da última busca pedida: resposta atrasada de uma busca mais curta ("ma" chegando depois de "maria") é ignorada
 async function runSearch() {
   const q = (document.getElementById('search-input')?.value || '').trim();
+  const vez = ++_buscaVez;
   if (!q) { searchResults = null; _msgHits = []; _msgHitsQ = ''; applyFilters(); renderMsgHits(); return; }
   buscarMensagens(q);
+  let achados = null;
   try {
     const accountId = document.getElementById('account-select').value;
     let url = `${SERVER_URL}/search?q=${encodeURIComponent(q)}`;
     if (accountId) url += `&account_id=${accountId}`;
     const r = await fetch(url);
     const data = await r.json();
-    searchResults = Array.isArray(data) ? sortContacts(data) : [];
-  } catch(e) { searchResults = []; }
+    if (Array.isArray(data)) achados = sortContacts(data);
+  } catch(e) { achados = null; }
+  // resposta de uma busca antiga (o texto já mudou) ou o texto foi apagado: não pinta por cima
+  if (vez !== _buscaVez || (document.getElementById('search-input')?.value || '').trim() !== q) return;
+  // servidor falhou: filtra pelo nome/telefone aqui mesmo em vez de mostrar a lista vazia (ou inteira)
+  searchResults = achados;
   applyFilters();
   renderMsgHits();
 }
@@ -4002,7 +4009,8 @@ function applyFilters() {
     if (dateTo && c.last_message_at && c.last_message_at.substring(0,10) > dateTo) return false;
     return true;
   });
-  renderContacts(filtered);
+  const _ja = _aplicandoFiltros; _aplicandoFiltros = true;
+  try { renderContacts(filtered); } finally { _aplicandoFiltros = _ja; }
 }
 
 function clearFilters() {
@@ -4199,10 +4207,36 @@ function _digitandoDe(phone) {
   return _digitando[phone] || null;
 }
 let _listaPendente = null;
+// Há busca ou filtro ativo na lista?
+function _listaTemFiltro() {
+  try {
+    return !!((document.getElementById('search-input')?.value || '').trim() || (document.getElementById('filter-stage-sel')?.value || '')
+      || activeFilterTags.size > 0 || (document.getElementById('filter-date-from')?.value || '') || (document.getElementById('filter-date-to')?.value || '') || searchResults !== null);
+  } catch (_) { return false; }
+}
+let _aplicandoFiltros = false;
+// Bolinha vermelha no ícone Chat: quantas CONVERSAS têm mensagem não lida
+// (igual ao número na aba "Conversas" do WhatsApp; some quando não há nenhuma)
+function _pintaBadgeChat() {
+  try {
+    const n = (allContacts || []).filter(c => (Number(c.unread_count) || 0) > 0).length;
+    document.querySelectorAll('.chat-badge').forEach(e => { e.textContent = n > 99 ? '99+' : String(n); e.style.display = n > 0 ? 'block' : 'none'; });
+  } catch (_) {}
+}
 function renderContacts(contacts) {
   // Dedo arrastando uma conversa? O redesenho espera — remontar a lista agora
   // arrancaria do lugar justamente a linha que está sendo puxada.
   if (window._arrastandoLista) { _listaPendente = contacts || allContacts; return; }
+  // Mandaram desenhar a lista INTEIRA com uma busca/filtro ativo (atualização
+  // automática, volta da aba, lead salvo…)? Respeita o que está escrito na
+  // busca — antes a lista voltava completa como se a busca tivesse sido apagada.
+  const _ehTudo = contacts == null || contacts === allContacts || (Array.isArray(contacts) && contacts.length === (allContacts || []).length && contacts.length > 0);
+  if (!_aplicandoFiltros && _ehTudo && _listaTemFiltro()) {
+    _aplicandoFiltros = true;
+    try { applyFilters(); } finally { _aplicandoFiltros = false; }
+    return;
+  }
+  _pintaBadgeChat(); // a bolinha do Chat acompanha a lista (conversas não lidas)
   const list = document.getElementById('contacts-list');
   if (_listFilter === 'unread' || _listFilter === 'fav') {
     contacts = contacts.filter(c => _listFilter === 'unread' ? (c.unread_count || 0) > 0 : !!c.favorite);
@@ -5670,7 +5704,7 @@ async function _selAplicar(acao) {
     const c = allContacts.find(x => x.phone === ph);
     const enc = encodeURIComponent(ph);
     try {
-      if (acao === 'lida') { if (c) { c.unread_count = 0; c.first_unread_at = null; } await fetch(`${SERVER_URL}/contacts/${enc}/read`, { method: 'PUT' }); }
+      if (acao === 'lida') { if (c) { c.unread_count = 0; c.first_unread_at = null; } _pintaBadgeChat(); await fetch(`${SERVER_URL}/contacts/${enc}/read`, { method: 'PUT' }); }
       else if (acao === 'naolida') { if (c && !(c.unread_count > 0)) { c.unread_count = 1; c.first_unread_at = new Date().toISOString(); await fetch(`${SERVER_URL}/contacts/${enc}/unread`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: '{}' }); } }
       else if (acao === 'fixar') { if (c) c.pinned = true; await fetch(`${SERVER_URL}/contacts/${enc}/pin`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pinned: true }) }); }
       else if (acao === 'silenciar') { if (c) c.muted = true; await fetch(`${SERVER_URL}/contacts/${enc}/mute`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ muted: true }) }); }
@@ -5762,6 +5796,7 @@ async function markContactRead(phone) {
   allContacts = sortContacts(allContacts);
   if (searchResults) searchResults = sortContacts(searchResults);
   _pintaLinhaContato(phone);   // a linha já fica "lida" na hora, sem esperar nada
+  _pintaBadgeChat();           // e a bolinha do ícone Chat desconta esta conversa
   // A conversa muda de LUGAR na lista. Redesenhar a lista inteira para isso
   // custava quase um segundo num celular com muitas conversas — e era esse o
   // "delay" depois do arrasto. Agora só ESTA linha é levada para o lugar novo,
@@ -7083,7 +7118,7 @@ async function lpLoadTasks(phone){
   el.innerHTML = mine.length ? mine.map(t => `
     <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:7px">
       <button onclick="lpToggleTask('${t.id}',${t.done?'false':'true'},'${phone}')" title="${t.done?'Reabrir':'Concluir'}" style="width:18px;height:18px;border-radius:50%;border:2px solid #00a884;background:${t.done?'#00a884':'transparent'};color:#fff;cursor:pointer;flex-shrink:0;font-size:11px;line-height:14px;padding:0">${t.done?'✓':''}</button>
-      <div onclick="editTaskChat('${t.id}')" title="Tocar para editar o texto e o prazo" style="flex:1;min-width:0;font-size:13px;color:#131c20;cursor:pointer;${t.done?'text-decoration:line-through;opacity:.6':''}">${escHtml(t.title)}${t.due_at?`<div style="font-size:11px;color:#667781"><i class=ic-clock></i> ${fmtTaskDue(t.due_at)}</div>`:(t.created_at?`<div style="font-size:11px;color:#8696a0">Criada ${fmtTaskCreated(t.created_at)}</div>`:'')}<div style="font-size:11px;color:#00806a;margin-top:2px"><i class=ic-pencil></i> Editar</div></div>
+      <div onclick="editTaskChat('${t.id}')" title="Tocar para editar o texto e o prazo" style="flex:1;min-width:0;font-size:13px;color:#131c20;cursor:pointer;${t.done?'text-decoration:line-through;opacity:.6':''}">${escHtml(t.title)}${t.due_at?`<div style="font-size:11px;color:#667781"><i class=ic-clock></i> ${fmtTaskDue(t.due_at)}</div>`:(t.created_at?`<div style="font-size:11px;color:#8696a0">Criada ${fmtTaskCreated(t.created_at)}</div>`:'')}</div>
       ${_taskComentHtml(t)}
     </div>`).join('') : '<div style="color:#8696a0;font-size:12px">Nenhuma tarefa</div>';
 }
@@ -10054,7 +10089,6 @@ function renderTasks() {
         <div style="${t.done?'text-decoration:line-through;opacity:.6':''};word-break:break-word">${escHtml(t.title)}</div>
         ${due}
         ${(!t.due_at && t.created_at) ? `<div style="font-size:11px;color:#8696a0;margin-top:2px">Criada ${fmtTaskCreated(t.created_at)}</div>` : ''}
-        <div style="font-size:11px;color:#00806a;margin-top:3px"><i class=ic-pencil></i> Editar</div>
       </div>
       ${_taskComentHtml(t)}
       <button onclick="deleteTask('${t.id}')" title="Excluir" style="background:none;border:none;color:#667781;cursor:pointer;font-size:15px"><i class=ic-trash></i></button>
