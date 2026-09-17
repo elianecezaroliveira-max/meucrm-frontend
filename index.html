@@ -2152,7 +2152,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v443</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v444</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2951,7 +2951,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v443</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v444</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3015,7 +3015,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 443;
+const APP_VER = 444;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -7076,7 +7076,7 @@ async function lpLoadTasks(phone){
   let tasks = [];
   try { tasks = (await (await fetch(SERVER_URL+'/tasks')).json()) || []; } catch(_){}
   const mine = (Array.isArray(tasks)?tasks:[]).filter(t => t.phone === phone && !t.done);
-  const ass = JSON.stringify(mine.map(t => [t.id, t.title, t.due_at, t.done]));
+  const ass = JSON.stringify(mine.map(t => [t.id, t.title, t.due_at, t.done, t.notes || '']));
   if (el.dataset.ass === ass && el.dataset.phone === phone) return; // nada mudou: não repinta
   el.dataset.ass = ass; el.dataset.phone = phone;
   window._lpTasks = mine; // guarda o texto das tarefas (a pergunta de concluir mostra ele)
@@ -7084,6 +7084,7 @@ async function lpLoadTasks(phone){
     <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:7px">
       <button onclick="lpToggleTask('${t.id}',${t.done?'false':'true'},'${phone}')" title="${t.done?'Reabrir':'Concluir'}" style="width:18px;height:18px;border-radius:50%;border:2px solid #00a884;background:${t.done?'#00a884':'transparent'};color:#fff;cursor:pointer;flex-shrink:0;font-size:11px;line-height:14px;padding:0">${t.done?'✓':''}</button>
       <div onclick="editTaskChat('${t.id}')" title="Tocar para editar o texto e o prazo" style="flex:1;min-width:0;font-size:13px;color:#131c20;cursor:pointer;${t.done?'text-decoration:line-through;opacity:.6':''}">${escHtml(t.title)}${t.due_at?`<div style="font-size:11px;color:#667781"><i class=ic-clock></i> ${fmtTaskDue(t.due_at)}</div>`:(t.created_at?`<div style="font-size:11px;color:#8696a0">Criada ${fmtTaskCreated(t.created_at)}</div>`:'')}<div style="font-size:11px;color:#00806a;margin-top:2px"><i class=ic-pencil></i> Editar</div></div>
+      ${_taskComentHtml(t)}
     </div>`).join('') : '<div style="color:#8696a0;font-size:12px">Nenhuma tarefa</div>';
 }
 // Pergunta única de "concluir tarefa", usada pelos três lugares que concluem
@@ -10014,6 +10015,32 @@ function fmtTaskCreatedCurto(iso) {
     + ' ' + String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0');
 }
 
+// Comentário da tarefa (igual à tela Tarefas): mostra o texto se houver, senão "Comentar"
+function _taskComentHtml(t) {
+  const nota = String((t && t.notes) || '').replace(/\s+/g, ' ').trim();
+  return nota
+    ? `<span class="task-coment" onclick="event.stopPropagation();editTaskNoteChat('${t.id}')" title="${escHtml(nota.slice(0, 400))}" style="flex:0 1 46%;min-width:0;font-size:12px;color:#54656f;cursor:pointer;display:inline-flex;align-items:flex-start;gap:5px;padding-top:2px"><i class=ic-note style="flex-shrink:0"></i><span style="overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;word-break:break-word">${escHtml(nota)}</span></span>`
+    : `<span class="task-coment" onclick="event.stopPropagation();editTaskNoteChat('${t.id}')" title="Anotação que só você vê" style="flex-shrink:0;font-size:12px;color:#667781;cursor:pointer;white-space:nowrap;padding-top:2px"><i class=ic-note></i> Comentar</span>`;
+}
+async function editTaskNoteChat(id) {
+  const naJanela = (currentTasks || []).find(x => String(x.id) === String(id));
+  const noPainel = (window._lpTasks || []).find(x => String(x.id) === String(id));
+  const t = naJanela || noPainel;
+  if (!t) { _toast('Não achei essa tarefa. Atualize a tela e tente de novo.'); return; }
+  const val = await vPrompt({ titulo: 'Comentário da tarefa', rotulo: 'Anotação (só você vê)', valor: t.notes || '', multilinha: true });
+  if (val === null) return; // cancelou
+  const notes = String(val).trim() || null;
+  try {
+    const res = await fetch(SERVER_URL + '/tasks/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ notes }) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    if (naJanela) naJanela.notes = notes; if (noPainel) noPainel.notes = notes;
+    try { _tarefaAtualiza(id, { notes }); } catch (_) {}
+    try { renderTasks(); } catch (_) {}
+    try { if (typeof lpLoadTasks === 'function' && t.phone) lpLoadTasks(t.phone); } catch (_) {}
+    try { _sincTarefas(t.phone, true); } catch (_) {}
+    _toast(notes ? 'Comentário salvo' : 'Comentário removido');
+  } catch (e) { showToast('Não consegui salvar o comentário', 'err'); }
+}
 function renderTasks() {
   const list = document.getElementById('tasks-list');
   // As CONCLUÍDAS não aparecem nos detalhes do lead (a pedido) — seguem na tela Tarefas
@@ -10029,6 +10056,7 @@ function renderTasks() {
         ${(!t.due_at && t.created_at) ? `<div style="font-size:11px;color:#8696a0;margin-top:2px">Criada ${fmtTaskCreated(t.created_at)}</div>` : ''}
         <div style="font-size:11px;color:#00806a;margin-top:3px"><i class=ic-pencil></i> Editar</div>
       </div>
+      ${_taskComentHtml(t)}
       <button onclick="deleteTask('${t.id}')" title="Excluir" style="background:none;border:none;color:#667781;cursor:pointer;font-size:15px"><i class=ic-trash></i></button>
     </div>`;
   }).join('');
@@ -16424,10 +16452,14 @@ function renderTasksPage(){
     String(t.contact_name||'').toLowerCase().includes(busca) ||
     String(t.phone||'').includes(busca));
 
-  // Contador de atrasadas no título (sempre sobre TODAS as tarefas em aberto)
+  // Contadores no título: EM ABERTO (o mesmo número da bolinha do ícone) e atrasadas.
+  // Antes o título só dizia "N atrasadas" e a bolinha dizia o total em aberto —
+  // parecia que os números não batiam.
+  const nAbertas=_allTasksCache.filter(t=>!t.done).length;
   const nAtras=_allTasksCache.filter(t=>!t.done && t.due_at && parseUTC(t.due_at)<Date.now()).length;
   const elAtras=document.getElementById('tasks-atrasadas');
-  if(elAtras) elAtras.textContent = nAtras ? (nAtras===1?'1 atrasada':nAtras+' atrasadas') : '';
+  if(elAtras) elAtras.textContent = (nAbertas ? (nAbertas===1?'1 em aberto':nAbertas+' em aberto') : '') + (nAtras ? ' · ' + (nAtras===1?'1 atrasada':nAtras+' atrasadas') : '');
+  _pintaBadgeTarefas(nAbertas); // a bolinha acompanha a tela na hora
 
   if(!list.length){
     const vazio = busca
