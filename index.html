@@ -1718,6 +1718,7 @@ async function _gate(session){
   _hideLogin();
   window._userEmail = email;
   _aplicaAcessoManual();
+  try { if (SERVER_URL && typeof _listaDoCache === 'function') _listaDoCache(); } catch (_) {} // lista instantânea (se a abertura chegou antes do login)
   // Respostas rápidas: recarrega o cache e a lista DA CONTA que acabou de logar
   try { if (typeof _syncQuickReplies === 'function') { _qrLoadLocal(); _syncQuickReplies(true); } } catch (_) {}
   // Regrava a inscrição de avisos JÁ COM O DONO logado: inscrições antigas
@@ -1727,8 +1728,19 @@ async function _gate(session){
       setTimeout(() => { try { _pushRegister(false); } catch (_) {} }, 1500);
     // Avisa o "carteiro" (service worker) de quem é este aparelho: assim ele
     // descarta avisos que pertencem a outra conta
-    if ('serviceWorker' in navigator) navigator.serviceWorker.ready
-      .then(reg => { try { (reg.active || navigator.serviceWorker.controller)?.postMessage({ type: 'set-owner', owner: email }); } catch (_) {} })
+    _avisaDonoAoSW(email);
+  } catch (_) {}
+}
+// O aviso push vem carimbado com o DONO DA CONTA (é assim que o servidor guarda
+// os aparelhos). Para um atendente, o dono da conta não é o e-mail com que ele
+// entrou — e o carteiro, comparando com o e-mail de login, jogava fora TODOS os
+// avisos dele. Por isso, assim que a portaria diz quem é o dono, avisamos de novo.
+function _avisaDonoAoSW(quem) {
+  try {
+    const dono = (window._acesso && window._acesso.carregado && window._acesso.dono) || quem || window._userEmail;
+    if (!dono || !('serviceWorker' in navigator)) return;
+    navigator.serviceWorker.ready
+      .then(reg => { try { (reg.active || navigator.serviceWorker.controller)?.postMessage({ type: 'set-owner', owner: dono }); } catch (_) {} })
       .catch(() => {});
   } catch (_) {}
 }
@@ -2137,7 +2149,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v431</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v432</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2932,7 +2944,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v431</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v432</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2996,7 +3008,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 431;
+const APP_VER = 432;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3059,20 +3071,22 @@ async function init(url) {
   const _ss = document.getElementById('server-status');
   if (_ss) _ss.title = _souDev() ? ('Servidor conectado: ' + url.replace('https://', '')) : 'Conectado';
   document.getElementById('setup-overlay').classList.remove('open');
-  try {
-    await fetch(url + '/');
-    document.getElementById('server-dot').classList.add('online');
-  } catch(e) {
-    document.getElementById('server-url-label').textContent = 'erro de conexão';
-  }
-  // Portaria primeiro: se este e-mail não foi liberado, nem chegamos a buscar dados
+  // A última lista vista é pintada NA HORA (se o login já disse quem é você)
+  try { _listaDoCache(); } catch (_) {}
+  // As conversas JÁ saem buscando, em paralelo com a portaria e as contas
+  // (a resposta só é usada depois que a portaria libera)
+  const _pLista = _buscaContatos().catch(() => null);
+  // O "ping" do servidor só acende a bolinha: não segura a abertura
+  fetch(url + '/').then(() => { document.getElementById('server-dot').classList.add('online'); })
+    .catch(() => { document.getElementById('server-url-label').textContent = 'erro de conexão'; });
+  // Portaria: se este e-mail não foi liberado, nada do que chegou é mostrado
   await _carregaAcesso();
   if (window._acesso && window._acesso.liberado === false) return;
   await loadAccounts();
   // Reabre a tela marcada na URL assim que as CONTAS existem (Modelos/Contas dependem
   // delas) e antes das conversas — sem "piscar" o chat
   if (!window._telaPasso1 && location.hash && !location.hash.startsWith('#chat=')) { window._telaPasso1 = true; setTimeout(_restaurarTela, 0); }
-  await loadContacts();
+  await loadContacts(true, _pLista);
   loadAllTags();
   _onboardingCheca();    // passo a passo de estreia (some quando tudo está pronto)
   _avisaServidorNoApp(); // avisa NA HORA se o servidor ficou para trás
@@ -3666,14 +3680,44 @@ function _ecoAplica(lista) {
   });
   return lista;
 }
-async function loadContacts(render = true) {
+// A busca das conversas separada: a abertura já dispara esta busca ANTES de
+// esperar a portaria e as contas (tudo em paralelo — antes era uma fila de
+// quatro idas ao servidor, e a lista só aparecia no fim da fila)
+function _buscaContatos() {
+  const accountId = document.getElementById('account-select').value;
+  let url = SERVER_URL + '/contacts?with_messages=1';
+  if (accountId) url += '&account_id=' + accountId;
+  return fetch(url).then(r => r.json());
+}
+// ── LISTA INSTANTÂNEA (igual WhatsApp): a última lista vista fica guardada no
+// aparelho e é pintada NA HORA ao abrir o app; a rede só atualiza em seguida.
+function _listaGuarda(lista) {
   try {
-    const accountId = document.getElementById('account-select').value;
-    let url = SERVER_URL + '/contacts?with_messages=1';
-    if (accountId) url += '&account_id=' + accountId;
-    const res = await fetch(url);
-    allContacts = sortContacts(_ecoAplica(await res.json()));
+    if (!window._userEmail || !Array.isArray(lista) || !lista.length) return;
+    localStorage.setItem(_uKey('vetra_lista'), JSON.stringify({ ts: Date.now(), lista: lista.slice(0, 200) }));
+  } catch (_) {}
+}
+function _listaDoCache() {
+  try {
+    if (!window._userEmail || window._contactsLoaded || (allContacts && allContacts.length)) return false;
+    if (window._acesso && window._acesso.liberado === false) return false;
+    const g = JSON.parse(localStorage.getItem(_uKey('vetra_lista')) || 'null');
+    if (!g || !Array.isArray(g.lista) || !g.lista.length) return false;
+    if (Date.now() - (g.ts || 0) > 7 * 86400000) return false; // uma semana sem abrir: melhor esperar a rede
+    allContacts = sortContacts(_ecoAplica(g.lista));
+    window._listaDoCacheTs = g.ts;
+    renderContacts(allContacts);
+    window.hideSplash && window.hideSplash();
+    return true;
+  } catch (_) { return false; }
+}
+async function loadContacts(render = true, buscaJaIniciada = null) {
+  try {
+    const lista = await (buscaJaIniciada || _buscaContatos());
+    if (!Array.isArray(lista)) return;
+    allContacts = sortContacts(_ecoAplica(lista));
     window._contactsLoaded = true;
+    _listaGuarda(lista);
     if (render) { renderContacts(allContacts); populateFilterOptions(); }
     window.hideSplash && window.hideSplash();
     if (!window._telaRestaurada) { window._telaRestaurada = true; setTimeout(() => _restaurarTela(true), 50); }
@@ -7501,6 +7545,7 @@ document.addEventListener('wheel', e => { if (e.target.closest && e.target.close
   };
   window._scrollChatBottom = function () {
     const area = document.getElementById('messages-area'); if (!area) return;
+    if (window._unreadMark) window._unreadMark.livre = true; // você pediu o fim: a faixa solta
     area.scrollTo({ top: area.scrollHeight, behavior: 'smooth' });
     novas = 0; const bd = document.getElementById('sdb-badge'); if (bd) bd.style.display = 'none';
   };
@@ -7759,6 +7804,36 @@ function _lpSalva() {
     localStorage.setItem('vetra_lp', JSON.stringify(_lpCache));
   } catch (_) {}
 }
+// ── A CONVERSA ABRIU NA FAIXA DE NÃO LIDAS: ela fica CRAVADA no alto ──
+// Nos segundos seguintes à abertura, o que carrega ACIMA da faixa (foto sem
+// tamanho guardado, prévia de link/PDF, áudio) cresce e empurrava a faixa para
+// baixo: a tela "subia" e mostrava mensagens velhas em vez das novas. Igual ao
+// WhatsApp: enquanto você não tocar nem rolar, a faixa continua no alto.
+function _cravaNaoLidas() {
+  try {
+    const um = window._unreadMark; if (!um || !um.msgId || um.livre) return;
+    const a = document.getElementById('messages-area'); if (!a) return;
+    const d = a.querySelector('[data-key="unread-div"]'); if (!d) return;
+    const dif = (d.getBoundingClientRect().top - a.getBoundingClientRect().top) - 8;
+    if (Math.abs(dif) > 1) a.scrollTop += dif;
+  } catch (_) {}
+}
+function _vigiaNaoLidas() {
+  const um = window._unreadMark; if (!um || !um.msgId || um.livre) return;
+  const ate = Date.now() + 4000;
+  um.vigia = (um.vigia || 0) + 1; const eu = um.vigia;
+  const a = document.getElementById('messages-area'); if (!a) return;
+  // qualquer gesto seu na conversa (dedo, roda, barra de rolagem) solta a faixa
+  const solta = () => { um.livre = true; };
+  ['pointerdown', 'touchstart', 'wheel', 'keydown'].forEach(ev => a.addEventListener(ev, solta, { passive: true, once: true }));
+  const passo = () => {
+    if (window._unreadMark !== um || um.vigia !== eu || um.livre || Date.now() > ate) return;
+    if (Date.now() - (window._scrollUpTs || 0) < 3000) { um.livre = true; return; } // pulo intencional (fixada, citação)
+    _cravaNaoLidas();
+    requestAnimationFrame(passo);
+  };
+  requestAnimationFrame(passo);
+}
 async function _fillLinkPreviews() {
   document.querySelectorAll('#messages-area .link-prev:not(.done)').forEach(async el => {
     el.classList.add('done');
@@ -7772,6 +7847,7 @@ async function _fillLinkPreviews() {
     const html = _lpCardHtml(u, d);
     if (!html) { el.remove(); return; }
     el.innerHTML = html;
+    _cravaNaoLidas(); // o cartão cresceu a bolha: a faixa de não lidas não desce
   });
 }
 
@@ -8146,7 +8222,7 @@ async function loadMessages(phone, scroll = true) {
       if (window._unreadMark && !window._unreadMark.scrolled && window._unreadMark.msgId) {
         window._unreadMark.scrolled = true;
         const dv = document.querySelector('#messages-area [data-key="unread-div"]');
-        if (dv) dv.scrollIntoView({ block: 'start' });
+        if (dv) { _cravaNaoLidas(); _vigiaNaoLidas(); }
       }
     }, 120);
 
@@ -8547,6 +8623,7 @@ async function loadMessages(phone, scroll = true) {
         window._unreadMark.scrolled = true;
         const _rD = _dvNL.getBoundingClientRect(), _rA = area.getBoundingClientRect();
         area.scrollTop += (_rD.top - _rA.top) - 8; // divisória no TOPO: tudo abaixo dela é novo
+        _vigiaNaoLidas(); // e fica no topo enquanto fotos/prévias acima dela carregam
       } else {
         area.scrollTop = area.scrollHeight; // direto no fim, determinístico
       }
@@ -10856,6 +10933,7 @@ async function _carregaAcesso() {
       if (d && d.papel) window._acesso = { papel: d.papel, fornecedor: !!d.fornecedor, plano: d.plano || null, dono: d.dono || null, email: d.email || null, liberado: d.liberado !== false, portaria: !!d.portaria, carregado: true };
     }
   } catch (_) {}
+  try { _avisaDonoAoSW(); } catch (_) {} // o carteiro precisa saber o DONO da conta (atendente ≠ dono)
   // Sem liberação: o app para aqui e explica, em vez de dar erro em toda tela.
   if (window._acesso && window._acesso.liberado === false) { _telaSemLiberacao(); return; }
   // A ordem importa: primeiro descobrimos o papel, só depois montamos a tela —
