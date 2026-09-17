@@ -2137,7 +2137,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v421</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v422</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2932,7 +2932,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v421</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v422</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2996,7 +2996,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 421;
+const APP_VER = 422;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -16784,6 +16784,15 @@ function seedBotPositions(force){
 function organizeBot(){ seedBotPositions(true); _markBotManual(); renderBotList(); seedBotPositions(true); renderBotList(); setTimeout(botZoomFit, 20); }
 
 // Redesenha SOMENTE as linhas (usado durante o arraste de um nó, sem recriar os elementos)
+// A linha que está em destaque agora (uma só). Apagar = voltar à cor e sumir a barra.
+let _linhaDestaque = null;
+function _linhaApaga(d){
+  if(!d) return;
+  clearTimeout(d.t); d.t=null;
+  try { d.barra.style.opacity='0'; d.barra.style.pointerEvents='none'; } catch(_){}
+  try { if(d.traco){ d.traco.setAttribute('stroke-width','2'); d.traco.setAttribute('stroke', d.cor); } } catch(_){}
+  if(_linhaDestaque===d) _linhaDestaque=null;
+}
 function _redrawBotEdges(){
   const svg=document.getElementById('bot-edges-svg'); if(!svg) return;
   svg.innerHTML='';
@@ -16826,6 +16835,7 @@ function renderBotList(){
   const layer=document.getElementById('bot-nodes-layer');
   const svg=document.getElementById('bot-edges-svg');
   if(!layer||!svg) return;
+  _linhaDestaque=null; // o quadro vai ser redesenhado: nenhuma linha fica acesa
   layer.innerHTML=''; svg.innerHTML='';
   const start=botNodes.find(n=>n.type==='start');
   if(!start){ setupBotCanvasPanZoom(); return; }
@@ -16842,6 +16852,7 @@ function renderBotList(){
     const p=document.createElementNS('http://www.w3.org/2000/svg','path');
     p.setAttribute('d',`M ${sx} ${sy} C ${sx+dx} ${sy}, ${tx-dx} ${ty}, ${tx} ${ty}`);
     p.setAttribute('fill','none'); p.setAttribute('stroke',color||'#94a3b8'); p.setAttribute('stroke-width','2');
+    p.style.pointerEvents='none'; // quem percebe o mouse é a faixa invisível, nunca o traço
     if(dash) p.setAttribute('stroke-dasharray','5 4');
     svg.appendChild(p);
     return p;
@@ -16928,7 +16939,10 @@ function renderBotList(){
         // A barra fica COLADA na saída, na altura da opção (perto da bolinha).
         // No meio da linha, as barras de linhas vizinhas se sobrepunham e o ✕ de
         // uma ficava debaixo do 👁 da outra — "esconder" virava "desprender".
-        const mx=Math.min(sx+58, (sx+tx)/2), my=sy;
+        // Linha curta (o próximo cartão está colado)? A barra não pode cair em
+        // cima do cartão de destino: vai um pouco acima da linha, no meio dela.
+        let mx=sx+58, my=sy;
+        if (mx+92 > tx-4) { mx=Math.max(sx+4, (sx+tx)/2-45); my=sy-24; }
         const barra=document.createElement('div');
         barra.style.cssText=`position:absolute;left:${mx}px;top:${my}px;transform:translate(0,-50%);display:flex;gap:4px;z-index:8;opacity:0;pointer-events:none;transition:opacity .12s ease`;
         const _mkB=(txt,dica,cor,fn)=>{
@@ -16947,11 +16961,17 @@ function renderBotList(){
         _mkB('<i class=ic-eye-off></i>','Esconder os passos deste caminho','#94a3b8',()=>botToggleRamo(node.id, slot.label));
         layer.appendChild(barra);
         let _t=null;
-        // Linha em destaque ao passar o mouse: verde, mais grossa e por cima das outras
-        const _corOrig = traco ? traco.getAttribute('stroke') : '#94a3b8';
-        const _mostra=()=>{ if(_t){clearTimeout(_t);_t=null;} barra.style.opacity='1'; barra.style.pointerEvents='auto';
-          if(traco){ traco.setAttribute('stroke-width','3.5'); traco.setAttribute('stroke', isFail?'#ef4444':'#00a884'); try{ svg.appendChild(traco); svg.appendChild(hit); }catch(_){} } };
-        const _some=()=>{ _t=setTimeout(()=>{ barra.style.opacity='0'; barra.style.pointerEvents='none'; if(traco){ traco.setAttribute('stroke-width','2'); traco.setAttribute('stroke', _corOrig); } },200); };
+        // Linha em destaque ao passar o mouse: verde, mais grossa e por cima das
+        // outras. SÓ UMA de cada vez: acender esta apaga a anterior na hora, e
+        // sair do quadro / passar por cima de qualquer outra coisa apaga também
+        // (antes cada linha tinha o seu próprio relógio e várias ficavam verdes)
+        barra.classList.add('bot-linha-barra');
+        const d={ traco, hit, barra, cor: traco ? traco.getAttribute('stroke') : '#94a3b8', fail: isFail, t: null };
+        const _mostra=()=>{ if(_linhaDestaque && _linhaDestaque!==d) _linhaApaga(_linhaDestaque);
+          clearTimeout(d.t); d.t=null; _linhaDestaque=d;
+          barra.style.opacity='1'; barra.style.pointerEvents='auto';
+          if(traco){ traco.setAttribute('stroke-width','3.5'); traco.setAttribute('stroke', isFail?'#ef4444':'#00a884'); try{ svg.appendChild(traco); }catch(_){} } };
+        const _some=()=>{ clearTimeout(d.t); d.t=setTimeout(()=>_linhaApaga(d),180); };
         hit.addEventListener('mouseenter',_mostra); hit.addEventListener('mouseleave',_some);
         barra.addEventListener('mouseenter',_mostra); barra.addEventListener('mouseleave',_some);
         hit.addEventListener('touchstart',(e)=>{ e.stopPropagation(); _mostra(); setTimeout(_some,2800); },{passive:true});
@@ -17058,7 +17078,9 @@ function botNodeEl(node,x,y){
   el.addEventListener('mousedown',(e)=>{
     // closest('button'): o alvo do clique é o ÍCONE dentro do botão, não o botão
     if(e.target.closest && e.target.closest('button')) return;
+    if(e.target.closest && e.target.closest('#bot-config-form, input, textarea, select, [contenteditable]')) return; // editando: o clique é do campo
     e.stopPropagation(); // impede o pan do canvas
+    e.preventDefault();  // sem seleção de texto nem "fantasma" de arrasto nativo
     const startX=e.clientX, startY=e.clientY, ox=node.pos_x, oy=node.pos_y;
     let moved=false;
     function mv(m){
@@ -17105,7 +17127,22 @@ function setupBotCanvasPanZoom(){
   wrap.addEventListener('mousedown',(e)=>{
     if(e.target.closest('#bot-nodes-layer') && e.target.id!=='bot-nodes-layer') return;
     dragging=true; sx=e.clientX; sy=e.clientY; ox=botPanX; oy=botPanY; wrap.style.cursor='grabbing';
+    e.preventDefault(); // sem seleção de texto pelo caminho
   });
+  // Arrasto NATIVO do navegador (aquele fantasma transparente de texto/imagem
+  // que aparecia enquanto você arrastava e o nó só se mexia ao soltar): nunca no quadro
+  wrap.addEventListener('dragstart',(e)=>e.preventDefault());
+  wrap.style.userSelect='none'; wrap.style.webkitUserSelect='none';
+  // Destaque de linha: o mouse saiu para qualquer outra coisa → apaga
+  wrap.addEventListener('mousemove',(e)=>{
+    if(!_linhaDestaque) return;
+    const t=e.target;
+    if(t && t.closest && (t.closest('#bot-edges-svg') || t.closest('.bot-linha-barra'))) return;
+    if(!_linhaDestaque.t) _linhaDestaque.t=setTimeout(()=>_linhaApaga(_linhaDestaque),180);
+  });
+  wrap.addEventListener('mouseleave',()=>_linhaApaga(_linhaDestaque));
+  wrap.addEventListener('wheel',()=>_linhaApaga(_linhaDestaque),{passive:true}); // rolou/zoom: as linhas andam por baixo do mouse sem evento — apaga
+  wrap.addEventListener('mousedown',(e)=>{ if(e.target.closest && e.target.closest('.bot-linha-barra')) return; _linhaApaga(_linhaDestaque); },true); // começou a arrastar: apaga (menos na própria barra)
   window.addEventListener('mousemove',(e)=>{ if(!dragging) return; botPanX=ox+(e.clientX-sx); botPanY=oy+(e.clientY-sy); applyBotTransform(); });
   window.addEventListener('mouseup',()=>{ dragging=false; wrap.style.cursor='default'; });
   wrap.addEventListener('wheel',(e)=>{
