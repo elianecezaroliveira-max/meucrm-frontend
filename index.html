@@ -2137,7 +2137,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v424</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v426</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2932,7 +2932,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v424</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v426</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2996,7 +2996,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 424;
+const APP_VER = 426;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -9620,9 +9620,12 @@ async function confirmMediaSend() {
   // UM clique envia TODAS, em ordem; a legenda vai na última foto.
   // (a lista só recarrega UMA vez no final — envio bem mais rápido)
   const previas = []; let algumOk = false;
+  // Duas ou mais fotos/vídeos = um LOTE: no WhatsApp do lead chegam grudadas (álbum)
+  const _lote = lista.length > 1 ? { id: 'alb-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7), total: lista.length,
+    fotos: lista.filter(f => f.type.startsWith('image/')).length, videos: lista.filter(f => f.type.startsWith('video/')).length } : null;
   for (let i = 0; i < lista.length; i++) {
     _respFoto = (i === 0) ? _resp : null;
-    const r = await _sendOneFile(lista[i], i === lista.length - 1 ? caption : '', true);
+    const r = await _sendOneFile(lista[i], i === lista.length - 1 ? caption : '', true, _lote ? { ..._lote, idx: i } : undefined);
     _respFoto = null;
     if (r && r.ok) { algumOk = true; if (r.el) previas.push({ el: r.el, mid: r.media_id || null }); }
   }
@@ -9999,7 +10002,7 @@ async function sendFile() {
 // Mensagem que está sendo respondida no envio de arquivos. Fica separada da
 // replyingTo porque a barra de resposta é fechada quando a prévia da foto abre.
 let _respFoto = null;
-async function _sendOneFile(file, caption, semRecarga) {
+async function _sendOneFile(file, caption, semRecarga, lote) {
   // Última barreira: nada sai para o cliente com a nota interna ligada
   if (_notaModo) { await _enviaNotaComArquivos([file], caption || ''); return { ok: false, nota: true }; }
   if (!file || !currentPhone) return;
@@ -10050,6 +10053,7 @@ async function _sendOneFile(file, caption, semRecarga) {
         fileBase64: base64,
         fileName: file.name,
         mimeType: file.type || 'application/octet-stream',
+        lote: lote || undefined, // várias fotos juntas: o servidor manda como ÁLBUM (canal QR)
         // Responder com foto: a citação vai junto, igual à resposta em texto
         quoted_id:        _respFoto ? _respFoto.id        : null,
         quoted_content:   _respFoto ? (_respFoto.content || '(mídia)') : null,
@@ -10361,14 +10365,11 @@ function showQRPopup(filter, fromSearch) {
   if (si && !fromSearch) si.value = filter || '';
   // Fixadas () sempre primeiro — as que você mais usa ficam no topo
   const ordered = [...quickReplies].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
-  const filtered = ordered.filter(r =>
-    !filter ||
-    r.title.toLowerCase().includes(filter.toLowerCase()) ||
-    r.message.toLowerCase().includes(filter.toLowerCase())
-  );
+  // Busca SÓ pelo atalho (título): pelo texto da resposta aparecia coisa demais
+  const filtered = ordered.filter(r => !filter || r.title.toLowerCase().includes(filter.toLowerCase()));
   if (!filtered.length) {
     if (fromSearch) { // digitou algo sem resultado: mantém aberto para corrigir
-      list.innerHTML = '<div style="padding:12px 14px;font-size:13px;color:#667781">Nenhuma resposta com esse texto.</div>';
+      list.innerHTML = '<div style="padding:12px 14px;font-size:13px;color:#667781">Nenhum atalho com esse nome.</div>';
       return;
     }
     if (!quickReplies.length && !filter) {
@@ -12087,7 +12088,7 @@ async function openConfigModal() {
 }
 // Versão do servidor que este app espera. Se o Railway estiver atrás disso,
 // algumas telas não têm como funcionar — e o app avisa em vez de dar erro seco.
-const SERVIDOR_MIN = 270;
+const SERVIDOR_MIN = 271;
 let _verServidor = null;
 async function _servidorVersao() {
   if (_verServidor !== null) return _verServidor;
@@ -16844,6 +16845,7 @@ function _redrawBotEdges(){
       const isFail=slot.label==='__failed__';
       const edge=botChildEdge(node.id, slot.label); const to=edge?byId(edge.to_node_id):null;
       if(to && _botColapsados.has(node.id+'::'+_botNrmLbl(slot.label))) mk(sx,sy,sx+BOT_HG,sy, isFail?'#ef4444':'#00a884', true); // recolhido: só o toquinho
+      else if(to && _oc.has(to.id)) mk(sx,sy,sx+BOT_HG,sy, '#94a3b8', true); // destino escondido por outro caminho
       else if(to && to.pos_x!=null) mk(sx,sy,to.pos_x,to.pos_y+Math.min(_bnH(to.id)/2,BOT_NH/2+10), isFail?'#ef4444':'#94a3b8', isFail);
       else mk(sx,sy,sx+BOT_HG,sy, isFail?'#ef4444':'#274d3d', true);
     });
@@ -16901,7 +16903,11 @@ function renderBotList(){
     svg.appendChild(h);
     return h;
   }
-  function slotPill(text,x,y,col,naBorda){
+  // Pendura um elemento (bolinha, botão +N, rótulo, alça) no nó: durante o arrasto
+  // ele anda junto — antes só as linhas se moviam e os pontos ficavam parados
+  // até soltar.
+  const pendura=(el,nodeObj,x,y)=>{ if(!el||!nodeObj) return; el.dataset.portaDe=nodeObj.id; el.dataset.ox=String(x-nodeObj.pos_x); el.dataset.oy=String(y-nodeObj.pos_y); };
+  function slotPill(text,x,y,col,naBorda,nodeObj){
     if(!text) return;
     const d=document.createElement('div');
     d.textContent=text;
@@ -16910,6 +16916,7 @@ function renderBotList(){
     d.style.cssText = naBorda
       ? `position:absolute;left:${x}px;top:${y-11}px;color:${col||'#000000'};font-size:13.5px;font-weight:700;white-space:nowrap;pointer-events:none;max-width:190px;overflow:hidden;text-overflow:ellipsis;z-index:2;background:#f0f2f5;padding:1px 6px;border-radius:7px`
       : `position:absolute;left:${x}px;top:${y-12}px;transform:translateX(-50%);background:#f0f2f5;color:${col||'#000000'};font-size:13px;font-weight:700;padding:2px 8px;border:1px solid #e9edef;border-radius:9px;white-space:nowrap;pointer-events:none;max-width:170px;overflow:hidden;text-overflow:ellipsis;z-index:2`;
+    pendura(d,nodeObj,x,naBorda?y-11:y-12);
     layer.appendChild(d);
   }
   const byId=id=>botNodes.find(n=>n.id===id);
@@ -16940,31 +16947,47 @@ function renderBotList(){
       if (temAncora) { // bolinha na borda: é DAQUI que a linha desta opção sai
         const dot=document.createElement('div');
         dot.style.cssText=`position:absolute;left:${sx-5}px;top:${sy-5}px;width:10px;height:10px;border-radius:50%;background:${isFail?'#ef4444':(to?'#94a3b8':'#00a884')};border:2px solid #fff;box-shadow:0 0 0 1px #d1d7db;z-index:4;pointer-events:none`;
+        pendura(dot,node,sx-5,sy-5);
         layer.appendChild(dot);
       }
       // Caminho RECOLHIDO: no lugar dos passos aparece um botão +N para reabrir
+      if(to && !_botColapsados.has(node.id+'::'+_botNrmLbl(slot.label)) && _oc.has(to.id)){
+        // o destino está escondido por OUTRO caminho recolhido: toquinho + botão para revelar
+        const bx=sx+BOT_HG, by=sy;
+        curve(sx,sy,bx,by, '#94a3b8', true);
+        if(slot.display && !temAncora) slotPill(slot.display, sx+10, sy, '#000000', true, node);
+        const b=document.createElement('button');
+        b.textContent='…'; b.title='O passo seguinte está escondido por um caminho recolhido. Clique para mostrar.';
+        b.style.cssText=`position:absolute;left:${bx}px;top:${by-16}px;min-width:32px;height:32px;padding:0 6px;border-radius:16px;background:#f0f2f5;border:1px solid #94a3b8;color:#54656f;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:6`;
+        b.addEventListener('click',(e)=>{ e.stopPropagation(); botRevelaNo(to.id); });
+        pendura(b,node,bx,by-16);
+        layer.appendChild(b);
+        return;
+      }
       if(to && _botColapsados.has(node.id+'::'+_botNrmLbl(slot.label))){
         const bx=sx+BOT_HG, by=sy;
         curve(sx,sy,bx,by, isFail?'#ef4444':'#00a884', true);
-        if(slot.display && !temAncora) slotPill(slot.display, sx+10, sy, isFail?'#ef4444':'#000000', true);
+        if(slot.display && !temAncora) slotPill(slot.display, sx+10, sy, isFail?'#ef4444':'#000000', true, node);
         const qt=_botQtdRamo(node.id, slot.label);
         const b=document.createElement('button');
         b.textContent='+'+(qt||'');
         b.title='Mostrar os '+(qt||'')+' passos escondidos deste caminho';
         b.style.cssText=`position:absolute;left:${bx}px;top:${by-16}px;min-width:32px;height:32px;padding:0 6px;border-radius:16px;background:#e7f7ef;border:1px solid #00a884;color:#00806a;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:6`;
         b.addEventListener('click',(e)=>{ e.stopPropagation(); botToggleRamo(node.id, slot.label); });
+        pendura(b,node,bx,by-16);
         layer.appendChild(b);
         return;
       }
       if(to){
         const tx=to.pos_x, ty=to.pos_y+BOT_NH/2;
         curve(sx,sy,tx,ty, isFail?'#ef4444':'#94a3b8', isFail);
-        if(!temAncora) slotPill(slot.display, sx+10, sy, isFail?'#ef4444':'#000000', true); // rótulo (só quando não está escrito no cartão)
+        if(!temAncora) slotPill(slot.display, sx+10, sy, isFail?'#ef4444':'#000000', true, node); // rótulo (só quando não está escrito no cartão)
         // Alça no destino: arraste para religar esta saída a outro nó
         const rh=document.createElement('div');
         rh.title='Arraste para ligar esta saída a outro nó';
         rh.style.cssText=`position:absolute;left:${tx-7}px;top:${ty-7}px;width:14px;height:14px;border-radius:50%;background:#fff;border:2px solid #00a884;cursor:grab;z-index:6`;
         rh.addEventListener('mousedown',(e)=>beginPortDrag(e, node.id, slot.label, sx, sy));
+        pendura(rh,to,tx-7,ty-7);
         layer.appendChild(rh);
         // ── Barra que aparece ao passar o mouse na linha: ＋ inserir · ✕ desprender · esconder ──
         const traco = svg.lastElementChild; // a curva recém-desenhada
@@ -17021,11 +17044,12 @@ function renderBotList(){
       } else {
         const bx=sx+BOT_HG, by=sy;
         curve(sx,sy,bx,by, isFail?'#ef4444':'#274d3d', true);
-        if(slot.display && !temAncora) slotPill(slot.display, sx+10, sy, isFail?'#ef4444':'#000000', true); // rótulo (só quando não está escrito no cartão)
+        if(slot.display && !temAncora) slotPill(slot.display, sx+10, sy, isFail?'#ef4444':'#000000', true, node); // rótulo (só quando não está escrito no cartão)
         const b=document.createElement('button');
         b.textContent='+'; b.title='Clique para adicionar um passo, ou arraste até um nó para conectar';
         b.style.cssText=`position:absolute;left:${bx}px;top:${by-16}px;width:32px;height:32px;border-radius:50%;background:#e7f7ef;border:1px dashed #00a884;color:#00a884;font-size:18px;cursor:grab;display:flex;align-items:center;justify-content:center;z-index:5`;
         b.addEventListener('mousedown',(e)=>beginPortDrag(e, node.id, slot.label, bx+16, by, (u)=>openStepMenu(node.id,slot.label,u)));
+        pendura(b,node,bx,by-16);
         layer.appendChild(b);
       }
     });
@@ -17132,6 +17156,9 @@ function botNodeEl(node,x,y){
         node.pos_x=Math.round(ox+(m.clientX-startX)/botZoom);
         node.pos_y=Math.round(oy+(m.clientY-startY)/botZoom);
         el.style.left=node.pos_x+'px'; el.style.top=node.pos_y+'px';
+        // bolinhas, botões +N / + e alças deste nó andam junto (antes ficavam parados até soltar)
+        try { document.querySelectorAll('#bot-nodes-layer [data-porta-de="'+node.id+'"]').forEach(p=>{ p.style.left=(node.pos_x+Number(p.dataset.ox))+'px'; p.style.top=(node.pos_y+Number(p.dataset.oy))+'px'; }); } catch(_){}
+        if(_linhaDestaque) _linhaApaga(_linhaDestaque);
         _redrawBotEdges();
       }
     }
@@ -17219,24 +17246,69 @@ function renderBotCanvas() {
 // vira +N (quantos passos estão escondidos) e um clique abre de novo
 let _botColapsados = new Set(); // 'nodeId::label' das saídas recolhidas
 function _botNrmLbl(v) { return (v == null || v === 'default') ? '' : String(v); } // rótulo pode vir número/null/'default'
+// Tudo que se alcança a partir das saídas RECOLHIDAS (a "sequência" que ela mandou esconder)
+function _botAlcanceRecolhido() {
+  const dentro = new Set(); const fila = [];
+  _botColapsados.forEach(k => {
+    const i = k.lastIndexOf('::'); const nid = k.slice(0, i), lbl = k.slice(i + 2);
+    botEdges.filter(e => e.from_node_id === nid && _botNrmLbl(e.label) === lbl).forEach(e => fila.push(e.to_node_id));
+  });
+  while (fila.length) {
+    const id = fila.shift(); if (dentro.has(id)) continue; dentro.add(id);
+    botEdges.filter(e => e.from_node_id === id).forEach(e => fila.push(e.to_node_id));
+  }
+  return dentro;
+}
 function _botOcultos() {
   const ocultos = new Set();
   if (!_botColapsados.size) return ocultos;
-  // Visíveis = tudo que se alcança a partir das raízes SEM passar por saída recolhida.
-  // Quem só é alcançado por caminho recolhido fica escondido (caminhos duplos contam).
+  // Esconder uma saída = esconder TUDO que vem depois dela. Um passo só continua
+  // à vista se o INÍCIO ainda chega nele por um caminho aberto. (Antes, um passo
+  // solto — sem seta chegando — contava como "início" e segurava toda a
+  // sequência dele na tela, mesmo ela sendo continuação de um caminho recolhido.)
+  const dentro = _botAlcanceRecolhido();
   const vis = new Set();
   const fila = [];
-  botNodes.forEach(n => { if (n.type === 'start' || !botEdges.some(e => e.to_node_id === n.id)) fila.push(n.id); });
+  botNodes.forEach(n => {
+    if (n.type === 'start') fila.push(n.id);
+    // passo solto (sem seta chegando) que NÃO faz parte de sequência recolhida: continua à vista
+    else if (!botEdges.some(e => e.to_node_id === n.id) && !dentro.has(n.id)) fila.push(n.id);
+  });
   while (fila.length) {
     const id = fila.shift();
     if (vis.has(id)) continue; vis.add(id);
     botEdges.filter(e => e.from_node_id === id).forEach(e => {
       if (_botColapsados.has(id + '::' + _botNrmLbl(e.label))) return;
+      // continuação de sequência recolhida só reaparece se o INÍCIO chega nela por caminho aberto
+      if (dentro.has(e.to_node_id) && !_botVemDoInicio(e.to_node_id)) return;
       fila.push(e.to_node_id);
     });
   }
   botNodes.forEach(n => { if (!vis.has(n.id)) ocultos.add(n.id); });
   return ocultos;
+}
+// O Início chega neste passo por algum caminho SEM saída recolhida?
+function _botVemDoInicio(alvo) {
+  const vis = new Set(); const fila = botNodes.filter(n => n.type === 'start').map(n => n.id);
+  while (fila.length) {
+    const id = fila.shift(); if (vis.has(id)) continue; vis.add(id);
+    if (id === alvo) return true;
+    botEdges.filter(e => e.from_node_id === id && !_botColapsados.has(id + '::' + _botNrmLbl(e.label))).forEach(e => fila.push(e.to_node_id));
+  }
+  return false;
+}
+// Revela um passo escondido: reabre TODAS as saídas recolhidas que o escondem
+function botRevelaNo(id) {
+  const tira = [];
+  _botColapsados.forEach(k => {
+    const guarda = new Set(_botColapsados); _botColapsados.delete(k);
+    const ainda = _botOcultos().has(id);
+    _botColapsados = guarda;
+    if (!ainda) tira.push(k);
+  });
+  if (!tira.length) { _botColapsados.clear(); }
+  else tira.forEach(k => _botColapsados.delete(k));
+  _salvaColapsados(); renderBotList();
 }
 function _botQtdRamo(nodeId, label) { // quantos nós este ramo está escondendo
   const k = nodeId + '::' + _botNrmLbl(label);
