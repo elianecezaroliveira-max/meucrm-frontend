@@ -2168,7 +2168,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v461</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v462</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2979,7 +2979,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v461</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v462</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3043,7 +3043,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 461;
+const APP_VER = 462;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3950,7 +3950,7 @@ function renderMsgHits() {
       const txt = (h.content && h.content.toLowerCase().includes(q.toLowerCase())) ? h.content : (h.transcript || h.content || '');
       const nome = h.name || h.phone;
       const acc = h.account_id || h.contact_account_id || '';
-      return `<div class="msg-hit" onclick="abrirMensagemBusca('${escHtml(h.phone)}','${escHtml((nome||'').replace(/'/g,'’'))}','${escHtml(acc)}','${escHtml(String(h.id))}')">
+      return `<div class="msg-hit" onclick="abrirMensagemBusca('${_jsAttr(h.phone)}','${_jsAttr(nome||'')}','${_jsAttr(acc)}','${_jsAttr(String(h.id))}')">
         <div class="msg-hit-name"><span>${escHtml(nome)}</span><span class="msg-hit-time">${formatContactTime(h.timestamp)}</span></div>
         <div class="msg-hit-snip">${h.direction === 'outbound' ? 'Você: ' : ''}${h.transcript && !(h.content||'').toLowerCase().includes(q.toLowerCase()) ? '' : ''}${_snippet(txt, q)}</div>
       </div>`;
@@ -4340,10 +4340,10 @@ function renderContacts(contacts) {
     if (!_dig && _drafts[c.phone] && (c.phone !== currentPhone || _naLista))
       previewHtml = `<span style="color:#00a884;font-weight:600">Rascunho: </span>${escHtml(String(_drafts[c.phone]).slice(0, 60))}`;
     const isFav = !!c.favorite;
-    return `<div class="contact-swipe-wrap" data-phone="${c.phone}">
+    return `<div class="contact-swipe-wrap" data-phone="${escHtml(c.phone)}">
       <div class="swipe-action read"><i class=ic-check></i><span>Lida</span></div>
       <div class="swipe-action fav"><i class=ic-star></i><span>${isFav?'Remover':'Favoritar'}</span></div>
-      <div class="contact-item${c.phone===currentPhone?' active':''}${hasUnread}${isFav?' is-fav':''}" onclick="selectContact('${c.phone}','${_jsAttr(c.name||'')}','${c.account_id||''}')">
+      <div class="contact-item${c.phone===currentPhone?' active':''}${hasUnread}${isFav?' is-fav':''}" onclick="selectContact('${_jsAttr(c.phone)}','${_jsAttr(c.name||'')}','${_jsAttr(c.account_id||'')}')">
       <div class="contact-avatar" style="${_avatarCor(c.name||c.phone)}">${escHtml((c.name||'?')[0].toUpperCase())}${c.avatar ? `<img src="${SERVER_URL}/avatar/${encodeURIComponent(String(c.avatar).split('/').pop())}" loading="lazy" alt="" onerror="this.remove()">` : ''}</div>
       <div class="contact-info">
         <div class="contact-row-top">
@@ -6190,6 +6190,9 @@ async function selectContact(phone, name, accountId) {
   if (currentPhone !== phone) {
     // Guarda o RASCUNHO da conversa que está saindo
     _persistDraftNow(currentPhone);
+    // "Responder" e bot escolhido são DESTA conversa: não podem ir junto para a outra
+    try { cancelReply(); } catch (_) {}
+    try { if (typeof _botPendente !== 'undefined' && _botPendente) cancelBotDraft(); } catch (_) {}
     currentMessages = [];
     const _pb = document.getElementById('pinned-banner'); if (_pb) _pb.style.display = 'none';
   }
@@ -8184,7 +8187,7 @@ function renderMessageContent(m) {
         <div style="width:42px;height:42px;border-radius:50%;background:#00a884;color:#fff;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:600;flex-shrink:0">${escHtml(nm[0].toUpperCase())}</div>
         <div style="min-width:0">
           <div style="font-weight:600;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(nm)}</div>
-          ${tel ? `<div onclick="event.stopPropagation();navigator.clipboard&&navigator.clipboard.writeText('${escHtml(tel)}');const o=this.textContent;this.textContent='✓ Copiado';setTimeout(()=>{this.textContent=o},1200)" style="font-size:12.5px;color:#027eb5;cursor:pointer;text-decoration:underline" title="Tocar para copiar">${escHtml(tel)}</div>` : ''}
+          ${tel ? `<div onclick="event.stopPropagation();navigator.clipboard&&navigator.clipboard.writeText('${_jsAttr(tel)}');const o=this.textContent;this.textContent='✓ Copiado';setTimeout(()=>{this.textContent=o},1200)" style="font-size:12.5px;color:#027eb5;cursor:pointer;text-decoration:underline" title="Tocar para copiar">${escHtml(tel)}</div>` : ''}
         </div>
       </div>
     </div>`;
@@ -8700,7 +8703,7 @@ async function loadMessages(phone, scroll = true, opt = null) {
     try {
       let _grpP = _prevDir === 'outbound';
       for (const p of _pendDaConversa(phone, msgs)) {
-        parts.push({ key: _chavePend(p.texto), html: _htmlPendente(p.texto, _grpP, p.reply, p.falhou) });
+        parts.push({ key: _chavePendDe(p), html: _htmlPendente(p.texto, _grpP, p.reply, p.falhou, _chavePendDe(p)) });
         _grpP = true;
       }
     } catch (_) {}
@@ -9294,11 +9297,18 @@ function _chavePend(texto) { // chave estável, igual na bolha provisória e no 
   for (let i = 0; i < t.length; i++) { h = (h * 31 + t.charCodeAt(i)) | 0; }
   return 'pend-' + (h >>> 0).toString(36);
 }
+// Chave da pendente: pelo client_id do envio (duas mensagens com o MESMO texto,
+// ex. "ok" duas vezes, são duas bolhas e dois envios — antes se confundiam)
+function _chavePendDe(p) { return (p && p.corpo && p.corpo.client_id) ? 'pend-' + String(p.corpo.client_id).replace(/[^\w-]/g, '') : _chavePend(p && p.texto); }
 function _pendAdiciona(texto, phone, reply, corpo) {
-  const t = String(texto || '').trim(); if (!t || !phone) return;
+  const t = String(texto || '').trim(); if (!t || !phone) return null;
   _pendLimpa();
-  if (!_pendentes.some(p => p.phone === phone && p.texto === t))
-    _pendentes.push({ texto: t, phone, ts: Date.now(), reply: reply || null, corpo: corpo || null }); // reply = a mensagem que você está respondendo; corpo = o pedido (para reenviar)
+  const cid = corpo && corpo.client_id;
+  const ja = cid ? _pendentes.find(p => p.corpo && p.corpo.client_id === cid) : _pendentes.find(p => p.phone === phone && p.texto === t);
+  if (ja) return ja;
+  const p = { texto: t, phone, ts: Date.now(), reply: reply || null, corpo: corpo || null }; // reply = a mensagem que você está respondendo; corpo = o pedido (para reenviar)
+  _pendentes.push(p);
+  return p;
 }
 function _pendRemove(texto, phone) {
   const t = String(texto || '').trim();
@@ -9313,7 +9323,7 @@ function _pendLimpa() { // nada fica preso: 25s sem a definitiva chegar e a bolh
 // (2s, 5s, 10s, 20s e quando a internet volta) com o MESMO client_id — o
 // servidor reconhece e não duplica. Tocar na bolha: "Tentar de novo" / "Apagar".
 const _REENVIO_ESPERAS = [2000, 5000, 10000, 20000];
-function _pendPorChave(chave) { return _pendentes.find(p => _chavePend(p.texto) === chave) || null; }
+function _pendPorChave(chave) { return _pendentes.find(p => _chavePendDe(p) === chave) || null; }
 // As não enviadas sobrevivem a fechar o app (igual WhatsApp): ficam no aparelho
 // e voltam para a conversa — e tentam de novo — na próxima abertura.
 function _pendGuardaFalhas() {
@@ -9331,7 +9341,8 @@ function _pendRestaura() {
     const lista = JSON.parse(localStorage.getItem(_uKey('vetra_nao_enviadas')) || '[]') || [];
     lista.forEach(x => {
       if (!x || !x.texto || !x.phone || !x.corpo) return;
-      if (_pendentes.some(p => p.phone === x.phone && p.texto === x.texto)) return;
+      const cid = x.corpo && x.corpo.client_id;
+      if (_pendentes.some(p => cid ? (p.corpo && p.corpo.client_id === cid) : (p.phone === x.phone && p.texto === x.texto))) return;
       const p = { texto: x.texto, phone: x.phone, ts: x.ts || Date.now(), reply: x.reply || null, corpo: x.corpo, falhou: x.falhou || 'Não enviada', definitiva: !!x.definitiva };
       _pendentes.push(p);
       if (!p.definitiva) _agendaReenvio(p, 0); // voltou a abrir o app: tenta de novo sozinho
@@ -9340,13 +9351,13 @@ function _pendRestaura() {
 }
 function _pintaPendFalha(p) {
   try {
-    const el = document.querySelector('#messages-area [data-key="' + _chavePend(p.texto) + '"]');
+    const el = document.querySelector('#messages-area [data-key="' + _chavePendDe(p) + '"]');
     if (!el) return;
     const tk = el.querySelector('.msg-ticks');
     if (p.falhou) {
       if (tk) { tk.className = 'msg-ticks failed'; tk.innerHTML = '<i class=ic-alert></i>'; tk.title = 'Não enviada — toque para tentar de novo'; }
       el.classList.add('nao-enviada'); el.style.cursor = 'pointer';
-      el.onclick = (ev) => { try { ev.stopPropagation(); } catch (_) {} _pendFalhaClique(_chavePend(p.texto)); };
+      el.onclick = (ev) => { try { ev.stopPropagation(); } catch (_) {} _pendFalhaClique(_chavePendDe(p)); };
     } else {
       if (tk) { tk.className = 'msg-ticks pending'; tk.innerHTML = TICK_CLOCK; tk.title = 'Enviando…'; }
       el.classList.remove('nao-enviada'); el.style.cursor = ''; el.onclick = null;
@@ -9401,8 +9412,10 @@ window.addEventListener('online', () => { try { _pendRestaura(); _pendentes.filt
 // As pendentes DESTA conversa que ainda não vieram do servidor
 function _pendDaConversa(phone, msgs) {
   _pendRestaura(); _pendLimpa();
+  // A pendente some quando a definitiva DELA chega: mesmo texto E enviada depois
+  // dela (uma mensagem antiga igual — outro "ok" de horas atrás — não conta)
   return _pendentes.filter(p => p.phone === phone &&
-    !(msgs || []).some(m => m.direction === 'outbound' && String(m.content || '').trim() === p.texto));
+    !(msgs || []).some(m => m.direction === 'outbound' && String(m.content || '').trim() === p.texto && (!m.timestamp || parseUTC(m.timestamp) >= p.ts - 120000)));
 }
 // A citação (mensagem que você está respondendo) já nasce junto com o balão —
 // antes ela só aparecia quando a mensagem definitiva voltava do servidor.
@@ -9413,8 +9426,8 @@ function _htmlCitacao(reply) {
   const qPreview = qc.length > 90 ? qc.substring(0, 90) + '…' : qc;
   return `<div class="quoted-bubble"${reply.id ? ` onclick="event.stopPropagation();_gotoMsg('${escHtml(String(reply.id))}')"` : ''}><div class="quoted-name">${escHtml(qLabel)}</div><div class="quoted-text">${escHtml(qPreview)}</div></div>`;
 }
-function _htmlPendente(texto, grp, reply, falhou) {
-  const ch = _chavePend(texto);
+function _htmlPendente(texto, grp, reply, falhou, chave) {
+  const ch = chave || _chavePend(texto);
   const tick = falhou
     ? `<span class="msg-ticks failed" title="Não enviada — toque para tentar de novo"><i class=ic-alert></i></span>`
     : `<span class="msg-ticks pending" title="Enviando…">${TICK_CLOCK}</span>`;
@@ -9423,7 +9436,7 @@ function _htmlPendente(texto, grp, reply, falhou) {
     + `<span class="msg-text">${waFormat(texto)}</span>`
     + `<div class="time">${_brtTime(Date.now())}${tick}</div></div>`;
 }
-function appendPendingBubble(text, reply) {
+function appendPendingBubble(text, reply, chave) {
   const area = document.getElementById('messages-area');
   if (!area) return null;
   // IDÊNTICO ao balão definitivo: mesmo agrupamento (grp), mesma formatação de
@@ -9431,7 +9444,7 @@ function appendPendingBubble(text, reply) {
   const _ult = area.lastElementChild;
   const _grpP = !!(_ult && _ult.classList && _ult.classList.contains('msg') && _ult.classList.contains('outbound'));
   const molde = document.createElement('div');
-  const _htm = _htmlPendente(text, _grpP, reply);
+  const _htm = _htmlPendente(text, _grpP, reply, false, chave);
   molde.innerHTML = _htm;
   const el = molde.firstElementChild;
   if (!el) return null;
@@ -9683,10 +9696,9 @@ async function sendMessage() {
     quoted_content:   reply ? (reply.content || '(mídia)') : null,
     quoted_direction: reply ? reply.direction : null,
   };
-  _pendAdiciona(savedMessage, currentPhone, reply, _corpo); // a partir daqui, todo redesenho mostra ela (com a citação)
+  const _pend = _pendAdiciona(savedMessage, currentPhone, reply, _corpo); // a partir daqui, todo redesenho mostra ela (com a citação)
   _vigGuarda(savedMessage, currentPhone);    // e o vigia devolve na hora se ela sumir
-  const tempEl = appendPendingBubble(savedMessage, reply);
-  const _pend = _pendentes.find(p => p.phone === currentPhone && p.texto === savedMessage) || null;
+  const tempEl = appendPendingBubble(savedMessage, reply, _chavePendDe(_pend));
   // Enviou → o "digitando…" do cliente some na hora (não fica os 6s restantes)
   _paraDigitando();
   try {
@@ -11008,9 +11020,9 @@ function _qrVars(txt) {
   let notas = '';
   try { if (window._lpPhone === currentPhone) notas = document.getElementById('notes-textarea')?.value || ''; } catch (_) {}
   return String(txt || '')
-    .replace(/\{nome\}/gi, nome)
-    .replace(/\{telefone\}/gi, (typeof fmtPhoneBR === 'function' ? fmtPhoneBR(currentPhone) : (currentPhone || '')))
-    .replace(/\{notas?\}/gi, notas)
+    .replace(/\{nome\}/gi, () => nome)
+    .replace(/\{telefone\}/gi, () => (typeof fmtPhoneBR === 'function' ? fmtPhoneBR(currentPhone) : (currentPhone || '')))
+    .replace(/\{notas?\}/gi, () => notas)
     .replace(/\{data\s*([+-]\s*\d+)?\s*\}/gi, (_, d) => _qrData(d)) // {data} = hoje, {data+7} = daqui a 7 dias, {data-1} = ontem
     .replace(/\{hoje\}/gi, () => _qrData(0))
     .replace(/\{daqui\s+a\s+(\d+)\s+dias?\}/gi, (_, n) => _qrData(n))          // {daqui a 7 dias}
