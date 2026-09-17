@@ -2137,7 +2137,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v423</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v424</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2932,7 +2932,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v423</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v424</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2996,7 +2996,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 423;
+const APP_VER = 424;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -8328,7 +8328,7 @@ async function loadMessages(phone, scroll = true) {
     try {
       let _grpP = _prevDir === 'outbound';
       for (const p of _pendDaConversa(phone, msgs)) {
-        parts.push({ key: _chavePend(p.texto), html: _htmlPendente(p.texto, _grpP) });
+        parts.push({ key: _chavePend(p.texto), html: _htmlPendente(p.texto, _grpP, p.reply) });
         _grpP = true;
       }
     } catch (_) {}
@@ -8919,11 +8919,11 @@ function _chavePend(texto) { // chave estável, igual na bolha provisória e no 
   for (let i = 0; i < t.length; i++) { h = (h * 31 + t.charCodeAt(i)) | 0; }
   return 'pend-' + (h >>> 0).toString(36);
 }
-function _pendAdiciona(texto, phone) {
+function _pendAdiciona(texto, phone, reply) {
   const t = String(texto || '').trim(); if (!t || !phone) return;
   _pendLimpa();
   if (!_pendentes.some(p => p.phone === phone && p.texto === t))
-    _pendentes.push({ texto: t, phone, ts: Date.now() });
+    _pendentes.push({ texto: t, phone, ts: Date.now(), reply: reply || null }); // reply = a mensagem que você está respondendo
 }
 function _pendRemove(texto, phone) {
   const t = String(texto || '').trim();
@@ -8939,12 +8939,22 @@ function _pendDaConversa(phone, msgs) {
   return _pendentes.filter(p => p.phone === phone &&
     !(msgs || []).some(m => m.direction === 'outbound' && String(m.content || '').trim() === p.texto));
 }
-function _htmlPendente(texto, grp) {
+// A citação (mensagem que você está respondendo) já nasce junto com o balão —
+// antes ela só aparecia quando a mensagem definitiva voltava do servidor.
+function _htmlCitacao(reply) {
+  if (!reply || reply.content == null) return '';
+  const qc = String(reply.content || '(mídia)');
+  const qLabel = reply.direction === 'outbound' ? 'Você' : (currentName || 'Contato');
+  const qPreview = qc.length > 90 ? qc.substring(0, 90) + '…' : qc;
+  return `<div class="quoted-bubble"${reply.id ? ` onclick="event.stopPropagation();_gotoMsg('${escHtml(String(reply.id))}')"` : ''}><div class="quoted-name">${escHtml(qLabel)}</div><div class="quoted-text">${escHtml(qPreview)}</div></div>`;
+}
+function _htmlPendente(texto, grp, reply) {
   return `<div class="msg outbound${grp ? ' grp' : ''}" style="position:relative" data-key="${_chavePend(texto)}" data-raw-text="${escHtml(texto)}">`
+    + _htmlCitacao(reply)
     + `<span class="msg-text">${waFormat(texto)}</span>`
     + `<div class="time">${_brtTime(Date.now())}<span class="msg-ticks pending" title="Enviando…">${TICK_CLOCK}</span></div></div>`;
 }
-function appendPendingBubble(text) {
+function appendPendingBubble(text, reply) {
   const area = document.getElementById('messages-area');
   if (!area) return null;
   // IDÊNTICO ao balão definitivo: mesmo agrupamento (grp), mesma formatação de
@@ -8952,7 +8962,7 @@ function appendPendingBubble(text) {
   const _ult = area.lastElementChild;
   const _grpP = !!(_ult && _ult.classList && _ult.classList.contains('msg') && _ult.classList.contains('outbound'));
   const molde = document.createElement('div');
-  const _htm = _htmlPendente(text, _grpP);
+  const _htm = _htmlPendente(text, _grpP, reply);
   molde.innerHTML = _htm;
   const el = molde.firstElementChild;
   if (!el) return null;
@@ -9194,9 +9204,9 @@ async function sendMessage() {
   try { requestAnimationFrame(() => { if (window._pinTopo) window._pinTopo(); setTimeout(() => window._pinTopo && window._pinTopo(), 120); }); } catch (_) {} // topo da tela nunca some
   // Sem delay: a bolha aparece imediatamente; o servidor confirma em seguida
   const reply = replyingTo; cancelReply();
-  _pendAdiciona(savedMessage, currentPhone); // a partir daqui, todo redesenho mostra ela
+  _pendAdiciona(savedMessage, currentPhone, reply); // a partir daqui, todo redesenho mostra ela (com a citação)
   _vigGuarda(savedMessage, currentPhone);    // e o vigia devolve na hora se ela sumir
-  const tempEl = appendPendingBubble(savedMessage);
+  const tempEl = appendPendingBubble(savedMessage, reply);
   // Enviou → o "digitando…" do cliente some na hora (não fica os 6s restantes)
   _paraDigitando();
   try {
@@ -16805,6 +16815,10 @@ function organizeBot(){ seedBotPositions(true); _markBotManual(); renderBotList(
 // Redesenha SOMENTE as linhas (usado durante o arraste de um nó, sem recriar os elementos)
 // A linha que está em destaque agora (uma só). Apagar = voltar à cor e sumir a barra.
 let _linhaDestaque = null;
+// O mouse está perto da barra desta linha (a caminho dos botões)?
+function _pertoDaBarra(d, x, y){
+  try { const r=d.barra.getBoundingClientRect(); return x>r.left-34 && x<r.right+34 && y>r.top-30 && y<r.bottom+30; } catch(_) { return false; }
+}
 function _linhaApaga(d){
   if(!d) return;
   clearTimeout(d.t); d.t=null;
@@ -16882,7 +16896,7 @@ function renderBotList(){
     const dx=Math.max(40,(tx-sx)/2);
     const h=document.createElementNS('http://www.w3.org/2000/svg','path');
     h.setAttribute('d',`M ${sx} ${sy} C ${sx+dx} ${sy}, ${tx-dx} ${ty}, ${tx} ${ty}`);
-    h.setAttribute('fill','none'); h.setAttribute('stroke','transparent'); h.setAttribute('stroke-width','24');
+    h.setAttribute('fill','none'); h.setAttribute('stroke','transparent'); h.setAttribute('stroke-width','16'); // era 24: linhas vizinhas se atropelavam
     h.style.pointerEvents='stroke'; h.style.cursor='pointer';
     svg.appendChild(h);
     return h;
@@ -16989,10 +17003,16 @@ function renderBotList(){
         // (antes cada linha tinha o seu próprio relógio e várias ficavam verdes)
         barra.classList.add('bot-linha-barra');
         const d={ traco, hit, barra, cor: traco ? traco.getAttribute('stroke') : '#94a3b8', fail: isFail, t: null };
-        const _mostra=()=>{ if(_linhaDestaque && _linhaDestaque!==d) _linhaApaga(_linhaDestaque);
+        const _mostra=(ev)=>{
+          // Outra linha já está acesa e o mouse está a caminho dos botões DELA
+          // (perto da barra)? Esta não rouba a vez — era o que acontecia quando
+          // as linhas passam coladas: no caminho até o botão o mouse cruzava a
+          // vizinha e a barra certa sumia.
+          if(_linhaDestaque && _linhaDestaque!==d && ev && _pertoDaBarra(_linhaDestaque, ev.clientX, ev.clientY)) return;
+          if(_linhaDestaque && _linhaDestaque!==d) _linhaApaga(_linhaDestaque);
           clearTimeout(d.t); d.t=null; _linhaDestaque=d;
           barra.style.opacity='1'; barra.style.pointerEvents='auto';
-          if(traco){ traco.setAttribute('stroke-width','3.5'); traco.setAttribute('stroke', isFail?'#ef4444':'#00a884'); try{ svg.appendChild(traco); }catch(_){} } };
+          if(traco){ traco.setAttribute('stroke-width','3.5'); traco.setAttribute('stroke', isFail?'#ef4444':'#00a884'); try{ svg.appendChild(traco); svg.appendChild(hit); }catch(_){} } }; // a faixa desta linha vai para cima: onde cruza com outra, esta ganha
         // Sair da linha NÃO apaga na hora: dá meio segundo para chegar nos botões
         const _some=()=>{ clearTimeout(d.t); d.t=setTimeout(()=>_linhaApaga(d),520); };
         hit.addEventListener('mouseenter',_mostra); hit.addEventListener('mouseleave',_some);
@@ -17162,8 +17182,7 @@ function setupBotCanvasPanZoom(){
     const t=e.target;
     if(t && t.closest && (t.closest('#bot-edges-svg') || t.closest('.bot-linha-barra'))) return;
     // Perto da barra (a caminho dos botões)? Continua acesa.
-    try { const r=_linhaDestaque.barra.getBoundingClientRect();
-      if(e.clientX>r.left-34 && e.clientX<r.right+34 && e.clientY>r.top-30 && e.clientY<r.bottom+30){ clearTimeout(_linhaDestaque.t); _linhaDestaque.t=null; return; } } catch(_){}
+    if(_pertoDaBarra(_linhaDestaque, e.clientX, e.clientY)){ clearTimeout(_linhaDestaque.t); _linhaDestaque.t=null; return; }
     if(!_linhaDestaque.t) _linhaDestaque.t=setTimeout(()=>_linhaApaga(_linhaDestaque),520);
   });
   wrap.addEventListener('mouseleave',()=>_linhaApaga(_linhaDestaque));
