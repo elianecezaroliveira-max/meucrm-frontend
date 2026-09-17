@@ -2137,7 +2137,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v426</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v428</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2932,7 +2932,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v426</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v428</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -2996,7 +2996,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 426;
+const APP_VER = 428;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -16839,21 +16839,33 @@ function _redrawBotEdges(){
     slots.forEach((slot,i)=>{
       const elN=document.querySelector('#bot-nodes-layer [data-node-id="'+node.id+'"]');
       const wN=elN?elN.offsetWidth:_bnW(node.id), hN=elN?elN.offsetHeight:_bnH(node.id);
-      const sx=node.pos_x+wN; let sy=node.pos_y+hN/2+(i-(n-1)/2)*BOT_SP;
+      const sx=node.pos_x+wN; let sy=node.pos_y+BOT_NH/2+(i-(n-1)/2)*BOT_SP; // igual ao desenho normal (era hN/2: as linhas pulavam ao começar a arrastar)
       const anc=elN?Array.from(elN.querySelectorAll('.bot-slot-anchor')).find(a=>a.dataset.slot===slot.label):null;
       if(anc) sy=node.pos_y+_ancMeio(anc, elN);
       const isFail=slot.label==='__failed__';
       const edge=botChildEdge(node.id, slot.label); const to=edge?byId(edge.to_node_id):null;
       if(to && _botColapsados.has(node.id+'::'+_botNrmLbl(slot.label))) mk(sx,sy,sx+BOT_HG,sy, isFail?'#ef4444':'#00a884', true); // recolhido: só o toquinho
       else if(to && _oc.has(to.id)) mk(sx,sy,sx+BOT_HG,sy, '#94a3b8', true); // destino escondido por outro caminho
-      else if(to && to.pos_x!=null) mk(sx,sy,to.pos_x,to.pos_y+Math.min(_bnH(to.id)/2,BOT_NH/2+10), isFail?'#ef4444':'#94a3b8', isFail);
+      else if(to && to.pos_x!=null) mk(sx,sy,to.pos_x,to.pos_y+BOT_NH/2, isFail?'#ef4444':'#94a3b8', isFail); // chegada igual ao desenho normal
       else mk(sx,sy,sx+BOT_HG,sy, isFail?'#ef4444':'#274d3d', true);
     });
   });
 }
 
 // Render do fluxo usando POSIÇÕES LIVRES (arrastáveis). "Organizar" gera o organograma.
+// REDE DE SEGURANÇA: o quadro NUNCA pode ficar em branco. Se o desenho falhar
+// por qualquer motivo, mostra tudo (sem caminhos recolhidos) e avisa.
+let _renderBotAvisou = false;
 function renderBotList(){
+  try { _renderBotListInterno(); }
+  catch (e) {
+    console.error('Desenho do fluxo falhou:', e);
+    try { _botColapsados.clear(); _salvaColapsados(); } catch (_) {}
+    try { _renderBotListInterno(); } catch (e2) { console.error('Desenho do fluxo falhou de novo:', e2); }
+    if (!_renderBotAvisou) { _renderBotAvisou = true; try { _showErrToast('O desenho do fluxo falhou (' + (e && e.message) + '). Mostrei tudo sem caminhos recolhidos.'); } catch (_) {} }
+  }
+}
+function _renderBotListInterno(){
   // Durante a edição DENTRO do nó, não re-desenha o quadro (destruiria o
   // formulário no meio da digitação). Com AUTORRECUPERAÇÃO: se o estado de
   // edição ficou "órfão" (ex.: saiu e voltou do editor), recolhe e segue.
@@ -17070,7 +17082,11 @@ function renderBotList(){
 function _ancMeio(anc, cardEl){
   try {
     const a = anc.getBoundingClientRect(), c = cardEl.getBoundingClientRect();
-    return (a.top - c.top + a.height/2) / (botZoom || 1);
+    // a escala REAL do desenho (largura na tela ÷ largura de layout), não a
+    // variável botZoom: quando as duas divergiam, as bolinhas de todas as
+    // saídas se amontoavam no topo do cartão
+    const esc = (c.width && cardEl.offsetWidth) ? (c.width / cardEl.offsetWidth) : (botZoom || 1);
+    return (a.top - c.top + a.height/2) / (esc || 1);
   } catch (_) { return anc.offsetTop + anc.offsetHeight/2; }
 }
 function _nodeSaidasNoCartao(node){
@@ -17285,6 +17301,8 @@ function _botOcultos() {
     });
   }
   botNodes.forEach(n => { if (!vis.has(n.id)) ocultos.add(n.id); });
+  // Garantia: o Início nunca some, e o quadro nunca fica vazio
+  if (botNodes.some(n => n.type === 'start' && ocultos.has(n.id)) || (botNodes.length && ocultos.size >= botNodes.length)) return new Set();
   return ocultos;
 }
 // O Início chega neste passo por algum caminho SEM saída recolhida?
@@ -18118,6 +18136,7 @@ function alternarRamoDaLigacao(edgeId){
 function deleteNode(id) {
   botNodes = botNodes.filter(n=>n.id!==id);
   botEdges = botEdges.filter(e=>e.from_node_id!==id && e.to_node_id!==id);
+  try { [..._botColapsados].forEach(k => { if (k.startsWith(id + '::')) _botColapsados.delete(k); }); _salvaColapsados(); } catch (_) {}
   if (selectedNodeId===id) { selectedNodeId=null; showConfigPlaceholder(); }
   renderBotList();
 }
