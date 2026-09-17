@@ -2081,7 +2081,7 @@ window.addEventListener('load', initAuth);
     </div>
     <div class="lead-form-group">
       <label>Celular * <span style="color:#667781;font-size:11px">(com DDD e código do país, ex: 5511999999999)</span></label>
-      <input type="tel" id="lead-phone" placeholder="5511999999999" />
+      <input type="tel" id="lead-phone" placeholder="(11) 99999-9999 — com ou sem o 55" />
     </div>
     <div class="lead-form-group">
       <label>Vincular à conta WhatsApp (opcional)</label>
@@ -2152,7 +2152,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v439</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v442</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2951,7 +2951,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v439</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v442</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3015,7 +3015,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 439;
+const APP_VER = 442;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -10669,11 +10669,18 @@ function _escolheBotAtalho(id, nome) {
 
 // Troca {nome}, {telefone} e {notas} pelos dados do lead (igual aos bots)
 function _qrVars(txt) {
-  const c = (allContacts || []).find(x => x.phone === currentPhone) || {};
+  // O lead pode estar na lista com o número numa variante (com/sem o nono
+  // dígito, com/sem o 55) ou só nos resultados da busca — procura em todos e,
+  // no fim, usa o nome que está no cabeçalho da conversa
+  const dig = String(currentPhone || '').replace(/\D/g, '');
+  const mesmo = x => { const d = String(x.phone || '').replace(/\D/g, ''); return d === dig || d.endsWith(dig) || dig.endsWith(d); };
+  const c = (allContacts || []).find(x => x.phone === currentPhone) || (allContacts || []).find(mesmo) || (searchResults || []).find(mesmo) || {};
+  const ehNome = v => !!v && String(v).replace(/\D/g, '') !== String(v).trim(); // "5511999…" não é nome
+  const nome = ehNome(c.name) ? c.name : (ehNome(currentName) ? currentName : ''); // lista → cabeçalho da conversa → nada
   let notas = '';
   try { if (window._lpPhone === currentPhone) notas = document.getElementById('notes-textarea')?.value || ''; } catch (_) {}
   return String(txt || '')
-    .replace(/\{nome\}/gi, c.name || '')
+    .replace(/\{nome\}/gi, nome)
     .replace(/\{telefone\}/gi, (typeof fmtPhoneBR === 'function' ? fmtPhoneBR(currentPhone) : (currentPhone || '')))
     .replace(/\{notas?\}/gi, notas);
 }
@@ -16955,11 +16962,13 @@ function botChildEdge(nodeId, label){
   ));
 }
 
-function computeBotLayout(){
+function computeBotLayout(ignorar){
   const pos={}, adds=[], loops=[]; let cursorY=0;
+  ignorar = ignorar || new Set(); // nós escondidos (ramos recolhidos): não entram no arranjo
+  const LINHA = BOT_SP; // saída sem nó (botão "+", volta ou ramo recolhido) ocupa uma linha curta — não uma linha de cartão inteiro
   function place(id, x, visited){
     const node=botNodes.find(n=>n.id===id);
-    if(!node) return null;
+    if(!node || ignorar.has(id)) return null;
     const w=_bnW(id), h=_bnH(id); // tamanho REAL do nó (mensagens são grandes)
     const yMin=cursorY;
     const slots=botOutSlots(node);
@@ -16967,10 +16976,14 @@ function computeBotLayout(){
     const centers=[];
     slots.forEach(slot=>{
       const edge=botChildEdge(id, slot.label);
-      if(edge && v2.has(edge.to_node_id)){
-        const y=cursorY; cursorY+=BOT_NH+BOT_VG;
+      if(edge && (ignorar.has(edge.to_node_id) || _botColapsados.has(id+'::'+_botNrmLbl(slot.label)))){
+        // ramo recolhido: só o toquinho da linha — reserva uma linha curta
+        const y=cursorY; cursorY+=LINHA;
+        centers.push(y+LINHA/2);
+      } else if(edge && v2.has(edge.to_node_id)){
+        const y=cursorY; cursorY+=LINHA;
         loops.push({x:x+w+BOT_HG, y, fromId:id, label:slot.label, display:slot.display});
-        centers.push(y+BOT_NH/2);
+        centers.push(y+LINHA/2);
       } else if(edge && pos[edge.to_node_id]){
         // Nó COMPARTILHADO (várias saídas/caminhos chegam nele): já foi colocado
         // pelo primeiro caminho — não coloca de novo (antes ele era "arrastado"
@@ -16984,9 +16997,9 @@ function computeBotLayout(){
         const c=place(edge.to_node_id, x+w+BOT_HG, v2);
         if(c!=null) centers.push(c);
       } else {
-        const y=cursorY; cursorY+=BOT_NH+BOT_VG;
+        const y=cursorY; cursorY+=LINHA;
         adds.push({x:x+w+BOT_HG, y, fromId:id, label:slot.label, display:slot.display});
-        centers.push(y+BOT_NH/2);
+        centers.push(y+LINHA/2);
       }
     });
     let y;
@@ -17078,19 +17091,79 @@ function _markBotManual(){ const s=botNodes.find(n=>n.type==='start'); if(s){ s.
 
 // Calcula posições automáticas (organograma) e grava em pos_x/pos_y de cada nó.
 // force=true sobrescreve tudo; senão só preenche os que estão sem posição.
-function seedBotPositions(force){
-  const {pos}=computeBotLayout();
+function seedBotPositions(force, soVisiveis){
+  // Organizar arruma o que está À VISTA: nó escondido (ramo recolhido) não entra
+  // na conta — fica "dobrado" atrás do pai e é encaixado quando você o mostrar
+  const oc = soVisiveis ? _botOcultos() : new Set();
+  const {pos}=computeBotLayout(oc);
   let maxY=0; Object.values(pos).forEach(p=>{ maxY=Math.max(maxY,p.y+_bnH(p.node.id)); });
   botNodes.forEach(n=>{
-    if(pos[n.id] && (force || n.pos_x==null || n.pos_y==null)){ n.pos_x=Math.round(pos[n.id].x); n.pos_y=Math.round(pos[n.id].y); }
+    if(pos[n.id] && (force || n.pos_x==null || n.pos_y==null)){ n.pos_x=Math.round(pos[n.id].x); n.pos_y=Math.round(pos[n.id].y); _botDobra(n,false); }
   });
+  if(oc.size){
+    // escondidos: atrás do pai visível mais próximo (marcados para encaixe ao reaparecer)
+    const paiDe = id => { const e = botEdges.find(x => x.to_node_id === id); return e ? botNodes.find(n => n.id === e.from_node_id) : null; };
+    botNodes.forEach(n=>{ if(!oc.has(n.id)) return;
+      let p = paiDe(n.id), k = 0; while(p && oc.has(p.id) && k++ < 50) p = paiDe(p.id);
+      if(p && p.pos_x!=null){ n.pos_x = p.pos_x + _bnW(p.id) + BOT_HG; n.pos_y = p.pos_y; _botDobra(n,true); }
+    });
+  }
   // Nós órfãos (não alcançáveis a partir do início) ganham um lugar embaixo
   let oy=maxY+40;
-  botNodes.forEach(n=>{ if(!pos[n.id] && (force || n.pos_x==null || n.pos_y==null)){ n.pos_x=0; n.pos_y=oy; oy+=_bnH(n.id)+BOT_VG; } });
+  botNodes.forEach(n=>{ if(!pos[n.id] && !oc.has(n.id) && (force || n.pos_x==null || n.pos_y==null)){ n.pos_x=0; n.pos_y=oy; oy+=_bnH(n.id)+BOT_VG; } });
+}
+// "Dobrado" = escondido na hora do Organizar (fica na config para sobreviver ao salvar/recarregar)
+function _botDobra(n, sim){ if(!n) return; n.config=n.config||{}; if(sim) n.config._dobrado=true; else delete n.config._dobrado; }
+function _botDobrado(n){ return !!(n && n.config && n.config._dobrado); }
+// Altura (relativa ao topo do cartão) de onde sai a linha de uma saída — a mesma conta do desenho
+function _botSaidaY(pai, portLabel){
+  const slots=botOutSlots(pai), i=Math.max(0, slots.findIndex(s=>s.label===(portLabel||'')));
+  const elN=document.querySelector('#bot-nodes-layer [data-node-id="'+pai.id+'"]');
+  const anc=elN?Array.from(elN.querySelectorAll('.bot-slot-anchor')).find(a=>a.dataset.slot===(portLabel||'')):null;
+  return anc ? _ancMeio(anc, elN) : (BOT_NH/2+(i-(slots.length-1)/2)*BOT_SP);
+}
+// Encaixa UM nó ao lado do pai (na altura da saída), sem mexer no resto e sem
+// tirar o zoom: desce até não encostar em nenhum cartão visível
+function _botEncaixaNo(node, fromNodeId, portLabel){
+  const pai=botNodes.find(n=>n.id===fromNodeId);
+  if(!pai || pai.pos_x==null){ seedBotPositions(false); return; }
+  const oc=_botOcultos();
+  let x=pai.pos_x+_bnW(pai.id)+BOT_HG;
+  let y=pai.pos_y+_botSaidaY(pai, portLabel)-BOT_NH/2;
+  if(y<0) y=0;
+  const nw=_bnW(node.id), nh=_bnH(node.id), F=14;
+  const bate=(x,y)=>botNodes.some(o=>o!==node && o.pos_x!=null && !oc.has(o.id) && !(x+nw+F<=o.pos_x || o.pos_x+_bnW(o.id)+F<=x || y+nh+F<=o.pos_y || o.pos_y+_bnH(o.id)+F<=y));
+  let tent=0; while(bate(x,y) && tent<80){ y+=BOT_SP; tent++; }
+  node.pos_x=Math.round(x); node.pos_y=Math.round(y); _botDobra(node,false);
+}
+// Nós que estavam dobrados (escondidos na hora do Organizar) e reapareceram:
+// cada um é encaixado ao lado do seu pai, na ordem do caminho
+function _botEncaixaDobrados(){
+  const oc=_botOcultos();
+  let guarda=0;
+  while(guarda++<200){
+    const n=botNodes.find(x=>_botDobrado(x) && !oc.has(x.id) && botEdges.some(e=>e.to_node_id===x.id && !_botDobrado(botNodes.find(p=>p.id===e.from_node_id))));
+    if(!n) break;
+    const e=botEdges.find(x=>x.to_node_id===n.id && !_botDobrado(botNodes.find(p=>p.id===x.from_node_id)));
+    _botEncaixaNo(n, e.from_node_id, e.label||'');
+  }
+}
+// Garante que o nó apareça na tela: só desloca o quadro (pan), NUNCA mexe no zoom
+function _botGaranteVisivel(node){
+  try{
+    const wrap=document.getElementById('bot-canvas-wrap'); if(!wrap || node.pos_x==null) return;
+    const W=wrap.clientWidth, H=wrap.clientHeight, m=30;
+    const x1=botPanX+node.pos_x*botZoom, y1=botPanY+node.pos_y*botZoom;
+    const x2=x1+_bnW(node.id)*botZoom, y2=y1+_bnH(node.id)*botZoom;
+    let dx=0, dy=0;
+    if(x2>W-m) dx=W-m-x2; if(x1+dx<m) dx=m-x1;
+    if(y2>H-m) dy=H-m-y2; if(y1+dy<m) dy=m-y1;
+    if(dx||dy){ botPanX+=dx; botPanY+=dy; applyBotTransform(); }
+  }catch(_){}
 }
 
 // Botão "Organizar": reorganiza tudo no formato de organograma e enquadra
-function organizeBot(){ seedBotPositions(true); _markBotManual(); renderBotList(); seedBotPositions(true); renderBotList(); setTimeout(botZoomFit, 20); }
+function organizeBot(){ seedBotPositions(true, true); _markBotManual(); renderBotList(); seedBotPositions(true, true); renderBotList(); setTimeout(botZoomFit, 20); }
 
 // Redesenha SOMENTE as linhas (usado durante o arraste de um nó, sem recriar os elementos)
 // A linha que está em destaque agora (uma só). Apagar = voltar à cor e sumir a barra.
@@ -17618,7 +17691,7 @@ function botRevelaNo(id) {
   });
   if (!tira.length) { _botColapsados.clear(); }
   else tira.forEach(k => _botColapsados.delete(k));
-  _salvaColapsados(); renderBotList();
+  _salvaColapsados(); _botEncaixaDobrados(); renderBotList();
 }
 function _botQtdRamo(nodeId, label) { // quantos nós este ramo está escondendo
   const k = nodeId + '::' + _botNrmLbl(label);
@@ -17639,6 +17712,7 @@ function botToggleRamo(nodeId, label) {
     try { const guarda = new Set(_botColapsados); _botColapsados = new Set([k]); const seq = _botAlcanceRecolhido(); _botColapsados = guarda; seq.forEach(id => _botSoltosVisiveis.delete(id)); } catch (_) {}
   }
   _salvaColapsados();
+  _botEncaixaDobrados(); // o que estava dobrado desde o Organizar entra ao lado do pai
   renderBotList();
 }
 // ── O que está recolhido fica assim quando você volta ──
@@ -18387,10 +18461,11 @@ function addStep(fromNodeId, portLabel, type){
   botNodes.push(node);
   botEdges = botEdges.filter(e=>!(e.from_node_id===fromNodeId && e.label===(portLabel||'')));
   botEdges.push({ id:_botGenId(), bot_id:botEditorId, from_node_id:fromNodeId, to_node_id:node.id, label:portLabel||'' });
-  // O nó já NASCE organizado: mesmo arranjo do botão Organizar (2 passadas para medir os tamanhos)
-  seedBotPositions(true); _markBotManual(); renderBotList();
-  seedBotPositions(true); renderBotList();
-  setTimeout(botZoomFit, 20);
+  // O nó nasce AO LADO do pai, na altura da saída — sem rearrumar o resto e
+  // SEM mexer no zoom (antes reorganizava tudo e tirava o zoom a cada nó novo)
+  _botEncaixaNo(node, fromNodeId, portLabel||''); _markBotManual(); renderBotList();
+  _botEncaixaNo(node, fromNodeId, portLabel||''); renderBotList(); // 2ª passada: com o tamanho real do cartão
+  _botGaranteVisivel(node);
   selectNode(node.id);
 }
 
@@ -18403,9 +18478,17 @@ function inserirPassoNaLigacao(edgeId, type){
   const destino = e.to_node_id;
   e.to_node_id = node.id; // A → novo
   botEdges.push({ id:_botGenId(), bot_id:botEditorId, from_node_id:node.id, to_node_id:destino, label:'' }); // novo → B
-  seedBotPositions(true); _markBotManual(); renderBotList();
-  seedBotPositions(true); renderBotList();
-  setTimeout(botZoomFit, 20);
+  // Abre espaço: tudo a partir de B anda para a direita o tamanho de um cartão; o novo entra no vão
+  try {
+    const A=botNodes.find(n=>n.id===e.from_node_id), B=botNodes.find(n=>n.id===destino);
+    if(A && B && A.pos_x!=null && B.pos_x!=null){
+      const precisa=(A.pos_x+_bnW(A.id)+BOT_HG+BOT_NW+BOT_HG)-B.pos_x;
+      if(precisa>0){ const seen=new Set([node.id]); const fila=[destino]; while(fila.length){ const id=fila.shift(); if(seen.has(id)) continue; seen.add(id); const nn=botNodes.find(n=>n.id===id); if(nn && nn.pos_x!=null) nn.pos_x+=precisa; botEdges.filter(x=>x.from_node_id===id).forEach(x=>fila.push(x.to_node_id)); } }
+    }
+  } catch(_){}
+  _botEncaixaNo(node, e.from_node_id, e.label||''); _markBotManual(); renderBotList();
+  _botEncaixaNo(node, e.from_node_id, e.label||''); renderBotList();
+  _botGaranteVisivel(node);
   selectNode(node.id);
 }
 // Menu "adicionar" que aparece ao passar o mouse na linha
@@ -19175,13 +19258,18 @@ async function _disparaBotPendente() {
       const _nm = (allContacts.find(c => c.phone === currentPhone) || {});
       const _numero = (document.querySelector('#account-select option:checked') || {}).textContent || '';
       _toast(b.name + ' disparado' + (_numero ? ' pelo número ' + _numero.trim() : '') + '!'); checkActiveBotRun(currentPhone);
-      // VOCÊ respondeu (com um bot): a conversa fica lida, igual a quando você
-      // manda uma mensagem. (Bot que responde sozinho continua sem marcar.)
-      try { markAsRead(currentPhone, true); _saiDivisoria(); } catch (_) {}
       // O servidor responde na hora e envia em seguida: recarrega a conversa em
-      // pulsos curtos para a primeira mensagem do bot aparecer sem esperar o polling
-      const ph = currentPhone;
-      [400, 1000, 1800, 2800].forEach(ms => setTimeout(() => { if (currentPhone === ph) loadMessages(ph, false).catch(() => {}); }, ms));
+      // pulsos curtos para a primeira mensagem do bot aparecer sem esperar o polling.
+      // A conversa só fica "lida" quando o bot ENVIA algo de fato (igual a você
+      // mandar uma mensagem) — disparar um bot que não manda nada não marca.
+      const ph = currentPhone, t0 = Date.now(); let _marcou = false;
+      [400, 1000, 1800, 2800, 4500].forEach(ms => setTimeout(async () => {
+        if (currentPhone !== ph) return;
+        try { await loadMessages(ph, false); } catch (_) {}
+        if (!_marcou && currentPhone === ph && (currentMessages || []).some(m => m.direction === 'outbound' && (parseUTC(m.timestamp) || 0) >= t0 - 8000)) {
+          _marcou = true; try { markAsRead(ph, true); _saiDivisoria(); } catch (_) {}
+        }
+      }, ms));
     }
     else alert('Erro ao iniciar bot: '+(d.error||''));
   } catch(e) { alert('Erro ao iniciar bot'); }
