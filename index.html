@@ -2153,7 +2153,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v449</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v452</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2678,6 +2678,12 @@ window.addEventListener('load', initAuth);
       <div id="auto-drip-list" style="margin-top:8px"></div>
     </div>
     <div id="auto-board" style="flex:1;overflow:auto;display:flex;gap:10px;padding:14px;align-items:flex-start"></div>
+    <!-- Nada nas "Regras por etapa" vale antes de você confirmar: a barra aparece ao mexer -->
+    <div id="auto-save-bar" style="display:none;align-items:center;gap:10px;padding:10px 18px;background:#fff;border-top:1px solid #e9edef">
+      <span style="flex:1;font-size:13px;color:#b45309"><b>Alterações não salvas</b> — nada vale ainda. Confira e clique em Salvar.</span>
+      <button class="btn-cancel" onclick="autoDescartar()">Descartar</button>
+      <button class="btn-save" id="auto-save-btn" onclick="autoSalvarTudo()">Salvar</button>
+    </div>
   </div>
 </div>
 
@@ -2952,7 +2958,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v449</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v452</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3016,7 +3022,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 449;
+const APP_VER = 452;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -14330,7 +14336,8 @@ async function loadPipeline() {
       const ac = (Array.isArray(allContacts) ? allContacts : []).find(c => c.phone === pc.phone);
       if (ac) pc.tags = ac.tags;
     });
-    renderKanban();
+    _pipeEstadoRestaura(); // o app recarregou no meio? ticados e filtro voltam
+    renderKanban(); // respeita o filtro que está marcado (antes voltava a lista inteira com o filtro ainda marcado)
   } catch(e) {
     console.error('Erro ao carregar pipeline:', e);
     // Mostra o ERRO REAL na tela (em vez de deixar o quadro vazio sem explicação)
@@ -14370,6 +14377,7 @@ async function openAutomationPanel() {
     _autoBots = Array.isArray(bt) ? bt : [];
     _stageActions = (sa && sa.value && typeof sa.value === 'object') ? sa.value : {};
     _stageActionsCarregado = true; // agora é seguro gravar por cima
+    _autoPendZera(); // tudo o que está na tela é o que está no servidor
     renderAutomationBoard();
     dripCarregar();
   } catch (e) {
@@ -14616,22 +14624,71 @@ function dripConfirmar(i) {
   if (i >= 0) dripSalvarRegra(i, { nome: r.nome, de: r.de, para: r.para, min_seg: r.min_seg, max_seg: r.max_seg, numeros: r.numeros, hora_ini: r.hora_ini, hora_fim: r.hora_fim, dias: r.dias, avisar_fim: r.avisar_fim });
   else dripCriarRegra(r); // regra NOVA entra sozinha, sem reenviar a lista
 }
-async function _saveStageActions() {
+// ── SALVAR com confirmação: mexer nas "Regras por etapa" (regras, bots por
+// etapa, ordem das colunas) só muda a tela; o servidor recebe tudo junto no
+// botão Salvar. Descartar volta ao que está no servidor.
+let _autoPend = { sujo: false, bots: {}, ordem: false };
+let _autoOrdemOrig = {};
+function _autoPendZera() {
+  _autoPend = { sujo: false, bots: {}, ordem: false };
+  _autoOrdemOrig = {}; (pipelineStages || []).forEach(s => { _autoOrdemOrig[s.id] = s.position; });
+  _autoBarra();
+}
+function _autoMarcaSujo() { _autoPend.sujo = true; _autoBarra(); }
+function _autoBarra() { try { const b = document.getElementById('auto-save-bar'); if (b) b.style.display = _autoPend.sujo ? 'flex' : 'none'; } catch (_) {} }
+async function _saveStageActions() { _autoMarcaSujo(); } // nada vai ao servidor aqui — só no Salvar
+async function autoSalvarTudo() {
+  if (!_autoPend.sujo) return;
+  const btn = document.getElementById('auto-save-btn'); if (btn) { btn.disabled = true; btn.textContent = 'Salvando…'; }
+  let falhou = false;
+  try {
+    const ok = await _autoGravaStageActions();
+    if (ok === false) falhou = true;
+    for (const id of Object.keys(_autoPend.bots)) {
+      try {
+        const r = await fetch(SERVER_URL + '/bots/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(_autoPend.bots[id]) });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok || d.error) falhou = true;
+      } catch (_) { falhou = true; }
+    }
+    if (_autoPend.ordem) {
+      const upd = (pipelineStages || []).filter(s => _autoOrdemOrig[s.id] !== s.position);
+      try { await Promise.all(upd.map(s => fetch(SERVER_URL + '/pipeline/stages/' + s.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ position: s.position }) }))); }
+      catch (_) { falhou = true; }
+    }
+  } finally { if (btn) { btn.disabled = false; btn.textContent = 'Salvar'; } }
+  if (falhou) { showToast('Parte das automações não foi salva — tente de novo.', 'err'); return; }
+  _autoPendZera();
+  showToast('Automações salvas', 'ok');
+}
+async function autoDescartar() {
+  _autoPendZera();
+  await openAutomationPanel(); // recarrega do servidor: a tela volta ao que vale
+  showToast('Alterações descartadas', 'ok');
+}
+async function _autoGravaStageActions() {
   // TRAVA: só grava se as regras vieram do servidor nesta sessão
-  if (!_stageActionsCarregado) { showToast('As automações ainda não carregaram — recarregue a página antes de mexer.', 'err'); return; }
+  if (!_stageActionsCarregado) { showToast('As automações ainda não carregaram — recarregue a página antes de mexer.', 'err'); return false; }
   try {
     const r = await fetch(SERVER_URL + '/stage-actions', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ value: _stageActions }) });
     const d = await r.json().catch(() => ({}));
     if (r.status === 409 && d.vazio) {
       const ok = await vConfirm({ titulo: 'Isso apagaria tudo', texto: 'O servidor recusou porque as regras chegaram vazias e existem automações salvas. Confirme só se quiser mesmo apagar todas.', confirmar: 'Apagar todas', perigo: true });
-      if (!ok) { openAutomationPanel(); return; }
+      if (!ok) { openAutomationPanel(); return false; }
       await fetch(SERVER_URL + '/stage-actions?confirmar=1', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ value: _stageActions }) });
-      return;
+      return true;
     }
-    if (!r.ok || d.error) showToast('Não consegui salvar as automações: ' + (d.error || r.status), 'err');
-  } catch (_) { showToast('Sem conexão — as automações não foram salvas.', 'err'); }
+    if (!r.ok || d.error) { showToast('Não consegui salvar as automações: ' + (d.error || r.status), 'err'); return false; }
+    return true;
+  } catch (_) { showToast('Sem conexão — as automações não foram salvas.', 'err'); return false; }
 }
-function closeAutomationPanel() {
+async function closeAutomationPanel() {
+  if (_autoPend.sujo) { // igual ao editor de bot: pergunta antes de sair com mudança pendente
+    const esc = await vEscolha({ titulo: 'Salvar as automações?', texto: 'Você mexeu nas regras por etapa e ainda não salvou.', opcoes: [{ v: 'salvar', t: 'Salvar e fechar', icone: '💾' }, { v: 'sair', t: 'Sair sem salvar', icone: '↩' }] });
+    if (esc === 'salvar') { await autoSalvarTudo(); if (_autoPend.sujo) return; }
+    else if (esc === 'sair') { _autoPendZera(); try { const [st, bt] = await Promise.all([fetch(SERVER_URL + '/pipeline/stages').then(r => r.json()), fetch(SERVER_URL + '/bots').then(r => r.json())]); if (Array.isArray(st)) pipelineStages = st; if (Array.isArray(bt)) _autoBots = bt; } catch (_) {} }
+    else return; // cancelou: continua no painel
+  }
   document.getElementById('auto-overlay').style.display = 'none';
   try { _telaAtual(document.getElementById('pipeline-page')?.style.display === 'flex' ? 'pipeline' : ''); } catch (_) {}
   try { renderKanban(); } catch (_) {} // reflete a nova ordem das colunas
@@ -14737,10 +14794,7 @@ async function _saveStageOrder() {
     if (s && s.position !== pos) { s.position = pos; updates.push({ id, pos }); }
   });
   if (!updates.length) return;
-  try {
-    await Promise.all(updates.map(u =>
-      fetch(SERVER_URL + '/pipeline/stages/' + u.id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ position: u.pos }) })));
-  } catch (_) { alert('Erro ao salvar a nova ordem das etapas.'); }
+  _autoPend.ordem = true; _autoMarcaSujo(); // vai ao servidor no Salvar
 }
 // Passo 1: escolhe a CATEGORIA; os detalhes só aparecem depois
 function autoPickCategory(sel, stageId) {
@@ -14857,7 +14911,7 @@ async function autoEditAction(stageId, idx) {
   if (!a.cond_tag) a.cond_negar = false;
   renderAutomationBoard();
   await _saveStageActions();
-  showToast('Regra atualizada', 'ok');
+  showToast('Regra alterada — clique em Salvar para valer', 'ok');
 }
 
 // ── Registro: o que a automação fez ──
@@ -14918,19 +14972,13 @@ async function autoLinkBot(botId, stageId) {
   const b = _autoBots.find(x => x.id === botId);
   if (b) { b.trigger_type = 'stage_enter'; b.trigger_stage_id = stageId; }
   renderAutomationBoard();
-  try {
-    const r = await fetch(SERVER_URL + '/bots/' + botId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ trigger_type: 'stage_enter', trigger_stage_id: stageId }) });
-    const d = await r.json();
-    if (d.error) alert('Erro ao vincular: ' + d.error);
-  } catch (_) { alert('Erro ao vincular o bot.'); }
+  _autoPend.bots[botId] = { trigger_type: 'stage_enter', trigger_stage_id: stageId }; _autoMarcaSujo(); // vai ao servidor no Salvar
 }
 async function autoUnlinkBot(botId) {
   const b = _autoBots.find(x => x.id === botId);
   if (b) { b.trigger_type = 'manual'; b.trigger_stage_id = null; }
   renderAutomationBoard();
-  try {
-    await fetch(SERVER_URL + '/bots/' + botId, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ trigger_type: 'manual', trigger_stage_id: null }) });
-  } catch (_) { alert('Erro ao desvincular o bot.'); }
+  _autoPend.bots[botId] = { trigger_type: 'manual', trigger_stage_id: null }; _autoMarcaSujo(); // vai ao servidor no Salvar
 }
 
 // ── Visões do Pipeline: Kanban ou Lista (a escolha fica salva) ──
@@ -14990,7 +15038,7 @@ function renderPipelineList(contacts) {
 }
 function togglePipelineListSel(phone, on) {
   if (on) selectedLeads.add(phone); else selectedLeads.delete(phone);
-  updateBulkBar();
+  updateBulkBar(); _pipeEstadoGuarda();
   const row = document.querySelector(`.plist-row[data-phone="${phone}"]`);
   if (row) row.classList.toggle('sel', on);
 }
@@ -15001,11 +15049,45 @@ function toggleAllPipelineList(on) {
     r.classList.toggle('sel', on);
     const cb = r.querySelector('input[type=checkbox]'); if (cb) cb.checked = on;
   });
-  updateBulkBar();
+  updateBulkBar(); _pipeEstadoGuarda();
 }
 
 function renderKanban() {
-  renderPipelineWith(pipelineContacts);
+  // Sempre pelo filtro: sem nada marcado ele devolve a lista inteira; com filtro
+  // marcado, o desenho obedece — nunca mais "filtro marcado e a tela mostrando tudo"
+  try { applyPipelineFilter(); } catch (_) { renderPipelineWith(pipelineContacts); }
+}
+// ── O que estava ticado e filtrado no Pipeline sobrevive ao celular matar o app
+// (guardado por 1 h): ao reabrir, volta igual — em vez de "não tem mais nada ticado"
+const _PIPE_ESTADO_IDS = ['pf-name', 'pf-stage', 'pf-account', 'pf-task', 'pf-date-from', 'pf-date-to'];
+function _pipeEstadoGuarda() {
+  try {
+    const filtros = {}; _PIPE_ESTADO_IDS.forEach(id => { const el = document.getElementById(id); if (el && el.value) filtros[id] = el.value; });
+    const tags = [...(activePipelineFilterTags || [])];
+    const sel = [...(selectedLeads || [])];
+    if (!sel.length && !tags.length && !Object.keys(filtros).length) { localStorage.removeItem(_uKey('vetra_pipe_estado')); return; }
+    localStorage.setItem(_uKey('vetra_pipe_estado'), JSON.stringify({ ts: Date.now(), filtros, tags, sel, view: pipelineView }));
+  } catch (_) {}
+}
+function _pipeEstadoRestaura() {
+  try {
+    if (window._pipeEstadoRestaurado) return; window._pipeEstadoRestaurado = true;
+    const g = JSON.parse(localStorage.getItem(_uKey('vetra_pipe_estado')) || 'null');
+    if (!g || Date.now() - (g.ts || 0) > 3600000) return;
+    // só quando NÃO há nada na memória (o app acabou de abrir); com estado vivo, ele manda
+    const temVivo = (selectedLeads && selectedLeads.size) || (activePipelineFilterTags && activePipelineFilterTags.size) || _PIPE_ESTADO_IDS.some(id => document.getElementById(id)?.value);
+    if (temVivo) return;
+    if (g.filtros && g.filtros['pf-stage']) { // as etapas só entram no seletor quando o painel abre: garante as opções
+      const stSel = document.getElementById('pf-stage');
+      if (stSel && !Array.from(stSel.options).some(o => o.value === g.filtros['pf-stage']))
+        stSel.innerHTML = '<option value="">Todas as etapas</option>' + (pipelineStages || []).map(st => `<option value="${st.id}">${escHtml(st.name)}</option>`).join('') + '<option value="__none__">Sem etapa</option>';
+    }
+    Object.keys(g.filtros || {}).forEach(id => { const el = document.getElementById(id); if (el) el.value = g.filtros[id]; });
+    (g.tags || []).forEach(t => activePipelineFilterTags.add(t));
+    (g.sel || []).forEach(p => selectedLeads.add(p));
+    if (Object.keys(g.filtros || {}).length || (g.tags || []).length) document.getElementById('pipeline-filter-btn')?.classList.add('active');
+    updateBulkBar();
+  } catch (_) {}
 }
 
 function renderKanbanWith(contacts) {
@@ -15405,6 +15487,7 @@ function selectAllInColumn(stageId) {
 }
 
 function updateBulkBar() {
+  try { _pipeEstadoGuarda(); } catch (_) {}
   // Contador "N selecionados" ao lado dos botões (aparece no MODO de seleção)
   const psc = document.getElementById('pipeline-sel-count');
   if (psc) {
@@ -15761,6 +15844,7 @@ function applyPipelineFilter() {
     return true;
   });
   renderPipelineWith(filtered);
+  _pipeEstadoGuarda();
 }
 
 function clearPipelineFilter() {
@@ -16882,6 +16966,16 @@ async function duplicateBot(id) {
     const res = await fetch(SERVER_URL+'/bots/'+id+'/duplicate', {method:'POST'});
     const d = await res.json();
     if (d.success && d.id) {
+      // A cópia abre IGUAL ao original: os ramos que você tinha recolhido (guardados
+      // neste aparelho por bot) vão junto, com os ids novos — antes a cópia abria com
+      // tudo aberto e um passo que estava escondido aparecia "solto"
+      try {
+        if (d.idMap) {
+          const v = JSON.parse(localStorage.getItem(_uKey('botColapso::' + id)) || '[]');
+          const novo = (Array.isArray(v) ? v : []).map(k => { const [nid, ...r] = String(k).split('::'); return d.idMap[nid] ? [d.idMap[nid], ...r].join('::') : null; }).filter(Boolean);
+          if (novo.length) localStorage.setItem(_uKey('botColapso::' + d.id), JSON.stringify(novo));
+        }
+      } catch (_) {}
       await openBotEditor(d.id); // abre a cópia já para editar
     } else {
       alert('Erro ao duplicar: '+(d.error||''));
@@ -18758,6 +18852,7 @@ function alternarRamoDaLigacao(edgeId){
   const e = botEdges.find(x => x.id === edgeId); if (!e) return;
   const k = e.from_node_id + '::' + _botNrmLbl(e.label);
   if (_botColapsados.has(k)) _botColapsados.delete(k); else _botColapsados.add(k);
+  _salvaColapsados(); // (recolher pela linha não guardava: ao reabrir o bot — ou na cópia — o ramo voltava aberto)
   renderBotList();
 }
 // Marca um passo (e o que vem dele) para continuar à vista quando ficar solto
