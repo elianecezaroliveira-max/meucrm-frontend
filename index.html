@@ -2160,7 +2160,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v454</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v456</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2965,7 +2965,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v454</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v456</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3029,7 +3029,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 454;
+const APP_VER = 456;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -9827,6 +9827,53 @@ function _insereEmoji(emoji) {
   _pintaEmojiRecentes();
   // Não fecha o picker automaticamente — usuário pode escolher mais
 }
+// ── Emoji em OUTROS campos (resposta rápida, mensagem do bot): um painel
+// leve que abre junto do botão e insere onde o cursor está
+function _emojiRecentes() {
+  let lista = []; try { lista = JSON.parse(localStorage.getItem('vetra_emoji_recent') || '[]') || []; } catch (_) {}
+  return lista.length ? lista : ['🙏', '👍', '😊', '❤️', '😂', '🙌', '✅', '😍', '🥰'];
+}
+function _emojiGuardaRecente(emoji) {
+  try {
+    let lista = JSON.parse(localStorage.getItem('vetra_emoji_recent') || '[]'); if (!Array.isArray(lista)) lista = [];
+    lista = [emoji].concat(lista.filter(x => x !== emoji)).slice(0, 18);
+    localStorage.setItem('vetra_emoji_recent', JSON.stringify(lista));
+  } catch (_) {}
+}
+function _insereEmojiEm(taId, emoji, depois) {
+  const ta = document.getElementById(taId); if (!ta || !emoji) return;
+  const s = ta.selectionStart != null ? ta.selectionStart : ta.value.length, en = ta.selectionEnd != null ? ta.selectionEnd : ta.value.length;
+  ta.value = ta.value.substring(0, s) + emoji + ta.value.substring(en);
+  ta.selectionStart = ta.selectionEnd = s + emoji.length;
+  ta.focus();
+  try { ta.dispatchEvent(new Event('input', { bubbles: true })); } catch (_) {} // quem escuta o campo (ex.: o passo do bot) fica sabendo
+  _emojiGuardaRecente(emoji);
+  try { if (typeof depois === 'function') depois(); } catch (_) {}
+  const mini = document.getElementById('emoji-mini'); if (mini) _emojiMiniPinta(mini, taId);
+}
+function _emojiMiniPinta(mini, taId) {
+  const rec = _emojiRecentes().slice(0, 9);
+  const bt = e => `<button type="button" onclick="_insereEmojiEm('${taId}','${_jsAttr(e)}')" style="background:none;border:none;font-size:21px;line-height:1;padding:4px;cursor:pointer;border-radius:6px">${escHtml(e)}</button>`;
+  mini.innerHTML = `<div style="font-size:11px;color:#667781;padding:2px 4px 4px">Recentes</div><div style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:6px;border-bottom:1px solid #e9edef;padding-bottom:6px">${rec.map(bt).join('')}</div>`
+    + `<div style="display:grid;grid-template-columns:repeat(8,1fr);gap:2px">${_EMOJI_RESERVA.map(bt).join('')}</div>`;
+}
+function abrirEmojiPara(taId, btn, ev) {
+  try { if (ev) ev.stopPropagation(); } catch (_) {}
+  let mini = document.getElementById('emoji-mini');
+  if (mini && mini.dataset.alvo === taId) { mini.remove(); return; } // segundo clique: fecha
+  if (mini) mini.remove();
+  mini = document.createElement('div'); mini.id = 'emoji-mini'; mini.dataset.alvo = taId;
+  mini.style.cssText = 'position:fixed;z-index:10000;width:300px;max-width:88vw;max-height:300px;overflow-y:auto;background:#fff;border:1px solid #e9edef;border-radius:12px;padding:8px;box-shadow:0 10px 30px rgba(0,0,0,.25)';
+  _emojiMiniPinta(mini, taId);
+  document.body.appendChild(mini);
+  try { // abre embaixo do botão (ou acima, se não couber)
+    const r = btn ? btn.getBoundingClientRect() : { left: 20, bottom: 20, top: 20 };
+    const h = Math.min(300, mini.offsetHeight || 300);
+    let top = r.bottom + 6; if (top + h > window.innerHeight - 8) top = Math.max(8, r.top - h - 6);
+    mini.style.top = top + 'px'; mini.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 316)) + 'px';
+  } catch (_) {}
+  setTimeout(() => document.addEventListener('click', function fecha(e) { const m = document.getElementById('emoji-mini'); if (!m) return document.removeEventListener('click', fecha); if (!m.contains(e.target) && e.target !== btn && !(btn && btn.contains(e.target))) { m.remove(); document.removeEventListener('click', fecha); } }), 0);
+}
 // Linha "Recentes" em baixo do seletor: os últimos emojis que você usou
 function _pintaEmojiRecentes() {
   const el = document.getElementById('emoji-recentes'); if (!el) return;
@@ -10608,7 +10655,7 @@ function openQRManager() {
   _telaAtual('respostas');
   document.getElementById('qr-modal').classList.add('open');
   renderQRManager();
-  _syncQuickReplies().then(() => { const m = document.getElementById('qr-modal'); if (m && m.classList.contains('open')) renderQRManager(); });
+  _syncQuickReplies().then(() => { const m = document.getElementById('qr-modal'); if (m && m.classList.contains('open') && !document.getElementById('qr-form')) renderQRManager(); }); // (com o formulário aberto, não apaga o que você está escrevendo)
 }
 
 function closeQRManager() {
@@ -10677,9 +10724,9 @@ function showQRForm(index) {
         <input id="qr-title" placeholder="ex: ola, preco, horario..." value="${r.title}" maxlength="30">
       </div>
       <div>
-        <label>Mensagem</label>
+        <label style="display:flex;align-items:center;gap:8px">Mensagem <button type="button" id="qr-emoji-btn" onclick="abrirEmojiPara('qr-message', this, event)" title="Inserir emoji" style="margin-left:auto;background:#fff;border:1px solid #e9edef;border-radius:8px;padding:3px 9px;font-size:14px;cursor:pointer;line-height:1">😊 Emoji</button></label>
         <textarea id="qr-message" placeholder="Olá, {nome}! Como posso ajudar?">${r.message}</textarea>
-        <div id="qr-var-hint">Use <span onclick="insertQRVar('{nome}')"><b>{nome}</b></span>, <span onclick="insertQRVar('{telefone}')"><b>{telefone}</b></span> ou <span onclick="insertQRVar('{notas}')"><b>{notas}</b></span> — o VETRA troca pelos dados do lead</div>
+        <div id="qr-var-hint">Use <span onclick="insertQRVar('{nome}')"><b>{nome}</b></span>, <span onclick="insertQRVar('{telefone}')"><b>{telefone}</b></span>, <span onclick="insertQRVar('{notas}')"><b>{notas}</b></span> ou <span onclick="insertQRData()"><b>{data+7}</b></span> — o VETRA troca pelos dados do lead; {data} é hoje e {data+7} é daqui a 7 dias (dd/mm)</div>
       </div>
       <div>
         <label>Foto ou arquivo (opcional)</label>
@@ -10739,6 +10786,14 @@ async function _qrSobeAnexo(input) {
 
 function editQR(index) { showQRForm(index); }
 
+// {data+N}: pergunta quantos dias (0 = hoje) e insere a variação pronta
+async function insertQRData() {
+  const v = await vPrompt({ titulo: 'Data na mensagem', rotulo: 'Quantos dias depois de hoje? (0 = hoje; pode ser negativo)', valor: '7' });
+  if (v === null) return;
+  const n = parseInt(String(v).trim(), 10);
+  if (isNaN(n)) { showToast('Digite um número de dias (ex.: 7)', 'err'); return; }
+  insertQRVar(n === 0 ? '{data}' : ('{data' + (n > 0 ? '+' : '') + n + '}'));
+}
 function insertQRVar(v) {
   const ta = document.getElementById('qr-message');
   if (!ta) return;
@@ -10915,7 +10970,15 @@ function _qrVars(txt) {
   return String(txt || '')
     .replace(/\{nome\}/gi, nome)
     .replace(/\{telefone\}/gi, (typeof fmtPhoneBR === 'function' ? fmtPhoneBR(currentPhone) : (currentPhone || '')))
-    .replace(/\{notas?\}/gi, notas);
+    .replace(/\{notas?\}/gi, notas)
+    .replace(/\{data\s*([+-]\s*\d+)?\s*\}/gi, (_, d) => _qrData(d)); // {data} = hoje, {data+7} = daqui a 7 dias, {data-1} = ontem
+}
+// Data no horário de Brasília, dd/mm — {data+7} em 17/09 dá 24/09
+function _qrData(desloc) {
+  const dias = parseInt(String(desloc || '0').replace(/\s+/g, ''), 10) || 0;
+  const d = new Date(Date.now() - _BRT_OFFSET + dias * 86400000);
+  const dd = String(d.getUTCDate()).padStart(2, '0'), mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  return dd + '/' + mm;
 }
 function insertQRReply(index) {
   const r = quickReplies[index];
@@ -19104,6 +19167,7 @@ function renderConfigPanel(node) {
           <button type="button" onclick="insertMsgVar('{nome}')" style="background:#e7f7ef;border:1px solid #00a884;color:#00a884;border-radius:6px;padding:3px 10px;font-size:12px;cursor:pointer">+ {nome}</button>
           <button type="button" onclick="insertMsgVar('{telefone}')" style="background:#e7f7ef;border:1px solid #00a884;color:#00a884;border-radius:6px;padding:3px 10px;font-size:12px;cursor:pointer">+ {telefone}</button>
           <button type="button" onclick="insertMsgVar('{notas}')" style="background:#e7f7ef;border:1px solid #00a884;color:#00a884;border-radius:6px;padding:3px 10px;font-size:12px;cursor:pointer">+ {notas}</button>
+          <button type="button" id="cfg-msg-emoji-btn" onclick="abrirEmojiPara('cfg-msg-text', this, event)" title="Inserir emoji" style="background:#fff;border:1px solid #e9edef;color:#131c20;border-radius:6px;padding:3px 10px;font-size:12px;cursor:pointer">😊 Emoji</button>
         </div>
         <!-- RESPOSTA RÁPIDA: escolhe uma das suas respostas e o texto entra na mensagem -->
         <select class="bot-cfg-select" id="cfg-msg-qr" style="margin-bottom:6px"><option value="">Usar uma resposta rápida…</option></select>
