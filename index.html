@@ -2160,7 +2160,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v453</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v454</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2965,7 +2965,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v453</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v454</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3029,7 +3029,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 453;
+const APP_VER = 454;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -10633,10 +10633,17 @@ function renderQRManager() {
     .sort((a, b) => (b.r.pinned ? 1 : 0) - (a.r.pinned ? 1 : 0));
   if (q) order = order.filter(({ r }) =>
     String(r.title || '').toLowerCase().includes(q) || String(r.message || '').toLowerCase().includes(q));
-  const busca = `<input id="qr-busca" placeholder="Buscar pelo atalho ou pelo texto…" value="${escHtml(window._qrBusca || '')}"
-      oninput="window._qrBusca=this.value;renderQRManager();document.getElementById('qr-busca')?.focus()"
-      style="width:100%;box-sizing:border-box;background:#fff;border:1px solid #e9edef;color:#131c20;padding:9px 12px;border-radius:8px;font-size:13px;font-family:inherit;outline:none;margin-bottom:10px">`;
-  body.innerHTML = busca + (order.length ? order.map(({ r, i }) => `
+  // A caixa de busca é montada UMA vez e fica; só a lista embaixo é redesenhada.
+  // Antes a caixa era recriada a cada letra e o cursor voltava para o começo —
+  // o texto saía de trás para a frente ("onrot" em vez de "torno").
+  let lista = document.getElementById('qr-lista');
+  if (!document.getElementById('qr-busca') || !lista) {
+    body.innerHTML = `<input id="qr-busca" placeholder="Buscar pelo atalho ou pelo texto…" value="${escHtml(window._qrBusca || '')}"
+      oninput="window._qrBusca=this.value;renderQRManager()"
+      style="width:100%;box-sizing:border-box;background:#fff;border:1px solid #e9edef;color:#131c20;padding:9px 12px;border-radius:8px;font-size:13px;font-family:inherit;outline:none;margin-bottom:10px"><div id="qr-lista"></div>`;
+    lista = document.getElementById('qr-lista');
+  }
+  lista.innerHTML = (order.length ? order.map(({ r, i }) => `
     <div class="qr-manage-item">
       <div class="qr-manage-info">
         <div class="qr-manage-name">${r.pinned ? '<i class=ic-pin></i> ' : ''}/${escHtml(r.title)}</div>
@@ -16301,7 +16308,7 @@ function renderTagManager(){
   const q = _tagNorm(window._tagBusca || '');
   const lista = _tagMgrList.map((t,i)=>({t,i})).filter(({t}) => !q || _tagNorm(t.name).includes(q));
   const busca = '<input id="tagmgr-busca" placeholder="Buscar etiqueta…" value="' + _faqEsc(window._tagBusca || '') + '"'
-    + ' oninput="window._tagBusca=this.value;renderTagManager();document.getElementById(\'tagmgr-busca\')?.focus()"'
+    + ' oninput="window._tagBusca=this.value;renderTagManager()"'
     + ' style="width:100%;box-sizing:border-box;background:#fff;border:1px solid #e9edef;color:#131c20;padding:9px 12px;border-radius:8px;font-size:13px;font-family:inherit;outline:none;margin-bottom:6px">';
   // Etiquetas parecidas (só diferem por acento/maiúscula/espaço) — oferece juntar
   const grupos = {};
@@ -16330,7 +16337,11 @@ function renderTagManager(){
       + '</div>'
       + '</div>';
   }).join('') : '<div style="color:#8696a0;font-size:13px;padding:14px 2px">Nenhuma etiqueta com esse texto.</div>';
-  el.innerHTML = busca + avisoRep + corpo;
+  // A caixa de busca fica; só o resto é redesenhado (recriar a caixa a cada letra
+  // devolvia o cursor ao começo e o texto saía de trás para a frente)
+  let resto = document.getElementById('tagmgr-resto');
+  if (!document.getElementById('tagmgr-busca') || !resto) { el.innerHTML = busca + '<div id="tagmgr-resto"></div>'; resto = document.getElementById('tagmgr-resto'); }
+  resto.innerHTML = avisoRep + corpo;
 }
 async function tagMgrCor(i, cor){
   const t = _tagMgrList[i]; if(!t) return;
