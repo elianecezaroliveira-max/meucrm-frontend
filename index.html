@@ -2152,7 +2152,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v438</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v439</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2951,7 +2951,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v438</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v439</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3015,7 +3015,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 438;
+const APP_VER = 439;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5248,7 +5248,7 @@ function _agSugestao() {
 }
 async function abrirAgendar() {
   if (!currentPhone) return;
-  if (_notaModo) { _toast('Desligue a nota interna para agendar uma mensagem.'); return; }
+  _desligaNota('agendar a mensagem');
   const inp = document.getElementById('msg-input');
   const sug = _agSugestao();
   const d = await vCampos({
@@ -13973,7 +13973,7 @@ async function createTemplate() {
 
 // ── ENVIAR TEMPLATE NO CHAT ──
 function openSendTemplate() {
-  if (_bloqueadoPelaNota('enviar modelo')) return;
+  _desligaNota('enviar o modelo');
   if (!currentPhone || !currentAccountId) return alert('Selecione uma conversa primeiro.');
   document.getElementById('send-tmpl-overlay').classList.add('open');
   loadApprovedTemplates();
@@ -19012,6 +19012,7 @@ async function stopActiveBotRun() {
 async function openBotLauncher() {
   const menu = document.getElementById('bot-launcher-menu');
   if (!menu) return;
+  _desligaNota('iniciar o bot');
   if (menu.style.display!=='none') { menu.style.display='none'; return; }
   const listEl = document.getElementById('bot-launcher-list');
   listEl.innerHTML = '<div style="padding:6px 8px;font-size:12px;color:#667781">Carregando...</div>';
@@ -19082,6 +19083,14 @@ async function deleteNota(id) {
 }
 // Anexos da nota interna: sobem para o cofre do VETRA e aparecem só aqui dentro
 // Um só ponto de bloqueio: com a NOTA INTERNA ligada nada é enviado ao cliente
+// Iniciar bot, agendar mensagem e enviar modelo: são coisas que VÃO para o
+// cliente — a nota interna se desliga sozinha (em vez de travar com aviso)
+function _desligaNota(porque) {
+  if (!_notaModo) return;
+  _notaModo = false;
+  try { _aplicaNotaVisual(); } catch (_) {}
+  try { _toast('Nota interna desligada para ' + (porque || 'enviar') + '.'); } catch (_) {}
+}
 function _bloqueadoPelaNota(oque) {
   if (!_notaModo) return false;
   _toast('Nota interna ligada — ' + (oque || 'isso') + ' não vai para o cliente. Desligue a nota interna para enviar.');
@@ -19136,7 +19145,7 @@ function launchBot(botId, botName) {
   const menu = document.getElementById('bot-launcher-menu');
   if (menu) menu.style.display = 'none';
   if (!currentPhone) return;
-  if (_bloqueadoPelaNota('disparar bot')) return;
+  _desligaNota('disparar o bot');
   _botPendente = { id: botId, name: botName || 'Bot' };
   const bar = document.getElementById('bot-draft-bar');
   const nm = document.getElementById('bot-draft-name');
@@ -19166,6 +19175,9 @@ async function _disparaBotPendente() {
       const _nm = (allContacts.find(c => c.phone === currentPhone) || {});
       const _numero = (document.querySelector('#account-select option:checked') || {}).textContent || '';
       _toast(b.name + ' disparado' + (_numero ? ' pelo número ' + _numero.trim() : '') + '!'); checkActiveBotRun(currentPhone);
+      // VOCÊ respondeu (com um bot): a conversa fica lida, igual a quando você
+      // manda uma mensagem. (Bot que responde sozinho continua sem marcar.)
+      try { markAsRead(currentPhone, true); _saiDivisoria(); } catch (_) {}
       // O servidor responde na hora e envia em seguida: recarrega a conversa em
       // pulsos curtos para a primeira mensagem do bot aparecer sem esperar o polling
       const ph = currentPhone;
