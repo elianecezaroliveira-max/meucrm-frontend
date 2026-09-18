@@ -2236,7 +2236,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v466</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v467</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3047,7 +3047,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v466</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v467</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3111,7 +3111,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 466;
+const APP_VER = 467;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4711,8 +4711,10 @@ function _iaSugAvalia(phone, msgs) {
   const reais = msgs.filter(m => m && m.type !== 'note');
   const ult = reais[reais.length - 1];
   if (!ult || ult.direction === 'outbound') {
-    // eu falei por último: o cartão só fica se ainda sobrou sugestão por usar
-    if (_iaSug && _iaSug.phone === phone && !_iaSugSobrou()) _iaSug = null;
+    // eu falei por último: o cartão só aparece se ainda sobrou sugestão por usar — mas a
+    // sugestão continua viva por baixo para APRENDER: tudo o que eu mandar até o lead
+    // responder de novo entra no mesmo exemplo (antes, usada a única sugestão, as mensagens
+    // seguintes não eram guardadas)
     _iaSugPinta(); return;
   }
   const chave = phone + '|' + ult.id;
@@ -4749,7 +4751,7 @@ async function _iaSugPede(phone, chave, forcar) {
 }
 function _iaSugPinta() {
   const bar = document.getElementById('ia-sug-bar'); if (!bar) return;
-  if (!_iaSug || _iaSug.phone !== currentPhone || !_iaSugSobrou()) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
+  if (!_iaSug || _iaSug.phone !== currentPhone || _iaSug.fechado || !_iaSugSobrou()) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
   bar.innerHTML = '<div class="ia-sug-cab"><span>✨ Sugestão</span><small>toque para pôr no campo — só vai quando você enviar</small>'
     + '<button onclick="_iaSugDeNovo()" title="Outra sugestão">↻</button><button onclick="_iaSugFecha()" title="Fechar">✕</button></div>'
     + (_iaSug.transcricoes || []).map(t => '<div class="ia-sug-audio" title="O que o lead disse no áudio">🎤 ' + escHtml(t) + '</div>').join('')
@@ -4781,8 +4783,8 @@ function _iaSugUsar(i) {
   try { inp.focus({ preventScroll: true }); inp.setSelectionRange(inp.value.length, inp.value.length); } catch (_) {}
   _iaSugPinta();
 }
-function _iaSugDeNovo() { if (!currentPhone) return; _iaSugPede(currentPhone, (_iaSug && _iaSug.chave) || (currentPhone + '|denovo'), true); }
-function _iaSugFecha() { _iaSug = null; _iaSugPinta(); }
+function _iaSugDeNovo() { if (!currentPhone) return; if (_iaSug) _iaSug.fechado = false; _iaSugPede(currentPhone, (_iaSug && _iaSug.chave) || (currentPhone + '|denovo'), true); }
+function _iaSugFecha() { if (_iaSug) _iaSug.fechado = true; _iaSugPinta(); } // some da tela, mas segue aprendendo com o que você mandar
 // Enviou com o cartão aberto → o par vira exemplo (o servidor anonimiza e guarda)
 function _iaSugAprende(texto, phone) {
   if (!_iaSug || _iaSug.phone !== phone || !texto) return;
