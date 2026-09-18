@@ -2177,7 +2177,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v463</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v464</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2988,7 +2988,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v463</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v464</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3052,7 +3052,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 463;
+const APP_VER = 464;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4630,6 +4630,7 @@ function notifyTypingThrottled() {
 // na memória ("sugerido → enviado") — é assim que a IA aprende com ela.
 let _iaSug = null;              // { phone, chave, msgs, usadas:Set, noCampo, enviadas:[], lead, contexto }
 const _iaSugFeitas = new Set(); // "fone|idDaÚltimaMsg" já pedidos — nunca pede duas vezes a mesma
+const _iaSugFalhas = {};        // chave → quando o pedido falhou (servidor reiniciando, sem rede): tenta de novo depois
 let _iaSugStatus = null;        // { ligada, chave, memoria } vindo do servidor
 let _iaSugTimer = null;
 async function _iaSugCarregaStatus() {
@@ -4652,6 +4653,8 @@ function _iaSugAvalia(phone, msgs) {
   }
   const chave = phone + '|' + ult.id;
   if (_iaSugFeitas.has(chave)) { _iaSugPinta(); return; }
+  // pedido anterior desta fala falhou (ex.: servidor reiniciando no DEPLOY)? espera 20 s e tenta de novo
+  if (_iaSugFalhas[chave] && Date.now() - _iaSugFalhas[chave] < 20000) { _iaSugPinta(); return; }
   _iaSugFeitas.add(chave);
   clearTimeout(_iaSugTimer);
   // 1,5 s de folga: o lead costuma mandar duas ou três mensagens seguidas
@@ -4665,9 +4668,14 @@ async function _iaSugPede(phone, chave, forcar) {
     d = r.ok ? await r.json() : null;
   } catch (_) { d = null; }
   if (!d || !Array.isArray(d.mensagens) || !d.mensagens.length) {
+    // Falhou (sem resposta, servidor fora, erro da IA)? A fala do lead volta a ficar "não pedida":
+    // o próximo desenho da conversa pede de novo (antes ficava marcada como feita e a sugestão
+    // nunca vinha — era o que acontecia quando o lead respondia durante o DEPLOY do servidor)
+    if (!d || d.motivo) { _iaSugFeitas.delete(chave); _iaSugFalhas[chave] = Date.now(); setTimeout(() => { try { if (currentPhone === phone) _iaSugAvalia(phone, currentMessages); } catch (_) {} }, 21000); }
     if (forcar) showToast(d && d.motivo ? 'Sem sugestão: ' + d.motivo : 'Sem sugestão agora', 'erro');
     _iaSugPinta(); return;
   }
+  delete _iaSugFalhas[chave];
   _iaSug = { phone, chave, msgs: d.mensagens, usadas: new Set(), noCampo: null, enviadas: [], lead: d.lead || [], contexto: d.contexto || [] };
   _iaSugPinta();
 }
