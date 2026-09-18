@@ -377,7 +377,9 @@
   body.dark #vdlg-campos input, body.dark #vdlg-campos select, body.dark #vdlg-campos textarea { background: #2a3942; border-color: #2a3942; color: #e9edef; }
   body.dark .vdlg-op { background: #202c33; border-color: #2a3942; color: #e9edef; }
   body.dark .vdlg-op:hover { background: #2a3942; }
-  @media (max-width: 768px) { #vdlg-box { max-width: 100%; } }
+  /* Celular: a caixa fica no ALTO da tela (não no centro) — com o teclado aberto o centro
+     fica atrás do teclado e o campo "Nova etiqueta" sumia na hora de digitar */
+  @media (max-width: 768px) { #vdlg-box { max-width: 100%; } #vdlg-overlay.open { align-items: flex-start; padding-top: max(14px, env(safe-area-inset-top)); } #vdlg-box { max-height: calc(100% - 28px); } }
   .btn-cancel { background: #e9edef; border: none; color: #131c20; padding: 9px 18px; border-radius: 8px; cursor: pointer; font-size: 14px; }
   .btn-cancel:hover { background: #d1d7db; }
   .btn-save { background: #00a884; border: none; color: white; padding: 9px 18px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; }
@@ -2236,7 +2238,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v467</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v468</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3047,7 +3049,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v467</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v468</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3111,7 +3113,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 467;
+const APP_VER = 468;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -8676,13 +8678,20 @@ async function loadMessages(phone, scroll = true, opt = null) {
       // assinatura não é atualizada, então o desenho acontece assim que soltar.
       try { if (document.body.classList.contains('voltando')) return; } catch (_) {}
     }
-    // Botão de descer: conta mensagens novas enquanto você está rolada para cima
+    // Botão de descer: conta mensagens novas DO LEAD enquanto você está rolada para cima.
+    // Só entra o que é mais RECENTE que tudo o que já estava na tela e veio do lead —
+    // antes contava qualquer linha a mais (a sua própria resposta, as mensagens antigas
+    // carregadas ao subir, o completar da rede depois do cache) e aparecia "1 nova"
+    // como se o lead tivesse falado.
     const _nearBottom = area.scrollHeight - area.scrollTop - area.clientHeight < 120;
-    if (window._msgCountPhone !== phone) { window._msgCountPhone = phone; window._lastMsgCountChat = msgs.length; }
+    const _tsDe = (m) => { try { const v = (typeof parseUTC === 'function') ? parseUTC(m.timestamp) : Date.parse(m.timestamp); return Number.isFinite(v) ? v : 0; } catch (_) { return 0; } };
+    const _maisNova = msgs.reduce((mx, m) => Math.max(mx, _tsDe(m)), 0);
+    if (window._msgCountPhone !== phone) { window._msgCountPhone = phone; window._msgMaisNovaTs = _maisNova; }
     else {
-      const _diff = msgs.length - (window._lastMsgCountChat || 0);
-      if (_diff > 0 && !_nearBottom && typeof _sdbNotifyNew === 'function') _sdbNotifyNew(_diff);
-      window._lastMsgCountChat = msgs.length;
+      const ref = window._msgMaisNovaTs || 0;
+      const _novasDoLead = msgs.filter(m => m && m.direction === 'inbound' && m.type !== 'note' && _tsDe(m) > ref).length;
+      if (_novasDoLead > 0 && !_nearBottom && typeof _sdbNotifyNew === 'function') _sdbNotifyNew(_novasDoLead);
+      window._msgMaisNovaTs = Math.max(ref, _maisNova);
     }
     _lastMsgsSig = sig;
     setTimeout(() => { try { _iaSugAvalia(phone, msgs); } catch (_) {} }, 0); // ✨ o lead falou por último? pede a sugestão
@@ -10561,9 +10570,18 @@ function renderTasks() {
 //  vCampos({...})  → objeto com os campos ; vEscolha({...}) → valor
 // ══════════════════════════════════════════════════════════════════
 let _vdlgResolve = null;
+// Teclado do celular aberto: a área visível encolhe (visualViewport). A caixa passa a
+// ocupar SÓ a parte visível, então título, campo e botões ficam acima do teclado.
+function _vdlgAjustaTeclado() {
+  const ov = document.getElementById('vdlg-overlay'); if (!ov) return;
+  const vv = window.visualViewport;
+  if (!ov.classList.contains('open') || !vv || window.innerWidth > 768) { ov.style.top = ''; ov.style.height = ''; ov.style.bottom = ''; return; }
+  ov.style.top = Math.max(0, vv.offsetTop) + 'px'; ov.style.height = vv.height + 'px'; ov.style.bottom = 'auto';
+}
+try { if (window.visualViewport) { window.visualViewport.addEventListener('resize', _vdlgAjustaTeclado); window.visualViewport.addEventListener('scroll', _vdlgAjustaTeclado); } } catch (_) {}
 function _vdlgFecha(valor) {
   const ov = document.getElementById('vdlg-overlay'); if (!ov) return;
-  ov.classList.remove('open');
+  ov.classList.remove('open'); ov.style.top = ''; ov.style.height = ''; ov.style.bottom = '';
   document.getElementById('vdlg-campos').innerHTML = '';
   document.getElementById('vdlg-botoes').innerHTML = '';
   document.getElementById('vdlg-erro').textContent = '';
@@ -10583,8 +10601,9 @@ function _vdlgAbre({ titulo, texto, textoHtml, campos, botoes, foco }) {
     else { t.textContent = texto || ''; t.style.display = texto ? '' : 'none'; }
     document.getElementById('vdlg-campos').innerHTML = campos || '';
     document.getElementById('vdlg-botoes').innerHTML = botoes || '';
-    ov.classList.add('open');
+    ov.classList.add('open'); _vdlgAjustaTeclado();
     setTimeout(() => { const f = foco && document.getElementById(foco); if (f) { f.focus(); if (f.select) f.select(); } }, 40);
+    setTimeout(_vdlgAjustaTeclado, 350); // o teclado leva um instante para subir
   });
 }
 document.addEventListener('keydown', e => {
