@@ -749,6 +749,9 @@
   .ia-sug-item.usada { opacity:.45; text-decoration:line-through; }
   .ia-sug-item.no-campo { border-color:#00a884; box-shadow:0 0 0 1px #00a884 inset; }
   .ia-sug-audio { font-size:12px; color:#54656f; font-style:italic; padding:2px 4px; white-space:pre-wrap; word-break:break-word; } /* transcrição do áudio do lead */
+  .ia-sug-rapida, .ia-sug-bot { background:#f7fbf9; }
+  .ia-sug-rapida b, .ia-sug-bot b { color:#00806a; }
+  .ia-sug-previa { color:#667781; font-size:12px; }
   .msg-ticks.pending  { color:#8696a0; font-size:11px; }
   /* Ações de mensagem (reply + delete) */
   /* Setinha de opções da mensagem (estilo WhatsApp Web) — some para não atrapalhar áudio/vídeo */
@@ -1800,6 +1803,7 @@ async function _gate(session){
   _hideLogin();
   window._userEmail = email;
   _aplicaAcessoManual();
+  try { _aplicaAbaIA(); } catch (_) {}
   try { if (SERVER_URL && typeof _listaDoCache === 'function') _listaDoCache(); } catch (_) {} // lista instantânea (se a abertura chegou antes do login)
   // Respostas rápidas: recarrega o cache e a lista DA CONTA que acabou de logar
   try { if (typeof _syncQuickReplies === 'function') { _qrLoadLocal(); _syncQuickReplies(true); } } catch (_) {}
@@ -2232,7 +2236,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v465</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v466</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2244,7 +2248,7 @@ window.addEventListener('load', initAuth);
   <button id="btn-quick-replies" onclick="openQRManager()"><i class=ic-zap></i> Respostas</button>
   <button id="btn-accounts" onclick="openModal()"><i class=ic-phone></i> Contas</button>
   <button id="btn-bots" onclick="openBotsList()"><i class=ic-bot></i> Bots</button>
-  <button id="btn-faq" onclick="openFaqPage()"><i class=ic-ai></i> IA</button>
+  <button id="btn-faq" style="display:none" onclick="openFaqPage()"><i class=ic-ai></i> IA</button>
   <button id="btn-tags" onclick="openTagManager()"><i class=ic-tag></i> Tags</button>
   <button id="btn-tasks-global" onclick="openTasksPage()" style="position:relative"><i class=ic-task></i> Tarefas<span class="task-badge" style="top:-6px;right:-6px"></span></button>
   <button id="btn-logout" onclick="logoutCRM()" title="Sair da conta"><i class=ic-exit></i> Sair</button>
@@ -2263,7 +2267,7 @@ window.addEventListener('load', initAuth);
   <div class="mpm-item" data-adm onclick="mnavGo(openRelatorios)"><i class=ic-chart></i> Relatórios</div>
   <div class="mpm-sep"></div>
   <div class="mpm-item" data-adm onclick="mnavGo(openBotsList)"><i class=ic-bot></i> Bots</div>
-  <div class="mpm-item" data-adm onclick="mnavGo(openFaqPage)"><i class=ic-ai></i> IA</div>
+  <div class="mpm-item" id="mm-ia" data-adm style="display:none" onclick="mnavGo(openFaqPage)"><i class=ic-ai></i> IA</div>
   <div class="mpm-item" data-adm onclick="mnavGo(openAutomationPanel)"><i class=ic-auto></i> Automação</div>
   <div class="mpm-sep"></div>
   <div class="mpm-item" onclick="mnavGo(openTemplates)"><i class=ic-doc></i> Modelos</div>
@@ -2364,7 +2368,7 @@ window.addEventListener('load', initAuth);
   <button class="rail-btn" data-rail="rel" onclick="railOn(this);openRelatorios()" title="Relatórios (conversas, funil e desempenho)"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l3.5-4 3 3L21 7"/></svg></span>Relatórios</button>
   <div class="rail-sep"></div>
   <button class="rail-btn" data-rail="bots" onclick="railOn(this);openBotsList()" title="Bots"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="2.5"/><path d="M12 8V4M8 4h8"/><circle cx="9" cy="14" r="1.2" fill="currentColor" stroke="none"/><circle cx="15" cy="14" r="1.2" fill="currentColor" stroke="none"/></svg></span>Bots</button>
-  <button class="rail-btn" data-rail="ia" onclick="railOn(this);openFaqPage()" title="IA / FAQ"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5.5a3 3 0 0 0-5.7-1.3A2.8 2.8 0 0 0 4.2 8.6 2.9 2.9 0 0 0 5 13.7a3 3 0 0 0 3.6 3.6A2.6 2.6 0 0 0 12 18.5z"/><path d="M12 5.5a3 3 0 0 1 5.7-1.3 2.8 2.8 0 0 1 2.1 4.4 2.9 2.9 0 0 1-.8 5.1 3 3 0 0 1-3.6 3.6A2.6 2.6 0 0 1 12 18.5z"/><path d="M12 5.5v13"/></svg></span>IA</button>
+  <button class="rail-btn" data-rail="ia" style="display:none" onclick="railOn(this);openFaqPage()" title="IA / FAQ"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5.5a3 3 0 0 0-5.7-1.3A2.8 2.8 0 0 0 4.2 8.6 2.9 2.9 0 0 0 5 13.7a3 3 0 0 0 3.6 3.6A2.6 2.6 0 0 0 12 18.5z"/><path d="M12 5.5a3 3 0 0 1 5.7-1.3 2.8 2.8 0 0 1 2.1 4.4 2.9 2.9 0 0 1-.8 5.1 3 3 0 0 1-3.6 3.6A2.6 2.6 0 0 1 12 18.5z"/><path d="M12 5.5v13"/></svg></span>IA</button>
   <button class="rail-btn" data-rail="auto" onclick="railOn(this);openAutomationPanel()" title="Automação do funil (regras por etapa e gotejamento)"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h9a3 3 0 0 1 3 3v2a3 3 0 0 0 3 3h1"/><path d="m17 4 3 4-3 4"/><path d="m8 20-3-4 3-4"/></svg></span>Automação</button>
   <div class="rail-sep"></div>
   <button class="rail-btn" data-rail="tmpl" onclick="railOn(this);openTemplates()" title="Modelos"><span class="ri"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg></span>Modelos</button>
@@ -3043,7 +3047,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v465</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v466</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3107,7 +3111,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 465;
+const APP_VER = 466;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4727,7 +4731,7 @@ async function _iaSugPede(phone, chave, forcar) {
     const r = await fetch(SERVER_URL + '/ia/sugerir', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone, forcar: !!forcar }) });
     d = r.ok ? await r.json() : null;
   } catch (_) { d = null; }
-  if (!d || !Array.isArray(d.mensagens) || !d.mensagens.length) {
+  if (!d || !Array.isArray(d.mensagens) || (!d.mensagens.length && !(Array.isArray(d.itens) && d.itens.length))) {
     // Falhou (sem resposta, servidor fora, erro da IA)? A fala do lead volta a ficar "não pedida":
     // o próximo desenho da conversa pede de novo (antes ficava marcada como feita e a sugestão
     // nunca vinha — era o que acontecia quando o lead respondia durante o DEPLOY do servidor)
@@ -4736,7 +4740,11 @@ async function _iaSugPede(phone, chave, forcar) {
     _iaSugPinta(); return;
   }
   delete _iaSugFalhas[chave];
-  _iaSug = { phone, chave, msgs: d.mensagens, usadas: new Set(), noCampo: null, enviadas: [], lead: d.lead || [], contexto: d.contexto || [], transcricoes: Array.isArray(d.transcricoes) ? d.transcricoes : [] };
+  // itens: texto, ⚡ resposta rápida (pelo atalho) ou 🤖 bot — servidor antigo manda só "mensagens" (textos)
+  const itens = (Array.isArray(d.itens) && d.itens.length) ? d.itens.filter(it => it && (it.tipo === 'texto' ? !!it.texto : it.tipo === 'rapida' ? !!it.atalho : it.tipo === 'bot' ? !!it.id : false)) : d.mensagens.map(t => ({ tipo: 'texto', texto: t }));
+  if (!itens.length) { _iaSugPinta(); return; }
+  const rotulo = it => it.tipo === 'rapida' ? '[rapida: /' + it.atalho + ']' : it.tipo === 'bot' ? '[bot: ' + it.nome + ']' : it.texto; // como a memória registra
+  _iaSug = { phone, chave, itens, msgs: itens.map(rotulo), usadas: new Set(), noCampo: null, enviadas: [], lead: d.lead || [], contexto: d.contexto || [], transcricoes: Array.isArray(d.transcricoes) ? d.transcricoes : [] };
   _iaSugPinta();
 }
 function _iaSugPinta() {
@@ -4745,12 +4753,28 @@ function _iaSugPinta() {
   bar.innerHTML = '<div class="ia-sug-cab"><span>✨ Sugestão</span><small>toque para pôr no campo — só vai quando você enviar</small>'
     + '<button onclick="_iaSugDeNovo()" title="Outra sugestão">↻</button><button onclick="_iaSugFecha()" title="Fechar">✕</button></div>'
     + (_iaSug.transcricoes || []).map(t => '<div class="ia-sug-audio" title="O que o lead disse no áudio">🎤 ' + escHtml(t) + '</div>').join('')
-    + _iaSug.msgs.map((t, i) => '<div class="ia-sug-item' + (_iaSug.usadas.has(i) ? ' usada' : '') + (_iaSug.noCampo === i ? ' no-campo' : '') + '" onclick="_iaSugUsar(' + i + ')">' + escHtml(t) + '</div>').join('');
+    + _iaSug.itens.map((it, i) => {
+        const cls = 'ia-sug-item' + (it.tipo !== 'texto' ? ' ia-sug-' + it.tipo : '') + (_iaSug.usadas.has(i) ? ' usada' : '') + (_iaSug.noCampo === i ? ' no-campo' : '');
+        const corpo = it.tipo === 'rapida' ? '<b>⚡ /' + escHtml(it.atalho) + '</b>' + (it.anexo ? ' <i class=ic-clip title="Vai com anexo"></i>' : '') + ' <span class="ia-sug-previa">' + escHtml(it.previa || it.texto || '') + '</span>'
+                    : it.tipo === 'bot' ? '<b>🤖 ' + escHtml(it.nome) + '</b> <span class="ia-sug-previa">bot — toque, e o ENVIAR dispara</span>'
+                    : escHtml(it.texto);
+        return '<div class="' + cls + '" onclick="_iaSugUsar(' + i + ')">' + corpo + '</div>';
+      }).join('');
   bar.style.display = 'flex';
 }
 function _iaSugUsar(i) {
   if (!_iaSug || _iaSug.usadas.has(i)) return;
   const inp = document.getElementById('msg-input'); if (!inp) return;
+  const it = _iaSug.itens[i];
+  if (it && it.tipo === 'rapida') { // igual a escolher no menu do "/": {nome}, data, anexo…
+    const idx = (quickReplies || []).findIndex(r => String(r.title || '').toLowerCase() === it.atalho);
+    if (idx < 0) { showToast('Resposta rápida /' + it.atalho + ' não encontrada', 'erro'); return; }
+    _teclouAposEnvio = true; _iaSug.noCampo = i;
+    inp.value = ''; insertQRReply(idx); _iaSugPinta(); return;
+  }
+  if (it && it.tipo === 'bot') { // vai para o rascunho de bot: só o ENVIAR dispara
+    _iaSug.noCampo = i; launchBot(it.id, it.nome); _iaSugPinta(); return;
+  }
   _teclouAposEnvio = true; // foi você que pôs: o limpador de "sobra do envio" não mexe
   inp.value = _iaSug.msgs[i]; _iaSug.noCampo = i;
   inp.dispatchEvent(new Event('input', { bubbles: true })); // botão enviar, altura, rascunho
@@ -4763,8 +4787,13 @@ function _iaSugFecha() { _iaSug = null; _iaSugPinta(); }
 function _iaSugAprende(texto, phone) {
   if (!_iaSug || _iaSug.phone !== phone || !texto) return;
   const usou = _iaSug.noCampo != null;
+  const it = usou ? _iaSug.itens[_iaSug.noCampo] : null;
   if (usou) _iaSug.usadas.add(_iaSug.noCampo);
   _iaSug.noCampo = null;
+  // a memória guarda "[rapida: /x]" / "[bot: Y]" (não o texto) — é assim que a IA aprende a sugerir a rápida certa
+  if (it && it.tipo === 'rapida') texto = '[rapida: /' + it.atalho + ']';
+  else if (it && it.tipo === 'bot') texto = '[bot: ' + it.nome + ']';
+  else { try { const r = (quickReplies || []).find(r => r.message && _qrVars(r.message).trim() === String(texto).trim()); if (r) texto = '[rapida: /' + String(r.title).toLowerCase() + ']'; } catch (_) {} } // texto igual a uma rápida (usou o "/")
   _iaSug.enviadas.push(texto);
   _iaSugPinta();
   const corpo = { phone, chave: _iaSug.chave, sugerido: _iaSug.msgs, enviado: _iaSug.enviadas.slice(), usou: _iaSug.enviadas.some(t => _iaSug.msgs.includes(t)) || usou, lead: _iaSug.lead, contexto: _iaSug.contexto };
@@ -11649,6 +11678,16 @@ function podeAdmin() { return (window._acesso && window._acesso.papel) !== 'aten
 // carregou, vale NÃO mostrar — melhor esconder de você por um segundo do que
 // mostrar para um cliente.
 function _souDev() { return !!(window._acesso && window._acesso.fornecedor); }
+// A aba "IA" (respostas automáticas + sugestões) é SÓ da conta principal (e da equipe dela)
+const _CONTA_IA = 'elianecezaroliveira@gmail.com';
+function _contaTemIA() {
+  const dono = (window._acesso && window._acesso.carregado && window._acesso.dono) || window._userEmail || '';
+  return String(dono).toLowerCase() === _CONTA_IA;
+}
+function _aplicaAbaIA() {
+  const mostra = _contaTemIA() && podeAdmin();
+  ['#side-rail [data-rail="ia"]', '#btn-faq', '#mm-ia'].forEach(sel => { const b = document.querySelector(sel); if (b) b.style.display = mostra ? '' : 'none'; });
+}
 async function _carregaAcesso() {
   try {
     const r = await fetch(SERVER_URL + '/meu-acesso');
@@ -11700,16 +11739,17 @@ function _aplicaPapel() {
     if (_ss) _ss.title = _souDev() ? ('Servidor conectado: ' + String(SERVER_URL || '').replace('https://', '')) : 'Conectado';
   } catch (_) {}
   // Trilho do computador
-  ['bots', 'ia', 'auto', 'acc', 'rel'].forEach(k => {
+  ['bots', 'auto', 'acc', 'rel'].forEach(k => {
     const b = document.querySelector('#side-rail [data-rail="' + k + '"]');
     if (b) b.style.display = atend ? 'none' : '';
   });
   // Barra de cima
-  ['btn-accounts', 'btn-bots', 'btn-faq'].forEach(id => {
+  ['btn-accounts', 'btn-bots'].forEach(id => {
     const b = document.getElementById(id); if (b) b.style.display = atend ? 'none' : '';
   });
   // Menu do celular e itens marcados com data-adm
   document.querySelectorAll('[data-adm]').forEach(el => { el.style.display = atend ? 'none' : ''; });
+  _aplicaAbaIA(); // aba IA: só a conta principal
   // Abas de Configurações que mexem na conta (Aparência e Termos ficam para todos)
   ['integ', 'dup', 'bill', 'equipe', 'reg'].forEach(k => {
     const t = document.querySelector('#cfg-nav .cfg-tab[data-pane="' + k + '"]');
@@ -16348,6 +16388,7 @@ let _faqMode = 'text', _faqAiKey = false, _faqAiModel = '';
 function _faqEsc(s){ return (s||'').toString().replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
 async function openFaqPage(){
+  if (!_contaTemIA()) { showToast('A IA está liberada só para a conta principal', 'erro'); return; }
   _closeAllScreens();
   _telaAtual('ia');
   document.getElementById('faq-page').style.display = 'flex';
@@ -19966,6 +20007,7 @@ function launchBot(botId, botName) {
 }
 function cancelBotDraft() {
   _botPendente = null;
+  try { if (_iaSug && _iaSug.noCampo != null && _iaSug.itens[_iaSug.noCampo] && _iaSug.itens[_iaSug.noCampo].tipo === 'bot') { _iaSug.noCampo = null; _iaSugPinta(); } } catch (_) {}
   const bar = document.getElementById('bot-draft-bar');
   if (bar) bar.style.display = 'none';
   updateSendMicButtons();
@@ -19974,7 +20016,9 @@ function cancelBotDraft() {
 async function _disparaBotPendente() {
   const b = _botPendente;
   if (!b || !currentPhone) return;
+  const _idxSug = (_iaSug && _iaSug.phone === currentPhone && _iaSug.noCampo != null) ? _iaSug.noCampo : null; // ✨ veio do cartão?
   cancelBotDraft();
+  try { if (_idxSug != null) { _iaSug.noCampo = _idxSug; _iaSugAprende('[bot: ' + b.name + ']', currentPhone); } } catch (_) {} // o bot sugerido foi disparado → memória
   try {
     const r = await fetch(SERVER_URL+'/bots/'+b.id+'/start', {
       method:'POST', headers:{'Content-Type':'application/json'},
