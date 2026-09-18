@@ -1,4 +1,4 @@
-// VETRA Service Worker v28 — SÓ NOTIFICAÇÕES PUSH.
+// VETRA Service Worker v29 — SÓ NOTIFICAÇÕES PUSH.
 // SEM cache de página e SEM interceptar requisições: o navegador busca o site
 // direto do servidor em todo carregamento — a versão nova SEMPRE aparece.
 
@@ -49,10 +49,24 @@ self.addEventListener('push', (event) => {
   event.waitUntil((async () => {
     const dono = await _leDono();
     if (data.owner && dono && String(data.owner).toLowerCase() !== String(dono).toLowerCase()) return;
+    // Só contador: a conversa foi lida/respondida em OUTRO aparelho (computador). Tira a
+    // notificação daquela conversa da bandeja e acerta o número do ícone — sem mostrar
+    // nada novo. (O servidor não manda este aviso para iPhone: o iOS exige notificação.)
+    if (data.tipo === 'badge') return _acertaContador(data);
     return _mostraPush(data);
   })());
 });
 
+async function _acertaContador(data) {
+  try {
+    if (typeof data.badge === 'number' && 'setAppBadge' in self.navigator) {
+      await (data.badge > 0 ? self.navigator.setAppBadge(data.badge) : self.navigator.clearAppBadge());
+    }
+    const tags = Array.isArray(data.fechar) ? data.fechar : [];
+    const abertas = await self.registration.getNotifications();
+    for (const n of abertas) { if (tags.includes(n.tag) || (data.badge === 0 && String(n.tag || '').startsWith('chat-'))) { try { n.close(); } catch (_) {} } }
+  } catch (_) {}
+}
 function _mostraPush(data) {
   const tasks = [
     self.registration.showNotification(data.title || 'VETRA', {
