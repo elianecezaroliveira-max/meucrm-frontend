@@ -748,6 +748,7 @@
   .ia-sug-item:hover { background:#e7f7ef; }
   .ia-sug-item.usada { opacity:.45; text-decoration:line-through; }
   .ia-sug-item.no-campo { border-color:#00a884; box-shadow:0 0 0 1px #00a884 inset; }
+  .ia-sug-audio { font-size:12px; color:#54656f; font-style:italic; padding:2px 4px; white-space:pre-wrap; word-break:break-word; } /* transcrição do áudio do lead */
   .msg-ticks.pending  { color:#8696a0; font-size:11px; }
   /* Ações de mensagem (reply + delete) */
   /* Setinha de opções da mensagem (estilo WhatsApp Web) — some para não atrapalhar áudio/vídeo */
@@ -1701,7 +1702,7 @@ i[class^="ic-"],i[class*=" ic-"]{display:inline-block;width:1.08em;height:1.08em
   <div style="font-size:30px;color:#8696a0"><i class=ic-chat></i></div>
   <div style="color:#131c20;font-size:26px;font-weight:700">VETRA</div>
   <div id="login-msg" style="color:#667781;font-size:14px">Faça login para acessar</div>
-  <button onclick="loginGoogle()" style="display:flex;align-items:center;gap:10px;background:#fff;color:#1f1f1f;border:none;border-radius:10px;padding:13px 22px;font-size:15px;font-weight:600;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.3)">
+  <button id="login-btn" onclick="loginGoogle()" style="display:flex;align-items:center;gap:10px;background:#fff;color:#1f1f1f;border:none;border-radius:10px;padding:13px 22px;font-size:15px;font-weight:600;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.3)">
     <img src="https://www.google.com/favicon.ico" width="18" height="18" alt=""/> Entrar com Google
   </button>
 </div>
@@ -1729,18 +1730,71 @@ async function loginGoogle(){
 async function logoutCRM(){
   if(!_supaAuth) return;
   if (!await vConfirm({ titulo: 'Sair', texto: 'Você vai sair da sua conta do VETRA neste aparelho. Os dados continuam salvos.', confirmar: 'Sair', perigo: true })) return;
-  await _supaAuth.auth.signOut({ scope: 'local' }); _showLogin(); } // sai SÓ deste aparelho (o padrão derrubava todos)
+  _gateDesistiu = true; await _supaAuth.auth.signOut({ scope: 'local' }); _showLogin(); _loginBotao(true, 'Faça login para acessar'); } // sai SÓ deste aparelho (o padrão derrubava todos)
 function _emailAllowed(email){
   if(!AUTH_ALLOWED.length) return true; // lista vazia = libera geral
   return AUTH_ALLOWED.map(e=>e.toLowerCase()).includes(String(email||'').toLowerCase());
 }
+// ── Sessão salva mas o token venceu e a renovação falhou (rede suspensa: o celular
+// recarregou o app em segundo plano na atualização automática, ou a internet oscilou)?
+// NÃO é para pedir login: a sessão continua guardada neste aparelho. Mostra
+// "Reconectando…" e tenta renovar de novo, cada vez esperando mais; só pede login
+// se o Supabase disser que a sessão é inválida de verdade (revogada/vencida).
+function _sessaoGuardada(){
+  try { return Object.keys(localStorage).some(k => /^sb-.*-auth-token$/.test(k) && String(localStorage.getItem(k) || '').includes('refresh_token')); } catch (_) { return false; }
+}
+function _sessaoGuardadaBruta(){
+  try { const k = Object.keys(localStorage).find(k => /^sb-.*-auth-token$/.test(k)); const o = k ? JSON.parse(localStorage.getItem(k) || 'null') : null; return (o && o.refresh_token) ? o : null; } catch (_) { return null; }
+}
+function _erroDeRedeAuth(e){
+  if (!e) return true;
+  const n = String(e.name || ''), st = e.status, m = String(e.message || '');
+  if (n === 'AuthRetryableFetchError' || n === 'TypeError') return true;
+  if (st === 0 || st === undefined || st >= 500) return true;
+  return /fetch|network|load failed|timeout|conex/i.test(m);
+}
+let _gateTent = 0, _gateDesistiu = false, _gateT = null;
+const _GATE_ESPERAS = [1500, 3000, 6000, 12000, 20000, 30000, 30000, 30000, 30000, 30000, 30000, 30000];
+function _loginBotao(mostra, msg){
+  const b = document.getElementById('login-btn'); if (b) b.style.display = mostra ? 'flex' : 'none';
+  const m = document.getElementById('login-msg'); if (m) m.textContent = msg;
+}
+function _gateReconectando(){
+  _showLogin(); _loginBotao(false, 'Reconectando…');
+  clearTimeout(_gateT);
+  if (_gateTent >= _GATE_ESPERAS.length) { _gateDesistiu = true; _loginBotao(true, 'Faça login para acessar'); return; }
+  _gateT = setTimeout(_gateTentaAgora, _GATE_ESPERAS[_gateTent]);
+}
+async function _gateTentaAgora(){
+  if (!_supaAuth || _gateDesistiu || !_sessaoGuardada()) { if (!_sessaoGuardada()) { _gateDesistiu = true; _loginBotao(true, 'Faça login para acessar'); } return; }
+  if (window._gateTentando) return; window._gateTentando = true;
+  _gateTent++;
+  try {
+    const bruta = _sessaoGuardadaBruta();
+    const { data, error } = await _supaAuth.auth.refreshSession(bruta ? { refresh_token: bruta.refresh_token, access_token: bruta.access_token } : undefined);
+    if (data && data.session) { window._gateTentando = false; _gateTent = 0; await _gate(data.session); return; } // (o onAuthStateChange também avisa)
+    if (error && !_erroDeRedeAuth(error)) { window._gateTentando = false; _gateDesistiu = true; _showLogin(); _loginBotao(true, 'Faça login para acessar'); return; } // sessão inválida de verdade
+  } catch (e) {
+    if (!_erroDeRedeAuth(e)) { window._gateTentando = false; _gateDesistiu = true; _showLogin(); _loginBotao(true, 'Faça login para acessar'); return; }
+  }
+  window._gateTentando = false;
+  _gateReconectando();
+}
+// A internet voltou / o app voltou para a frente: tenta na hora, sem esperar o relógio
+['online', 'focus'].forEach(ev => window.addEventListener(ev, () => { try { if (_gateTent > 0 && !_gateDesistiu && document.getElementById('login-overlay')?.style.display === 'flex') { clearTimeout(_gateT); _gateTentaAgora(); } } catch (_) {} }));
+document.addEventListener('visibilitychange', () => { try { if (!document.hidden && _gateTent > 0 && !_gateDesistiu && document.getElementById('login-overlay')?.style.display === 'flex') { clearTimeout(_gateT); _gateTentaAgora(); } } catch (_) {} });
 async function _gate(session){
-  if(!session){ _showLogin(); return; }
+  if(!session){
+    if (_sessaoGuardada() && !_gateDesistiu) { _gateReconectando(); return; }
+    _showLogin(); _loginBotao(true, 'Faça login para acessar'); return;
+  }
+  clearTimeout(_gateT); _gateTent = 0; _gateDesistiu = false;
   const email = session.user?.email || '';
   if(!_emailAllowed(email)){
     const m=document.getElementById('login-msg'); if(m) m.textContent='Acesso não autorizado: '+email;
+    _gateDesistiu = true;
     await _supaAuth.auth.signOut();
-    _showLogin();
+    _showLogin(); _loginBotao(true, 'Acesso não autorizado: ' + email);
     return;
   }
   _hideLogin();
@@ -1815,6 +1869,7 @@ async function initAuth(){
   await _gate(session);
   _supaAuth.auth.onAuthStateChange((_evt, sess)=>{
     _tokCache = { tok: sess?.access_token || null, ts: sess ? Date.now() : 0 }; // renova o cache no login/refresh
+    if (_evt === 'SIGNED_OUT' && !_sessaoGuardada()) _gateDesistiu = true; // saída de verdade (sessão apagada) → tela de login, sem "Reconectando…"
     _gate(sess);
   });
 }
@@ -2177,7 +2232,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v464</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v465</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2988,7 +3043,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v464</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v465</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3052,7 +3107,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 464;
+const APP_VER = 465;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3069,8 +3124,13 @@ async function _checkAppUpdate() {
 let _atualizacaoPendente = false, _ultimaInteracao = Date.now();
 ['pointerdown', 'keydown', 'touchstart', 'wheel'].forEach(ev =>
   document.addEventListener(ev, () => { _ultimaInteracao = Date.now(); }, { passive: true, capture: true }));
+const _ehCelular = () => { try { return window.matchMedia('(hover: none)').matches || window.innerWidth <= 768; } catch (_) { return window.innerWidth <= 768; } };
 function _podeRecarregarAgora() {
-  if (document.hidden) return true;
+  if (navigator.onLine === false) return false; // sem internet a recarga não consegue renovar o login
+  // No celular, recarregar com o app em SEGUNDO PLANO (tela bloqueada) era o que derrubava o
+  // login: a rede fica suspensa, a renovação do token falha e o app abria pedindo login.
+  // Lá a atualização entra quando o app volta para a frente (rede ativa), num momento parado.
+  if (document.hidden) return !_ehCelular();
   // campo em foco COM texto = mensagem pela metade (foco vazio não conta: o
   // campo costuma ficar em foco mesmo depois de voltar para a lista)
   const ae = document.activeElement;
@@ -3088,7 +3148,7 @@ function _aplicaAtualizacao() {
   try { sessionStorage.setItem('vetra_recarga_silenciosa', '1'); } catch (_) {} // sem a tela da logo ao voltar
   location.reload();
 }
-document.addEventListener('visibilitychange', () => { if (document.hidden && _atualizacaoPendente) _aplicaAtualizacao(); });
+document.addEventListener('visibilitychange', () => { if (_atualizacaoPendente) _aplicaAtualizacao(); }); // escondeu (computador) ou voltou (celular)
 setInterval(_checkAppUpdate, 30000);
 setTimeout(_checkAppUpdate, 5000);
 
@@ -4676,7 +4736,7 @@ async function _iaSugPede(phone, chave, forcar) {
     _iaSugPinta(); return;
   }
   delete _iaSugFalhas[chave];
-  _iaSug = { phone, chave, msgs: d.mensagens, usadas: new Set(), noCampo: null, enviadas: [], lead: d.lead || [], contexto: d.contexto || [] };
+  _iaSug = { phone, chave, msgs: d.mensagens, usadas: new Set(), noCampo: null, enviadas: [], lead: d.lead || [], contexto: d.contexto || [], transcricoes: Array.isArray(d.transcricoes) ? d.transcricoes : [] };
   _iaSugPinta();
 }
 function _iaSugPinta() {
@@ -4684,6 +4744,7 @@ function _iaSugPinta() {
   if (!_iaSug || _iaSug.phone !== currentPhone || !_iaSugSobrou()) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
   bar.innerHTML = '<div class="ia-sug-cab"><span>✨ Sugestão</span><small>toque para pôr no campo — só vai quando você enviar</small>'
     + '<button onclick="_iaSugDeNovo()" title="Outra sugestão">↻</button><button onclick="_iaSugFecha()" title="Fechar">✕</button></div>'
+    + (_iaSug.transcricoes || []).map(t => '<div class="ia-sug-audio" title="O que o lead disse no áudio">🎤 ' + escHtml(t) + '</div>').join('')
     + _iaSug.msgs.map((t, i) => '<div class="ia-sug-item' + (_iaSug.usadas.has(i) ? ' usada' : '') + (_iaSug.noCampo === i ? ' no-campo' : '') + '" onclick="_iaSugUsar(' + i + ')">' + escHtml(t) + '</div>').join('');
   bar.style.display = 'flex';
 }
@@ -13039,8 +13100,9 @@ async function restaurarVersao(chave, ts, nome) {
 // Derruba o login em TODOS os aparelhos
 async function sairDeTodos() {
   if (!await vConfirm({ titulo: 'Sair de todos os aparelhos', texto: 'Todos os aparelhos conectados nesta conta vão precisar entrar de novo, inclusive este. Continuar?', confirmar: 'Sair de todos', perigo: true })) return;
+  _gateDesistiu = true;
   try { await _supaAuth.auth.signOut({ scope: 'global' }); } catch (_) {}
-  try { _showLogin(); } catch (_) { location.reload(); }
+  try { _showLogin(); _loginBotao(true, 'Faça login para acessar'); } catch (_) { location.reload(); }
 }
 // Lista das etapas com seus IDs externos (para automações do n8n)
 async function _renderCfgStageIds() {
