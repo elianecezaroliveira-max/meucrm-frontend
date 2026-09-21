@@ -454,6 +454,10 @@
   .msg-hit-time { font-size: 11px; color: #667781; white-space: nowrap; }
   .msg-hit-snip { font-size: 13px; color: #667781; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .msg-hit-snip mark { background: #d9fdd3; color: #075e54; border-radius: 2px; padding: 0 1px; }
+  .msg-hit-voce { color: #667781; }
+  .msg-hit-vazio { padding: 18px 16px; text-align: center; color: #667781; font-size: 13px; }
+  .msg-hit-mais { padding: 12px 14px; text-align: center; color: #00a884; font-size: 14px; font-weight: 600; cursor: pointer; }
+  #busca-tit-conv { border-top: none; }
   .msg-jump { animation: msgJump 2.2s ease-out; }
   @keyframes msgJump { 0%,40% { box-shadow: 0 0 0 3px #00a884; } 100% { box-shadow: 0 0 0 0 rgba(0,0,0,0); } }
   .tmpl-status { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; display: inline-block; }
@@ -2238,7 +2242,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v468</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v470</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3049,7 +3053,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v468</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v470</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3113,7 +3117,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 468;
+const APP_VER = 470;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3983,20 +3987,39 @@ async function transcreverAudio(msgId, aid) {
 
 // BUSCA DENTRO DAS MENSAGENS: além das conversas, lista as mensagens que
 // contêm o termo; clicar abre a conversa e pula até a mensagem
-let _msgHits = [], _msgHitsQ = '';
-async function buscarMensagens(q) {
-  _msgHitsQ = q;
-  if (!q || q.length < 2) { _msgHits = []; renderMsgHits(); return; }
+let _msgHits = [], _msgHitsQ = '', _msgHitsPronto = false, _msgHitsTemMais = false, _msgHitsCarregando = false;
+const _MSG_HITS_PAG = 60; // o servidor devolve de 60 em 60
+const _tsHit = h => { try { return parseUTC(h.timestamp) || 0; } catch (_) { return 0; } };
+async function buscarMensagens(q, mais) {
+  if (!mais) { _msgHitsQ = q; _msgHitsPronto = false; _msgHitsTemMais = false; }
+  if (!q || q.length < 2) { _msgHits = []; _msgHitsPronto = true; renderMsgHits(); return; }
+  if (mais && (_msgHitsCarregando || !_msgHits.length)) return;
+  _msgHitsCarregando = true; if (mais) renderMsgHits();
   try {
     const accountId = document.getElementById('account-select').value;
     let url = `${SERVER_URL}/search/messages?q=${encodeURIComponent(q)}`;
     if (accountId) url += `&account_id=${accountId}`;
+    if (mais) url += `&antes=${encodeURIComponent(_msgHits[_msgHits.length - 1].timestamp)}`; // continua de onde parou
     const r = await fetch(url);
     const data = await r.json();
     if (_msgHitsQ !== q) return; // resposta atrasada de outra busca
-    _msgHits = Array.isArray(data) ? data : [];
-  } catch (_) { _msgHits = []; }
+    const veio = Array.isArray(data) ? data : [];
+    const ja = new Set(mais ? _msgHits.map(h => String(h.id)) : []);
+    const novos = veio.filter(h => !ja.has(String(h.id)));
+    // do mais novo para o mais antigo, igual WhatsApp
+    _msgHits = (mais ? _msgHits.concat(novos) : novos).sort((a, b) => _tsHit(b) - _tsHit(a));
+    _msgHitsTemMais = veio.length >= _MSG_HITS_PAG && novos.length > 0;
+  } catch (_) { if (!mais) _msgHits = []; }
+  finally { if (_msgHitsQ === q) { _msgHitsCarregando = false; _msgHitsPronto = true; } }
   renderMsgHits();
+}
+// Data da mensagem achada: hoje = hora; ontem = "Ontem"; senão a data COMPLETA
+function _dataHit(ts) {
+  if (!ts) return '';
+  const ms = parseUTC(ts), dia = _brtDate(ms);
+  if (dia === _brtDate(Date.now())) return _brtTime(ms);
+  if (dia === _brtDate(Date.now() - 86400000)) return 'Ontem';
+  return `${dia.substring(8, 10)}/${dia.substring(5, 7)}/${dia.substring(0, 4)}`;
 }
 function _snippet(texto, q) {
   const t = String(texto || '').replace(/\s+/g, ' ');
@@ -4017,22 +4040,38 @@ function _snippet(texto, q) {
 function renderMsgHits() {
   const list = document.getElementById('contacts-list');
   if (!list) return;
-  const old = document.getElementById('msg-hits'); if (old) old.remove();
-  if (!_msgHits.length || !_msgHitsQ) return;
-  const q = _msgHitsQ;
-  const html = `<div id="msg-hits" class="msg-hit-list">
-    <div class="msg-hit-title">Mensagens (${_msgHits.length})</div>
-    ${_msgHits.map(h => {
-      const txt = (h.content && h.content.toLowerCase().includes(q.toLowerCase())) ? h.content : (h.transcript || h.content || '');
-      const nome = h.name || h.phone;
-      const acc = h.account_id || h.contact_account_id || '';
-      return `<div class="msg-hit" onclick="abrirMensagemBusca('${_jsAttr(h.phone)}','${_jsAttr(nome||'')}','${_jsAttr(acc)}','${_jsAttr(String(h.id))}')">
-        <div class="msg-hit-name"><span>${escHtml(nome)}</span><span class="msg-hit-time">${formatContactTime(h.timestamp)}</span></div>
-        <div class="msg-hit-snip">${h.direction === 'outbound' ? 'Você: ' : ''}${h.transcript && !(h.content||'').toLowerCase().includes(q.toLowerCase()) ? '' : ''}${_snippet(txt, q)}</div>
+  const q = (document.getElementById('search-input')?.value || '').trim();
+  const buscando = !!(q && _msgHitsQ && q === _msgHitsQ);
+  // título "Conversas" em cima das conversas cujo NOME bate (só durante a busca)
+  const linhas = Array.from(list.children).filter(el => !el.classList.contains('busca-extra') && el.dataset && el.dataset.phone).length;
+  let tit = document.getElementById('busca-tit-conv');
+  if (buscando && linhas) {
+    if (!tit) { list.insertAdjacentHTML('afterbegin', '<div id="busca-tit-conv" class="msg-hit-title busca-extra">Conversas</div>'); }
+    else if (list.firstElementChild !== tit) list.insertBefore(tit, list.firstElementChild);
+  } else if (tit) tit.remove();
+  const old = document.getElementById('msg-hits');
+  if (!buscando || q.length < 2) { if (old) old.remove(); return; }
+  let corpo;
+  if (!_msgHitsPronto && !_msgHits.length) corpo = '<div class="msg-hit-vazio">Procurando nas mensagens…</div>';
+  else if (!_msgHits.length) corpo = linhas ? '' : `<div class="msg-hit-vazio">Nenhum resultado para “${escHtml(q)}”</div>`;
+  else corpo = _msgHits.map(h => {
+    const ql = q.toLowerCase();
+    const txt = (h.content && h.content.toLowerCase().includes(ql)) ? h.content : (h.transcript || h.content || '');
+    const nome = h.name || h.phone;
+    const acc = h.account_id || h.contact_account_id || '';
+    return `<div class="msg-hit" data-hit="${escHtml(String(h.id))}" onclick="abrirMensagemBusca('${_jsAttr(h.phone)}','${_jsAttr(nome||'')}','${_jsAttr(acc)}','${_jsAttr(String(h.id))}')">
+        <div class="msg-hit-name"><span>${escHtml(nome)}</span><span class="msg-hit-time">${_dataHit(h.timestamp)}</span></div>
+        <div class="msg-hit-snip">${h.direction === 'outbound' ? '<span class="msg-hit-voce">Você: </span>' : ''}${_snippet(txt, q)}</div>
       </div>`;
-    }).join('')}
-  </div>`;
-  list.insertAdjacentHTML('beforeend', html);
+  }).join('') + (_msgHitsTemMais ? `<div class="msg-hit-mais" onclick="buscarMensagens(_msgHitsQ, true)">${_msgHitsCarregando ? 'Carregando…' : 'Mostrar mais mensagens'}</div>` : '');
+  const titulo = _msgHits.length ? `<div class="msg-hit-title">Mensagens</div>` : '';
+  const html = titulo + corpo;
+  // só redesenha se mudou (o redesenho automático da lista não pode pular a rolagem)
+  if (old && old._html === html) { if (list.lastElementChild !== old) list.appendChild(old); return; }
+  if (old) old.remove();
+  if (!html) return;
+  list.insertAdjacentHTML('beforeend', `<div id="msg-hits" class="msg-hit-list busca-extra">${html}</div>`);
+  document.getElementById('msg-hits')._html = html;
 }
 async function abrirMensagemBusca(phone, name, accountId, msgId) {
   try { await selectContact(phone, name, accountId || ''); } catch (_) {}
@@ -4101,7 +4140,7 @@ let _buscaVez = 0; // nº da última busca pedida: resposta atrasada de uma busc
 async function runSearch() {
   const q = (document.getElementById('search-input')?.value || '').trim();
   const vez = ++_buscaVez;
-  if (!q) { searchResults = null; _msgHits = []; _msgHitsQ = ''; applyFilters(); renderMsgHits(); return; }
+  if (!q) { searchResults = null; _msgHits = []; _msgHitsQ = ''; _msgHitsTemMais = false; applyFilters(); renderMsgHits(); return; }
   buscarMensagens(q);
   let achados = null;
   try {
@@ -4130,7 +4169,8 @@ function applyFilters() {
   const filtered = base.filter(c => {
     // número com máscara "(15) 98165-1975" também acha: compara só os dígitos
     const qDig = q.replace(/\D/g, '');
-    if (!serverSearch && q && !c.name?.toLowerCase().includes(q) && !c.phone?.includes(q) && !(qDig.length >= 4 && String(c.phone || '').includes(qDig))) return false;
+    const qt = q.trim();
+    if (qt && !c.name?.toLowerCase().includes(qt) && !c.phone?.includes(qt) && !(qDig.length >= 4 && String(c.phone || '').includes(qDig))) return false;
     if (stageId && c.stage_id !== stageId) return false;
     if (activeFilterTags.size > 0 && ![...activeFilterTags].every(t => (c.tags||[]).includes(t))) return false;
     if (dateFrom && c.last_message_at && c.last_message_at < dateFrom) return false;
@@ -4139,6 +4179,7 @@ function applyFilters() {
   });
   const _ja = _aplicandoFiltros; _aplicandoFiltros = true;
   try { renderContacts(filtered); } finally { _aplicandoFiltros = _ja; }
+  try { renderMsgHits(); } catch (_) {} // título "Conversas" acompanha as linhas
 }
 
 function clearFilters() {
@@ -4288,8 +4329,15 @@ setTimeout(() => { const fr = document.getElementById('filter-readstate'); if (f
 // Coloca as linhas na tela SEM jogar fora o que não mudou. E, quando uma linha
 // tem mesmo de ser trocada, a foto de perfil que JÁ está carregada é levada para
 // a linha nova — é isso que acaba com a piscada das fotos.
+// Troca as linhas da lista SEM encostar nos blocos da busca ("Conversas" / "Mensagens"):
+// antes o redesenho automático (a cada poucos segundos) apagava as mensagens achadas.
+function _listaTrocaLinhas(list, html) {
+  Array.from(list.children).forEach(el => { if (!el.classList.contains('busca-extra')) el.remove(); });
+  const tpl = document.createElement('template'); tpl.innerHTML = html;
+  list.insertBefore(tpl.content, list.querySelector(':scope > #msg-hits'));
+}
 function _pintaLista(list, contacts, htmls) {
-  const antigas = Array.from(list.children);
+  const antigas = Array.from(list.children).filter(el => !el.classList.contains('busca-extra'));
   // Aproveita uma foto já carregada, se for a mesma
   const _passaFoto = (velhaImg, linhaNova) => {
     if (!velhaImg || !velhaImg.complete) return;
@@ -4302,8 +4350,8 @@ function _pintaLista(list, contacts, htmls) {
     // Mudou a ordem ou a quantidade: guarda as fotos antes de remontar
     const fotos = {};
     antigas.forEach(el => { const im = el.querySelector('.contact-avatar img'); if (im && el.dataset.phone) fotos[el.dataset.phone] = im; });
-    list.innerHTML = htmls.join('');
-    Array.from(list.children).forEach((el, i) => { el._html = htmls[i]; _passaFoto(fotos[el.dataset.phone], el); });
+    _listaTrocaLinhas(list, htmls.join(''));
+    Array.from(list.children).filter(el => !el.classList.contains('busca-extra')).forEach((el, i) => { el._html = htmls[i]; _passaFoto(fotos[el.dataset.phone], el); });
     return;
   }
   // Mesma ordem: troca SÓ as linhas que realmente mudaram
@@ -4378,10 +4426,12 @@ function renderContacts(contacts) {
       return new Date(b.last_message_at) - new Date(a.last_message_at);
     });
   }
+  // Buscando e nenhuma conversa com esse NOME: a lista fica só com as mensagens achadas
+  if (!contacts.length && (document.getElementById('search-input')?.value || '').trim()) { _listaTrocaLinhas(list, ''); return; }
   if (!contacts.length) {
-    list.innerHTML = window._contactsLoaded
+    _listaTrocaLinhas(list, window._contactsLoaded
       ? '<div id="empty-contacts">Nenhuma conversa por aqui.<br>Assim que um cliente escrever para o seu WhatsApp, a conversa aparece nesta lista.</div>'
-      : '<div class="contact-skel"><i class="v-skel"></i><div style="flex:1"><div class="v-skel l" style="margin-bottom:8px"></div><div class="v-skel" style="width:70%"></div></div></div>'.repeat(8); // esqueleto enquanto carrega
+      : '<div class="contact-skel"><i class="v-skel"></i><div style="flex:1"><div class="v-skel l" style="margin-bottom:8px"></div><div class="v-skel" style="width:70%"></div></div></div>'.repeat(8)); // esqueleto enquanto carrega
     return;
   }
   const _htmlLinhas = contacts.map(c => {
@@ -9220,11 +9270,16 @@ function _vpDur(a, w, querFonte){
   //  2) duração medida no servidor e gravada na mensagem (exato, vale na 1ª vez)
   //  3) o que o navegador informa (quando informa)
   //  4) palpite pelo trecho já baixado (só aí a barra segura o fim)
+  //  O NÚMERO DA ETIQUETA "(0:12)" VEM ARREDONDADO (e às vezes é um palpite do ffmpeg
+  //  pelo tamanho do arquivo): ele pode ser MENOR que o áudio. Por isso o que o
+  //  próprio arquivo diz (a.duration) vem antes da etiqueta — era a etiqueta curta
+  //  que enchia os pauzinhos antes de o áudio acabar.
   const medida = _audDur[_audId(w)] || 0;
-  if (medida > 0) return querFonte ? { d: Math.max(medida, a ? a.currentTime : 0), firme: true } : Math.max(medida, (a && isFinite(a.currentTime)) ? a.currentTime : 0);
+  const tocado = (a && isFinite(a.currentTime)) ? a.currentTime : 0;
+  if (medida > 0) return querFonte ? { d: Math.max(medida, tocado), firme: true } : Math.max(medida, tocado);
+  if (a && isFinite(a.duration) && a.duration > 0) { const d = Math.max(a.duration, tocado); return querFonte ? { d, firme: true } : d; }
   const lbl = parseFloat((w && w.dataset.dur) || '0') || 0;
-  if (lbl > 0) { const d = Math.max(lbl, (a && isFinite(a.currentTime)) ? a.currentTime : 0); return querFonte ? { d, firme: true } : d; }
-  if (a && isFinite(a.duration) && a.duration > 0) return querFonte ? { d: a.duration, firme: true } : a.duration;
+  if (lbl > 0) { const d = Math.max(lbl, tocado); return querFonte ? { d, firme: false } : d; }
   const est = _vpDurEstimada(a, w);
   return querFonte ? { d: est, firme: false } : est;
 }
@@ -9358,9 +9413,9 @@ function voiceTime(id){
   const f = _vpDur(a, w, true), dur = f.d;
   if (isFinite(a.currentTime) && a.currentTime > (parseFloat(w.dataset.maxT || '0') || 0)) w.dataset.maxT = String(a.currentTime);
   w.querySelector('.vp-time').textContent = _fmtVoice(a.currentTime);
-  // Com duração FIRME a barra acompanha o relógio até o fim; sem ela, segura o
-  // último palitinho para nunca terminar antes do som.
-  _vpFill(w, dur ? a.currentTime / dur : 0, a.ended || f.firme);
+  // O último palitinho só acende quando o som ACABA de verdade (evento ended),
+  // nunca pela conta — igual WhatsApp, os pauzinhos não terminam antes do áudio.
+  _vpFill(w, dur ? a.currentTime / dur : 0, a.ended);
 }
 function voiceMeta(id){
   const a = _vpAudio(id), w = _vpEl(id); if (!a || !w) return;
