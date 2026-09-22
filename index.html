@@ -2354,7 +2354,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v475</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v477</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3165,7 +3165,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v475</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v477</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3229,7 +3229,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 475;
+const APP_VER = 477;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4653,7 +4653,7 @@ function _instalaToqueLongoLista() {
       const fone = alvo && alvo.dataset.phone;
       if (!fone) return;
       try { if (navigator.vibrate) navigator.vibrate(12); } catch (_) {}
-      openContactMenu({ clientX: x0, clientY: y0, stopPropagation() {} }, fone);
+      openContactMenu({ clientX: x0, clientY: y0 + 16, stopPropagation() {} }, fone); // um pouco abaixo do dedo
       cancela();
     }, 480);
   }, { passive: true });
@@ -5343,6 +5343,7 @@ async function sendVoiceBlob(blob, durationSecs) {
 let _msgMenuId = null, _msgMenuAnchor = null;
 function openMsgMenu(ev, id) {
   ev.stopPropagation();
+  _menuAbertoEm = Date.now();
   _msgMenuId = id; _msgMenuAnchor = ev.currentTarget;
   const menu = document.getElementById('msg-menu');
   if (!menu) return;
@@ -6016,11 +6017,20 @@ document.addEventListener('click', e => {
   if (Date.now() - (window._msgMenuTs || 0) < 400) return; // ignora o clique fantasma pós-toque longo
   if (!e.target.closest('#msg-menu') && !e.target.closest('.msg-menu-btn')) closeMsgMenu();
 });
+// O MENU ACABOU DE ABRIR? O primeiro toque não vale.
+// No toque longo, o menu aparece embaixo do seu dedo e, ao soltar, o navegador manda um
+// clique no que estiver ali — era assim que "favoritar" virava "marcar como não lida".
+let _menuAbertoEm = 0;
+document.addEventListener('click', e => {
+  if (Date.now() - _menuAbertoEm > 500) return;
+  const alvo = e.target.closest && e.target.closest('#contact-menu .cm-item, #msg-menu .cm-item, #msg-menu [onclick], #react-picker span');
+  if (alvo) { e.preventDefault(); e.stopPropagation(); }
+}, true);
 
 // Celular: TOQUE LONGO (meio segundo) na mensagem abre o menu de opções
 function openMsgMenuAt(id, x, y, anchorEl) {
   _msgMenuId = id; _msgMenuAnchor = anchorEl;
-  window._msgMenuTs = Date.now();
+  window._msgMenuTs = Date.now(); _menuAbertoEm = Date.now();
   const menu = document.getElementById('msg-menu');
   if (!menu) return;
   // Limpa qualquer seleção de texto que o iOS tenha iniciado no toque longo
@@ -6115,6 +6125,7 @@ function _reactBarComMenu(id, menu) {
 
 // ── Menu "⋯" da conversa (computador) ──
 function openContactMenu(ev, phone) {
+  _menuAbertoEm = Date.now(); // o clique que vem do próprio toque longo não vale
   const c = allContacts.find(x => x.phone === phone);
   const menu = document.getElementById('contact-menu');
   if (!menu) return;
@@ -6219,6 +6230,7 @@ async function _selAplicar(acao) {
   ['touchend', 'touchcancel'].forEach(ev => list.addEventListener(ev, () => { clearTimeout(t); t = null; }, { passive: true }));
 })();
 document.addEventListener('click', e => {
+  if (Date.now() - _menuAbertoEm < 500) return; // clique fantasma do toque longo: não fecha o menu que acabou de abrir
   if (!e.target.closest('#contact-menu') && !e.target.closest('.contact-menu-btn')) closeContactMenu();
 });
 
@@ -10806,10 +10818,38 @@ let _vdlgResolve = null;
 function _vdlgAjustaTeclado() {
   const ov = document.getElementById('vdlg-overlay'); if (!ov) return;
   const vv = window.visualViewport;
-  if (!ov.classList.contains('open') || !vv || window.innerWidth > 768) { ov.style.top = ''; ov.style.height = ''; ov.style.bottom = ''; return; }
-  ov.style.top = Math.max(0, vv.offsetTop) + 'px'; ov.style.height = vv.height + 'px'; ov.style.bottom = 'auto';
+  const normal = () => { ov.style.top = ''; ov.style.height = ''; ov.style.bottom = ''; };
+  if (!ov.classList.contains('open') || !vv || window.innerWidth > 768) { normal(); return; }
+  // Cada celular abre o teclado de um jeito: uns ENCOLHEM a página, outros EMPURRAM
+  // (offsetTop). Somar os dois punha a caixa abaixo da tela — a etiqueta ficava invisível
+  // enquanto você digitava. Agora a altura e o topo são limitados ao que cabe na tela.
+  const alt = Math.max(160, Math.min(Math.round(vv.height), window.innerHeight));
+  const querTopo = Math.max(0, Math.min(Math.round(vv.offsetTop || 0), Math.max(0, window.innerHeight - alt)));
+  // O app inteiro é empurrado (transform no corpo) quando o celular desloca a área visível.
+  // Uma caixa "fixa" dentro de um corpo empurrado conta a partir DELE — somando os dois, a
+  // caixa ia parar fora da tela e você digitava a etiqueta às cegas. Aqui descontamos isso.
+  let base = 0; try { base = Math.round(document.body.getBoundingClientRect().top); } catch (_) {}
+  ov.style.top = (querTopo - base) + 'px'; ov.style.height = alt + 'px'; ov.style.bottom = 'auto';
+  // CINTO DE SEGURANÇA: se a caixa ainda ficar fora da tela, volta ao jeito simples
+  try {
+    requestAnimationFrame(() => {
+      try {
+        const b = document.getElementById('vdlg-box'); if (!b || !ov.classList.contains('open')) return;
+        const r = b.getBoundingClientRect();
+        if (r.bottom < 40 || r.top > window.innerHeight - 40) { // ainda fora da tela: cola no alto do que está visível
+          let base2 = 0; try { base2 = Math.round(document.body.getBoundingClientRect().top); } catch (_) {}
+          ov.style.top = (-base2) + 'px'; ov.style.height = window.innerHeight + 'px'; ov.style.bottom = 'auto';
+          const r2 = b.getBoundingClientRect();
+          if (r2.bottom < 40 || r2.top > window.innerHeight - 40) normal();
+        }
+      } catch (_) {}
+    });
+  } catch (_) {}
 }
 try { if (window.visualViewport) { window.visualViewport.addEventListener('resize', _vdlgAjustaTeclado); window.visualViewport.addEventListener('scroll', _vdlgAjustaTeclado); } } catch (_) {}
+// Celular que ENCOLHE a página ao abrir o teclado avisa por 'resize' da janela (não do
+// visualViewport) — sem isto a caixa ficava presa no lugar antigo, fora da tela
+try { window.addEventListener('resize', () => { _vdlgAjustaTeclado(); setTimeout(_vdlgAjustaTeclado, 150); }); window.addEventListener('orientationchange', () => setTimeout(_vdlgAjustaTeclado, 250)); } catch (_) {}
 function _vdlgFecha(valor) {
   const ov = document.getElementById('vdlg-overlay'); if (!ov) return;
   ov.classList.remove('open'); ov.style.top = ''; ov.style.height = ''; ov.style.bottom = '';
