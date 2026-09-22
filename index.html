@@ -2354,7 +2354,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v477</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v479</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3165,7 +3165,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v477</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v479</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3229,7 +3229,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 477;
+const APP_VER = 479;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5300,6 +5300,7 @@ function _recReviewSend() {
 async function sendVoiceBlob(blob, durationSecs) {
   if (!currentPhone) return;
   const _fone = currentPhone, _conta = currentAccountId; // o áudio vai para ESTA conversa, mesmo se você abrir outra
+  try { _saiDivisoria(); } catch (_) {} // respondi por áudio: a divisória de não lidas sai igual ao texto
   _saiDivisoria();
   const base64 = await new Promise(res => {
     const r = new FileReader();
@@ -5335,6 +5336,7 @@ async function sendVoiceBlob(blob, durationSecs) {
     });
     const d = await res.json().catch(() => ({}));
     if (!res.ok) alert('Falha ao enviar o áudio: ' + (d.error || ('HTTP ' + res.status)));
+    else { try { markAsRead(_fone, true); } catch (_) {} } // respondeu = conversa lida (igual ao texto e à foto)
   } catch (e) { alert('Erro ao enviar o áudio: ' + e.message); }
   if (currentPhone === _fone) await loadMessages(_fone, false);
 }
@@ -8869,6 +8871,16 @@ async function loadMessages(phone, scroll = true, opt = null) {
     if (_maisAntigasHdr != null && window._semTetoMsgs !== phone) { const n = parseInt(_maisAntigasHdr, 10); if (n > 0) _msgsAntigas = n; else if (n < 0) _msgsAntigas = -1; }
     if (_doCache && window._semTetoMsgs !== phone) _msgsAntigas = -1; // cache guarda só as últimas: há mais no servidor
     currentMessages = msgs; // guarda para a galeria de mídias
+    // JÁ RESPONDI: a última mensagem da conversa é MINHA → a divisória "não lidas" sai.
+    // Ela some no envio, mas não quando a resposta saiu de OUTRO aparelho (ou por áudio):
+    // aí, ao subir a conversa, aparecia "1 mensagem não lida" com a última mensagem sendo minha.
+    try {
+      const _um = window._unreadMark, _ult = msgs[msgs.length - 1];
+      if (_um && _ult && _ult.direction === 'outbound' && _ult.type !== 'note') {
+        const _tu = parseUTC(_ult.timestamp) || 0;
+        if (_tu >= (_um.ts || 0)) { _clearUnreadMark(); }
+      }
+    } catch (_) {}
     // Mensagens prontas → agora sim a linha de presença/janela 24h pode aparecer
     const _presPronto = window._msgsReadyFor !== phone;
     window._msgsReadyFor = phone;
@@ -10815,28 +10827,27 @@ function renderTasks() {
 let _vdlgResolve = null;
 // Teclado do celular aberto: a área visível encolhe (visualViewport). A caixa passa a
 // ocupar SÓ a parte visível, então título, campo e botões ficam acima do teclado.
-function _vdlgAjustaTeclado() {
-  const ov = document.getElementById('vdlg-overlay'); if (!ov) return;
+// Caixa (janela do VETRA ou folha de etiquetas) SEMPRE na parte visível da tela quando o
+// teclado está aberto. Cada celular faz de um jeito: uns ENCOLHEM a página, outros EMPURRAM
+// a área visível — e, quando empurram, o VETRA desce o app inteiro para caber, o que levava
+// a caixa para fora da tela (você digitava a etiqueta às cegas).
+function _ajustaOverlayTeclado(ov, aberto) {
+  if (!ov) return;
   const vv = window.visualViewport;
   const normal = () => { ov.style.top = ''; ov.style.height = ''; ov.style.bottom = ''; };
-  if (!ov.classList.contains('open') || !vv || window.innerWidth > 768) { normal(); return; }
-  // Cada celular abre o teclado de um jeito: uns ENCOLHEM a página, outros EMPURRAM
-  // (offsetTop). Somar os dois punha a caixa abaixo da tela — a etiqueta ficava invisível
-  // enquanto você digitava. Agora a altura e o topo são limitados ao que cabe na tela.
+  if (!aberto || !vv || window.innerWidth > 768) { normal(); return; }
   const alt = Math.max(160, Math.min(Math.round(vv.height), window.innerHeight));
   const querTopo = Math.max(0, Math.min(Math.round(vv.offsetTop || 0), Math.max(0, window.innerHeight - alt)));
-  // O app inteiro é empurrado (transform no corpo) quando o celular desloca a área visível.
-  // Uma caixa "fixa" dentro de um corpo empurrado conta a partir DELE — somando os dois, a
-  // caixa ia parar fora da tela e você digitava a etiqueta às cegas. Aqui descontamos isso.
   let base = 0; try { base = Math.round(document.body.getBoundingClientRect().top); } catch (_) {}
   ov.style.top = (querTopo - base) + 'px'; ov.style.height = alt + 'px'; ov.style.bottom = 'auto';
-  // CINTO DE SEGURANÇA: se a caixa ainda ficar fora da tela, volta ao jeito simples
+  // CINTO DE SEGURANÇA: se a caixa ainda ficar fora da tela, cola no alto do visível
   try {
     requestAnimationFrame(() => {
       try {
-        const b = document.getElementById('vdlg-box'); if (!b || !ov.classList.contains('open')) return;
+        const b = ov.querySelector('#vdlg-box') || ov.firstElementChild;
+        if (!b || ov.style.height === '') return;
         const r = b.getBoundingClientRect();
-        if (r.bottom < 40 || r.top > window.innerHeight - 40) { // ainda fora da tela: cola no alto do que está visível
+        if (r.bottom < 40 || r.top > window.innerHeight - 40) {
           let base2 = 0; try { base2 = Math.round(document.body.getBoundingClientRect().top); } catch (_) {}
           ov.style.top = (-base2) + 'px'; ov.style.height = window.innerHeight + 'px'; ov.style.bottom = 'auto';
           const r2 = b.getBoundingClientRect();
@@ -10846,10 +10857,21 @@ function _vdlgAjustaTeclado() {
     });
   } catch (_) {}
 }
-try { if (window.visualViewport) { window.visualViewport.addEventListener('resize', _vdlgAjustaTeclado); window.visualViewport.addEventListener('scroll', _vdlgAjustaTeclado); } } catch (_) {}
+function _vdlgAjustaTeclado() {
+  const ov = document.getElementById('vdlg-overlay');
+  _ajustaOverlayTeclado(ov, !!(ov && ov.classList.contains('open')));
+}
+// A folha de etiquetas do celular nasce COLADA EMBAIXO — com o teclado aberto ela ficava
+// atrás dele e não dava para ver a etiqueta sendo digitada
+function _tagSheetAjustaTeclado() {
+  const ov = document.getElementById('tag-overlay');
+  _ajustaOverlayTeclado(ov, !!(ov && ov.style.display !== 'none' && ov.style.display !== ''));
+}
+function _ajustaCaixasTeclado() { _vdlgAjustaTeclado(); _tagSheetAjustaTeclado(); }
+try { if (window.visualViewport) { window.visualViewport.addEventListener('resize', _ajustaCaixasTeclado); window.visualViewport.addEventListener('scroll', _ajustaCaixasTeclado); } } catch (_) {}
 // Celular que ENCOLHE a página ao abrir o teclado avisa por 'resize' da janela (não do
 // visualViewport) — sem isto a caixa ficava presa no lugar antigo, fora da tela
-try { window.addEventListener('resize', () => { _vdlgAjustaTeclado(); setTimeout(_vdlgAjustaTeclado, 150); }); window.addEventListener('orientationchange', () => setTimeout(_vdlgAjustaTeclado, 250)); } catch (_) {}
+try { window.addEventListener('resize', () => { _ajustaCaixasTeclado(); setTimeout(_ajustaCaixasTeclado, 150); }); window.addEventListener('orientationchange', () => setTimeout(_ajustaCaixasTeclado, 250)); } catch (_) {}
 function _vdlgFecha(valor) {
   const ov = document.getElementById('vdlg-overlay'); if (!ov) return;
   ov.classList.remove('open'); ov.style.top = ''; ov.style.height = ''; ov.style.bottom = '';
@@ -13784,6 +13806,9 @@ function openTagSheet() {
   if (!currentPhone) return;
   _tagSheetPhone = currentPhone;
   document.getElementById('tag-overlay').style.display = 'flex';
+  _tagSheetAjustaTeclado();
+  setTimeout(_tagSheetAjustaTeclado, 350); // o teclado leva um instante para subir
+  setTimeout(_tagSheetAjustaTeclado, 800);
   renderTagSheet();
   const inp = document.getElementById('tag-sheet-input');
   inp.value = '';
@@ -13792,7 +13817,9 @@ function openTagSheet() {
   };
 }
 function closeTagSheet() {
-  document.getElementById('tag-overlay').style.display = 'none';
+  const ov = document.getElementById('tag-overlay');
+  ov.style.display = 'none';
+  ov.style.top = ''; ov.style.height = ''; ov.style.bottom = '';
   _tagSheetPhone = null;
 }
 function renderTagSheet() {
