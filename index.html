@@ -2242,7 +2242,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v471</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v472</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3053,7 +3053,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v471</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v472</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3117,7 +3117,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 471;
+const APP_VER = 472;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4714,13 +4714,21 @@ function _fmtInline(ta) {
 
 // ── "digitando…"/"gravando áudio…" para o cliente (QR Code e API oficial) ──
 let _typingLastSent = 0, _typingStopTimer = null;
-function notifyTyping(state) {
-  if (!currentPhone || !SERVER_URL) return;
+// ATENÇÃO (API oficial): o "digitando…" da Meta MARCA COMO LIDA a última mensagem do lead
+// (tique azul para ele). Por isso ele vai SÓ para a conversa onde você digitou — antes o
+// aviso atrasado (1 s) saía para a conversa que estivesse aberta NAQUELE instante: digitar,
+// enviar e clicar em outra conversa deixava a OUTRA com tique azul, "só de abrir".
+let _typingAlvo = null; // { phone, acc } da conversa onde você está digitando
+function notifyTyping(state, alvo) {
+  const ph = alvo ? alvo.phone : currentPhone, acc = alvo ? alvo.acc : currentAccountId;
+  if (!ph || !SERVER_URL) return;
   // NOTA INTERNA: o lead NÃO pode ver "digitando…" — a nota é só sua
   if (typeof _notaModo !== 'undefined' && _notaModo && state !== 'paused') return;
+  // "digitando" só sai se você AINDA está nessa conversa
+  if (state !== 'paused' && ph !== currentPhone) return;
   fetch(SERVER_URL + '/typing', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ to: currentPhone, account_id: currentAccountId || null, state })
+    body: JSON.stringify({ to: ph, account_id: acc || null, state })
   }).catch(() => {});
 }
 // Ao digitar: avisa no máximo a cada 7s (economia); parou de digitar por 3s → cancela.
@@ -4733,19 +4741,24 @@ function notifyTypingThrottled() {
   // O aviso só começa depois de 1s digitando de verdade: toques rápidos não
   // acendem o "digitando…" à toa (na API oficial ele fica ~25s aceso e o
   // WhatsApp NÃO permite apagar antes — por isso é melhor nem acender)
+  // trocou de conversa no meio? o aviso antigo é da OUTRA conversa: encerra e recomeça
+  if (_typingAlvo && _typingAlvo.phone !== currentPhone) _paraDigitando();
+  if (!currentPhone) return;
+  const alvo = _typingAlvo = { phone: currentPhone, acc: currentAccountId };
   if (now - _typingLastSent > 7000 && !_typingStartTimer) {
     _typingStartTimer = setTimeout(() => {
       _typingStartTimer = null;
+      if (currentPhone !== alvo.phone) return; // você já saiu dela: nada de "digitando" (nem tique azul)
       _typingLastSent = Date.now();
-      notifyTyping('composing');
+      notifyTyping('composing', alvo);
     }, 1000);
   }
   clearTimeout(_typingStopTimer);
   _typingStopTimer = setTimeout(() => {
     clearTimeout(_typingStartTimer); _typingStartTimer = null; // parou antes de acender
     _typingLastSent = 0;
-    notifyTyping('paused');
-    setTimeout(() => notifyTyping('paused'), 1000); // reforço, para não ficar preso
+    notifyTyping('paused', alvo);
+    setTimeout(() => notifyTyping('paused', alvo), 1000); // reforço, para não ficar preso
   }, 2500);
 }
 // Saiu da conversa, trocou de tela ou minimizou o app → "digitando…" some na hora
@@ -4902,7 +4915,8 @@ async function iaMemExporta() {
 function _paraDigitando() {
   clearTimeout(_typingStopTimer); clearTimeout(_typingStartTimer);
   _typingStartTimer = null; _typingLastSent = 0;
-  try { notifyTyping('paused'); } catch (_) {}
+  const alvo = _typingAlvo; _typingAlvo = null;
+  try { notifyTyping('paused', alvo || undefined); } catch (_) {}
 }
 document.addEventListener('visibilitychange', () => { if (document.hidden) _paraDigitando(); });
 window.addEventListener('blur', _paraDigitando);
@@ -5153,6 +5167,7 @@ function _recReviewSend() {
 }
 async function sendVoiceBlob(blob, durationSecs) {
   if (!currentPhone) return;
+  const _fone = currentPhone, _conta = currentAccountId; // o áudio vai para ESTA conversa, mesmo se você abrir outra
   _saiDivisoria();
   const base64 = await new Promise(res => {
     const r = new FileReader();
@@ -5161,7 +5176,7 @@ async function sendVoiceBlob(blob, durationSecs) {
   });
   const mime = (blob.type || 'audio/wav').split(';')[0];
   const ext = mime.includes('wav') ? 'wav' : mime.includes('mp4') ? 'm4a' : mime.includes('mpeg') ? 'mp3' : mime.includes('ogg') ? 'ogg' : 'webm';
-  const area = document.getElementById('messages-area');
+  const area = currentPhone === _fone ? document.getElementById('messages-area') : null; // saiu da conversa: sem bolha na outra
   if (area) {
     // IGUAL AO WHATSAPP: o áudio já aparece como bolha de voz TOCÁVEL (com ),
     // e é trocado pela mensagem real no mesmo quadro quando o envio confirma
@@ -5182,14 +5197,14 @@ async function sendVoiceBlob(blob, durationSecs) {
   try {
     const res = await fetch(SERVER_URL + '/send-media', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ to: currentPhone, account_id: currentAccountId || null,
+      body: JSON.stringify({ to: _fone, account_id: _conta || null,
         fileBase64: base64, fileName: 'audio.' + ext, mimeType: mime, voice: true,
         duration: durationSecs || 0 }),
     });
     const d = await res.json().catch(() => ({}));
     if (!res.ok) alert('Falha ao enviar o áudio: ' + (d.error || ('HTTP ' + res.status)));
   } catch (e) { alert('Erro ao enviar o áudio: ' + e.message); }
-  await loadMessages(currentPhone, false);
+  if (currentPhone === _fone) await loadMessages(_fone, false);
 }
 
 // ── Menu ⌄ de opções da mensagem (reagir / responder / apagar) ──
@@ -9964,6 +9979,10 @@ async function sendMessage() {
   // Bot no rascunho e nada digitado → o ENVIAR dispara o bot
   if (!message && _botPendente) { await _disparaBotPendente(); return; }
   if (!message || !currentPhone) return;
+  // A conversa DESTE envio. Você pode clicar em outra enquanto o servidor responde:
+  // antes o "marcar como lida" do fim do envio caía na conversa que estivesse aberta
+  // naquele instante — ela ficava lida (e sem a bolinha) sem você ter respondido.
+  const _fone = currentPhone;
   const _botDepois = _botPendente; // digitou E escolheu bot: manda o texto e depois dispara
   const savedMessage = message; // guarda antes de limpar
   window._enviandoTexto = true; // trava o "salvar rascunho" durante o envio
@@ -10016,7 +10035,8 @@ async function sendMessage() {
       _envioFalhou(_pend, (res && res.status < 500) ? (data.error || 'Recusado pelo servidor') : null);
       return;
     }
-    markAsRead(currentPhone, true);
+    markAsRead(_fone, true);
+    if (currentPhone !== _fone) return; // você já está em outra conversa: nada de redesenhar/rolar/disparar lá
     // O relógio vira ✓ NA HORA; a recarga troca pela definitiva no mesmo quadro (sem piscar)
     try { const tk = tempEl && tempEl.querySelector('.msg-ticks'); if (tk) { tk.innerHTML = TICK_ONE; tk.className = 'msg-ticks sent'; tk.title = ''; } } catch (_) {}
     await loadMessages(currentPhone, false);
@@ -10442,6 +10462,7 @@ async function confirmMediaSend() {
   // barra de resposta some depois, não antes — senão a citação se perdia.
   const _resp = replyingTo;
   cancelReply();
+  const _alvo = { phone: currentPhone, acc: currentAccountId }; // todas as fotos vão para ESTA conversa, mesmo se você abrir outra
   // UM clique envia TODAS, em ordem; a legenda vai na última foto.
   // (a lista só recarrega UMA vez no final — envio bem mais rápido)
   const previas = []; let algumOk = false;
@@ -10450,11 +10471,11 @@ async function confirmMediaSend() {
     fotos: lista.filter(f => f.type.startsWith('image/')).length, videos: lista.filter(f => f.type.startsWith('video/')).length } : null;
   for (let i = 0; i < lista.length; i++) {
     _respFoto = (i === 0) ? _resp : null;
-    const r = await _sendOneFile(lista[i], i === lista.length - 1 ? caption : '', true, _lote ? { ..._lote, idx: i } : undefined);
+    const r = await _sendOneFile(lista[i], i === lista.length - 1 ? caption : '', true, _lote ? { ..._lote, idx: i } : undefined, _alvo);
     _respFoto = null;
     if (r && r.ok) { algumOk = true; if (r.el) previas.push({ el: r.el, mid: r.media_id || null }); }
   }
-  if (algumOk) markAsRead(currentPhone, true); // só marca como lida se ALGO foi enviado de verdade
+  if (algumOk) markAsRead(_alvo.phone, true); // só marca como lida se ALGO foi enviado de verdade — e a conversa DO ENVIO
   previas.forEach(p => { try {
     // Entrega cada foto JÁ DECODIFICADA para a bolha real adotar (não pisca).
     // A prévia FICA NA TELA: a reconciliação a troca pela real no MESMO quadro
@@ -10467,7 +10488,7 @@ async function confirmMediaSend() {
   window._enviandoMidia = 0; // lote concluído → libera o polling (as reais entram já adotando as prévias)
   _fotoLog('lote confirmado → render da(s) mensagem(ns) real(is)');
   _lastMsgsSig = '';
-  await loadMessages(currentPhone);
+  if (currentPhone === _alvo.phone) await loadMessages(_alvo.phone);
   previas.forEach(p => { try { p.el.remove(); } catch (_) {} }); // garantia (o render já as tirou)
   _fotoLog('═══ ENVIO CONCLUÍDO ═══');
 }
@@ -10863,10 +10884,13 @@ async function sendFile() {
 // Mensagem que está sendo respondida no envio de arquivos. Fica separada da
 // replyingTo porque a barra de resposta é fechada quando a prévia da foto abre.
 let _respFoto = null;
-async function _sendOneFile(file, caption, semRecarga, lote) {
+async function _sendOneFile(file, caption, semRecarga, lote, alvo) {
   // Última barreira: nada sai para o cliente com a nota interna ligada
   if (_notaModo) { await _enviaNotaComArquivos([file], caption || ''); return { ok: false, nota: true }; }
   if (!file || !currentPhone) return;
+  // Destino fixado AGORA: ler o arquivo leva um tempo e você pode abrir outra conversa —
+  // a foto (e o "lida") não pode ir parar no lead que estiver aberto depois
+  const _fone = (alvo && alvo.phone) || currentPhone, _conta = alvo ? alvo.acc : currentAccountId;
   // Chamada direta (câmera, arrastar um arquivo): se havia uma resposta em
   // andamento, ela vale para este envio e a barra de resposta fecha aqui.
   if (!_respFoto && replyingTo) { _respFoto = replyingTo; cancelReply(); }
@@ -10878,7 +10902,7 @@ async function _sendOneFile(file, caption, semRecarga, lote) {
     reader.readAsDataURL(file);
   });
   // Exibe mensagem otimista na tela
-  const area = document.getElementById('messages-area');
+  const area = currentPhone === _fone ? document.getElementById('messages-area') : null; // saiu da conversa: sem bolha na outra
   let optDiv = null;
   let uLocal = null; // prévia local — depois vira a imagem da mensagem real (não pisca)
   if (area) {
@@ -10908,8 +10932,8 @@ async function _sendOneFile(file, caption, semRecarga, lote) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        to: currentPhone,
-        account_id: currentAccountId || null,
+        to: _fone,
+        account_id: _conta || null,
         caption: caption || undefined,
         fileBase64: base64,
         fileName: file.name,
@@ -10929,7 +10953,7 @@ async function _sendOneFile(file, caption, semRecarga, lote) {
     // usará esta prévia local (a cópia da rede fica para as próximas aberturas)
     if (data.media_id && uLocal) (window._localPrev = window._localPrev || {})[String(data.media_id)] = uLocal;
     if (semRecarga) return { ok: true, el: optDiv, media_id: data.media_id || null }; // no lote: devolve a prévia para remoção no final
-    markAsRead(currentPhone, true);
+    markAsRead(_fone, true);
     if (optDiv) {
       // Entrega a FOTO JÁ DECODIFICADA para a bolha real adotar (zero pisca).
       // A PRÉVIA FICA NA TELA até o render: quem a remove é a própria
@@ -10944,7 +10968,7 @@ async function _sendOneFile(file, caption, semRecarga, lote) {
     window._enviandoMidia = Math.max(0, (window._enviandoMidia || 1) - 1); // agora sim: polling liberado
     _fotoLog('envio confirmado → render da mensagem real');
     _lastMsgsSig = '';
-    await loadMessages(currentPhone);
+    if (currentPhone === _fone) await loadMessages(_fone);
     if (optDiv) { try { optDiv.remove(); } catch (_) {} optDiv = null; } // garantia (o render já a tirou)
     _fotoLog('═══ ENVIO CONCLUÍDO ═══');
     return { ok: true };
