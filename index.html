@@ -1760,7 +1760,16 @@ function _erroDeRedeAuth(e){
   const n = String(e.name || ''), st = e.status, m = String(e.message || '');
   if (n === 'AuthRetryableFetchError' || n === 'TypeError') return true;
   if (st === 0 || st === undefined || st >= 500) return true;
-  return /fetch|network|load failed|timeout|conex/i.test(m);
+  if (st === 429 || st === 408) return true; // "muitos pedidos"/tempo esgotado: passa sozinho — NÃO é sessão inválida
+  return /fetch|network|load failed|timeout|timed out|conex|lock|rate limit|too many/i.test(m);
+}
+// Motivo em português, para a tela de login dizer O QUE aconteceu (antes só "Faça login")
+function _motivoLogin(e){
+  const m = String((e && (e.message || e.error_description || e)) || '');
+  if (/already used|invalid refresh token|refresh token not found|session.*not found|session_not_found/i.test(m)) return 'Sua sessão neste aparelho foi encerrada. Entre de novo.';
+  if (/expired/i.test(m)) return 'Sua sessão venceu. Entre de novo.';
+  if (/access.?denied|cancel/i.test(m)) return 'O login com o Google foi cancelado. Tente de novo.';
+  return m ? ('Não deu para entrar: ' + m.slice(0, 140)) : 'Faça login para acessar';
 }
 let _gateTent = 0, _gateDesistiu = false, _gateT = null;
 const _GATE_ESPERAS = [1500, 3000, 6000, 12000, 20000, 30000, 30000, 30000, 30000, 30000, 30000, 30000];
@@ -1769,10 +1778,13 @@ function _loginBotao(mostra, msg){
   const m = document.getElementById('login-msg'); if (m) m.textContent = msg;
 }
 function _gateReconectando(){
-  _showLogin(); _loginBotao(false, 'Reconectando…');
+  _showLogin();
   clearTimeout(_gateT);
-  if (_gateTent >= _GATE_ESPERAS.length) { _gateDesistiu = true; _loginBotao(true, 'Faça login para acessar'); return; }
-  _gateT = setTimeout(_gateTentaAgora, _GATE_ESPERAS[_gateTent]);
+  // Depois de ~2 min tentando, o botão do Google aparece como OPÇÃO — mas o app
+  // continua tentando sozinho (antes ele desistia e jogava para a tela de login)
+  const muito = _gateTent >= 6;
+  _loginBotao(muito, muito ? 'Reconectando… (sem resposta do login — se preferir, entre de novo)' : 'Reconectando…');
+  _gateT = setTimeout(_gateTentaAgora, _GATE_ESPERAS[Math.min(_gateTent, _GATE_ESPERAS.length - 1)]);
 }
 async function _gateTentaAgora(){
   if (!_supaAuth || _gateDesistiu || !_sessaoGuardada()) { if (!_sessaoGuardada()) { _gateDesistiu = true; _loginBotao(true, 'Faça login para acessar'); } return; }
@@ -1780,11 +1792,19 @@ async function _gateTentaAgora(){
   _gateTent++;
   try {
     const bruta = _sessaoGuardadaBruta();
-    const { data, error } = await _supaAuth.auth.refreshSession(bruta ? { refresh_token: bruta.refresh_token, access_token: bruta.access_token } : undefined);
+    let { data, error } = await _supaAuth.auth.refreshSession(bruta ? { refresh_token: bruta.refresh_token, access_token: bruta.access_token } : undefined);
+    // "já usado": outra renovação (a da própria biblioteca) chegou antes e guardou um token
+    // NOVO — não é sessão perdida. Tenta com o que está guardado agora.
+    if (!(data && data.session) && error && /already used|invalid refresh token/i.test(String(error.message || ''))) {
+      const agora = _sessaoGuardadaBruta();
+      if (agora && bruta && agora.refresh_token !== bruta.refresh_token) {
+        ({ data, error } = await _supaAuth.auth.refreshSession({ refresh_token: agora.refresh_token, access_token: agora.access_token }));
+      }
+    }
     if (data && data.session) { window._gateTentando = false; _gateTent = 0; await _gate(data.session); return; } // (o onAuthStateChange também avisa)
-    if (error && !_erroDeRedeAuth(error)) { window._gateTentando = false; _gateDesistiu = true; _showLogin(); _loginBotao(true, 'Faça login para acessar'); return; } // sessão inválida de verdade
+    if (error && !_erroDeRedeAuth(error)) { window._gateTentando = false; _gateDesistiu = true; _showLogin(); _loginBotao(true, _motivoLogin(error)); return; } // sessão inválida de verdade
   } catch (e) {
-    if (!_erroDeRedeAuth(e)) { window._gateTentando = false; _gateDesistiu = true; _showLogin(); _loginBotao(true, 'Faça login para acessar'); return; }
+    if (!_erroDeRedeAuth(e)) { window._gateTentando = false; _gateDesistiu = true; _showLogin(); _loginBotao(true, _motivoLogin(e)); return; }
   }
   window._gateTentando = false;
   _gateReconectando();
@@ -1856,11 +1876,19 @@ async function initAuth(){
   let _tokCache = { tok: null, ts: 0 };
   async function _getTok(){
     if (_tokCache.tok && Date.now() - _tokCache.ts < 60000) return _tokCache.tok;
-    try{
-      const { data:{ session } } = await _supaAuth.auth.getSession();
-      _tokCache = { tok: session?.access_token || null, ts: Date.now() };
-    }catch(_){ _tokCache = { tok: _tokCache.tok, ts: Date.now() }; }
-    return _tokCache.tok;
+    // Sem token (renovação falhando): cada chamada ao servidor pedia OUTRA renovação ao
+    // Supabase — dezenas por minuto. Isso esbarra no limite de pedidos dele, e o limite
+    // derrubava o login. Agora espera 5 s entre uma tentativa e outra.
+    if (!_tokCache.tok && _tokCache.falhouEm && Date.now() - _tokCache.falhouEm < 5000) return null;
+    if (_tokCache.pedindo) return _tokCache.pedindo; // uma renovação por vez (as outras chamadas esperam a mesma)
+    _tokCache.pedindo = (async () => {
+      try{
+        const { data:{ session } } = await _supaAuth.auth.getSession();
+        _tokCache = { tok: session?.access_token || null, ts: Date.now(), falhouEm: session ? 0 : Date.now() };
+      }catch(_){ _tokCache = { tok: _tokCache.tok, ts: Date.now(), falhouEm: _tokCache.tok ? 0 : Date.now() }; }
+      return _tokCache.tok;
+    })();
+    try { return await _tokCache.pedindo; } finally { _tokCache.pedindo = null; }
   }
   window.fetch = async function(input, init){
     init = init || {};
@@ -1874,9 +1902,21 @@ async function initAuth(){
     }catch(_){}
     return _origFetch(input, init);
   };
-  const { data:{ session } } = await _supaAuth.auth.getSession();
+  // O Google/Supabase devolveu ERRO no endereço (login recusado, link vencido…)? Guarda o
+  // motivo para mostrar na tela — antes a tela voltava só com "Faça login", sem explicação
+  let _erroUrl = null;
+  try {
+    const qs = new URLSearchParams(String(location.hash || '').replace(/^#/, '') + '&' + String(location.search || '').replace(/^\?/, ''));
+    if (qs.get('error') || qs.get('error_description')) {
+      _erroUrl = qs.get('error_description') || qs.get('error');
+      history.replaceState(null, '', location.pathname); // limpa o endereço
+    }
+  } catch (_) {}
+  const { data:{ session }, error: _erroSessao } = await _supaAuth.auth.getSession();
   if (session?.access_token) _tokCache = { tok: session.access_token, ts: Date.now() };
   await _gate(session);
+  if (!session && _erroUrl) { _gateDesistiu = true; _showLogin(); _loginBotao(true, _motivoLogin(_erroUrl)); }
+  else if (!session && _erroSessao && !_erroDeRedeAuth(_erroSessao)) { _gateDesistiu = true; _showLogin(); _loginBotao(true, _motivoLogin(_erroSessao)); } // diz POR QUE pediu login
   _supaAuth.auth.onAuthStateChange((_evt, sess)=>{
     _tokCache = { tok: sess?.access_token || null, ts: sess ? Date.now() : 0 }; // renova o cache no login/refresh
     if (_evt === 'SIGNED_OUT' && !_sessaoGuardada()) _gateDesistiu = true; // saída de verdade (sessão apagada) → tela de login, sem "Reconectando…"
@@ -2242,7 +2282,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v472</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v474</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3053,7 +3093,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v472</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v474</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3117,7 +3157,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 472;
+const APP_VER = 474;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3151,9 +3191,29 @@ function _podeRecarregarAgora() {
   if (Date.now() - _ultimaInteracao < 15000) return false;
   return true;
 }
-function _aplicaAtualizacao() {
-  if (!_atualizacaoPendente) return;
+// LOGIN FIRME antes de recarregar: o celular volta para a frente com o token de 1 h vencido e
+// a biblioteca de login começa a renová-lo. Recarregar NESSE instante cortava a renovação no
+// meio — o servidor já tinha trocado o token, o aparelho ficava com o velho e, na próxima vez,
+// o Supabase recusava ("já usado") e encerrava a sessão: era o "desloga toda hora".
+async function _loginFirmeParaRecarregar() {
+  try {
+    if (typeof _supaAuth === 'undefined' || !_supaAuth) return true;
+    const bruta = (typeof _sessaoGuardadaBruta === 'function') ? _sessaoGuardadaBruta() : null;
+    if (!bruta) return true; // sem login guardado: a recarga não tem o que perder
+    if ((Number(bruta.expires_at) || 0) * 1000 - Date.now() > 10 * 60000) return true; // token vale mais 10 min
+    const r = await Promise.race([_supaAuth.auth.getSession(), new Promise(ok => setTimeout(() => ok(null), 15000))]);
+    const s = r && r.data && r.data.session;
+    return !!(s && (Number(s.expires_at) || 0) * 1000 - Date.now() > 10 * 60000);
+  } catch (_) { return false; }
+}
+async function _aplicaAtualizacao() {
+  if (!_atualizacaoPendente || window._aplicandoAtualizacao) return;
   if (!_podeRecarregarAgora()) { clearTimeout(window._aplUpdT); window._aplUpdT = setTimeout(_aplicaAtualizacao, 5000); return; }
+  window._aplicandoAtualizacao = true;
+  let firme = false;
+  try { firme = await _loginFirmeParaRecarregar(); } finally { window._aplicandoAtualizacao = false; }
+  if (!firme || !_podeRecarregarAgora()) { clearTimeout(window._aplUpdT); window._aplUpdT = setTimeout(_aplicaAtualizacao, 5000); return; }
+  if (!_atualizacaoPendente) return;
   _atualizacaoPendente = false;
   try { sessionStorage.setItem('vetra_recarga_silenciosa', '1'); } catch (_) {} // sem a tela da logo ao voltar
   location.reload();
@@ -8828,7 +8888,10 @@ async function loadMessages(phone, scroll = true, opt = null) {
       for (let aj = ai + 1; aj < msgs.length; aj++) {
         const b = msgs[aj];
         if (b.type !== 'image' || !b.media_id || b.direction !== a.direction) break;
-        if (parseUTC(b.timestamp) - parseUTC(grupo[grupo.length - 1].timestamp) > 90000) break;
+        // Igual WhatsApp: só vira grade o que foi enviado DE UMA VEZ. Fotos mandadas juntas
+        // chegam no mesmo segundo (ou 1–2 s); uma e depois outra ficam separadas (≥ 6 s nos
+        // dados reais). Antes a janela era de 90 s e juntava fotos enviadas uma de cada vez.
+        if (parseUTC(b.timestamp) - parseUTC(grupo[grupo.length - 1].timestamp) > 5000) break;
         grupo.push(b);
       }
       // Duas já formam grade (igual WhatsApp). Mas se DUAS OU MAIS tiverem
@@ -8963,10 +9026,20 @@ async function loadMessages(phone, scroll = true, opt = null) {
           // Legenda: se uma das fotos tiver, ela vale para a sequência inteira
           const _legAlb = _legendaMidia(grupo.find(x => _legendaMidia(x)) || {});
           const _capAlb = _legAlb ? `<div class="media-caption">${waFormat(_legAlb)}</div>` : '';
-          parts.push({ key: chaveAlb, html: `<div class="msg ${safeDir}${grpA ? ' grp' : ''}" style="position:relative" data-key="${chaveAlb}" data-msg-id="${safeId}" data-msg-dir="${safeDir}">
+          // REAGIR/RESPONDER no álbum: vale a ÚLTIMA foto (a que tem o horário da bolha).
+          // Antes a grade não levava o id do WhatsApp e dava "antiga demais".
+          const _wamidAlb = escHtml(String(ult.wamid || (grupo.slice().reverse().find(x => x.wamid) || {}).wamid || ''));
+          const _reacAlb = (grupo.slice().reverse().find(x => x.reaction) || {}).reaction || '';
+          const _badgeAlb = _reacAlb ? `<span class="msg-reaction" style="position:absolute;bottom:-11px;${reactSide};background:#e9edef;border:1px solid #ffffff;border-radius:11px;padding:0 5px;font-size:13px;line-height:20px;box-shadow:0 1px 3px rgba(0,0,0,.5);z-index:2">${escHtml(_reacAlb)}</span>` : '';
+          const _idUlt = escHtml(String(ult.id || ''));
+          parts.push({ key: chaveAlb, html: `<div class="msg ${safeDir}${grpA ? ' grp' : ''}" style="position:relative${_reacAlb ? ';margin-bottom:14px' : ''}" data-key="${chaveAlb}" data-msg-id="${safeId}" data-msg-dir="${safeDir}" data-msg-wamid="${_wamidAlb}" data-msg-content="${escHtml(_legAlb || '[Imagem]')}" data-msg-ts="${escHtml(String(ult.timestamp || ''))}" data-msg-type="image" data-msg-ult="${_idUlt}">
+            <div class="msg-actions">
+              <button class="msg-menu-btn" title="Opções" onclick="openMsgMenu(event,'${safeId}')">⌄</button>
+            </div>
             <div class="alb alb-${Math.min(_qtd, 4)}">${tiles}</div>${_capAlb}
             <div class="alb-baixar" onclick="event.stopPropagation();baixarAlbum(this,'${chaveAlb}')" title="Escolher e baixar as ${_qtd} fotos"><i class=ic-down></i> Baixar fotos (${_qtd})</div>
             <div class="time">${_brtTime(parseUTC(ult.timestamp))}${tk}</div>
+            ${_badgeAlb}
           </div>` });
           continue;
         }
