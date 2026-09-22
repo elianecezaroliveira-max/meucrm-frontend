@@ -2354,7 +2354,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v479</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v480</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3165,7 +3165,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v479</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v480</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3229,7 +3229,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 479;
+const APP_VER = 480;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -6144,8 +6144,17 @@ function openContactMenu(ev, phone) {
   menu.style.display = 'block';
   // usa o tamanho REAL do menu: nunca sai da tela (embaixo ou na lateral)
   const mw = menu.offsetWidth || 210, mh = menu.offsetHeight || 240;
-  menu.style.left = Math.max(8, Math.min(ev.clientX, window.innerWidth  - mw - 8)) + 'px';
-  menu.style.top  = Math.max(8, Math.min(ev.clientY, window.innerHeight - mh - 8)) + 'px';
+  // Veio do botão "⋯"? O menu desce ABAIXO do botão, como uma listinha — antes ele nascia
+  // exatamente sob o ponteiro e a 1ª opção ("Marcar como não lida") ficava debaixo do clique.
+  let x = ev.clientX, y = ev.clientY;
+  try {
+    const bt = ev.currentTarget && ev.currentTarget.getBoundingClientRect ? ev.currentTarget : null;
+    if (bt && bt.classList && bt.classList.contains('contact-menu-btn')) {
+      const r = bt.getBoundingClientRect(); x = r.right - mw; y = r.bottom + 6;
+    } else { y = y + 8; } // clique com o botão direito / toque longo: nasce um pouco abaixo do ponteiro
+  } catch (_) {}
+  menu.style.left = Math.max(8, Math.min(x, window.innerWidth  - mw - 8)) + 'px';
+  menu.style.top  = Math.max(8, Math.min(y, window.innerHeight - mh - 8)) + 'px';
 }
 function closeContactMenu() {
   const m = document.getElementById('contact-menu');
@@ -6303,10 +6312,11 @@ async function markContactRead(phone) {
   setTimeout(() => { if (!_moveLinhaContato(phone)) _redesenhaListaDepois(0); }, 250);
   try { await fetch(`${SERVER_URL}/contacts/${encodeURIComponent(phone)}/read`, { method: 'PUT' }); } catch (_) {}
 }
-async function toggleFavorite(phone) {
+async function toggleFavorite(phone, semAviso) {
   const c = allContacts.find(x => x.phone === phone);
   const fav = !(c && c.favorite);
   if (c) c.favorite = fav;
+  if (!semAviso) { try { showToast(fav ? 'Conversa favoritada' : 'Removida dos favoritos', 'ok', 4000, { label: 'Desfazer', fn: () => toggleFavorite(phone, true) }); } catch (_) {} }
   _pintaLinhaContato(phone);
   _redesenhaListaDepois();
   try {
@@ -7918,10 +7928,13 @@ async function toggleMute(phone) {
   } catch (_) {}
   loadContacts();
 }
-async function markContactUnread(phone) {
+async function markContactUnread(phone, semAviso) {
   const c = allContacts.find(x => x.phone === phone);
   if (c) { c.unread_count = 1; c.first_unread_at = new Date().toISOString(); }
   renderContacts(sortContacts(allContacts));
+  // Sempre com DESFAZER: esta opção fica logo acima de "Favoritar" no menu e um clique
+  // fora do lugar deixava a conversa não lida sem você perceber.
+  if (!semAviso) { try { showToast('Marcada como não lida' + ((c && c.name) ? ' — ' + c.name : ''), 'ok', 6000, { label: 'Desfazer', fn: () => markContactRead(phone) }); } catch (_) {} }
   try { await fetch(SERVER_URL + '/contacts/' + encodeURIComponent(phone) + '/unread', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: '{}' }); } catch (_) {}
   loadContacts();
 }
