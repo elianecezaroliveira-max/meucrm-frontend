@@ -1731,10 +1731,78 @@ const AUTH_ALLOWED = [
 let _supaAuth = null;
 function _showLogin(){ const o=document.getElementById('login-overlay'); if(o) o.style.display='flex'; }
 function _hideLogin(){ const o=document.getElementById('login-overlay'); if(o) o.style.display='none'; }
+// iPhone com o VETRA na TELA INICIAL: o login do Google abre numa janela do Safari com
+// um "cofre" separado do app. O login acontecia lá, o app não recebia a sessão e pedia
+// login de novo (loop). Nesse caso o app gera um código de uso único, manda junto no
+// endereço de volta e fica esperando: a janela do login entrega a sessão ao servidor e o
+// app a busca pelo código.
+function _ehAppIphone(){
+  try {
+    const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const sozinho = window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches;
+    return ios && sozinho;
+  } catch (_) { return false; }
+}
+function _servidorLogin(){ return (typeof SERVER_URL !== 'undefined' && SERVER_URL) || localStorage.getItem('meucrm_server') || 'https://meucrm-backend-production-d4f4.up.railway.app'; }
+let _entregaT = null;
+function _esperaEntregaLogin(codigo, ate){
+  clearTimeout(_entregaT);
+  if (!_supaAuth || Date.now() > ate) return;
+  const tenta = async () => {
+    try {
+      const r = await fetch(_servidorLogin() + '/auth-handoff/' + codigo, { cache: 'no-store' });
+      const d = await r.json().catch(() => ({}));
+      if (d && d.pronto && d.access_token && d.refresh_token) {
+        clearTimeout(_entregaT);
+        try { localStorage.removeItem('vetra_handoff'); } catch (_) {}
+        const { data, error } = await _supaAuth.auth.setSession({ access_token: d.access_token, refresh_token: d.refresh_token });
+        if (data && data.session) { _gateDesistiu = false; await _gate(data.session); return; }
+        _loginBotao(true, _motivoLogin(error)); return;
+      }
+    } catch (_) {}
+    _entregaT = setTimeout(tenta, 2000);
+  };
+  _entregaT = setTimeout(tenta, 1500);
+}
+// voltou para o app (fechou a janela do login): confere na hora
+document.addEventListener('visibilitychange', () => { try { if (!document.hidden) { const h = JSON.parse(localStorage.getItem('vetra_handoff') || 'null'); if (h && h.nonce && Date.now() - h.ts < 10 * 60000) _esperaEntregaLogin(h.nonce, h.ts + 10 * 60000); } } catch (_) {} });
 async function loginGoogle(){
   if(!_supaAuth) return;
   document.getElementById('login-msg').textContent = 'Abrindo o Google...';
-  await _supaAuth.auth.signInWithOAuth({ provider:'google', options:{ redirectTo: window.location.origin, queryParams: { prompt: 'select_account' } } }); // sempre PERGUNTA qual conta Google
+  let volta = window.location.origin;
+  if (_ehAppIphone()) {
+    const b = new Uint8Array(16); crypto.getRandomValues(b);
+    const codigo = Array.from(b, x => x.toString(16).padStart(2, '0')).join('');
+    try { localStorage.setItem('vetra_handoff', JSON.stringify({ nonce: codigo, ts: Date.now() })); } catch (_) {}
+    volta = window.location.origin + '/?handoff=' + codigo;
+    _esperaEntregaLogin(codigo, Date.now() + 10 * 60000);
+    setTimeout(() => { try { const m = document.getElementById('login-msg'); if (m && /Abrindo/.test(m.textContent)) m.textContent = 'Depois de escolher a conta no Google, toque em "OK" (ou "Concluído") no alto para voltar ao VETRA.'; } catch (_) {} }, 2500);
+  }
+  await _supaAuth.auth.signInWithOAuth({ provider:'google', options:{ redirectTo: volta, queryParams: { prompt: 'select_account' } } }); // sempre PERGUNTA qual conta Google
+}
+// Esta página abriu como a JANELA DO LOGIN (cofre separado do app)? Entrega a sessão
+// ao app e sai daqui. Devolve true quando fez a entrega (a janela não abre o CRM).
+async function _entregaSessaoAoApp(session){
+  let codigo = null;
+  try { codigo = new URLSearchParams(location.search).get('handoff'); } catch (_) {}
+  if (!codigo) return false;
+  try { history.replaceState(null, '', location.pathname + location.hash.replace(/^#?access_token.*$/, '')); } catch (_) {}
+  let meu = null; try { meu = JSON.parse(localStorage.getItem('vetra_handoff') || 'null'); } catch (_) {}
+  if (meu && meu.nonce === codigo) { try { localStorage.removeItem('vetra_handoff'); } catch (_) {} return false; } // é o próprio app: segue normal
+  if (!session || !session.refresh_token) return false;
+  try {
+    await window.__fetchOriginal(_servidorLogin() + '/auth-handoff', { method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.access_token },
+      body: JSON.stringify({ nonce: codigo, access_token: session.access_token, refresh_token: session.refresh_token }) });
+  } catch (_) {}
+  // A janela NÃO pode continuar com a mesma sessão (duas cópias renovando o mesmo token =
+  // "já usado" e o app cai). Nada de signOut: ele encerraria a sessão no servidor também.
+  try { _supaAuth.auth.stopAutoRefresh(); } catch (_) {}
+  try { Object.keys(localStorage).filter(k => /^sb-.*-auth-token/.test(k)).forEach(k => localStorage.removeItem(k)); } catch (_) {}
+  try {
+    document.body.innerHTML = '<div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#f0f2f5;padding:24px;font-family:inherit"><div style="max-width:360px;background:#fff;border-radius:14px;padding:26px 22px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.1)"><div style="font-size:34px;color:#00a884;margin-bottom:8px">✓</div><div style="font-size:17px;font-weight:700;color:#131c20;margin-bottom:8px">Login feito!</div><div style="font-size:14px;color:#54656f;line-height:1.6">Toque em <b>OK</b> (ou <b>Concluído</b>) no alto da tela para voltar ao VETRA. O app entra sozinho.</div></div></div>';
+  } catch (_) {}
+  return true;
 }
 async function logoutCRM(){
   if(!_supaAuth) return;
@@ -1873,6 +1941,7 @@ async function initAuth(){
   // causava recursão interna no supabase-js com chamadas simultâneas
   // ("Maximum call stack size exceeded") e derrubava todas as requisições.
   const _origFetch = window.fetch.bind(window);
+  window.__fetchOriginal = _origFetch;
   let _tokCache = { tok: null, ts: 0 };
   async function _getTok(){
     if (_tokCache.tok && Date.now() - _tokCache.ts < 60000) return _tokCache.tok;
@@ -1913,8 +1982,11 @@ async function initAuth(){
     }
   } catch (_) {}
   const { data:{ session }, error: _erroSessao } = await _supaAuth.auth.getSession();
+  if (await _entregaSessaoAoApp(session)) return; // janela do login do iPhone: entregou ao app e para aqui
   if (session?.access_token) _tokCache = { tok: session.access_token, ts: Date.now() };
   await _gate(session);
+  // o app do iPhone estava esperando uma entrega (a página recarregou no meio): segue esperando
+  try { const h = JSON.parse(localStorage.getItem('vetra_handoff') || 'null'); if (!session && h && h.nonce && Date.now() - h.ts < 10 * 60000) _esperaEntregaLogin(h.nonce, h.ts + 10 * 60000); } catch (_) {}
   if (!session && _erroUrl) { _gateDesistiu = true; _showLogin(); _loginBotao(true, _motivoLogin(_erroUrl)); }
   else if (!session && _erroSessao && !_erroDeRedeAuth(_erroSessao)) { _gateDesistiu = true; _showLogin(); _loginBotao(true, _motivoLogin(_erroSessao)); } // diz POR QUE pediu login
   _supaAuth.auth.onAuthStateChange((_evt, sess)=>{
@@ -2282,7 +2354,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v474</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v475</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3093,7 +3165,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v474</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v475</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3157,7 +3229,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 474;
+const APP_VER = 475;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -13134,7 +13206,7 @@ async function openConfigModal() {
 }
 // Versão do servidor que este app espera. Se o Railway estiver atrás disso,
 // algumas telas não têm como funcionar — e o app avisa em vez de dar erro seco.
-const SERVIDOR_MIN = 271;
+const SERVIDOR_MIN = 298;
 let _verServidor = null;
 async function _servidorVersao() {
   if (_verServidor !== null) return _verServidor;
