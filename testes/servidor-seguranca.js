@@ -5,7 +5,9 @@
 // Termina VERDE (0) ou VERMELHO (1).
 const fs = require('fs'), path = require('path'), Module = require('module');
 const ALVO = path.resolve(process.env.ALVO || [path.join(__dirname, '..', 'server.js'), path.join(__dirname, '..', '..', 'meucrm-backend', 'server.js')].find(f => fs.existsSync(f)));
-const PORTA = 39000 + Math.floor(Math.random() * 500);
+const PORTA = 0; // porta livre escolhida pelo sistema (porta fixa às vezes colidia)
+{ const http = require('http'), ol = http.Server.prototype.listen;
+  http.Server.prototype.listen = function (...a) { const r = ol.apply(this, a); this.once('listening', () => { if (!globalThis.__porta) globalThis.__porta = this.address().port; }); return r; }; }
 const LEGADO = 'elianecezaroliveira@gmail.com', B = 'loja.b@exemplo.com', ATEND = 'atendente@exemplo.com';
 Object.assign(process.env, { SUPABASE_URL: 'https://fake.supabase.co', SUPABASE_KEY: 'x', PORT: String(PORTA), PHONE_NUMBER_ID: 'ENV_NUM', WHATSAPP_TOKEN: 'ENV_TOK', VERIFY_TOKEN: 'vt', WA_EMBEDDED: '0' });
 
@@ -22,6 +24,7 @@ const DB = {
     { key: 'api_token::' + LEGADO, value: 'vetra_tok_legado' },
     { key: 'owner_aliases', value: JSON.stringify({ [ATEND]: B }) },
     { key: 'equipe_papel::' + B, value: JSON.stringify({ [ATEND]: 'atendente' }) },
+    { key: 'pagamento_cfg', value: JSON.stringify({ token: 'pagtok', ciclo_dias: 30 }) },
   ],
 };
 const escritas = [];
@@ -46,7 +49,8 @@ function Q(tabela) {
     in(c, vs) { st.f.push(r => vs.map(String).includes(String(r[c]))); return b; },
     not(c, op, v) { if (op === 'is' && v === null) st.f.push(r => r[c] != null); return b; },
     is(c, v) { if (v === null) st.f.push(r => r[c] == null); return b; },
-    lte() { return b; }, gte() { return b; }, lt() { return b; }, gt() { return b; }, like() { return b; }, ilike() { return b; }, or() { return b; },
+    like(c, pat) { const re = new RegExp('^' + String(pat).replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/%/g, '.*').replace(/_/g, '.') + '$'); st.f.push(r => re.test(String(r[c]))); return b; }, // igual ao banco: _ e % são curingas
+    lte() { return b; }, gte() { return b; }, lt() { return b; }, gt() { return b; }, ilike() { return b; }, or() { return b; },
     order() { return b; }, limit() { return b; }, range() { return b; }, contains() { return b; }, filter() { return b; }, match() { return b; },
     maybeSingle() { st.single = true; return b; }, single() { st.single = true; return b; },
     then(ok, no) { try { return Promise.resolve(run()).then(ok, no); } catch (e) { return Promise.reject(e).then(ok, no); } },
@@ -57,7 +61,7 @@ const fakeSupa = { from: Q, storage: { from: () => ({ list: async () => ({ data:
 
 // ── rede de mentira: login do Supabase + Meta ──
 const TOKENS = { 'tok-legado': LEGADO, 'tok-b': B, 'tok-atend': ATEND };
-const enviosMeta = [];
+const enviosMeta = [], buscas = [];
 let metaFalhaSemResposta = 0;
 const axios = require(require.resolve('axios', { paths: [path.dirname(ALVO)] }));
 const falso = async (metodo, url, body, cfg) => {
@@ -67,6 +71,7 @@ const falso = async (metodo, url, body, cfg) => {
     if (metodo === 'post') { enviosMeta.push({ url, body }); if (metaFalhaSemResposta > 0) { metaFalhaSemResposta--; const e = new Error('timeout of 30000ms exceeded'); e.code = 'ECONNABORTED'; throw e; } return { data: { messages: [{ id: 'wamid.X' + enviosMeta.length }] } }; }
     return { data: {} };
   }
+  if (metodo === 'get') buscas.push(url);
   return { data: {} };
 };
 axios.get = (u, c) => falso('get', u, null, c); axios.post = (u, b, c) => falso('post', u, b, c);
@@ -77,9 +82,9 @@ Module.prototype.require = function (id) { if (id === '@supabase/supabase-js') r
 const origLog = console.log, origErr = console.error, origWarn = console.warn;
 console.log = console.error = console.warn = () => {};
 const m = new Module(ALVO, module); m.filename = ALVO; m.paths = Module._nodeModulePaths(path.dirname(ALVO));
-m._compile(fs.readFileSync(ALVO, 'utf8') + '\n;globalThis.__srv={handleBotReply:typeof handleBotReply==="function"?handleBotReply:null};', ALVO);
+m._compile(fs.readFileSync(ALVO, 'utf8') + '\n;globalThis.__srv={handleBotReply:typeof handleBotReply==="function"?handleBotReply:null,csv:typeof _csvCampo==="function"?_csvCampo:null,plano:typeof _planoBruto==="function"?_planoBruto:null,bkp:typeof _backupAutoDe==="function"?_backupAutoDe:null};', ALVO);
 
-const base = 'http://127.0.0.1:' + PORTA;
+let base = '';
 const chama = async (metodo, rota, { tok, api, body } = {}) => {
   const h = { 'Content-Type': 'application/json' }; if (tok) h.Authorization = 'Bearer ' + tok; if (api) h['X-Api-Token'] = api;
   const r = await fetch(base + rota, { method: metodo, headers: h, body: body ? JSON.stringify(body) : undefined });
@@ -88,7 +93,11 @@ const chama = async (metodo, rota, { tok, api, body } = {}) => {
 };
 const espera = ms => new Promise(r => setTimeout(r, ms));
 (async () => {
-  await espera(1500);
+  // espera o servidor responder (tempo fixo deixava a medição instável)
+  for (let i = 0; i < 60 && !globalThis.__porta; i++) await espera(250);
+  base = 'http://127.0.0.1:' + globalThis.__porta;
+  for (let i = 0; i < 60; i++) { try { if ((await fetch(base + '/')).ok) break; } catch (_) {} await espera(250); }
+  await espera(300);
   const res = {};
   const t = async (nome, fn) => { try { res[nome] = (await fn()) ? 'ok' : 'FALHA'; } catch (e) { res[nome] = 'não medido: ' + e.message; } };
   await t('/send da conta B sem número não sai pelo número principal (.env)', async () => {
@@ -156,6 +165,48 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
   });
   await t('[normal] app com login (fetch) abre a própria foto sem chave', async () => (await chama('GET', '/media-proxy/M2', { tok: 'tok-b' })).status === 200);
   await t('[normal] foto de bot continua pública (a Meta busca sem login)', async () => (await chama('GET', '/media-proxy/bot%2Fx.jpg')).status !== 401);
+  // ── lote 3 ──
+  await t('disparo em massa: 2º clique não dispara de novo', async () => {
+    DB.contacts.push({ phone: '5511900000001', owner: B }, { phone: '5511900000002', owner: B });
+    const b1 = { tok: 'tok-b', body: { phones: ['5511900000001', '5511900000002'] } };
+    const [r1, r2] = await Promise.all([chama('POST', '/bots/bot-b/start-bulk', b1), chama('POST', '/bots/bot-b/start-bulk', b1)]);
+    return [r1.status, r2.status].sort().join() === '200,409';
+  });
+  await t('pagamento avisado 2x (mesmo id) renova só 1x', async () => {
+    const corpo = { event: 'PAYMENT_RECEIVED', email: 'cliente@exemplo.com', payment: { id: 'pay_123', status: 'RECEIVED' } };
+    await chama('POST', '/pagamento/webhook?token=pagtok', { body: corpo }); const v1 = globalThis.__srv.plano('cliente@exemplo.com').validade;
+    await chama('POST', '/pagamento/webhook?token=pagtok', { body: { ...corpo, event: 'PAYMENT_CONFIRMED' } }); const v2 = globalThis.__srv.plano('cliente@exemplo.com').validade;
+    return v1 && v1 === v2;
+  });
+  await t('planilha: texto do lead não vira fórmula', async () => { const c = globalThis.__srv.csv; return !!c && c('=HYPERLINK("http://x","clique")').startsWith(`"'=`); });
+  await t('prévia de link sem login não busca nada', async () => (await chama('GET', '/link-preview?url=' + encodeURIComponent('http://93.184.216.34/'))).status === 401);
+  await t('prévia de link não busca nome que aponta para rede interna', async () => {
+    buscas.length = 0; await chama('GET', '/link-preview?url=' + encodeURIComponent('http://127.0.0.1.nip.io/'), { tok: 'tok-b' });
+    await chama('GET', '/link-preview?url=' + encodeURIComponent('http://localtest.me/'), { tok: 'tok-b' });
+    return !buscas.some(u => /nip\.io|localtest/.test(u));
+  });
+  await t('cópia diária de "j_hn@" não apaga as cópias de "john@"', async () => {
+    // no LIKE do banco o "_" vale qualquer letra: a busca de j_hn@ também traz as de john@
+    DB.bots.push({ id: 'bot-jhn', owner: 'j_hn@x.com', name: 'x' });
+    for (let i = 1; i <= 10; i++) DB.settings.push({ key: 'bkp::john@x.com::2026-01-' + String(i).padStart(2, '0'), value: '' });
+    await globalThis.__srv.bkp('j_hn@x.com');
+    return DB.settings.filter(r => r.key.startsWith('bkp::john@x.com::')).length === 10;
+  });
+  await t('cadastro pelo Facebook exige login', async () => (await chama('POST', '/auth/whatsapp', { body: { code: 'x' } })).status === 401);
+  await t('[normal] disparo em massa responde ok', async () => {
+    DB.bots.push({ id: 'bot-b2', owner: B, name: 'Outro' });
+    return (await chama('POST', '/bots/bot-b2/start-bulk', { tok: 'tok-b', body: { phones: ['5511900000001'] } })).status === 200;
+  });
+  await t('[normal] pagamento novo (outro id) renova', async () => {
+    const antes = globalThis.__srv.plano('cliente@exemplo.com').validade;
+    await chama('POST', '/pagamento/webhook?token=pagtok', { body: { event: 'PAYMENT_RECEIVED', email: 'cliente@exemplo.com', payment: { id: 'pay_456' } } });
+    return globalThis.__srv.plano('cliente@exemplo.com').validade > antes;
+  });
+  await t('[normal] planilha: telefone +55 e número negativo ficam iguais', async () => { const c = globalThis.__srv.csv; return c('+55 11 99999-0000') === '"+55 11 99999-0000"' && c('-12') === '"-12"'; });
+  await t('[normal] prévia de link de site público busca', async () => {
+    buscas.length = 0; await chama('GET', '/link-preview?url=' + encodeURIComponent('http://93.184.216.34/pagina'), { tok: 'tok-b' });
+    return buscas.some(u => u.includes('93.184.216.34'));
+  });
   // ── uso normal continua igual ──
   await t('[normal] conta principal envia pelo próprio número', async () => {
     enviosMeta.length = 0; const r = await chama('POST', '/send', { tok: 'tok-legado', body: { to: '5511911112222', message: 'oi', account_id: 'acc-legado', client_id: 'd' + Date.now() } });
