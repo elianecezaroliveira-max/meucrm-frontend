@@ -694,6 +694,10 @@
   }
   /* READ RECEIPTS */
   .msg-image { min-height: 120px; background: rgba(0,0,0,.05); }
+  /* Primeira vez que a foto aparece (o aparelho ainda não guardou a medida): o balão
+     reserva um espaço de foto e a imagem entra inteira dentro dele — antes nascia numa
+     tira achatada e "pulava" para o tamanho certo quando a foto terminava de chegar. */
+  .msg-image.sem-medida { width: 240px; aspect-ratio: 3 / 4; height: auto; min-height: 0; object-fit: contain; }
   .msg-ticks { display:inline-block; margin-left:4px; font-size:13px; vertical-align:middle; }
   .msg-ticks.sent     { color:#667781; }
   .msg-ticks.delivered{ color:#667781; }
@@ -2354,7 +2358,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v482</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v483</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3175,7 +3179,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v482</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v483</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3239,7 +3243,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 482;
+const APP_VER = 483;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4173,13 +4177,18 @@ function _dataHit(ts) {
   if (dia === _brtDate(Date.now() - 86400000)) return 'Ontem';
   return `${dia.substring(8, 10)}/${dia.substring(5, 7)}/${dia.substring(0, 4)}`;
 }
+// 🔤 Tira os acentos para comparar (o tamanho do texto continua o mesmo, por isso as
+// posições do trecho destacado continuam valendo).
+function _buscaSemAcento(x) {
+  return String(x == null ? '' : x).normalize('NFC').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
 function _snippet(texto, q) {
-  const t = String(texto || '').replace(/\s+/g, ' ');
-  const i = t.toLowerCase().indexOf(String(q).toLowerCase());
+  const t = String(texto || '').normalize('NFC').replace(/\s+/g, ' ');
+  const i = _buscaSemAcento(t).indexOf(_buscaSemAcento(q));
   const ini = Math.max(0, i - 30);
   let s = (ini > 0 ? '…' : '') + t.slice(ini, ini + 90) + (ini + 90 < t.length ? '…' : '');
   // marca as ocorrências ANTES de escapar (senão &amp; / &lt; quebravam no meio)
-  const ql = String(q).toLowerCase(), sl = s.toLowerCase();
+  const ql = _buscaSemAcento(q), sl = _buscaSemAcento(s);
   let out = '', pos = 0;
   while (ql) {
     const k = sl.indexOf(ql, pos);
@@ -4325,7 +4334,9 @@ function applyFilters() {
     // Número: o mesmo telefone é guardado com e sem o 55 e com e sem o nono dígito —
     // comparar os 8 últimos dígitos acha o lead de qualquer jeito
     const _fimIgual = (fone) => { const f = String(fone || '').replace(/\D/g, ''); return qDig.length >= 8 && f.length >= 8 && f.slice(-8) === qDig.slice(-8); };
-    if (qt && !c.name?.toLowerCase().includes(qt) && !c.phone?.includes(qt) && !(qDig.length >= 4 && String(c.phone || '').includes(qDig)) && !_fimIgual(c.phone)) return false;
+    // 🔤 sem acento acha igual: "joao" acha "João", "simulacao" acha "simulação"
+    const qSA = _buscaSemAcento(qt);
+    if (qt && !_buscaSemAcento(c.name).includes(qSA) && !c.phone?.includes(qt) && !(qDig.length >= 4 && String(c.phone || '').includes(qDig)) && !_fimIgual(c.phone)) return false;
     if (stageId && c.stage_id !== stageId) return false;
     if (activeFilterTags.size > 0 && ![...activeFilterTags].every(t => (c.tags||[]).includes(t))) return false;
     if (dateFrom && c.last_message_at && c.last_message_at < dateFrom) return false;
@@ -8263,6 +8274,18 @@ function _dimCss(id) {
   const wh = _waMediaSize(d[0], d[1]);
   return `width:${wh[0]}px;height:${wh[1]}px;`;
 }
+// Assim que a foto chega, o balão assume JÁ o tamanho final (antes ficava no espaço
+// reservado até a conversa ser redesenhada — e a foto aparecia achatada nesse meio-tempo)
+function _dimAplica(el) {
+  try {
+    const w = el.naturalWidth, h = el.naturalHeight;
+    if (!w || !h) return;
+    const wh = _waMediaSize(w, h);
+    el.style.width = wh[0] + 'px';
+    el.style.height = wh[1] + 'px';
+    el.classList.remove('sem-medida');
+  } catch (_) {}
+}
 // MINIATURAS LOCAIS (igual WhatsApp): cada foto já vista fica guardada no
 // aparelho — em toda abertura a foto pinta NA HORA, sem rede e sem redecodificar
 function _thumbGet(id) {
@@ -8520,9 +8543,9 @@ function renderMessageContent(m) {
       const _srcImg = _th || (window._localPrev || {})[String(m.media_id)] || proxyUrl;
       return quotedHtml + `<div class="media-wrap">
         <div style="position:relative;display:inline-block">
-          <img src="${_srcImg}" class="msg-image" alt="Imagem" decoding="async"
+          <img src="${_srcImg}" class="msg-image${_dimCss(_midKey) ? '' : ' sem-medida'}" alt="Imagem" decoding="async"
             loading="${_midiaJa(m.media_id) ? 'eager' : 'lazy'}" fetchpriority="${_midiaJa(m.media_id) ? 'high' : 'auto'}"${_th ? '' : ' crossorigin="anonymous"'} style="${_dimCss(_midKey)}"
-            onload="_dimSave('${_midKey}',this);_thumbSave('${_midKey}',this);_keepBottom(this)" onclick="verMidia('${proxyUrl}','img','Imagem')"
+            onload="_dimSave('${_midKey}',this);_dimAplica(this);_thumbSave('${_midKey}',this);_keepBottom(this)" onclick="verMidia('${proxyUrl}','img','Imagem')"
             onerror="this.parentElement.innerHTML='<span style=opacity:.6>[Imagem não disponível]</span>'" />
           <a href="#" class="media-dl-btn" title="Baixar imagem" onclick="event.preventDefault();event.stopPropagation();baixarMidia('${dlUrl}','imagem.jpg',this)"><i class=ic-down></i></a>
         </div>
