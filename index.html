@@ -1729,6 +1729,10 @@ const AUTH_ALLOWED = [
   'vendetta.freedon@gmail.com'
 ];
 let _supaAuth = null;
+// Token que o Google/Supabase devolveu no endereço AGORA (lido antes do Supabase limpar o
+// endereço). A entrega ao app do iPhone só vale para ESTA sessão recém-criada — nunca para
+// uma sessão já guardada: senão um link ?handoff=... de terceiros levaria o login dela.
+const _tokDoOAuth = (() => { try { return new URLSearchParams(String(location.hash || '').replace(/^#/, '')).get('access_token'); } catch (_) { return null; } })();
 function _showLogin(){ const o=document.getElementById('login-overlay'); if(o) o.style.display='flex'; }
 function _hideLogin(){ const o=document.getElementById('login-overlay'); if(o) o.style.display='none'; }
 // iPhone com o VETRA na TELA INICIAL: o login do Google abre numa janela do Safari com
@@ -1790,6 +1794,7 @@ async function _entregaSessaoAoApp(session){
   let meu = null; try { meu = JSON.parse(localStorage.getItem('vetra_handoff') || 'null'); } catch (_) {}
   if (meu && meu.nonce === codigo) { try { localStorage.removeItem('vetra_handoff'); } catch (_) {} return false; } // é o próprio app: segue normal
   if (!session || !session.refresh_token) return false;
+  if (!_tokDoOAuth || session.access_token !== _tokDoOAuth) return false; // não veio do login agora: abre o app normal, não entrega nada
   try {
     await window.__fetchOriginal(_servidorLogin() + '/auth-handoff', { method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + session.access_token },
@@ -1964,7 +1969,8 @@ async function initAuth(){
     try{
       const u = (typeof input==='string') ? input : (input && input.url) || '';
       const base = (typeof SERVER_URL!=='undefined') ? SERVER_URL : '';
-      if(_supaAuth && base && u.indexOf(base)===0){
+      const _prox = u.charAt(base.length); // depois do endereço do servidor só pode vir / ? # ou nada
+      if(_supaAuth && base && u.indexOf(base)===0 && (base.endsWith('/') || _prox==='' || _prox==='/' || _prox==='?' || _prox==='#')){
         const tok = await _getTok();
         if(tok) init.headers = Object.assign({}, init.headers, { Authorization:'Bearer '+tok });
       }
@@ -2354,7 +2360,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v482</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v483</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3175,7 +3181,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v482</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v483</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3239,7 +3245,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 482;
+const APP_VER = 483;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3736,7 +3742,7 @@ function renderAccountsModal(accounts) {
     if (!isEvo && acc.waba_id)         ids.push(['WABA ID', acc.waba_id]);
     const linhaIds = ids.length ? `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:5px">${ids.map(([rot, val]) =>
       `<span style="font-size:11px;color:#8696a0">${rot}: <code style="color:#54656f">${escHtml(val)}</code>
-        <button onclick="event.stopPropagation();copiarTexto('${escHtml(val)}',this)" style="background:none;border:none;color:#00806a;cursor:pointer;font-size:11px;font-weight:600;font-family:inherit">copiar</button></span>`).join('')}</div>` : '';
+        <button onclick="event.stopPropagation();copiarTexto('${_jsAttr(val)}',this)" style="background:none;border:none;color:#00806a;cursor:pointer;font-size:11px;font-weight:600;font-family:inherit">copiar</button></span>`).join('')}</div>` : '';
     return `
     <div class="account-row">
       <div class="acc-info">
@@ -4031,7 +4037,7 @@ async function populateFilterOptions() {
   const shown = q ? allTags.filter(t => t.toLowerCase().includes(q) || activeFilterTags.has(t)) : allTags;
   const area = document.getElementById('filter-tags-area');
   if (area) area.innerHTML = shown.length
-    ? shown.map(t => `<span class="filter-tag-opt ${activeFilterTags.has(t)?'selected':''}" onclick="toggleFilterTag('${t}')">${t}</span>`).join('')
+    ? shown.map(t => `<span class="filter-tag-opt ${activeFilterTags.has(t)?'selected':''}" onclick="toggleFilterTag('${_jsAttr(t)}')">${escHtml(t)}</span>`).join('')
     : '<span style="font-size:12px;color:#667781">Nenhuma tag encontrada</span>';
 }
 
@@ -4637,7 +4643,7 @@ function renderContacts(contacts) {
         </div>
         ${tagsHtml}
       </div>
-      <button class="contact-menu-btn" title="Opções" onclick="event.stopPropagation();openContactMenu(event,'${c.phone}')">⋯</button>
+      <button class="contact-menu-btn" title="Opções" onclick="event.stopPropagation();openContactMenu(event,'${_jsAttr(c.phone)}')">⋯</button>
       </div>
     </div>`;
   });
@@ -5314,7 +5320,6 @@ async function sendVoiceBlob(blob, durationSecs) {
   if (!currentPhone) return;
   const _fone = currentPhone, _conta = currentAccountId; // o áudio vai para ESTA conversa, mesmo se você abrir outra
   try { _saiDivisoria(); } catch (_) {} // respondi por áudio: a divisória de não lidas sai igual ao texto
-  _saiDivisoria();
   const base64 = await new Promise(res => {
     const r = new FileReader();
     r.onload = e => res(String(e.target.result).split(',')[1]);
@@ -5523,7 +5528,7 @@ function selCopy() {
 async function selDelete() {
   const ids = _selOrdered(); if (!ids.length) return;
   if (!await vConfirm({ titulo: 'Apagar mensagens', texto: `Apagar ${ids.length} mensagem(ns) do VETRA? Elas continuam no WhatsApp do cliente.`, confirmar: 'Apagar', perigo: true })) return;
-  for (const id of ids) { try { await fetch(`${SERVER_URL}/messages/id/${id}`, { method: 'DELETE' }); } catch (_) {} }
+  for (const id of ids) { try { await fetch(`${SERVER_URL}/messages/id/${encodeURIComponent(id)}`, { method: 'DELETE' }); } catch (_) {} }
   exitSelMode(); _lastMsgsSig = ''; loadMessages(currentPhone, false);
 }
 
@@ -5588,7 +5593,7 @@ function _fwLista() {
     .filter(c => !q || String(c.name || '').toLowerCase().includes(q) || String(c.phone || '').includes(q))
     .slice(0, 80);
   el.innerHTML = lista.length
-    ? lista.map(c => '<div class="cm-item" style="display:flex;align-items:center;border-radius:8px;gap:10px" onclick="_fwEnviar(\'' + escHtml(String(c.phone)) + '\')">'
+    ? lista.map(c => '<div class="cm-item" style="display:flex;align-items:center;border-radius:8px;gap:10px" onclick="_fwEnviar(\'' + _jsAttr(c.phone) + '\')">'
         + '<i class=ic-user></i><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(_nomeOuTel(c.name, c.phone)) + '</span>'
         + '<span style="font-size:11px;color:#8696a0">' + escHtml(typeof fmtPhoneBR === 'function' ? fmtPhoneBR(c.phone) : c.phone) + '</span></div>').join('')
     : '<div style="padding:18px;color:#8696a0;font-size:13px;text-align:center">Nenhuma conversa encontrada.</div>';
@@ -5674,7 +5679,7 @@ async function abrirFavoritas() {
       const quando = (typeof formatDayLabel === 'function' ? formatDayLabel(m.timestamp) : '') + ' ' + _brtTime(parseUTC(m.timestamp));
       const corpo = String(m.content || '').trim() || '(mídia)';
       const ehNota = m.type === 'note';
-      return '<div onclick="_favAbrir(\'' + escHtml(String(m.phone)) + '\')" '
+      return '<div onclick="_favAbrir(\'' + _jsAttr(m.phone) + '\')" '
         + 'style="border:1px solid ' + (ehNota ? '#f2e08a' : '#e9edef') + ';border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer;background:'
         + (ehNota ? '#fff6d5' : (m.direction === 'outbound' ? '#f6fdf4' : '#fff')) + '">'
         + '<div style="display:flex;gap:8px;align-items:center;margin-bottom:4px">'
@@ -5837,7 +5842,7 @@ async function abrirListaAgendadas() {
         + '<div style="flex:1;min-width:0">'
         + '<div style="font-size:12px;font-weight:700;color:#8c6d1f;margin-bottom:3px"><i class=ic-clock></i> ' + escHtml(_agFmt(x.at)) + '</div>'
         + '<div style="font-size:13px;color:#3b4a54;white-space:pre-wrap;word-break:break-word">' + escHtml(String(x.text || '').slice(0, 400)) + '</div></div>'
-        + '<button onclick="cancelarAgendada(\'' + escHtml(String(x.id)) + '\')" title="Cancelar este envio" '
+        + '<button onclick="cancelarAgendada(\'' + _jsAttr(x.id) + '\')" title="Cancelar este envio" '
         + 'style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:15px"><i class=ic-trash></i></button></div>').join('')
     : '<div style="padding:16px 0;text-align:center;color:#8696a0;font-size:13px">Nada programado nesta conversa.</div>';
 }
@@ -6147,13 +6152,13 @@ function openContactMenu(ev, phone) {
   const temNaoLida = c && (c.unread_count || 0) > 0;
   menu.innerHTML =
     (temNaoLida
-      ? `<div class="cm-item" onclick="markContactRead('${phone}');closeContactMenu()">✓ Marcar como lida</div>`
-      : `<div class="cm-item" onclick="markContactUnread('${phone}');closeContactMenu()"><i class=ic-circle></i> Marcar como não lida</div>`) +
-    `<div class="cm-item" onclick="toggleFavorite('${phone}');closeContactMenu()">${c && c.favorite ? '<i class=ic-star></i> Remover dos favoritos' : '<i class=ic-star></i> Favoritar conversa'}</div>` +
-    `<div class="cm-item" onclick="togglePin('${phone}');closeContactMenu()">${c && c.pinned ? '<i class=ic-pin></i> Desafixar do topo' : '<i class=ic-pin></i> Fixar no topo'}</div>` +
-    `<div class="cm-item" onclick="toggleMute('${phone}');closeContactMenu()">${c && c.muted ? '<i class=ic-bell></i> Reativar notificações' : '<i class=ic-mute></i> Silenciar conversa'}</div>` +
-    `<div class="cm-item" onclick="closeContactMenu();_selEntrar('${phone}')"><i class=ic-task></i> Selecionar conversas</div>` +
-    `<div class="cm-item" style="color:#ef4444" onclick="closeContactMenu();deleteConversation('${phone}')"><i class=ic-trash></i> Apagar conversa</div>`;
+      ? `<div class="cm-item" onclick="markContactRead('${_jsAttr(phone)}');closeContactMenu()">✓ Marcar como lida</div>`
+      : `<div class="cm-item" onclick="markContactUnread('${_jsAttr(phone)}');closeContactMenu()"><i class=ic-circle></i> Marcar como não lida</div>`) +
+    `<div class="cm-item" onclick="toggleFavorite('${_jsAttr(phone)}');closeContactMenu()">${c && c.favorite ? '<i class=ic-star></i> Remover dos favoritos' : '<i class=ic-star></i> Favoritar conversa'}</div>` +
+    `<div class="cm-item" onclick="togglePin('${_jsAttr(phone)}');closeContactMenu()">${c && c.pinned ? '<i class=ic-pin></i> Desafixar do topo' : '<i class=ic-pin></i> Fixar no topo'}</div>` +
+    `<div class="cm-item" onclick="toggleMute('${_jsAttr(phone)}');closeContactMenu()">${c && c.muted ? '<i class=ic-bell></i> Reativar notificações' : '<i class=ic-mute></i> Silenciar conversa'}</div>` +
+    `<div class="cm-item" onclick="closeContactMenu();_selEntrar('${_jsAttr(phone)}')"><i class=ic-task></i> Selecionar conversas</div>` +
+    `<div class="cm-item" style="color:#ef4444" onclick="closeContactMenu();deleteConversation('${_jsAttr(phone)}')"><i class=ic-trash></i> Apagar conversa</div>`;
   menu.style.display = 'block';
   // usa o tamanho REAL do menu: nunca sai da tela (embaixo ou na lateral)
   const mw = menu.offsetWidth || 210, mh = menu.offsetHeight || 240;
@@ -7516,10 +7521,10 @@ async function renderLeadPanel(phone){
     </div>
     <div class="lp-section">
       <div class="lp-label">Etapa do pipeline</div>
-      <select id="lp-stage" class="lp-select" onchange="lpSetStage('${phone}', this.value)">${stageOpts}</select>
+      <select id="lp-stage" class="lp-select" onchange="lpSetStage('${_jsAttr(phone)}', this.value)">${stageOpts}</select>
     </div>
     <div class="lp-section">
-      <div class="lp-label">Etiquetas <button class="lp-mini" style="float:right" onclick="lpAddTag('${phone}')">＋ Add</button></div>
+      <div class="lp-label">Etiquetas <button class="lp-mini" style="float:right" onclick="lpAddTag('${_jsAttr(phone)}')">＋ Add</button></div>
       <div id="lp-tags"></div>
     </div>
     <div class="lp-section">
@@ -7528,7 +7533,7 @@ async function renderLeadPanel(phone){
       <div id="lp-notes-status" style="font-size:11px;color:#00a884;height:14px;margin-top:2px"></div>
     </div>
     <div class="lp-section">
-      <div class="lp-label">Tarefas <button class="lp-mini" style="float:right" onclick="lpAddTask('${phone}')">＋ Nova</button></div>
+      <div class="lp-label">Tarefas <button class="lp-mini" style="float:right" onclick="lpAddTask('${_jsAttr(phone)}')">＋ Nova</button></div>
       <div id="lp-tasks"><div style="color:#8696a0;font-size:12px">Carregando...</div></div>
     </div>
     <div class="lp-section">
@@ -7670,7 +7675,7 @@ async function lpLoadTasks(phone){
   window._lpTasks = mine; // guarda o texto das tarefas (a pergunta de concluir mostra ele)
   el.innerHTML = mine.length ? mine.map(t => `
     <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:7px">
-      <button onclick="lpToggleTask('${t.id}',${t.done?'false':'true'},'${phone}')" title="${t.done?'Reabrir':'Concluir'}" style="width:18px;height:18px;border-radius:50%;border:2px solid #00a884;background:${t.done?'#00a884':'transparent'};color:#fff;cursor:pointer;flex-shrink:0;font-size:11px;line-height:14px;padding:0">${t.done?'✓':''}</button>
+      <button onclick="lpToggleTask('${_jsAttr(t.id)}',${t.done?'false':'true'},'${_jsAttr(phone)}')" title="${t.done?'Reabrir':'Concluir'}" style="width:18px;height:18px;border-radius:50%;border:2px solid #00a884;background:${t.done?'#00a884':'transparent'};color:#fff;cursor:pointer;flex-shrink:0;font-size:11px;line-height:14px;padding:0">${t.done?'✓':''}</button>
       <div onclick="editTaskChat('${t.id}')" title="Tocar para editar o texto e o prazo" style="flex:1;min-width:0;font-size:13px;color:#131c20;cursor:pointer;${t.done?'text-decoration:line-through;opacity:.6':''}">${escHtml(t.title)}${t.due_at?`<div style="font-size:11px;color:#667781"><i class=ic-clock></i> ${fmtTaskDue(t.due_at)}</div>`:(t.created_at?`<div style="font-size:11px;color:#8696a0">Criada ${fmtTaskCreated(t.created_at)}</div>`:'')}</div>
       ${_taskComentHtml(t)}
     </div>`).join('') : '<div style="color:#8696a0;font-size:12px">Nenhuma tarefa</div>';
@@ -7746,7 +7751,7 @@ function lpLoadMedia(phone){
       const isPdfDoc = /\.pdf\s*$/i.test(fname) || String(m.media_mime_type || '').toLowerCase().includes('pdf');
       // Mesma URL do chat (tipo do arquivo + conta da mensagem)
       const urlVer = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${_acct(m)}${m.media_mime_type ? '&mime=' + encodeURIComponent(m.media_mime_type) : ''}`;
-      const urlDl  = `${urlVer}&download=1&filename=${encodeURIComponent(fname)}`;
+      const urlDl  = `${urlVer}&download=1&filename=${encodeURIComponent(fname).replace(/'/g, '%27')}`;
       // Celular: abre DENTRO do app (o link com navegação recarregava o VETRA ao voltar)
       return `<div onclick="if(window.matchMedia('(hover: none)').matches){abrirArquivo('${urlVer}','${isPdfDoc?'pdf':'outro'}','${nomeSafe}')}else{baixarMidia('${urlDl}','${nomeSafe}',this)}" style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:#f0f2f5;border-radius:6px;margin-bottom:5px;color:#131c20;font-size:12px;cursor:pointer"><span style="flex:1;word-break:break-all">${escHtml(fname)}</span> </div>`;
     }).join('');
@@ -8494,7 +8499,7 @@ function renderMessageContent(m) {
   if (qc) {
     const qLabel = m.quoted_direction === 'outbound' ? 'Você' : (currentName || 'Contato');
     const qPreview = qc.length > 90 ? qc.substring(0, 90) + '…' : qc;
-    quotedHtml = `<div class="quoted-bubble"${m.quoted_id ? ` onclick="event.stopPropagation();_gotoMsg('${escHtml(String(m.quoted_id))}')"` : ''}><div class="quoted-name">${escHtml(qLabel)}</div><div class="quoted-text">${escHtml(qPreview)}</div></div>`;
+    quotedHtml = `<div class="quoted-bubble"${m.quoted_id ? ` onclick="event.stopPropagation();_gotoMsg('${_jsAttr(m.quoted_id)}')"` : ''}><div class="quoted-name">${escHtml(qLabel)}</div><div class="quoted-text">${escHtml(qPreview)}</div></div>`;
   }
 
   const mediaTypes = ['image', 'audio', 'video', 'document', 'sticker'];
@@ -8601,7 +8606,7 @@ function renderMessageContent(m) {
 
     } else if (m.type === 'document') {
       const fileName = (m.content || '').replace(/^\[Documento: ?/, '').replace(/\]$/, '') || 'Documento';
-      const dlUrl = `${proxyUrl}&download=1&filename=${encodeURIComponent(fileName)}`;
+      const dlUrl = `${proxyUrl}&download=1&filename=${encodeURIComponent(fileName).replace(/'/g, '%27')}`;
       // Selo com o TIPO do arquivo (cor por extensão, estilo dos CRMs)
       const _ext = (fileName.includes('.') ? fileName.split('.').pop() : '').toLowerCase();
       const _extShow = (_ext && _ext.length <= 5) ? _ext.toUpperCase() : 'ARQ';
@@ -8645,7 +8650,7 @@ function renderMessageContent(m) {
       const _yt = Math.floor((1 - Math.log(Math.tan(_la * Math.PI / 180) + 1 / Math.cos(_la * Math.PI / 180)) / Math.PI) / 2 * Math.pow(2, _zz));
       mapBg = `background-image:url('https://tile.openstreetmap.org/${_zz}/${_xt}/${_yt}.png');background-size:cover;background-position:center;background-color:#b7dfb0;`;
     }
-    return quotedHtml + `<a href="${uMatch ? uMatch[0] : '#'}" target="_blank" rel="noopener" style="display:block;text-decoration:none;color:inherit;min-width:210px;max-width:260px">
+    return quotedHtml + `<a href="${uMatch ? escHtml(uMatch[0]) : '#'}" target="_blank" rel="noopener" style="display:block;text-decoration:none;color:inherit;min-width:210px;max-width:260px">
       <div style="${mapBg}border-radius:10px;height:110px;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden">
         <span style="font-size:34px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35));margin-top:-14px"><i class=ic-map></i></span>
       </div>
@@ -9785,7 +9790,7 @@ function cancelReply() {
 async function deleteMessage(id, btn) {
   if (!await vConfirm({ titulo: 'Apagar mensagem', texto: 'A mensagem sai do VETRA. Ela continua no WhatsApp do cliente.', confirmar: 'Apagar', perigo: true })) return;
   try {
-    const res = await fetch(`${SERVER_URL}/messages/id/${id}`, { method: 'DELETE' });
+    const res = await fetch(`${SERVER_URL}/messages/id/${encodeURIComponent(id)}`, { method: 'DELETE' });
     if (res.ok) {
       // Remove o elemento da tela sem recarregar tudo
       const msgEl = btn.closest('.msg');
@@ -9935,7 +9940,7 @@ function _htmlCitacao(reply) {
   const qc = String(reply.content || '(mídia)');
   const qLabel = reply.direction === 'outbound' ? 'Você' : (currentName || 'Contato');
   const qPreview = qc.length > 90 ? qc.substring(0, 90) + '…' : qc;
-  return `<div class="quoted-bubble"${reply.id ? ` onclick="event.stopPropagation();_gotoMsg('${escHtml(String(reply.id))}')"` : ''}><div class="quoted-name">${escHtml(qLabel)}</div><div class="quoted-text">${escHtml(qPreview)}</div></div>`;
+  return `<div class="quoted-bubble"${reply.id ? ` onclick="event.stopPropagation();_gotoMsg('${_jsAttr(reply.id)}')"` : ''}><div class="quoted-name">${escHtml(qLabel)}</div><div class="quoted-text">${escHtml(qPreview)}</div></div>`;
 }
 function _htmlPendente(texto, grp, reply, falhou, chave) {
   const ch = chave || _chavePend(texto);
@@ -10743,7 +10748,7 @@ function renderMediaGallery() {
           const isPdfG = /\.pdf\s*$/i.test(fname) || String(m.media_mime_type || '').toLowerCase().includes('pdf');
           // Mesma URL do chat (tipo do arquivo + conta da mensagem)
           const urlVer = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${_acct(m)}${m.media_mime_type ? '&mime=' + encodeURIComponent(m.media_mime_type) : ''}`;
-          const urlDl  = `${urlVer}&download=1&filename=${encodeURIComponent(fname)}`;
+          const urlDl  = `${urlVer}&download=1&filename=${encodeURIComponent(fname).replace(/'/g, '%27')}`;
           // Celular: abre DENTRO do app (o link antigo navegava e o app recarregava ao voltar)
           return `<div onclick="if(window.matchMedia('(hover: none)').matches){abrirArquivo('${urlVer}','${isPdfG?'pdf':'outro'}','${nomeSafe}')}else{baixarMidia('${urlDl}','${nomeSafe}',this)}" style="display:flex;align-items:center;gap:10px;padding:10px;background:#ffffff;border-radius:8px;margin-bottom:8px;color:#131c20;cursor:pointer"><span style="flex:1;word-break:break-all">${escHtml(fname)}</span> <span style="color:#00a884"></span></div>`;
         }).join('')
@@ -11341,11 +11346,11 @@ function showQRForm(index) {
     <div id="qr-form">
       <div>
         <label>Atalho (o que você vai digitar após /)</label>
-        <input id="qr-title" placeholder="ex: ola, preco, horario..." value="${r.title}" maxlength="30">
+        <input id="qr-title" placeholder="ex: ola, preco, horario..." value="${escHtml(r.title || '')}" maxlength="30">
       </div>
       <div>
         <label style="display:flex;align-items:center;gap:8px">Mensagem <button type="button" id="qr-emoji-btn" onclick="abrirEmojiPara('qr-message', this, event)" title="Inserir emoji" style="margin-left:auto;background:#fff;border:1px solid #e9edef;border-radius:8px;padding:3px 9px;font-size:14px;cursor:pointer;line-height:1">😊 Emoji</button></label>
-        <textarea id="qr-message" placeholder="Olá, {nome}! Como posso ajudar?">${r.message}</textarea>
+        <textarea id="qr-message" placeholder="Olá, {nome}! Como posso ajudar?">${escHtml(r.message || '')}</textarea>
         <div id="qr-var-hint">Use <span onclick="insertQRVar('{nome}')"><b>{nome}</b></span>, <span onclick="insertQRVar('{telefone}')"><b>{telefone}</b></span>, <span onclick="insertQRVar('{notas}')"><b>{notas}</b></span> ou <span onclick="insertQRData()"><b>{data}</b></span> — o VETRA troca pelos dados do lead; em {data} você escolhe os dias (ex.: {daqui a 7 dias} → 24/09)</div>
       </div>
       <div>
@@ -11517,7 +11522,7 @@ function showQRPopup(filter, fromSearch) {
   }
   const contactName = allContacts.find(c => c.phone === currentPhone)?.name || '';
   list.innerHTML = filtered.map((r, i) => {
-    const preview = r.message.replace(/\{nome\}/gi, contactName || '{nome}');
+    const preview = String(r.message || '').replace(/\{nome\}/gi, contactName || '{nome}');
     const short   = preview.length > 90 ? preview.substring(0, 90) + '…' : preview;
     return `<div class="qr-item" onclick="insertQRReply(${quickReplies.indexOf(r)})">
       <div class="qr-item-title">${r.pinned ? '<i class=ic-pin></i> ' : ''}/${escHtml(r.title)}${r.media_url ? ' <i class=ic-clip title="Vai com anexo"></i>' : ''}</div>
@@ -12155,7 +12160,7 @@ function _avisaPlano() {
   } else {
     f.textContent = 'Seu plano vence em ' + p.dias_restantes + ' dia(s) — ' + (p.validade_br || '—') + '.';
   }
-  if (p.link_pagamento) {
+  if (p.link_pagamento && !/^\s*(javascript|data|vbscript):/i.test(p.link_pagamento)) {
     const a = document.createElement('a');
     a.href = p.link_pagamento; a.target = '_blank'; a.rel = 'noopener noreferrer';
     a.textContent = 'Pagar agora';
@@ -12312,7 +12317,7 @@ async function carregaFaturamento() {
     if (i.limite_msgs_mes) html += linha('Mensagens por mês', Number(i.limite_msgs_mes).toLocaleString('pt-BR'));
     if (i.valor) html += linha('Valor', escHtml(i.valor));
     if (i.contato) html += linha('Suporte do seu plano', escHtml(i.contato));
-    if (i.link_pagamento) html += `<div style="margin-top:12px"><a href="${escHtml(i.link_pagamento)}" target="_blank" rel="noopener noreferrer" class="btn-save" style="display:inline-block;text-decoration:none">Pagar agora</a>
+    if (i.link_pagamento && !/^\s*(javascript|data|vbscript):/i.test(i.link_pagamento)) html += `<div style="margin-top:12px"><a href="${escHtml(i.link_pagamento)}" target="_blank" rel="noopener noreferrer" class="btn-save" style="display:inline-block;text-decoration:none">Pagar agora</a>
         <span style="font-size:11.5px;color:#8696a0;margin-left:8px">abre a página de pagamento</span></div>`;
     if (i.obs) html += `<div style="font-size:12px;color:#667781;margin-top:8px">${escHtml(i.obs)}</div>`;
     if ((i.pagamentos || []).length) {
@@ -13479,7 +13484,7 @@ async function abrirHistoricoConfig() {
           + '<div style="flex:1;min-width:0"><b style="font-size:13px;color:#131c20">' + escHtml(v.nome) + '</b>'
           + '<div style="font-size:11.5px;color:#8696a0">' + escHtml(q) + ' · ' + v.itens + (String(v.chave).startsWith('bot:') ? ' passo(s)' : ' item(ns)')
           + (v.por ? ' · por ' + escHtml(String(v.por).split('@')[0]) : '') + '</div></div>'
-          + '<button class="pf-topbtn" onclick="restaurarVersao(\'' + escHtml(v.chave) + '\',\'' + escHtml(v.ts) + '\',\'' + escHtml(v.nome) + '\')">Restaurar</button></div>';
+          + '<button class="pf-topbtn" onclick="restaurarVersao(\'' + _jsAttr(v.chave) + '\',\'' + _jsAttr(v.ts) + '\',\'' + _jsAttr(v.nome) + '\')">Restaurar</button></div>';
       }).join('');
   } catch (e) {
     el.innerHTML = '<div style="color:#ef4444;padding:14px 0">' + escHtml(e.message || 'Não consegui carregar.') + '</div>';
@@ -13515,9 +13520,9 @@ async function _renderCfgStageIds() {
     box.innerHTML = ss.map(s => `
       <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #f0f2f5">
         <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#131c20">${escHtml(s.name)}</span>
-        <span onclick="navigator.clipboard&&navigator.clipboard.writeText('${escHtml(String(s.external_id||''))}');const o=this.textContent;this.textContent='✓ copiado';setTimeout(()=>{this.textContent=o},1100)"
+        <span onclick="navigator.clipboard&&navigator.clipboard.writeText('${_jsAttr(s.external_id||'')}');const o=this.textContent;this.textContent='✓ copiado';setTimeout(()=>{this.textContent=o},1100)"
           style="font-family:monospace;font-size:12.5px;color:#027eb5;cursor:pointer" title="Tocar para copiar">${escHtml(String(s.external_id || 'sem ID'))}</span>
-        <span onclick="editStageExtId('${s.id}')" style="cursor:pointer;font-size:13px" title="Trocar o ID"><i class=ic-pencil></i></span>
+        <span onclick="editStageExtId('${_jsAttr(s.id)}')" style="cursor:pointer;font-size:13px" title="Trocar o ID"><i class=ic-pencil></i></span>
       </div>`).join('');
   } catch (_) { box.textContent = 'Erro ao carregar as etapas.'; }
 }
@@ -13873,12 +13878,12 @@ function renderTagSheet() {
   const tags = c.tags || [];
   const esc = t => t.replace(/'/g, "\\'");
   document.getElementById('tag-sheet-chips').innerHTML = tags.length
-    ? tags.map((t,i) => `<span class="tag-chip ${_tagCor(t)} removable" title="Toque para remover" onclick="removeTag('${c.phone}','${esc(t)}')" style="font-size:13px;padding:6px 11px">${escHtml(t)} ×</span>`).join('')
+    ? tags.map((t,i) => `<span class="tag-chip ${_tagCor(t)} removable" title="Toque para remover" onclick="removeTag('${_jsAttr(c.phone)}','${_jsAttr(t)}')" style="font-size:13px;padding:6px 11px">${escHtml(t)} ×</span>`).join('')
     : '<span style="color:#667781;font-size:13px">Este cliente ainda não tem etiquetas.</span>';
   const sug = allTagsList.filter(t => !tags.includes(t)).slice(0, 12);
   document.getElementById('tag-sheet-suggest').innerHTML = sug.length
     ? '<span style="width:100%;font-size:11px;color:#667781;text-transform:uppercase">Toque para adicionar</span>' +
-      sug.map(t => `<span class="tag-chip tc0" onclick="addTag('${c.phone}','${esc(t)}')" style="cursor:pointer;font-size:13px;padding:6px 11px;opacity:.75">+ ${escHtml(t)}</span>`).join('')
+      sug.map(t => `<span class="tag-chip tc0" onclick="addTag('${_jsAttr(c.phone)}','${_jsAttr(t)}')" style="cursor:pointer;font-size:13px;padding:6px 11px;opacity:.75">+ ${escHtml(t)}</span>`).join('')
     : '';
 }
 
@@ -13952,7 +13957,7 @@ async function saveNotes() {
 function populateLeadAccounts() {
   const sel = document.getElementById('account-select');
   const opts = '<option value="">Nenhuma (sem vínculo)</option>' +
-    Array.from(sel.options).filter(o => o.value).map(o => `<option value="${o.value}">${o.text}</option>`).join('');
+    Array.from(sel.options).filter(o => o.value).map(o => `<option value="${escHtml(o.value)}">${escHtml(o.text)}</option>`).join('');
   document.getElementById('lead-account').innerHTML = opts;
   document.getElementById('import-account').innerHTML = opts;
 }
@@ -14323,7 +14328,7 @@ async function loadTemplates() {
     if (!Array.isArray(allTemplates)) throw new Error(allTemplates.error || 'Erro');
     renderTemplateList(allTemplates);
   } catch(e) {
-    document.getElementById('tmpl-list-content').innerHTML = `<p style="color:#ef4444;font-size:13px">${e.message}</p>`;
+    document.getElementById('tmpl-list-content').innerHTML = `<p style="color:#ef4444;font-size:13px">${escHtml(e.message)}</p>`;
   }
 }
 
@@ -14959,10 +14964,10 @@ async function loadApprovedTemplates() {
     }
     el.innerHTML = approved.map(t => {
       const body = t.components?.find(c => c.type === 'BODY');
-      return `<div class="tmpl-select-item" onclick="selectTemplate(this,'${t.id}','${t.name}','${t.language}',${JSON.stringify(t.components).replace(/"/g,'&quot;')})">
+      return `<div class="tmpl-select-item" onclick="selectTemplate(this,'${_jsAttr(t.id)}','${_jsAttr(t.name)}','${_jsAttr(t.language)}',${escHtml(JSON.stringify(t.components))})">
         <div class="tmpl-select-name">${escHtml(tmplNome(t))}</div>
-        <div class="tmpl-select-lang">${_tmplAlias[t.id] ? escHtml(t.name) + ' · ' : ''}${t.language} · ${t.category}</div>
-        ${body ? `<div class="tmpl-select-preview">${body.text}</div>` : ''}
+        <div class="tmpl-select-lang">${_tmplAlias[t.id] ? escHtml(t.name) + ' · ' : ''}${escHtml(t.language)} · ${escHtml(t.category)}</div>
+        ${body ? `<div class="tmpl-select-preview">${escHtml(body.text)}</div>` : ''}
       </div>`;
     }).join('');
   } catch(e) { el.innerHTML = '<p style="color:#ef4444;font-size:13px">Erro ao carregar modelos.</p>'; }
@@ -15863,7 +15868,7 @@ function renderKanbanWith(contacts) {
     col.innerHTML = `
       <div class="kanban-col-header">
         <div class="kanban-col-dot" style="background:${stageColor(stage.id)}"></div>
-        <input class="kanban-col-name" value="${stage.name}" ${stage.fixed ? 'readonly' : ''}
+        <input class="kanban-col-name" value="${escHtml(stage.name)}" ${stage.fixed ? 'readonly' : ''}
           onblur="renameStage('${stage.id}', this.value)"
           onkeydown="if(event.key==='Enter')this.blur()">
         <span class="kanban-col-count">${cards.length}</span>
@@ -16248,7 +16253,7 @@ function updateBulkBar() {
     const sel = document.getElementById('bulk-stage-sel');
     if (sel) {
       sel.innerHTML = '<option value="">↪ Mover para...</option>' +
-        pipelineStages.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+        pipelineStages.map(s => `<option value="${escHtml(s.id)}">${escHtml(s.name)}</option>`).join('');
     }
   } else {
     bar.classList.remove('visible');
@@ -16545,7 +16550,7 @@ function populatePipelineFilterTags() {
   const shown = q ? allTags.filter(t => t.toLowerCase().includes(q) || activePipelineFilterTags.has(t)) : allTags;
   const area = document.getElementById('pf-tags-area');
   if (area) area.innerHTML = shown.length
-    ? shown.map(t => `<span class="filter-tag-opt ${activePipelineFilterTags.has(t)?'selected':''}" onclick="togglePFTag('${t}')">${t}</span>`).join('')
+    ? shown.map(t => `<span class="filter-tag-opt ${activePipelineFilterTags.has(t)?'selected':''}" onclick="togglePFTag('${_jsAttr(t)}')">${escHtml(t)}</span>`).join('')
     : '<span style="font-size:12px;color:#667781">Nenhuma tag encontrada</span>';
 }
 
@@ -17506,13 +17511,13 @@ function _taskRowHTML(t){
   const now=Date.now();
   const overdue=t.due_at && !t.done && parseUTC(t.due_at)<now;
   const selBox = !_taskSelMode ? '' : (t.phone
-    ? `<label title="Selecionar para disparo em massa" style="display:flex;align-items:center;flex-shrink:0;margin-right:2px;opacity:.75;cursor:pointer"><input type="checkbox" class="task-sel" onclick="toggleTaskSel('${escHtml(t.phone)}')" ${_selTaskPhones.has(t.phone)?'checked':''} style="width:15px;height:15px;cursor:pointer;accent-color:#8696a0" /></label>`
+    ? `<label title="Selecionar para disparo em massa" style="display:flex;align-items:center;flex-shrink:0;margin-right:2px;opacity:.75;cursor:pointer"><input type="checkbox" class="task-sel" onclick="toggleTaskSel('${_jsAttr(t.phone)}')" ${_selTaskPhones.has(t.phone)?'checked':''} style="width:15px;height:15px;cursor:pointer;accent-color:#8696a0" /></label>`
     : `<span style="width:17px;flex-shrink:0;display:inline-block"></span>`);
   // O prazo agora é CLICÁVEL: abre as opções de adiar / trocar / tirar
   const due=t.due_at
     ? `<span onclick="menuPrazoTarefa('${t.id}')" title="Mudar ou adiar o prazo" style="color:${overdue?'#ef4444':'#667781'};font-size:12px;cursor:pointer"><i class=ic-clock></i> ${fmtTaskDue(t.due_at)}</span>`
     : `<span onclick="menuPrazoTarefa('${t.id}')" title="Definir um prazo" style="color:#8696a0;font-size:12px;cursor:pointer"><i class=ic-clock></i> Sem prazo</span>`;
-  const lead=t.contact_name?`<button onclick="openTaskLead('${t.phone}','${_jsAttr(t.contact_name)}',${t.account_id?`'${t.account_id}'`:'null'})" title="Abrir a conversa e os dados deste lead" style="display:inline-flex;align-items:center;gap:6px;background:#e7f7ef;border:1px solid #00a884;color:#00806a;border-radius:16px;padding:5px 12px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit"><i class=ic-user></i> ${escHtml(t.contact_name)} <span style="font-size:11px">›</span></button>`:'';
+  const lead=t.contact_name?`<button onclick="openTaskLead('${_jsAttr(t.phone)}','${_jsAttr(t.contact_name)}',${t.account_id?`'${_jsAttr(t.account_id)}'`:'null'})" title="Abrir a conversa e os dados deste lead" style="display:inline-flex;align-items:center;gap:6px;background:#e7f7ef;border:1px solid #00a884;color:#00806a;border-radius:16px;padding:5px 12px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit"><i class=ic-user></i> ${escHtml(t.contact_name)} <span style="font-size:11px">›</span></button>`:'';
   // O comentário NÃO vira bloco: fica no próprio botão (cor + dica), para que a
   // linha da tarefa tenha sempre a mesma altura.
   const _nota = String(t.notes || '').replace(/\s+/g, ' ').trim();
@@ -19541,7 +19546,7 @@ const STEP_TYPES = [
 function closeStepMenu(){ const m=document.getElementById('bot-step-menu'); if(m) m.remove(); }
 function openStepMenu(fromNodeId, portLabel, ev){
   closeStepMenu();
-  const safe = String(portLabel||'').replace(/'/g,"\\'");
+  const safe = _jsAttr(portLabel); // aspas/barras no texto da opção não quebram mais o menu
   const menu = document.createElement('div');
   menu.id='bot-step-menu';
   menu.style.cssText='position:fixed;z-index:9999;background:#ffffff;border:1px solid #e9edef;border-radius:8px;padding:6px;box-shadow:0 8px 24px rgba(0,0,0,.5);min-width:230px;max-height:calc(100vh - 16px);overflow:auto';
