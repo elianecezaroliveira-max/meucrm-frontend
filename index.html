@@ -2354,7 +2354,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v481</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v482</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2795,6 +2795,16 @@ window.addEventListener('load', initAuth);
         <button class="pf-topbtn" onclick="_piscaLimpa()">Limpar</button>
       </div>
     </div>
+    <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
+      <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">Banco de dados</div>
+      <p style="font-size:12px;color:#667781;margin:0 0 10px;line-height:1.5">Cada recurso novo do VETRA precisa de uma coluna ou tabela no Supabase. Aqui o servidor confere sozinho o que falta e entrega o SQL pronto: Supabase &rsaquo; SQL Editor &rsaquo; New query &rsaquo; colar &rsaquo; Run. Pode rodar mais de uma vez sem problema.</p>
+      <div id="diag-banco" style="font-size:13px;color:#54656f">Conferindo…</div>
+      <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
+        <button class="pf-topbtn" onclick="carregaDiagBanco(true)">Conferir de novo</button>
+        <button class="pf-topbtn" id="diag-banco-copiar" style="display:none" onclick="copiarTexto(window._diagBancoSql||'',this)">Copiar o SQL que falta</button>
+        <button class="pf-topbtn" onclick="copiarTexto(window._diagBancoTudo||'',this)">Copiar o SQL completo (instalação nova)</button>
+      </div>
+    </div>
 </div>
 <div class="cfg-pane" data-pane="adm">
     <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
@@ -3165,7 +3175,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v481</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v482</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3229,7 +3239,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 481;
+const APP_VER = 482;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -13233,6 +13243,24 @@ function abrirConfigEm(aba) {
     } catch (_) {}
   }, 60);
 }
+// 🩺 O que falta no banco (Supabase) — e o SQL pronto para colar. Um cliente novo
+// consegue instalar sozinho: copia o SQL completo, roda no Supabase e pronto.
+async function carregaDiagBanco(forcar) {
+  const el = document.getElementById('diag-banco'); if (!el) return;
+  el.textContent = 'Conferindo…';
+  try {
+    const r = await fetch(SERVER_URL + '/diagnostico/banco' + (forcar ? '?forcar=1' : ''));
+    if (r.status === 404) { el.textContent = 'O servidor publicado ainda não tem esta conferência — publique o servidor e tente de novo.'; return; }
+    const d = await r.json();
+    window._diagBancoSql = d.sql || ''; window._diagBancoTudo = d.sql_tudo || '';
+    const bt = document.getElementById('diag-banco-copiar'); if (bt) bt.style.display = d.sql ? '' : 'none';
+    if (d.ok) { el.innerHTML = '<span style="color:#00806a;font-weight:700">Banco completo</span> — nada a atualizar.'; return; }
+    if (d.motivo) { el.textContent = 'Não deu para conferir: ' + d.motivo; return; }
+    el.innerHTML = '<div style="color:#b45309;font-weight:700;margin-bottom:6px">Falta ' + d.faltando.length + ' item(ns) no banco</div>'
+      + d.faltando.map(f => '<div style="padding:3px 0;line-height:1.45"><b>' + escHtml(f.o_que) + '</b> — ' + escHtml(f.para)
+        + (f.sem_conserto ? ' <span style="color:#c0392b">(tabela principal: recrie o projeto pelo guia)</span>' : '') + '</div>').join('');
+  } catch (e) { el.textContent = 'Não deu para conferir agora: ' + (e.message || e); }
+}
 function cfgTab(k) {
   document.querySelectorAll('#cfg-nav .cfg-tab').forEach(b => b.classList.toggle('on', b.dataset.pane === k));
   document.querySelectorAll('#cfg-panes .cfg-pane').forEach(p => p.classList.toggle('on', p.dataset.pane === k));
@@ -13248,7 +13276,7 @@ function cfgTab(k) {
     if (_bc) _bc.style.display = _souFornecedor ? '' : 'none';
     if (_souFornecedor) carregaBackupAuto();
   }
-  if (k === 'diag') { carregaDiagnostico(); _piscaMostra(); }
+  if (k === 'diag') { carregaDiagnostico(); _piscaMostra(); carregaDiagBanco(); }
   if (k === 'termos') carregaTermos();
   if (k === 'adm') { carregaAcessoAdmin(); carregaPagamento(); carregaPainelDono(); }
   if (k === 'reg') carregaAuditoria();
