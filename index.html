@@ -2358,7 +2358,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v484</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v485</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2846,6 +2846,12 @@ window.addEventListener('load', initAuth);
       <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">Passo a passo de estreia</div>
       <p style="font-size:12px;color:#667781;margin:0 0 8px;line-height:1.5">Aparece sozinho no alto da lista de conversas para quem está começando, e some quando os quatro passos terminam. Use o botão abaixo para ver como o seu cliente vê — ou para trazer de volta se alguém escondeu.</p>
       <button class="pf-topbtn" style="margin-bottom:16px" onclick="verOnboarding()">Ver o passo a passo</button>
+      <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">Toque de mensagem nova</div>
+      <p style="font-size:12px;color:#667781;margin:0 0 8px;line-height:1.5">Igual ao WhatsApp: toca quando chega mensagem de um lead — menos na conversa que você está lendo com o VETRA na frente, e menos em conversa silenciada. Vale só <b>neste aparelho</b>. Com o VETRA fechado, quem avisa é a notificação do celular, e aí o som é o do sistema.</p>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:16px">
+        <select id="cfg-toque" onchange="toqueEscolhe(this.value)" style="padding:8px 10px;border:1px solid #d1d7db;border-radius:8px;font-family:inherit;font-size:13px;background:#fff;color:#131c20"></select>
+        <button class="pf-topbtn" onclick="tocaToque(document.getElementById('cfg-toque').value)">Ouvir</button>
+      </div>
       <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">Suporte</div>
       <div style="font-size:13px;color:#667781">Em breve.</div>
     </div>
@@ -3179,7 +3185,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v484</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v485</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3243,7 +3249,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 484;
+const APP_VER = 485;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3983,10 +3989,80 @@ function _listaDoCache() {
     return true;
   } catch (_) { return false; }
 }
+// ═══════════ 🔔 TOQUE DE MENSAGEM NOVA (igual WhatsApp) ═══════════
+// Toca quando chega mensagem de um lead. NÃO toca: na conversa que você está lendo com o
+// VETRA na frente, em conversa silenciada, no que você mesma enviou, nem na primeira
+// carga da lista (senão tocaria tudo de uma vez ao abrir). O som é sintetizado aqui —
+// sem arquivo, sem rede — e a escolha vale só neste aparelho.
+const _TOQUES = { classico: 'Clássico', sino: 'Sino', gota: 'Gota', duplo: 'Duplo', nenhum: 'Sem som' };
+function _toqueEscolhido() { try { return localStorage.getItem('vetra_toque') || 'classico'; } catch (_) { return 'classico'; } }
+function toqueEscolhe(v) { try { localStorage.setItem('vetra_toque', v); } catch (_) {} if (v && v !== 'nenhum') tocaToque(v); }
+let _audioCtx = null;
+function _audioPronto() {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
+    if (!_audioCtx) _audioCtx = new AC();
+    if (_audioCtx.state === 'suspended') _audioCtx.resume().catch(() => {});
+    return _audioCtx;
+  } catch (_) { return null; }
+}
+function tocaToque(nome) {
+  const qual = nome || _toqueEscolhido();
+  if (qual === 'nenhum') return;
+  const ctx = _audioPronto(); if (!ctx) return;
+  const notas = ({
+    classico: [[880, 0, 0.09], [1320, 0.07, 0.13]],
+    sino:     [[1568, 0, 0.45]],
+    gota:     [[700, 0, 0.07], [1100, 0.05, 0.18]],
+    duplo:    [[990, 0, 0.07], [990, 0.13, 0.07]],
+  })[qual] || [];
+  const t0 = ctx.currentTime;
+  for (const nota of notas) {
+    const hz = nota[0], atraso = nota[1], dur = nota[2];
+    try {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sine'; o.frequency.value = hz;
+      g.gain.setValueAtTime(0.0001, t0 + atraso);
+      g.gain.exponentialRampToValueAtTime(0.22, t0 + atraso + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + atraso + dur);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(t0 + atraso); o.stop(t0 + atraso + dur + 0.03);
+    } catch (_) {}
+  }
+}
+// o navegador só libera som depois de um toque/clique seu: o 1º gesto destrava
+['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, () => _audioPronto(), { once: true, passive: true }));
+function _toquePinta() {
+  const sel = document.getElementById('cfg-toque'); if (!sel) return;
+  const atual = _toqueEscolhido();
+  sel.innerHTML = Object.keys(_TOQUES).map(k => '<option value="' + k + '"' + (k === atual ? ' selected' : '') + '>' + _TOQUES[k] + '</option>').join('');
+}
+let _ultimasPorFone = null;
+function _avisaChegou(lista) {
+  try {
+    const mapa = {};
+    for (const c of lista) mapa[c.phone] = c.last_message_at || '';
+    if (_ultimasPorFone) {
+      const naFrente = (!document.hidden) && (!document.hasFocus || document.hasFocus());
+      const tocar = lista.some(c => {
+        const ant = _ultimasPorFone[c.phone];
+        if (!c.last_message_at || ant === undefined || c.last_message_at <= ant) return false; // nada novo
+        if (c.last_message_direction !== 'inbound') return false;   // fui eu quem escreveu
+        if (c.muted) return false;                                   // conversa silenciada
+        if (c.phone === currentPhone && naFrente) return false;      // estou lendo essa conversa
+        return true;
+      });
+      if (tocar) tocaToque();
+    }
+    _ultimasPorFone = mapa;
+  } catch (_) {}
+}
+
 async function loadContacts(render = true, buscaJaIniciada = null) {
   try {
     const lista = await (buscaJaIniciada || _buscaContatos());
     if (!Array.isArray(lista)) return;
+    _avisaChegou(lista); // 🔔 chegou mensagem de lead? toca (regras do WhatsApp)
     allContacts = sortContacts(_ecoAplica(lista));
     window._contactsLoaded = true;
     if (!window._iaStatusPedido) { window._iaStatusPedido = true; _iaSugCarregaStatus(); } // ✨ sugestões ligadas?
@@ -13311,6 +13387,7 @@ function cfgTab(k) {
     if (_bc) _bc.style.display = _souFornecedor ? '' : 'none';
     if (_souFornecedor) carregaBackupAuto();
   }
+  if (k === 'apar') _toquePinta();
   if (k === 'diag') { carregaDiagnostico(); _piscaMostra(); carregaDiagBanco(); }
   if (k === 'termos') carregaTermos();
   if (k === 'adm') { carregaAcessoAdmin(); carregaPagamento(); carregaPainelDono(); }
