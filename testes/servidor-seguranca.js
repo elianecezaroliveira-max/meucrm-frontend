@@ -85,7 +85,7 @@ Module.prototype.require = function (id) { if (id === '@supabase/supabase-js') r
 const origLog = console.log, origErr = console.error, origWarn = console.warn;
 console.log = console.error = console.warn = () => {};
 const m = new Module(ALVO, module); m.filename = ALVO; m.paths = Module._nodeModulePaths(path.dirname(ALVO));
-m._compile(fs.readFileSync(ALVO, 'utf8') + '\n;globalThis.__srv={handleBotReply:typeof handleBotReply==="function"?handleBotReply:null,csv:typeof _csvCampo==="function"?_csvCampo:null,plano:typeof _planoBruto==="function"?_planoBruto:null,bkp:typeof _backupAutoDe==="function"?_backupAutoDe:null,typing:typeof botTypingPulse==="function"?botTypingPulse:null};', ALVO);
+m._compile(fs.readFileSync(ALVO, 'utf8') + '\n;globalThis.__srv={handleBotReply:typeof handleBotReply==="function"?handleBotReply:null,csv:typeof _csvCampo==="function"?_csvCampo:null,plano:typeof _planoBruto==="function"?_planoBruto:null,bkp:typeof _backupAutoDe==="function"?_backupAutoDe:null,typing:typeof botTypingPulse==="function"?botTypingPulse:null,enviaAuto:typeof sendBotMsg==="function"?sendBotMsg:null};', ALVO);
 
 let base = '';
 const chama = async (metodo, rota, { tok, api, body } = {}) => {
@@ -238,7 +238,7 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
     return r.status === 200 && DB.bot_nodes.some(x => x.id === 'n-b1' && x.bot_id === 'bot-b3');
   });
   // ── conversa marcada como LIDA sem você ──
-  await t('resposta automática do bot não marca a conversa como lida', async () => {
+  await t('[normal] mensagem enviada pelo BOT marca a conversa como lida', async () => {
     DB.contacts.push({ phone: '5511944440000', owner: B, unread_count: 3, first_unread_at: new Date().toISOString(), last_message_direction: 'inbound' });
     DB.bot_runs.push({ id: 'run-l', owner: B, contact_phone: '5511944440000', status: 'waiting_reply', pause_until: new Date(Date.now() + 3600e3).toISOString(), current_node_id: 'lw', bot_id: 'bot-l', updated_at: new Date().toISOString() });
     DB.bots.push({ id: 'bot-l', owner: B, name: 'L' });
@@ -248,12 +248,19 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
     await globalThis.__srv.handleBotReply('5511944440000', 'oi', B); await espera(300);
     const c = DB.contacts.find(x => x.phone === '5511944440000');
     if (!enviosMeta.some(e => e.url.includes('NUM_B'))) throw new Error('o bot não enviou');
-    return c.unread_count === 3;
+    return c.unread_count === 0;
   });
-  await t('"digitando…" do bot não manda LIDA para a Meta', async () => {
+  await t('resposta da IA / mensagem agendada não marca como lida', async () => {
+    // IA e agendada usam o mesmo envio do bot, mas SEM ser passo de bot
+    DB.contacts.push({ phone: '5511944440009', owner: B, unread_count: 2, last_message_direction: 'inbound' });
+    enviosMeta.length = 0; await globalThis.__srv.enviaAuto('5511944440009', 'acc-b', 'resposta da IA', B, 'acc-b', null);
+    if (!enviosMeta.some(e => e.url.includes('NUM_B'))) throw new Error('não enviou');
+    return DB.contacts.find(x => x.phone === '5511944440009').unread_count === 2;
+  });
+  await t('[normal] "digitando…" do bot aparece na API oficial', async () => {
     DB.messages.push({ id: 'in1', owner: B, phone: '5511944440001', direction: 'inbound', account_id: 'acc-b', wamid: 'wamid.IN1', timestamp: new Date().toISOString() });
-    enviosMeta.length = 0; await globalThis.__srv.typing('5511944440001', 'acc-b');
-    return !enviosMeta.some(e => e.body && e.body.status === 'read');
+    enviosMeta.length = 0; const via = await globalThis.__srv.typing('5511944440001', 'acc-b');
+    return via === 'cloud' && enviosMeta.some(e => e.body && e.body.typing_indicator);
   });
   await t('envio pela integração (n8n) não marca como lida', async () => {
     DB.contacts.push({ phone: '5511944440002', owner: LEGADO, unread_count: 2, last_message_direction: 'inbound' });
