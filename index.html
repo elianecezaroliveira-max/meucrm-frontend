@@ -1547,7 +1547,7 @@ i[class^="ic-"],i[class*=" ic-"]{display:inline-block;width:1.08em;height:1.08em
   #cfg-panes { flex: 1; min-width: 0; padding-left: 16px; }
   .cfg-pane { display: none; } .cfg-pane.on { display: block; }
   .cfg-pane > div { border: none !important; padding: 2px 0 !important; }
-  @media (max-width: 640px) { #cfg-shell { flex-direction: column; } #cfg-nav { width: auto; flex-direction: row; overflow-x: auto; border-right: none; border-bottom: 1px solid var(--v-line); padding: 0 0 6px; } .cfg-tab { white-space: nowrap; } #cfg-panes { padding-left: 0; padding-top: 10px; } }
+  @media (max-width: 640px) { #cfg-shell { flex-direction: column; } #cfg-nav { width: auto; flex-direction: row; flex-wrap: wrap; overflow-x: visible; border-right: none; border-bottom: 1px solid var(--v-line); padding: 0 0 8px; gap: 6px; } .cfg-tab { white-space: nowrap; padding: 7px 10px; font-size: 12.5px; } #cfg-panes { padding-left: 0; padding-top: 10px; } }
   /* ── Automação em abas ── */
   .auto-tabs { display: flex; gap: 4px; padding: 8px 18px 0; background: #fff; border-bottom: 1px solid var(--v-line); }
   .auto-tab { background: none; border: none; border-bottom: 2px solid transparent; padding: 8px 12px 10px; font-size: 13.5px; font-weight: 600; color: var(--v-ink-3); cursor: pointer; }
@@ -2358,7 +2358,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v486</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v487</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3185,7 +3185,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v486</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v487</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3259,7 +3259,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 486;
+const APP_VER = 487;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
