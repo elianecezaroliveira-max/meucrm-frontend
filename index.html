@@ -2360,7 +2360,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v483</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v484</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3181,7 +3181,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v483</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v484</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3245,7 +3245,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 483;
+const APP_VER = 484;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4367,6 +4367,13 @@ const _BRT_OFFSET = 3 * 60 * 60 * 1000; // 3 horas em ms
 // Escapa caracteres HTML para inserir conteúdo de usuário com segurança em templates
 // Valor seguro para dentro de onclick="fn('...')": escapa \ e ' para o JS e depois o HTML
 function _jsAttr(v) { return escHtml(String(v == null ? '' : v).replace(/\\/g, '\\\\').replace(/'/g, "\\'")); }
+// Endereço de foto/vídeo/arquivo leva a CHAVE DE MÍDIA da conta: <img>/<video> não mandam
+// o login, e sem a chave o servidor não entrega o arquivo (antes qualquer um com o link via)
+function _mk(u) {
+  let k = window._midiaK;
+  if (!k) { try { k = localStorage.getItem('vetra_midia_k'); } catch (_) {} }
+  return k ? u + (u.indexOf('?') >= 0 ? '&' : '?') + 'k=' + encodeURIComponent(k) : u;
+}
 function escHtml(s) {
   return String(s == null ? '' : s)
     .replace(/&/g, '&amp;')
@@ -5620,9 +5627,9 @@ async function _fwUma(m, to, account_id) {
   const tipo = String(m.type || 'text');
   // Mídia: baixa o arquivo pelo cofre e reenvia como um envio novo
   if (m.media_id && ['image', 'video', 'audio', 'document', 'sticker'].includes(tipo)) {
-    const url = SERVER_URL + '/media-proxy/' + encodeURIComponent(m.media_id)
+    const url = _mk(SERVER_URL + '/media-proxy/' + encodeURIComponent(m.media_id)
       + '?account_id=' + encodeURIComponent(m.account_id || '')
-      + (m.media_mime_type ? '&mime=' + encodeURIComponent(m.media_mime_type) : '');
+      + (m.media_mime_type ? '&mime=' + encodeURIComponent(m.media_mime_type) : ''));
     const r = await fetch(url);
     if (!r.ok) throw new Error('não consegui baixar o arquivo');
     const blob = await r.blob();
@@ -7100,7 +7107,7 @@ function _fvListaFotos() {
   try {
     const acct = encodeURIComponent(currentAccountId || '');
     return (currentMessages || []).filter(m => m.type === 'image' && m.media_id).map(m => ({
-      url: `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${acct}${m.media_mime_type ? '&mime=' + encodeURIComponent(m.media_mime_type) : ''}`,
+      url: _mk(`${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${acct}${m.media_mime_type ? '&mime=' + encodeURIComponent(m.media_mime_type) : ''}`),
       nome: 'Foto'
     }));
   } catch (_) { return []; }
@@ -7302,8 +7309,8 @@ function baixarAlbum(el, chave) {
   ov.style.display = 'flex';
   const acct = encodeURIComponent(currentAccountId || '');
   document.getElementById('alb-sel-grade').innerHTML = lista.map((g, i) => {
-    const u = SERVER_URL + '/media-proxy/' + encodeURIComponent(g.id) + '?account_id=' + acct
-      + (g.mime ? '&mime=' + encodeURIComponent(g.mime) : '');
+    const u = _mk(SERVER_URL + '/media-proxy/' + encodeURIComponent(g.id) + '?account_id=' + acct
+      + (g.mime ? '&mime=' + encodeURIComponent(g.mime) : ''));
     const k = String(g.id || '').replace(/['"<>]/g, '');
     const src = (typeof _thumbGet === 'function' && _thumbGet(k)) || u;
     return `<span class="alb-item" data-i="${i}" onclick="_albMarca(${i})" style="position:relative;display:block;cursor:pointer">
@@ -7367,8 +7374,8 @@ async function _albBaixaSel(ok) {
     for (let i = 0; i < escolhidas.length; i++) {
       ok.textContent = 'Buscando ' + (i + 1) + ' de ' + escolhidas.length + '…';
       const g = escolhidas[i];
-      const u = SERVER_URL + '/media-proxy/' + encodeURIComponent(g.id) + '?account_id=' + acct
-        + (g.mime ? '&mime=' + encodeURIComponent(g.mime) : '');
+      const u = _mk(SERVER_URL + '/media-proxy/' + encodeURIComponent(g.id) + '?account_id=' + acct
+        + (g.mime ? '&mime=' + encodeURIComponent(g.mime) : ''));
       const r = await fetch(u);
       if (!r.ok) throw new Error('HTTP ' + r.status);
       const bl = await r.blob();
@@ -7740,7 +7747,7 @@ function lpLoadMedia(phone){
   let html = '';
   if (imgs.length) {
     html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:8px">' + imgs.map(m => {
-      const url = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${_acct(m)}`;
+      const url = _mk(`${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${_acct(m)}`);
       return `<img src="${url}" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;cursor:pointer" onclick="verMidia('${url}','img','Foto')" onerror="this.style.display='none'">`;
     }).join('') + '</div>';
   }
@@ -7750,7 +7757,7 @@ function lpLoadMedia(phone){
       const nomeSafe = _jsAttr(fname);
       const isPdfDoc = /\.pdf\s*$/i.test(fname) || String(m.media_mime_type || '').toLowerCase().includes('pdf');
       // Mesma URL do chat (tipo do arquivo + conta da mensagem)
-      const urlVer = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${_acct(m)}${m.media_mime_type ? '&mime=' + encodeURIComponent(m.media_mime_type) : ''}`;
+      const urlVer = _mk(`${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${_acct(m)}${m.media_mime_type ? '&mime=' + encodeURIComponent(m.media_mime_type) : ''}`);
       const urlDl  = `${urlVer}&download=1&filename=${encodeURIComponent(fname).replace(/'/g, '%27')}`;
       // Celular: abre DENTRO do app (o link com navegação recarregava o VETRA ao voltar)
       return `<div onclick="if(window.matchMedia('(hover: none)').matches){abrirArquivo('${urlVer}','${isPdfDoc?'pdf':'outro'}','${nomeSafe}')}else{baixarMidia('${urlDl}','${nomeSafe}',this)}" style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:#f0f2f5;border-radius:6px;margin-bottom:5px;color:#131c20;font-size:12px;cursor:pointer"><span style="flex:1;word-break:break-all">${escHtml(fname)}</span> </div>`;
@@ -8506,7 +8513,7 @@ function renderMessageContent(m) {
   if (mediaTypes.includes(m.type) && m.media_id) {
     const acct = encodeURIComponent(currentAccountId || '');
     const mimeParam = m.media_mime_type ? `&mime=${encodeURIComponent(m.media_mime_type)}` : '';
-    const proxyUrl  = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${acct}${mimeParam}`;
+    const proxyUrl  = _mk(`${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${acct}${mimeParam}`);
 
     if (m.type === 'sticker') {
       return quotedHtml + `<div class="media-wrap">
@@ -9130,7 +9137,7 @@ async function loadMessages(phone, scroll = true, opt = null) {
           const sobra = _qtd - _mostra;
           const tiles = vis.map((g, gi) => {
             const mp = g.media_mime_type ? `&mime=${encodeURIComponent(g.media_mime_type)}` : '';
-            const u = `${SERVER_URL}/media-proxy/${encodeURIComponent(g.media_id)}?account_id=${acctA}${mp}`;
+            const u = _mk(`${SERVER_URL}/media-proxy/${encodeURIComponent(g.media_id)}?account_id=${acctA}${mp}`);
             const kA = String(g.media_id || g.id || '').replace(/['"<>]/g, '');
             const srcA = _thumbGet(kA) || u; // miniatura local = aparece na hora
             // O selo +N não pode "comer" o toque (antes o clique nele não abria a foto)
@@ -9177,7 +9184,7 @@ async function loadMessages(phone, scroll = true, opt = null) {
             data-key="m-${safeId}" data-msg-id="${safeId}" data-msg-content="${dataCont}" data-msg-dir="outbound" data-msg-type="note">
             <div style="font-size:11px;color:#a07c00;font-weight:700;margin-bottom:3px"><i class=ic-lock></i> Nota interna — o cliente não vê</div>
             ${m.media_id ? (() => {
-              const u = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}${m.media_mime_type ? '?mime=' + encodeURIComponent(m.media_mime_type) : ''}`;
+              const u = _mk(`${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}${m.media_mime_type ? '?mime=' + encodeURIComponent(m.media_mime_type) : ''}`);
               const mt = String(m.media_mime_type || '');
               if (mt.startsWith('image/')) return `<img src="${u}" class="msg-image" style="max-width:260px;border-radius:8px;display:block;margin-bottom:5px;cursor:pointer" onclick="verMidia('${u}','img','Anexo da nota')" alt="Anexo da nota">`;
               if (mt.startsWith('video/')) return `<video src="${u}" controls style="max-width:260px;border-radius:8px;display:block;margin-bottom:5px"></video>`;
@@ -10735,7 +10742,7 @@ function renderMediaGallery() {
     const imgs = currentMessages.filter(m => m.type === 'image' && m.media_id);
     content.innerHTML = imgs.length
       ? '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">' + imgs.map(m => {
-          const url = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${_acct(m)}`;
+          const url = _mk(`${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${_acct(m)}`);
           return `<img src="${url}" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;cursor:pointer" onclick="verMidia('${url}','img','Foto')" onerror="this.style.display='none'">`;
         }).join('') + '</div>'
       : '<p style="color:#667781;font-size:13px">Nenhuma foto nesta conversa.</p>';
@@ -10747,7 +10754,7 @@ function renderMediaGallery() {
           const nomeSafe = _jsAttr(fname);
           const isPdfG = /\.pdf\s*$/i.test(fname) || String(m.media_mime_type || '').toLowerCase().includes('pdf');
           // Mesma URL do chat (tipo do arquivo + conta da mensagem)
-          const urlVer = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${_acct(m)}${m.media_mime_type ? '&mime=' + encodeURIComponent(m.media_mime_type) : ''}`;
+          const urlVer = _mk(`${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${_acct(m)}${m.media_mime_type ? '&mime=' + encodeURIComponent(m.media_mime_type) : ''}`);
           const urlDl  = `${urlVer}&download=1&filename=${encodeURIComponent(fname).replace(/'/g, '%27')}`;
           // Celular: abre DENTRO do app (o link antigo navegava e o app recarregava ao voltar)
           return `<div onclick="if(window.matchMedia('(hover: none)').matches){abrirArquivo('${urlVer}','${isPdfG?'pdf':'outro'}','${nomeSafe}')}else{baixarMidia('${urlDl}','${nomeSafe}',this)}" style="display:flex;align-items:center;gap:10px;padding:10px;background:#ffffff;border-radius:8px;margin-bottom:8px;color:#131c20;cursor:pointer"><span style="flex:1;word-break:break-all">${escHtml(fname)}</span> <span style="color:#00a884"></span></div>`;
@@ -12042,6 +12049,7 @@ async function _carregaAcesso() {
     const t = r.headers.get('content-type') || '';
     if (r.ok && t.indexOf('json') >= 0) {
       const d = await r.json();
+      if (d && d.midia_k) { window._midiaK = d.midia_k; try { localStorage.setItem('vetra_midia_k', d.midia_k); } catch (_) {} }
       if (d && d.papel) window._acesso = { papel: d.papel, fornecedor: !!d.fornecedor, plano: d.plano || null, dono: d.dono || null, email: d.email || null, liberado: d.liberado !== false, portaria: !!d.portaria, carregado: true };
     }
   } catch (_) {}
@@ -13317,7 +13325,7 @@ async function openConfigModal() {
 }
 // Versão do servidor que este app espera. Se o Railway estiver atrás disso,
 // algumas telas não têm como funcionar — e o app avisa em vez de dar erro seco.
-const SERVIDOR_MIN = 298;
+const SERVIDOR_MIN = 313;
 let _verServidor = null;
 async function _servidorVersao() {
   if (_verServidor !== null) return _verServidor;

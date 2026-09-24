@@ -16,7 +16,7 @@ const DB = {
     { id: 'acc-vitima', owner: LEGADO, phone_number_id: 'NUM_VITIMA', token: 'TOK_VITIMA', name: 'Vítima', created_at: '2026-01-02' },
   ],
   bots: [{ id: 'bot-b', owner: B, name: 'Bot da B', active: true }],
-  bot_nodes: [], bot_edges: [], contacts: [], messages: [{ id: 'q1', owner: B, phone: '5511999990000', wamid: 'wamid.Q1', content: 'oi', direction: 'inbound' }],
+  bot_nodes: [], bot_edges: [], contacts: [], messages: [{ id: 'q1', owner: B, phone: '5511999990000', wamid: 'wamid.Q1', content: 'oi', direction: 'inbound' }, { id: 'm1', owner: LEGADO, phone: '5511977770000', media_id: 'M1', type: 'image' }, { id: 'm2', owner: B, phone: '5511977770001', media_id: 'M2', type: 'image' }],
   bot_runs: [{ id: 'run-legado', owner: LEGADO, contact_phone: '5511988887777', status: 'waiting_reply', pause_until: null, current_node_id: 'n1', bot_id: 'bot-x' }],
   settings: [
     { key: 'api_token::' + LEGADO, value: 'vetra_tok_legado' },
@@ -53,7 +53,7 @@ function Q(tabela) {
   };
   return b;
 }
-const fakeSupa = { from: Q, storage: { from: () => ({ list: async () => ({ data: [] }), download: async () => ({ data: null, error: { message: 'x' } }), upload: async () => ({ error: null }), remove: async () => ({}), getPublicUrl: () => ({ data: { publicUrl: '' } }), createSignedUrl: async () => ({ data: null }) }) }, rpc: async () => ({ data: null }), channel: () => ({ on() { return this; }, subscribe() { return this; } }) };
+const fakeSupa = { from: Q, storage: { from: () => ({ list: async () => ({ data: [] }), download: async (c) => String(c).startsWith('api/M') || String(c).startsWith('qr/') ? ({ data: new Blob(['arquivo'], { type: 'image/jpeg' }), error: null }) : ({ data: null, error: { message: 'x' } }), upload: async () => ({ error: null }), remove: async () => ({}), getPublicUrl: () => ({ data: { publicUrl: '' } }), createSignedUrl: async () => ({ data: null }) }) }, rpc: async () => ({ data: null }), channel: () => ({ on() { return this; }, subscribe() { return this; } }) };
 
 // ── rede de mentira: login do Supabase + Meta ──
 const TOKENS = { 'tok-legado': LEGADO, 'tok-b': B, 'tok-atend': ATEND };
@@ -133,6 +133,29 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
     await globalThis.__srv.handleBotReply('5511955554444', 'oi', B);
     const r = DB.bot_runs.find(x => x.id === 'run-b'); return r.current_node_id === 'nw';
   });
+  // ── fotos/arquivos (chave de mídia) ──
+  const chave = async (tok) => { const r = await chama('GET', '/meu-acesso', { tok }); return (r.j && r.j.midia_k) || ''; };
+  await t('foto sem login e sem chave não abre', async () => (await chama('GET', '/media-proxy/M1')).status === 401);
+  await t('conta B não abre foto da conta principal com a própria chave', async () => {
+    const k = await chave('tok-b'); return !!k && (await chama('GET', '/media-proxy/M1?k=' + encodeURIComponent(k))).status === 403;
+  });
+  await t('chave adulterada não abre', async () => {
+    const k = await chave('tok-b'); const falsa = Buffer.from(LEGADO).toString('base64url') + k.slice(k.indexOf('.'));
+    return !!k && (await chama('GET', '/media-proxy/M1?k=' + encodeURIComponent(falsa))).status === 401;
+  });
+  await t('arquivo não vira página (mime=text/html)', async () => {
+    const k = await chave('tok-legado'); const r = await fetch(base + '/media-proxy/M1?mime=text/html&k=' + encodeURIComponent(k));
+    return r.status === 200 && !/html/.test(r.headers.get('content-type') || '');
+  });
+  await t('[normal] dona abre a própria foto pela chave', async () => {
+    const k = await chave('tok-legado'); const r = await fetch(base + '/media-proxy/M1?mime=image/jpeg&k=' + encodeURIComponent(k));
+    return r.status === 200 && (r.headers.get('content-type') || '').startsWith('image/jpeg');
+  });
+  await t('[normal] atendente da B abre foto da B pela chave', async () => {
+    const k = await chave('tok-atend'); return !!k && (await chama('GET', '/media-proxy/M2?k=' + encodeURIComponent(k))).status === 200;
+  });
+  await t('[normal] app com login (fetch) abre a própria foto sem chave', async () => (await chama('GET', '/media-proxy/M2', { tok: 'tok-b' })).status === 200);
+  await t('[normal] foto de bot continua pública (a Meta busca sem login)', async () => (await chama('GET', '/media-proxy/bot%2Fx.jpg')).status !== 401);
   // ── uso normal continua igual ──
   await t('[normal] conta principal envia pelo próprio número', async () => {
     enviosMeta.length = 0; const r = await chama('POST', '/send', { tok: 'tok-legado', body: { to: '5511911112222', message: 'oi', account_id: 'acc-legado', client_id: 'd' + Date.now() } });

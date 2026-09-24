@@ -72,6 +72,12 @@ srv.listen(0, async () => {
       d.querySelector('.media-dl-link').onclick(new MouseEvent('click')); window.baixarMidia = orig;
       return new URL(u).searchParams.get('filename') === "Contrato d'Ávila (1).pdf";
     });
+    await igual('foto do chat leva a chave de mídia da conta', async () => {
+      if (typeof _mk !== 'function') return false;
+      window._midiaK = 'CHAVE.1.abc';
+      const d = caixa(); d.innerHTML = renderMessageContent({ type: 'image', media_id: '77', content: '[Imagem]' });
+      const img = d.querySelector('img[src*="media-proxy"]'); return !!img && img.getAttribute('src').includes('k=CHAVE.1.abc');
+    });
     return out;
   });
   // Login do iPhone LEGÍTIMO (voltou do Google com o token no endereço) continua entregando
