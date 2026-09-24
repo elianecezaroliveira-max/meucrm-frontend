@@ -2358,7 +2358,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v483</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v484</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3179,7 +3179,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v483</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v484</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3243,7 +3243,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 483;
+const APP_VER = 484;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -10611,6 +10611,18 @@ function _rmPreview(i) { _previewList.splice(i, 1); _renderMediaPreview(); }
 document.addEventListener('paste', e => {
   if (!currentPhone) return;
   if (e._vetraColou) return; e._vetraColou = true; // a mesma colagem nunca entra duas vezes
+  // 1) Colar em OUTRO campo (busca da prévia, nome do lead, etiqueta, anotação…) NÃO pode
+  //    virar foto no chat: o texto vai para o campo onde o cursor está, como em qualquer lugar.
+  const alvo = e.target;
+  const campo = (alvo && alvo.closest) ? alvo.closest('input, textarea, [contenteditable="true"]') : null;
+  const ehDoChat = !campo || campo.id === 'msg-input' || campo.id === 'mp-caption';
+  if (!ehDoChat) return;
+  // 2) Excel, Word e planilhas põem a seleção na área de transferência DE DOIS JEITOS:
+  //    como texto e como figura. Se veio texto, vale o TEXTO (era o que virava foto).
+  //    Print de tela não tem texto nenhum — esse continua entrando como imagem.
+  let texto = '';
+  try { texto = (e.clipboardData && e.clipboardData.getData('text/plain')) || ''; } catch (_) {}
+  if (texto.trim()) return;
   const items = (e.clipboardData && e.clipboardData.items) || [];
   for (const it of items) {
     if (it.type && it.type.startsWith('image/')) {
