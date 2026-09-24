@@ -694,6 +694,10 @@
   }
   /* READ RECEIPTS */
   .msg-image { min-height: 120px; background: rgba(0,0,0,.05); }
+  /* Primeira vez que a foto aparece (o aparelho ainda não guardou a medida): o balão
+     reserva um espaço de foto e a imagem entra inteira dentro dele — antes nascia numa
+     tira achatada e "pulava" para o tamanho certo quando a foto terminava de chegar. */
+  .msg-image.sem-medida { width: 240px; aspect-ratio: 3 / 4; height: auto; min-height: 0; object-fit: contain; }
   .msg-ticks { display:inline-block; margin-left:4px; font-size:13px; vertical-align:middle; }
   .msg-ticks.sent     { color:#667781; }
   .msg-ticks.delivered{ color:#667781; }
@@ -1543,7 +1547,7 @@ i[class^="ic-"],i[class*=" ic-"]{display:inline-block;width:1.08em;height:1.08em
   #cfg-panes { flex: 1; min-width: 0; padding-left: 16px; }
   .cfg-pane { display: none; } .cfg-pane.on { display: block; }
   .cfg-pane > div { border: none !important; padding: 2px 0 !important; }
-  @media (max-width: 640px) { #cfg-shell { flex-direction: column; } #cfg-nav { width: auto; flex-direction: row; overflow-x: auto; border-right: none; border-bottom: 1px solid var(--v-line); padding: 0 0 6px; } .cfg-tab { white-space: nowrap; } #cfg-panes { padding-left: 0; padding-top: 10px; } }
+  @media (max-width: 640px) { #cfg-shell { flex-direction: column; } #cfg-nav { width: auto; flex-direction: row; flex-wrap: wrap; overflow-x: visible; border-right: none; border-bottom: 1px solid var(--v-line); padding: 0 0 8px; gap: 6px; } .cfg-tab { white-space: nowrap; padding: 7px 10px; font-size: 12.5px; } #cfg-panes { padding-left: 0; padding-top: 10px; } }
   /* ── Automação em abas ── */
   .auto-tabs { display: flex; gap: 4px; padding: 8px 18px 0; background: #fff; border-bottom: 1px solid var(--v-line); }
   .auto-tab { background: none; border: none; border-bottom: 2px solid transparent; padding: 8px 12px 10px; font-size: 13.5px; font-weight: 600; color: var(--v-ink-3); cursor: pointer; }
@@ -2360,7 +2364,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v486</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v488</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2848,6 +2852,12 @@ window.addEventListener('load', initAuth);
       <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">Passo a passo de estreia</div>
       <p style="font-size:12px;color:#667781;margin:0 0 8px;line-height:1.5">Aparece sozinho no alto da lista de conversas para quem está começando, e some quando os quatro passos terminam. Use o botão abaixo para ver como o seu cliente vê — ou para trazer de volta se alguém escondeu.</p>
       <button class="pf-topbtn" style="margin-bottom:16px" onclick="verOnboarding()">Ver o passo a passo</button>
+      <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">Toque de mensagem nova</div>
+      <p style="font-size:12px;color:#667781;margin:0 0 8px;line-height:1.5">Igual ao WhatsApp: toca quando chega mensagem de um lead — menos na conversa que você está lendo com o VETRA na frente, e menos em conversa silenciada. Vale só <b>neste aparelho</b>. Com o VETRA fechado, quem avisa é a notificação do celular, e aí o som é o do sistema.</p>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:16px">
+        <select id="cfg-toque" onchange="toqueEscolhe(this.value)" style="padding:8px 10px;border:1px solid #d1d7db;border-radius:8px;font-family:inherit;font-size:13px;background:#fff;color:#131c20"></select>
+        <button class="pf-topbtn" onclick="tocaToque(document.getElementById('cfg-toque').value)">Ouvir</button>
+      </div>
       <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">Suporte</div>
       <div style="font-size:13px;color:#667781">Em breve.</div>
     </div>
@@ -3181,7 +3191,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v486</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v488</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3232,7 +3242,17 @@ function _showErrToast(msg) {
     if (typeof _souDev === 'function' && !_souDev()) setTimeout(() => { try { t.remove(); } catch (_) {} }, 6000);
   } catch (_) {}
 }
+// 🔇 Erro que NÃO é do VETRA (extensão do navegador, script de outro site) não vira
+// aviso vermelho na tela: o arquivo do VETRA é o próprio index.html (ou um script do
+// mesmo endereço). Um "main.js" de extensão que quebra não é problema seu.
+function _erroEhNosso(arquivo) {
+  const f = String(arquivo || '');
+  if (!f) return true;                                   // sem arquivo: pode ser nosso mesmo
+  if (/^(chrome-extension|moz-extension|safari-web-extension):/i.test(f)) return false;
+  try { return new URL(f, location.href).origin === location.origin; } catch (_) { return true; }
+}
 window.addEventListener('error', function (ev) {
+  if (!_erroEhNosso(ev.filename)) return;
   const onde = (ev.filename || '').split('/').pop() + ':' + (ev.lineno || '?');
   _showErrToast('Erro: ' + (ev.message || 'desconhecido') + ' (' + onde + ')');
 });
@@ -3245,7 +3265,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 486;
+const APP_VER = 488;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3985,10 +4005,80 @@ function _listaDoCache() {
     return true;
   } catch (_) { return false; }
 }
+// ═══════════ 🔔 TOQUE DE MENSAGEM NOVA (igual WhatsApp) ═══════════
+// Toca quando chega mensagem de um lead. NÃO toca: na conversa que você está lendo com o
+// VETRA na frente, em conversa silenciada, no que você mesma enviou, nem na primeira
+// carga da lista (senão tocaria tudo de uma vez ao abrir). O som é sintetizado aqui —
+// sem arquivo, sem rede — e a escolha vale só neste aparelho.
+const _TOQUES = { classico: 'Clássico', sino: 'Sino', gota: 'Gota', duplo: 'Duplo', nenhum: 'Sem som' };
+function _toqueEscolhido() { try { return localStorage.getItem('vetra_toque') || 'classico'; } catch (_) { return 'classico'; } }
+function toqueEscolhe(v) { try { localStorage.setItem('vetra_toque', v); } catch (_) {} if (v && v !== 'nenhum') tocaToque(v); }
+let _audioCtx = null;
+function _audioPronto() {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
+    if (!_audioCtx) _audioCtx = new AC();
+    if (_audioCtx.state === 'suspended') _audioCtx.resume().catch(() => {});
+    return _audioCtx;
+  } catch (_) { return null; }
+}
+function tocaToque(nome) {
+  const qual = nome || _toqueEscolhido();
+  if (qual === 'nenhum') return;
+  const ctx = _audioPronto(); if (!ctx) return;
+  const notas = ({
+    classico: [[880, 0, 0.09], [1320, 0.07, 0.13]],
+    sino:     [[1568, 0, 0.45]],
+    gota:     [[700, 0, 0.07], [1100, 0.05, 0.18]],
+    duplo:    [[990, 0, 0.07], [990, 0.13, 0.07]],
+  })[qual] || [];
+  const t0 = ctx.currentTime;
+  for (const nota of notas) {
+    const hz = nota[0], atraso = nota[1], dur = nota[2];
+    try {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sine'; o.frequency.value = hz;
+      g.gain.setValueAtTime(0.0001, t0 + atraso);
+      g.gain.exponentialRampToValueAtTime(0.22, t0 + atraso + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + atraso + dur);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(t0 + atraso); o.stop(t0 + atraso + dur + 0.03);
+    } catch (_) {}
+  }
+}
+// o navegador só libera som depois de um toque/clique seu: o 1º gesto destrava
+['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, () => _audioPronto(), { once: true, passive: true }));
+function _toquePinta() {
+  const sel = document.getElementById('cfg-toque'); if (!sel) return;
+  const atual = _toqueEscolhido();
+  sel.innerHTML = Object.keys(_TOQUES).map(k => '<option value="' + k + '"' + (k === atual ? ' selected' : '') + '>' + _TOQUES[k] + '</option>').join('');
+}
+let _ultimasPorFone = null;
+function _avisaChegou(lista) {
+  try {
+    const mapa = {};
+    for (const c of lista) mapa[c.phone] = c.last_message_at || '';
+    if (_ultimasPorFone) {
+      const naFrente = (!document.hidden) && (!document.hasFocus || document.hasFocus());
+      const tocar = lista.some(c => {
+        const ant = _ultimasPorFone[c.phone];
+        if (!c.last_message_at || ant === undefined || c.last_message_at <= ant) return false; // nada novo
+        if (c.last_message_direction !== 'inbound') return false;   // fui eu quem escreveu
+        if (c.muted) return false;                                   // conversa silenciada
+        if (c.phone === currentPhone && naFrente) return false;      // estou lendo essa conversa
+        return true;
+      });
+      if (tocar) tocaToque();
+    }
+    _ultimasPorFone = mapa;
+  } catch (_) {}
+}
+
 async function loadContacts(render = true, buscaJaIniciada = null) {
   try {
     const lista = await (buscaJaIniciada || _buscaContatos());
     if (!Array.isArray(lista)) return;
+    _avisaChegou(lista); // 🔔 chegou mensagem de lead? toca (regras do WhatsApp)
     allContacts = sortContacts(_ecoAplica(lista));
     window._contactsLoaded = true;
     if (!window._iaStatusPedido) { window._iaStatusPedido = true; _iaSugCarregaStatus(); } // ✨ sugestões ligadas?
@@ -4179,13 +4269,18 @@ function _dataHit(ts) {
   if (dia === _brtDate(Date.now() - 86400000)) return 'Ontem';
   return `${dia.substring(8, 10)}/${dia.substring(5, 7)}/${dia.substring(0, 4)}`;
 }
+// 🔤 Tira os acentos para comparar (o tamanho do texto continua o mesmo, por isso as
+// posições do trecho destacado continuam valendo).
+function _buscaSemAcento(x) {
+  return String(x == null ? '' : x).normalize('NFC').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
 function _snippet(texto, q) {
-  const t = String(texto || '').replace(/\s+/g, ' ');
-  const i = t.toLowerCase().indexOf(String(q).toLowerCase());
+  const t = String(texto || '').normalize('NFC').replace(/\s+/g, ' ');
+  const i = _buscaSemAcento(t).indexOf(_buscaSemAcento(q));
   const ini = Math.max(0, i - 30);
   let s = (ini > 0 ? '…' : '') + t.slice(ini, ini + 90) + (ini + 90 < t.length ? '…' : '');
   // marca as ocorrências ANTES de escapar (senão &amp; / &lt; quebravam no meio)
-  const ql = String(q).toLowerCase(), sl = s.toLowerCase();
+  const ql = _buscaSemAcento(q), sl = _buscaSemAcento(s);
   let out = '', pos = 0;
   while (ql) {
     const k = sl.indexOf(ql, pos);
@@ -4331,7 +4426,9 @@ function applyFilters() {
     // Número: o mesmo telefone é guardado com e sem o 55 e com e sem o nono dígito —
     // comparar os 8 últimos dígitos acha o lead de qualquer jeito
     const _fimIgual = (fone) => { const f = String(fone || '').replace(/\D/g, ''); return qDig.length >= 8 && f.length >= 8 && f.slice(-8) === qDig.slice(-8); };
-    if (qt && !c.name?.toLowerCase().includes(qt) && !c.phone?.includes(qt) && !(qDig.length >= 4 && String(c.phone || '').includes(qDig)) && !_fimIgual(c.phone)) return false;
+    // 🔤 sem acento acha igual: "joao" acha "João", "simulacao" acha "simulação"
+    const qSA = _buscaSemAcento(qt);
+    if (qt && !_buscaSemAcento(c.name).includes(qSA) && !c.phone?.includes(qt) && !(qDig.length >= 4 && String(c.phone || '').includes(qDig)) && !_fimIgual(c.phone)) return false;
     if (stageId && c.stage_id !== stageId) return false;
     if (activeFilterTags.size > 0 && ![...activeFilterTags].every(t => (c.tags||[]).includes(t))) return false;
     if (dateFrom && c.last_message_at && c.last_message_at < dateFrom) return false;
@@ -8277,6 +8374,18 @@ function _dimCss(id) {
   const wh = _waMediaSize(d[0], d[1]);
   return `width:${wh[0]}px;height:${wh[1]}px;`;
 }
+// Assim que a foto chega, o balão assume JÁ o tamanho final (antes ficava no espaço
+// reservado até a conversa ser redesenhada — e a foto aparecia achatada nesse meio-tempo)
+function _dimAplica(el) {
+  try {
+    const w = el.naturalWidth, h = el.naturalHeight;
+    if (!w || !h) return;
+    const wh = _waMediaSize(w, h);
+    el.style.width = wh[0] + 'px';
+    el.style.height = wh[1] + 'px';
+    el.classList.remove('sem-medida');
+  } catch (_) {}
+}
 // MINIATURAS LOCAIS (igual WhatsApp): cada foto já vista fica guardada no
 // aparelho — em toda abertura a foto pinta NA HORA, sem rede e sem redecodificar
 function _thumbGet(id) {
@@ -8534,9 +8643,9 @@ function renderMessageContent(m) {
       const _srcImg = _th || (window._localPrev || {})[String(m.media_id)] || proxyUrl;
       return quotedHtml + `<div class="media-wrap">
         <div style="position:relative;display:inline-block">
-          <img src="${_srcImg}" class="msg-image" alt="Imagem" decoding="async"
+          <img src="${_srcImg}" class="msg-image${_dimCss(_midKey) ? '' : ' sem-medida'}" alt="Imagem" decoding="async"
             loading="${_midiaJa(m.media_id) ? 'eager' : 'lazy'}" fetchpriority="${_midiaJa(m.media_id) ? 'high' : 'auto'}"${_th ? '' : ' crossorigin="anonymous"'} style="${_dimCss(_midKey)}"
-            onload="_dimSave('${_midKey}',this);_thumbSave('${_midKey}',this);_keepBottom(this)" onclick="verMidia('${proxyUrl}','img','Imagem')"
+            onload="_dimSave('${_midKey}',this);_dimAplica(this);_thumbSave('${_midKey}',this);_keepBottom(this)" onclick="verMidia('${proxyUrl}','img','Imagem')"
             onerror="this.parentElement.innerHTML='<span style=opacity:.6>[Imagem não disponível]</span>'" />
           <a href="#" class="media-dl-btn" title="Baixar imagem" onclick="event.preventDefault();event.stopPropagation();baixarMidia('${dlUrl}','imagem.jpg',this)"><i class=ic-down></i></a>
         </div>
@@ -10602,6 +10711,18 @@ function _rmPreview(i) { _previewList.splice(i, 1); _renderMediaPreview(); }
 document.addEventListener('paste', e => {
   if (!currentPhone) return;
   if (e._vetraColou) return; e._vetraColou = true; // a mesma colagem nunca entra duas vezes
+  // 1) Colar em OUTRO campo (busca da prévia, nome do lead, etiqueta, anotação…) NÃO pode
+  //    virar foto no chat: o texto vai para o campo onde o cursor está, como em qualquer lugar.
+  const alvo = e.target;
+  const campo = (alvo && alvo.closest) ? alvo.closest('input, textarea, [contenteditable="true"]') : null;
+  const ehDoChat = !campo || campo.id === 'msg-input' || campo.id === 'mp-caption';
+  if (!ehDoChat) return;
+  // 2) Excel, Word e planilhas põem a seleção na área de transferência DE DOIS JEITOS:
+  //    como texto e como figura. Se veio texto, vale o TEXTO (era o que virava foto).
+  //    Print de tela não tem texto nenhum — esse continua entrando como imagem.
+  let texto = '';
+  try { texto = (e.clipboardData && e.clipboardData.getData('text/plain')) || ''; } catch (_) {}
+  if (texto.trim()) return;
   const items = (e.clipboardData && e.clipboardData.items) || [];
   for (const it of items) {
     if (it.type && it.type.startsWith('image/')) {
@@ -13291,6 +13412,7 @@ function cfgTab(k) {
     if (_bc) _bc.style.display = _souFornecedor ? '' : 'none';
     if (_souFornecedor) carregaBackupAuto();
   }
+  if (k === 'apar') _toquePinta();
   if (k === 'diag') { carregaDiagnostico(); _piscaMostra(); carregaDiagBanco(); }
   if (k === 'termos') carregaTermos();
   if (k === 'adm') { carregaAcessoAdmin(); carregaPagamento(); carregaPainelDono(); }
