@@ -2360,7 +2360,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v485</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v486</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3181,7 +3181,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v485</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v486</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3245,7 +3245,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 485;
+const APP_VER = 486;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -6449,7 +6449,9 @@ async function toggleFavorite(phone, semAviso) {
       const ms = Math.max(1, Date.now() - touchT0);
       const vel = Math.abs(dx) / ms; // px por milissegundo
       const valeu = Math.abs(dx) >= _SWIPE_OK || (Math.abs(dx) >= 20 && vel >= 0.25);
-      if (valeu) { if (dx > 0) markContactRead(phone); else toggleFavorite(phone); }
+      // MARCAR COMO LIDA exige o arrasto inteiro (a faixa acesa), como no WhatsApp: o
+      // "peteleco" curto de 20px disparava sem querer ao rolar a lista na diagonal
+      if (dx > 0 ? Math.abs(dx) >= _SWIPE_OK : valeu) { if (dx > 0) markContactRead(phone); else toggleFavorite(phone); }
     }
     item = null; swiping = false; eixo = 0; _wrapAtual = null;
   });

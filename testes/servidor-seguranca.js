@@ -37,8 +37,8 @@ function Q(tabela) {
     if (st.op === 'select') data = rows().filter(casa);
     else if (st.op === 'update') { data = rows().filter(casa); data.forEach(r => Object.assign(r, st.payload)); escritas.push({ tabela, op: 'update', n: data.length, payload: st.payload, filtros: st.f.length }); }
     else if (st.op === 'insert' || st.op === 'upsert') {
-      const arr = [].concat(st.payload), ch = st.chave || (tabela === 'settings' ? 'key' : 'id');
-      arr.forEach(p => { const ja = st.op === 'upsert' && p[ch] != null && rows().find(r => String(r[ch]) === String(p[ch])); if (ja) Object.assign(ja, p); else rows().push({ id: 'id' + Math.random().toString(36).slice(2, 8), ...p }); });
+      const arr = [].concat(st.payload), ch = String(st.chave || (tabela === 'settings' ? 'key' : tabela === 'contacts' ? 'owner,phone' : 'id')).split(',').map(x => x.trim());
+      arr.forEach(p => { const ja = st.op === 'upsert' && ch.every(k => p[k] != null) && rows().find(r => ch.every(k => String(r[k]) === String(p[k]))); if (ja) Object.assign(ja, p); else rows().push({ id: 'id' + Math.random().toString(36).slice(2, 8), ...p }); });
       data = arr; escritas.push({ tabela, op: st.op }); }
     else if (st.op === 'delete') { const fora = rows().filter(casa); DB[tabela] = rows().filter(r => !casa(r)); data = fora; }
     if (st.single) data = (data && data[0]) || null;
@@ -85,7 +85,7 @@ Module.prototype.require = function (id) { if (id === '@supabase/supabase-js') r
 const origLog = console.log, origErr = console.error, origWarn = console.warn;
 console.log = console.error = console.warn = () => {};
 const m = new Module(ALVO, module); m.filename = ALVO; m.paths = Module._nodeModulePaths(path.dirname(ALVO));
-m._compile(fs.readFileSync(ALVO, 'utf8') + '\n;globalThis.__srv={handleBotReply:typeof handleBotReply==="function"?handleBotReply:null,csv:typeof _csvCampo==="function"?_csvCampo:null,plano:typeof _planoBruto==="function"?_planoBruto:null,bkp:typeof _backupAutoDe==="function"?_backupAutoDe:null};', ALVO);
+m._compile(fs.readFileSync(ALVO, 'utf8') + '\n;globalThis.__srv={handleBotReply:typeof handleBotReply==="function"?handleBotReply:null,csv:typeof _csvCampo==="function"?_csvCampo:null,plano:typeof _planoBruto==="function"?_planoBruto:null,bkp:typeof _backupAutoDe==="function"?_backupAutoDe:null,typing:typeof botTypingPulse==="function"?botTypingPulse:null};', ALVO);
 
 let base = '';
 const chama = async (metodo, rota, { tok, api, body } = {}) => {
@@ -236,6 +236,39 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
     DB.bots.push({ id: 'bot-b3', owner: B, name: 'Terceiro' });
     const r = await chama('PUT', '/bots/bot-b3/flow', { tok: 'tok-b', body: { nodes: [{ id: 'n-b1', type: 'message', config: { text: 'oi' } }], edges: [] } });
     return r.status === 200 && DB.bot_nodes.some(x => x.id === 'n-b1' && x.bot_id === 'bot-b3');
+  });
+  // ── conversa marcada como LIDA sem você ──
+  await t('resposta automática do bot não marca a conversa como lida', async () => {
+    DB.contacts.push({ phone: '5511944440000', owner: B, unread_count: 3, first_unread_at: new Date().toISOString(), last_message_direction: 'inbound' });
+    DB.bot_runs.push({ id: 'run-l', owner: B, contact_phone: '5511944440000', status: 'waiting_reply', pause_until: new Date(Date.now() + 3600e3).toISOString(), current_node_id: 'lw', bot_id: 'bot-l', updated_at: new Date().toISOString() });
+    DB.bots.push({ id: 'bot-l', owner: B, name: 'L' });
+    DB.bot_nodes.push({ id: 'lw', bot_id: 'bot-l', owner: B, type: 'wait_reply', config: {} }, { id: 'lm', bot_id: 'bot-l', owner: B, type: 'message', config: { text: 'resposta do bot', account_id: 'acc-b' } });
+    DB.bot_edges.push({ id: 'le', bot_id: 'bot-l', owner: B, from_node_id: 'lw', to_node_id: 'lm', label: '' });
+    enviosMeta.length = 0;
+    await globalThis.__srv.handleBotReply('5511944440000', 'oi', B); await espera(300);
+    const c = DB.contacts.find(x => x.phone === '5511944440000');
+    if (!enviosMeta.some(e => e.url.includes('NUM_B'))) throw new Error('o bot não enviou');
+    return c.unread_count === 3;
+  });
+  await t('"digitando…" do bot não manda LIDA para a Meta', async () => {
+    DB.messages.push({ id: 'in1', owner: B, phone: '5511944440001', direction: 'inbound', account_id: 'acc-b', wamid: 'wamid.IN1', timestamp: new Date().toISOString() });
+    enviosMeta.length = 0; await globalThis.__srv.typing('5511944440001', 'acc-b');
+    return !enviosMeta.some(e => e.body && e.body.status === 'read');
+  });
+  await t('envio pela integração (n8n) não marca como lida', async () => {
+    DB.contacts.push({ phone: '5511944440002', owner: LEGADO, unread_count: 2, last_message_direction: 'inbound' });
+    await chama('POST', '/send', { api: 'vetra_tok_legado', body: { to: '5511944440002', message: 'auto', account_id: 'acc-legado', client_id: 'g' + Date.now() } });
+    return DB.contacts.find(x => x.phone === '5511944440002').unread_count === 2;
+  });
+  await t('[normal] você respondendo pelo VETRA marca como lida', async () => {
+    DB.contacts.push({ phone: '5511944440003', owner: LEGADO, unread_count: 2, last_message_direction: 'inbound' });
+    await chama('POST', '/send', { tok: 'tok-legado', body: { to: '5511944440003', message: 'oi', account_id: 'acc-legado', client_id: 'h' + Date.now() } });
+    return DB.contacts.find(x => x.phone === '5511944440003').unread_count === 0;
+  });
+  await t('[normal] botão "marcar como lida" funciona', async () => {
+    DB.contacts.push({ phone: '5511944440004', owner: B, unread_count: 4 });
+    await chama('PUT', '/contacts/5511944440004/read', { tok: 'tok-b' });
+    return DB.contacts.find(x => x.phone === '5511944440004').unread_count === 0;
   });
   // ── uso normal continua igual ──
   await t('[normal] conta principal envia pelo próprio número', async () => {
