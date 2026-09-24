@@ -2358,7 +2358,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v487</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v488</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3185,7 +3185,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v487</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v488</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3259,7 +3259,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 487;
+const APP_VER = 488;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -9606,7 +9606,10 @@ function _vpDur(a, w, querFonte){
   const medida = _audDur[_audId(w)] || 0;
   const tocado = (a && isFinite(a.currentTime)) ? a.currentTime : 0;
   if (medida > 0) return querFonte ? { d: Math.max(medida, tocado), firme: true } : Math.max(medida, tocado);
-  if (a && isFinite(a.duration) && a.duration > 0) { const d = Math.max(a.duration, tocado); return querFonte ? { d, firme: true } : d; }
+  // O que o navegador diz (a.duration) NÃO é firme: nos áudios de voz do WhatsApp ele
+  // erra para MENOS, e os pauzinhos enchiam antes de o som acabar. Firme mesmo só a
+  // duração decodificada do arquivo (_medeDurExata) ou a medida ao tocar até o fim.
+  if (a && isFinite(a.duration) && a.duration > 0) { const d = Math.max(a.duration, tocado); return querFonte ? { d, firme: false } : d; }
   const lbl = parseFloat((w && w.dataset.dur) || '0') || 0;
   if (lbl > 0) { const d = Math.max(lbl, tocado); return querFonte ? { d, firme: false } : d; }
   const est = _vpDurEstimada(a, w);
@@ -9633,13 +9636,14 @@ function voiceDurOk(id){
     if (a.paused && a.currentTime === 0) { const t = w.querySelector('.vp-time'); if (t) t.textContent = _fmtVoice(a.duration); }
   }
 }
-function _vpFill(w, frac, podeFechar){
+function _vpFill(w, frac, podeFechar, firme){
   if (!w) return;
   const bars = w.querySelectorAll('.vp-bars i');
   let f = Math.min(1, Math.max(0, frac || 0));
-  // Enquanto o som não acabou, a barra NÃO chega ao fim. Assim, mesmo que a
-  // duração esteja subestimada, os palitinhos nunca terminam antes do áudio.
-  if (!podeFechar && f > 0.97) f = 0.97;
+  // Enquanto o som não acabou, a barra NÃO chega ao fim. Sem duração firme ela
+  // segura ainda mais cedo (senão ficava parada em 19 de 20 pauzinhos, "cheia").
+  const teto = firme ? 0.97 : 0.85;
+  if (!podeFechar && f > teto) f = teto;
   const n = Math.round(f * bars.length);
   bars.forEach((b,i)=> b.classList.toggle('played', i < n));
 }
@@ -9659,10 +9663,11 @@ function _vpApplyPitch(a){
 function _computeWf(id, url) {
   try {
     const cache = JSON.parse(localStorage.getItem('vetra_wf') || '{}');
-    if (cache[String(id)]) return;
+    if (cache[String(id)]) { _medeDurExata(id, url); return; } // forma de onda guardada: só a duração exata
     fetch(url).then(r => r.arrayBuffer()).then(ab => {
       const AC = window.AudioContext || window.webkitAudioContext; const ctx = new AC();
       return ctx.decodeAudioData(ab).then(bu => {
+        try { _audDurSalva(_vpEl(id), bu.duration); } catch (_) {} // duração EXATA do arquivo
         const ch = bu.getChannelData(0), n = 40, blk = Math.max(1, Math.floor(ch.length / n)), arr = [];
         for (let i = 0; i < n; i++) { let sm = 0, cnt = 0; for (let j2 = 0; j2 < blk; j2 += 50) { sm += Math.abs(ch[i * blk + j2] || 0); cnt++; } arr.push(cnt ? sm / cnt : 0); }
         const mx = Math.max.apply(null, arr.concat([0.001]));
@@ -9673,6 +9678,25 @@ function _computeWf(id, url) {
         if (w) { const bs = w.querySelectorAll('i'); const stp = 40 / bs.length; bs.forEach((b, bi2) => { b.style.height = Math.max(4, Math.round(4 + (cache[String(id)][Math.floor(bi2 * stp)] / 100) * 20)) + 'px'; }); }
         try { ctx.close(); } catch (_) {}
       });
+    }).catch(() => {});
+  } catch (_) {}
+}
+// 🎯 DURAÇÃO EXATA: decodifica o arquivo uma vez (como a forma de onda) e anota quantos
+// segundos ele tem DE VERDADE. O <audio> do navegador erra a duração dos áudios de voz
+// (para menos) e os pauzinhos enchiam antes de o som acabar. Roda em paralelo ao play.
+function _medeDurExata(id, url) {
+  try {
+    const a = _vpAudio(id), w = _vpEl(id); if (!a || !w || !url) return;
+    if (a.dataset.durExataPedida || (_audDur[_audId(w)] || 0) > 0) return;
+    a.dataset.durExataPedida = '1';
+    fetch(url).then(r => r.arrayBuffer()).then(ab => {
+      const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+      const ctx = new AC();
+      return ctx.decodeAudioData(ab).then(bu => {
+        _audDurSalva(w, bu.duration);
+        if (a.paused && !a.currentTime) { const t = w.querySelector('.vp-time'); if (t) t.textContent = _fmtVoice(bu.duration); }
+        try { ctx.close(); } catch (_) {}
+      }).catch(() => { try { ctx.close(); } catch (_) {} });
     }).catch(() => {});
   } catch (_) {}
 }
@@ -9701,6 +9725,7 @@ function voiceToggle(id){
   // Carrega o áudio na 1ª reprodução (o src fica em data-url para não baixar tudo ao abrir a conversa)
   if (!a.getAttribute('src') && a.dataset.url) { a.src = a.dataset.url; a.load(); }
   if (!a.dataset.haswf && !a.dataset.wfPedida) { a.dataset.wfPedida = '1'; _computeWf(id, a.dataset.url); }
+  else _medeDurExata(id, a.dataset.url); // forma de onda já existe: mede só a duração exata
   if (a.paused) {
     if (_curAudioId && _curAudioId !== id) { const p = _vpAudio(_curAudioId); if (p) p.pause(); }
     _vpApplyPitch(a); a.playbackRate = _voiceSpeed;
@@ -9744,7 +9769,7 @@ function voiceTime(id){
   w.querySelector('.vp-time').textContent = _fmtVoice(a.currentTime);
   // O último palitinho só acende quando o som ACABA de verdade (evento ended),
   // nunca pela conta — igual WhatsApp, os pauzinhos não terminam antes do áudio.
-  _vpFill(w, dur ? a.currentTime / dur : 0, a.ended);
+  _vpFill(w, dur ? a.currentTime / dur : 0, a.ended, f.firme);
 }
 function voiceMeta(id){
   const a = _vpAudio(id), w = _vpEl(id); if (!a || !w) return;
