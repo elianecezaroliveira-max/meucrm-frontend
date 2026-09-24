@@ -36,7 +36,10 @@ function Q(tabela) {
     let data = null;
     if (st.op === 'select') data = rows().filter(casa);
     else if (st.op === 'update') { data = rows().filter(casa); data.forEach(r => Object.assign(r, st.payload)); escritas.push({ tabela, op: 'update', n: data.length, payload: st.payload, filtros: st.f.length }); }
-    else if (st.op === 'insert' || st.op === 'upsert') { const arr = [].concat(st.payload); arr.forEach(p => rows().push({ id: 'id' + Math.random().toString(36).slice(2, 8), ...p })); data = arr; escritas.push({ tabela, op: st.op }); }
+    else if (st.op === 'insert' || st.op === 'upsert') {
+      const arr = [].concat(st.payload), ch = st.chave || (tabela === 'settings' ? 'key' : 'id');
+      arr.forEach(p => { const ja = st.op === 'upsert' && p[ch] != null && rows().find(r => String(r[ch]) === String(p[ch])); if (ja) Object.assign(ja, p); else rows().push({ id: 'id' + Math.random().toString(36).slice(2, 8), ...p }); });
+      data = arr; escritas.push({ tabela, op: st.op }); }
     else if (st.op === 'delete') { const fora = rows().filter(casa); DB[tabela] = rows().filter(r => !casa(r)); data = fora; }
     if (st.single) data = (data && data[0]) || null;
     return { data: st.head ? null : data, error: null, count: Array.isArray(data) ? data.length : 0 };
@@ -44,7 +47,7 @@ function Q(tabela) {
   const b = {
     select(_, o) { if (o && o.head) st.head = true; return b; },
     update(p) { st.op = 'update'; st.payload = p; return b; }, insert(p) { st.op = 'insert'; st.payload = p; return b; },
-    upsert(p) { st.op = 'upsert'; st.payload = p; return b; }, delete() { st.op = 'delete'; return b; },
+    upsert(p, o) { st.op = 'upsert'; st.payload = p; st.chave = o && o.onConflict; return b; }, delete() { st.op = 'delete'; return b; },
     eq(c, v) { st.f.push(r => String(r[c]) === String(v)); return b; }, neq(c, v) { st.f.push(r => String(r[c]) !== String(v)); return b; },
     in(c, vs) { st.f.push(r => vs.map(String).includes(String(r[c]))); return b; },
     not(c, op, v) { if (op === 'is' && v === null) st.f.push(r => r[c] != null); return b; },
@@ -206,6 +209,33 @@ const espera = ms => new Promise(r => setTimeout(r, ms));
   await t('[normal] prévia de link de site público busca', async () => {
     buscas.length = 0; await chama('GET', '/link-preview?url=' + encodeURIComponent('http://93.184.216.34/pagina'), { tok: 'tok-b' });
     return buscas.some(u => u.includes('93.184.216.34'));
+  });
+  // ── lote 4 ──
+  await t('salvar fluxo não puxa passo de outro bot (id alheio)', async () => {
+    DB.bots.push({ id: 'bot-vit', owner: LEGADO, name: 'Vítima' });
+    DB.bot_nodes.push({ id: 'n-vit', bot_id: 'bot-vit', owner: LEGADO, type: 'message', config: { text: 'segredo' } });
+    DB.bots.push({ id: 'bot-b4', owner: B, name: 'Quarto' });
+    await chama('PUT', '/bots/bot-b4/flow', { tok: 'tok-b', body: { nodes: [{ id: 'n-vit', type: 'message', config: { text: 'meu' } }], edges: [] } });
+    const n = DB.bot_nodes.find(x => x.id === 'n-vit'); return n.bot_id === 'bot-vit' && n.config.text === 'segredo';
+  });
+  await t('painel de armazenamento não mostra pastas de todas as contas a um cliente', async () => (await chama('GET', '/storage-uso', { tok: 'tok-b' })).status === 401);
+  await t('anexo de nota: e-mails parecidos não abrem a nota um do outro', async () => {
+    // "contato.loja1@" e "contato.loja2@" têm as mesmas 12 primeiras letras
+    TOKENS['tok-l1'] = 'contato.loja1@x.com'; TOKENS['tok-l2'] = 'contato.loja2@x.com';
+    const pasta = Buffer.from('contato.loja1@x.com').toString('hex').slice(0, 24);
+    DB.messages.push({ id: 'nota1', owner: 'contato.loja1@x.com', media_id: 'notas/' + pasta + '/a.jpg', type: 'note' });
+    return (await chama('GET', '/media-proxy/' + encodeURIComponent('notas/' + pasta + '/a.jpg'), { tok: 'tok-l2' })).status === 403;
+  });
+  await t('[normal] dona da nota abre o próprio anexo', async () => {
+    const pasta = Buffer.from('contato.loja1@x.com').toString('hex').slice(0, 24);
+    DB.messages.push({ id: 'nota1b', owner: 'contato.loja1@x.com', media_id: 'qr/x/' + pasta, type: 'note' });
+    const r = await chama('GET', '/media-proxy/' + encodeURIComponent('notas/' + pasta + '/a.jpg'), { tok: 'tok-l1' });
+    return r.status !== 403 && r.status !== 401;
+  });
+  await t('[normal] salvar o próprio fluxo continua gravando', async () => {
+    DB.bots.push({ id: 'bot-b3', owner: B, name: 'Terceiro' });
+    const r = await chama('PUT', '/bots/bot-b3/flow', { tok: 'tok-b', body: { nodes: [{ id: 'n-b1', type: 'message', config: { text: 'oi' } }], edges: [] } });
+    return r.status === 200 && DB.bot_nodes.some(x => x.id === 'n-b1' && x.bot_id === 'bot-b3');
   });
   // ── uso normal continua igual ──
   await t('[normal] conta principal envia pelo próprio número', async () => {

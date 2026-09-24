@@ -2360,7 +2360,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v484</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v485</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3181,7 +3181,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v484</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v485</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3245,7 +3245,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 484;
+const APP_VER = 485;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -7515,11 +7515,11 @@ async function renderLeadPanel(phone){
     <div class="lp-section">
       <div class="lp-label">Telefone</div>
       ${window.matchMedia('(hover: none)').matches
-        ? `<div onclick="lpCopy('${escHtml(telShow)}', this)" title="Tocar para copiar"
+        ? `<div onclick="lpCopy('${_jsAttr(telShow)}', this)" title="Tocar para copiar"
             style="font-size:15px;color:#027eb5;font-weight:500;cursor:pointer;text-decoration:underline;display:inline-block">${escHtml(telShow)}</div>`
         : `<div style="display:flex;gap:6px;align-items:center;justify-content:space-between">
             <span style="font-size:15px;color:#131c20;font-weight:500">${escHtml(telShow)}</span>
-            <button class="lp-mini" onclick="lpCopy('${escHtml(telShow)}', this)">Copiar</button>
+            <button class="lp-mini" onclick="lpCopy('${_jsAttr(telShow)}', this)">Copiar</button>
           </div>`}
     </div>
     <div class="lp-section">
@@ -7683,7 +7683,7 @@ async function lpLoadTasks(phone){
   el.innerHTML = mine.length ? mine.map(t => `
     <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:7px">
       <button onclick="lpToggleTask('${_jsAttr(t.id)}',${t.done?'false':'true'},'${_jsAttr(phone)}')" title="${t.done?'Reabrir':'Concluir'}" style="width:18px;height:18px;border-radius:50%;border:2px solid #00a884;background:${t.done?'#00a884':'transparent'};color:#fff;cursor:pointer;flex-shrink:0;font-size:11px;line-height:14px;padding:0">${t.done?'✓':''}</button>
-      <div onclick="editTaskChat('${t.id}')" title="Tocar para editar o texto e o prazo" style="flex:1;min-width:0;font-size:13px;color:#131c20;cursor:pointer;${t.done?'text-decoration:line-through;opacity:.6':''}">${escHtml(t.title)}${t.due_at?`<div style="font-size:11px;color:#667781"><i class=ic-clock></i> ${fmtTaskDue(t.due_at)}</div>`:(t.created_at?`<div style="font-size:11px;color:#8696a0">Criada ${fmtTaskCreated(t.created_at)}</div>`:'')}</div>
+      <div onclick="editTaskChat('${_jsAttr(t.id)}')" title="Tocar para editar o texto e o prazo" style="flex:1;min-width:0;font-size:13px;color:#131c20;cursor:pointer;${t.done?'text-decoration:line-through;opacity:.6':''}">${escHtml(t.title)}${t.due_at?`<div style="font-size:11px;color:#667781"><i class=ic-clock></i> ${fmtTaskDue(t.due_at)}</div>`:(t.created_at?`<div style="font-size:11px;color:#8696a0">Criada ${fmtTaskCreated(t.created_at)}</div>`:'')}</div>
       ${_taskComentHtml(t)}
     </div>`).join('') : '<div style="color:#8696a0;font-size:12px">Nenhuma tarefa</div>';
 }
@@ -9168,7 +9168,7 @@ async function loadMessages(phone, scroll = true, opt = null) {
           const _idUlt = escHtml(String(ult.id || ''));
           parts.push({ key: chaveAlb, html: `<div class="msg ${safeDir}${grpA ? ' grp' : ''}" style="position:relative${_reacAlb ? ';margin-bottom:14px' : ''}" data-key="${chaveAlb}" data-msg-id="${safeId}" data-msg-dir="${safeDir}" data-msg-wamid="${_wamidAlb}" data-msg-content="${escHtml(_legAlb || '[Imagem]')}" data-msg-ts="${escHtml(String(ult.timestamp || ''))}" data-msg-type="image" data-msg-ult="${_idUlt}">
             <div class="msg-actions">
-              <button class="msg-menu-btn" title="Opções" onclick="openMsgMenu(event,'${safeId}')">⌄</button>
+              <button class="msg-menu-btn" title="Opções" onclick="openMsgMenu(event,'${_jsAttr(m.id || '')}')">⌄</button>
             </div>
             <div class="alb alb-${Math.min(_qtd, 4)}">${tiles}</div>${_capAlb}
             <div class="alb-baixar" onclick="event.stopPropagation();baixarAlbum(this,'${chaveAlb}')" title="Escolher e baixar as ${_qtd} fotos"><i class=ic-down></i> Baixar fotos (${_qtd})</div>
@@ -9193,10 +9193,10 @@ async function loadMessages(phone, scroll = true, opt = null) {
             })() : ''}
             ${m.content && !/^\[(Foto|Arquivo)\]$/.test(m.content) ? `<div style="color:#131c20">${waFormat(m.content)}</div>` : ''}
             <div class="msg-actions">
-              <button class="msg-menu-btn" title="Opções da nota" onclick="openMsgMenu(event,'${safeId}')">⌄</button>
+              <button class="msg-menu-btn" title="Opções da nota" onclick="openMsgMenu(event,'${_jsAttr(m.id || '')}')">⌄</button>
             </div>
             ${m.pinned ? '<div style="font-size:11px;color:#a07c00;margin-bottom:2px"><i class=ic-pin></i> fixada</div>' : ''}
-            <div class="time" style="color:#a07c00">${timeStr}${m.starred ? '<span title="Favorita" style="margin-left:6px"><i class=ic-star></i></span>' : ''}<span onclick="deleteNota('${safeId}')" title="Apagar nota" style="cursor:pointer;margin-left:8px"><i class=ic-trash></i></span></div>
+            <div class="time" style="color:#a07c00">${timeStr}${m.starred ? '<span title="Favorita" style="margin-left:6px"><i class=ic-star></i></span>' : ''}<span onclick="deleteNota('${_jsAttr(m.id || '')}')" title="Apagar nota" style="cursor:pointer;margin-left:8px"><i class=ic-trash></i></span></div>
           </div>` });
           continue;
         }
@@ -9204,7 +9204,7 @@ async function loadMessages(phone, scroll = true, opt = null) {
         parts.push({ key: 'm-' + safeId, html: `<div class="msg ${safeDir}${_grp ? ' grp' : ''}" style="position:relative${m.reaction?';margin-bottom:14px':''}"
           data-key="m-${safeId}" data-msg-id="${safeId}" data-msg-content="${dataCont}" data-msg-dir="${safeDir}" data-msg-wamid="${safeWamid}" data-msg-ts="${escHtml(String(m.timestamp || ''))}" data-msg-type="${escHtml(String(m.type || 'text'))}">
           <div class="msg-actions">
-            <button class="msg-menu-btn" title="Opções da mensagem" onclick="openMsgMenu(event,'${safeId}')">⌄</button>
+            <button class="msg-menu-btn" title="Opções da mensagem" onclick="openMsgMenu(event,'${_jsAttr(m.id || '')}')">⌄</button>
           </div>
           ${autorHtml}${m.forwarded ? '<div style="font-size:11.5px;color:#8696a0;margin-bottom:3px;font-style:italic">↪ Encaminhada</div>' : ''}${msgContent}
           <div class="time">${m.edited ? '<span style="font-size:10.5px;color:#8696a0;margin-right:4px">editada</span>' : ''}${m.starred ? '<span style="font-size:10px;margin-right:3px;opacity:.75">★</span>' : ''}${timeStr}${ticks}</div>
@@ -10814,8 +10814,8 @@ function fmtTaskCreatedCurto(iso) {
 function _taskComentHtml(t) {
   const nota = String((t && t.notes) || '').replace(/\s+/g, ' ').trim();
   return nota
-    ? `<span class="task-coment" onclick="event.stopPropagation();editTaskNoteChat('${t.id}')" title="${escHtml(nota.slice(0, 400))}" style="flex:0 1 46%;min-width:0;font-size:12px;color:#54656f;cursor:pointer;display:inline-flex;align-items:flex-start;gap:5px;padding-top:2px"><i class=ic-note style="flex-shrink:0"></i><span style="overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;word-break:break-word">${escHtml(nota)}</span></span>`
-    : `<span class="task-coment" onclick="event.stopPropagation();editTaskNoteChat('${t.id}')" title="Anotação que só você vê" style="flex-shrink:0;font-size:12px;color:#667781;cursor:pointer;white-space:nowrap;padding-top:2px"><i class=ic-note></i> Comentar</span>`;
+    ? `<span class="task-coment" onclick="event.stopPropagation();editTaskNoteChat('${_jsAttr(t.id)}')" title="${escHtml(nota.slice(0, 400))}" style="flex:0 1 46%;min-width:0;font-size:12px;color:#54656f;cursor:pointer;display:inline-flex;align-items:flex-start;gap:5px;padding-top:2px"><i class=ic-note style="flex-shrink:0"></i><span style="overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;word-break:break-word">${escHtml(nota)}</span></span>`
+    : `<span class="task-coment" onclick="event.stopPropagation();editTaskNoteChat('${_jsAttr(t.id)}')" title="Anotação que só você vê" style="flex-shrink:0;font-size:12px;color:#667781;cursor:pointer;white-space:nowrap;padding-top:2px"><i class=ic-note></i> Comentar</span>`;
 }
 async function editTaskNoteChat(id) {
   const naJanela = (currentTasks || []).find(x => String(x.id) === String(id));
@@ -10844,14 +10844,14 @@ function renderTasks() {
   list.innerHTML = abertas.map(t => {
     const due = t.due_at ? `<div style="font-size:11px;color:#f59e0b;margin-top:2px"><i class=ic-clock></i> ${fmtTaskDue(t.due_at)}</div>` : '';
     return `<div style="display:flex;align-items:flex-start;gap:10px;padding:10px;background:#ffffff;border-radius:8px;margin-bottom:8px">
-      <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask('${t.id}',this.checked)" style="width:18px;height:18px;cursor:pointer;margin-top:2px">
-      <div style="flex:1;min-width:0;cursor:pointer" onclick="editTaskChat('${t.id}')" title="Tocar para editar o texto e o prazo">
+      <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask('${_jsAttr(t.id)}',this.checked)" style="width:18px;height:18px;cursor:pointer;margin-top:2px">
+      <div style="flex:1;min-width:0;cursor:pointer" onclick="editTaskChat('${_jsAttr(t.id)}')" title="Tocar para editar o texto e o prazo">
         <div style="${t.done?'text-decoration:line-through;opacity:.6':''};word-break:break-word">${escHtml(t.title)}</div>
         ${due}
         ${(!t.due_at && t.created_at) ? `<div style="font-size:11px;color:#8696a0;margin-top:2px">Criada ${fmtTaskCreated(t.created_at)}</div>` : ''}
       </div>
       ${_taskComentHtml(t)}
-      <button onclick="deleteTask('${t.id}')" title="Excluir" style="background:none;border:none;color:#667781;cursor:pointer;font-size:15px"><i class=ic-trash></i></button>
+      <button onclick="deleteTask('${_jsAttr(t.id)}')" title="Excluir" style="background:none;border:none;color:#667781;cursor:pointer;font-size:15px"><i class=ic-trash></i></button>
     </div>`;
   }).join('');
 }
@@ -11752,11 +11752,11 @@ function renderAvisos() {
           <div style="color:#131c20;font-size:13.5px;line-height:1.45">${escHtml(_semEmoji(n.text))}</div>
           <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:6px">
             <span style="font-size:11px;color:#8696a0">${escHtml(hora)}</span>
-            ${alvo ? `<span onclick="avIr('${escHtml(n.alvo)}')" style="font-size:12px;color:#00806a;font-weight:600;cursor:pointer">${escHtml(alvo[0])} ›</span>` : ''}
-            <span onclick="avNaoLido('${id}',${n.read ? 'false' : 'true'})" style="font-size:12px;color:#667781;cursor:pointer">${n.read ? 'Marcar como não lido' : 'Marcar como lido'}</span>
+            ${alvo ? `<span onclick="avIr('${_jsAttr(n.alvo)}')" style="font-size:12px;color:#00806a;font-weight:600;cursor:pointer">${escHtml(alvo[0])} ›</span>` : ''}
+            <span onclick="avNaoLido('${_jsAttr(n.id || n.ts)}',${n.read ? 'false' : 'true'})" style="font-size:12px;color:#667781;cursor:pointer">${n.read ? 'Marcar como não lido' : 'Marcar como lido'}</span>
           </div>
         </div>
-        <button onclick="avExcluir('${id}')" title="Excluir aviso" style="background:none;border:none;color:#8696a0;cursor:pointer;font-size:13px;flex-shrink:0"><i class=ic-trash></i></button>
+        <button onclick="avExcluir('${_jsAttr(n.id || n.ts)}')" title="Excluir aviso" style="background:none;border:none;color:#8696a0;cursor:pointer;font-size:13px;flex-shrink:0"><i class=ic-trash></i></button>
       </div>`;
   });
   el.innerHTML = barra + html;
@@ -14429,7 +14429,7 @@ function renderTemplateList(templates) {
     const nBtns = ((t.components || []).find(c => c.type === 'BUTTONS')?.buttons || []).length;
     const extras = [hdr ? (hdr.format === 'TEXT' ? 'cabeçalho' : hdr.format === 'IMAGE' ? 'imagem' : hdr.format === 'VIDEO' ? 'vídeo' : 'documento') : '', nBtns ? nBtns + (nBtns > 1 ? ' botões' : ' botão') : ''].filter(Boolean).join(' · ');
     return `
-      <div class="tmpl-item v2" title="Toque para ver o modelo completo" onclick="verModelo('${escHtml(t.id)}')">
+      <div class="tmpl-item v2" title="Toque para ver o modelo completo" onclick="verModelo('${_jsAttr(t.id)}')">
         <div class="tmpl-top">
           <div style="flex:1;min-width:0">
             <div class="tmpl-name" title="${escHtml(t.name)}">${escHtml(tmplNome(t))}</div>
@@ -14450,9 +14450,9 @@ function renderTemplateList(templates) {
         <div class="tmpl-foot">
           <span class="tmpl-chip">${escHtml(catLabel)}</span><span class="tmpl-chip">${escHtml(t.language)}</span>${extras ? `<span class="tmpl-chip" style="background:transparent;border:none;color:#8696a0">${extras}</span>` : ''}
           <span style="flex:1 0 100%"></span>
-          <button class="bot-act" onclick="event.stopPropagation();verModelo('${escHtml(t.id)}')"><i class=ic-eye></i> Ver</button>
-          <button class="bot-act" onclick="event.stopPropagation();duplicarModelo('${escHtml(t.id)}')" title="Criar outro modelo a partir deste"><i class=ic-copy></i> Duplicar</button>
-          <button class="bot-act del" onclick="event.stopPropagation();deleteTemplate('${_jsAttr(t.name)}','${escHtml(t.id)}','${escHtml(accountId)}')" title="Excluir modelo">Excluir</button>
+          <button class="bot-act" onclick="event.stopPropagation();verModelo('${_jsAttr(t.id)}')"><i class=ic-eye></i> Ver</button>
+          <button class="bot-act" onclick="event.stopPropagation();duplicarModelo('${_jsAttr(t.id)}')" title="Criar outro modelo a partir deste"><i class=ic-copy></i> Duplicar</button>
+          <button class="bot-act del" onclick="event.stopPropagation();deleteTemplate('${_jsAttr(t.name)}','${_jsAttr(t.id)}','${_jsAttr(accountId)}')" title="Excluir modelo">Excluir</button>
         </div>
       </div>`;
   }).join('');
@@ -15781,7 +15781,7 @@ function renderPipelineList(contacts) {
     const tags = (c.tags || []).slice(0, 3).map((t) => `<span class="tag-chip ${_tagCor(t)}" style="font-size:10px;padding:1px 6px">${escHtml(t)}</span>`).join('');
     const sel = selectedLeads.has(c.phone);
     return `<div class="plist-row${sel ? ' sel' : ''}" data-phone="${c.phone}">
-      <span class="plist-check"><input type="checkbox" ${sel ? 'checked' : ''} onclick="event.stopPropagation();togglePipelineListSel('${c.phone}',this.checked)"></span>
+      <span class="plist-check"><input type="checkbox" ${sel ? 'checked' : ''} onclick="event.stopPropagation();togglePipelineListSel('${_jsAttr(c.phone)}',this.checked)"></span>
       <span class="plist-c-name" onclick="openLeadChat('${_jsAttr(c.phone)}','${_jsAttr(c.name || '')}','${_jsAttr(c.account_id || '')}')">${escHtml(_nomeOuTel(c.name, c.phone))}</span>
       <span class="plist-c-phone">${formatPhone(c.phone)}</span>
       <span class="plist-c-stage"><span class="plist-stage">${escHtml(stName[c.stage_id] || 'Sem etapa')}</span></span>
@@ -15980,8 +15980,8 @@ function cardHTML(c) {
   return `
     <div class="kanban-card${isSelected?' selected':''}" draggable="true" data-phone="${c.phone}">
       <div style="display:flex;align-items:flex-start;gap:0">
-        ${_pipeSelMode ? `<div class="card-checkbox${isSelected?' checked':''}" onclick="toggleCardSelection('${c.phone}',event)" title="Selecionar"></div>` : ''}
-        <div style="flex:1;min-width:0;cursor:pointer" title="Abrir conversa" onclick="openLeadChat('${c.phone}','${_jsAttr(c.name||'')}','${c.account_id||''}')">
+        ${_pipeSelMode ? `<div class="card-checkbox${isSelected?' checked':''}" onclick="toggleCardSelection('${_jsAttr(c.phone)}',event)" title="Selecionar"></div>` : ''}
+        <div style="flex:1;min-width:0;cursor:pointer" title="Abrir conversa" onclick="openLeadChat('${_jsAttr(c.phone)}','${_jsAttr(c.name||'')}','${_jsAttr(c.account_id||'')}')">
           <div class="kanban-card-name">${_leadSemNome(c) ? '<span style="color:#8696a0;font-weight:500">Sem nome</span>' : escHtml(c.name)}</div>
           <div class="kanban-card-phone">${formatPhone(c.phone)}</div>
           ${tags ? `<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:5px">${tags}</div>` : ''}
@@ -16062,8 +16062,8 @@ function abrirMenuColuna(ev, id) {
   m.style.cssText = 'position:fixed;z-index:9999;background:#fff;border:1px solid #e9edef;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);padding:6px;min-width:210px';
   m.innerHTML = `
     <div class="cm-item" onclick="document.getElementById('col-menu').remove();const i=document.querySelector('.kanban-col[data-stage-id=&quot;${id}&quot;] .kanban-col-name');if(i){i.focus();i.select();}"><i class=ic-pencil></i> Renomear coluna</div>
-    <div class="cm-item" onclick="document.getElementById('col-menu').remove();togglePipeSelMode();selectAllInColumn('${id}')"><i class=ic-task></i> Selecionar todos os leads</div>
-    <div class="cm-item" style="color:#ef4444" onclick="document.getElementById('col-menu').remove();deleteStage('${id}')"><i class=ic-trash></i> Excluir coluna…</div>`;
+    <div class="cm-item" onclick="document.getElementById('col-menu').remove();togglePipeSelMode();selectAllInColumn('${_jsAttr(id)}')"><i class=ic-task></i> Selecionar todos os leads</div>
+    <div class="cm-item" style="color:#ef4444" onclick="document.getElementById('col-menu').remove();deleteStage('${_jsAttr(id)}')"><i class=ic-trash></i> Excluir coluna…</div>`;
   document.body.appendChild(m);
   const x = Math.min(ev.clientX, window.innerWidth - 230), y = Math.min(ev.clientY, window.innerHeight - 150);
   m.style.left = x + 'px'; m.style.top = y + 'px';
@@ -16150,13 +16150,13 @@ async function carregarLixeiraColunas() {
     if (Array.isArray(leadsLixo) && leadsLixo.length) {
       const stName = {}; (pipelineStages || []).forEach(s => stName[s.id] = s.name);
       h += `<div style="display:flex;align-items:center;gap:8px;margin:6px 0 4px"><span style="font-size:12px;color:#667781;flex:1">Leads excluídos (30 dias) — ${leadsLixo.length}:</span><button class="pf-topbtn" onclick="restaurarLeads(${escHtml(JSON.stringify(leadsLixo.map(x => x.phone)))})">↩ Restaurar todos</button></div>` +
-        '<div style="max-height:220px;overflow:auto;border:1px solid #f0f2f5;border-radius:8px">' + leadsLixo.map(x => `<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-bottom:1px solid #f0f2f5;font-size:12.5px"><b style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(x.name || formatPhone(x.phone))}</b><span style="color:#8696a0;font-size:11.5px">${escHtml(formatPhone(x.phone))}${x.stage_id && stName[x.stage_id] ? ' · ' + escHtml(stName[x.stage_id]) : ''} · ${new Date(x.deleted_at).toLocaleDateString('pt-BR')}</span><button class="pf-topbtn" style="padding:3px 8px !important;font-size:11.5px !important" onclick="restaurarLeads(['${escHtml(x.phone)}'])">↩</button></div>`).join('') + '</div>';
+        '<div style="max-height:220px;overflow:auto;border:1px solid #f0f2f5;border-radius:8px">' + leadsLixo.map(x => `<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-bottom:1px solid #f0f2f5;font-size:12.5px"><b style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(x.name || formatPhone(x.phone))}</b><span style="color:#8696a0;font-size:11.5px">${escHtml(formatPhone(x.phone))}${x.stage_id && stName[x.stage_id] ? ' · ' + escHtml(stName[x.stage_id]) : ''} · ${new Date(x.deleted_at).toLocaleDateString('pt-BR')}</span><button class="pf-topbtn" style="padding:3px 8px !important;font-size:11.5px !important" onclick="restaurarLeads(['${_jsAttr(x.phone)}'])">↩</button></div>`).join('') + '</div>';
     }
     if (Array.isArray(lixo) && lixo.length) {
-      h += '<div style="font-size:12px;color:#667781;margin:6px 0 4px">Colunas excluídas recentemente (podem voltar com os leads):</div>' + lixo.map(x => `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f0f2f5;font-size:13px"><b style="flex:1">${escHtml(x.name)}</b><span style="color:#8696a0;font-size:12px">${x.leads} lead(s) · ${new Date(x.deleted_at).toLocaleString('pt-BR')}</span><button class="pf-topbtn" onclick="restaurarColuna('${escHtml(x.id)}')">↩ Restaurar</button></div>`).join('');
+      h += '<div style="font-size:12px;color:#667781;margin:6px 0 4px">Colunas excluídas recentemente (podem voltar com os leads):</div>' + lixo.map(x => `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f0f2f5;font-size:13px"><b style="flex:1">${escHtml(x.name)}</b><span style="color:#8696a0;font-size:12px">${x.leads} lead(s) · ${new Date(x.deleted_at).toLocaleString('pt-BR')}</span><button class="pf-topbtn" onclick="restaurarColuna('${_jsAttr(x.id)}')">↩ Restaurar</button></div>`).join('');
     }
     if (Array.isArray(orf) && orf.length) {
-      h += '<div style="font-size:12px;color:#667781;margin:10px 0 4px">Colunas que sumiram mas ainda são usadas por bots/automações (recriar com o mesmo vínculo):</div>' + orf.map(o => `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f0f2f5;font-size:13px;flex-wrap:wrap"><span style="flex:1;color:#54656f">${o.pistas.map(escHtml).join(' · ')}</span><input placeholder="Nome da coluna" id="orf-nome-${escHtml(o.id)}" style="width:150px"><input placeholder="ID externo (opcional)" id="orf-ext-${escHtml(o.id)}" style="width:150px"><button class="pf-topbtn" onclick="recuperarColuna('${escHtml(o.id)}')"><i class=ic-bandage></i> Recriar</button></div>`).join('');
+      h += '<div style="font-size:12px;color:#667781;margin:10px 0 4px">Colunas que sumiram mas ainda são usadas por bots/automações (recriar com o mesmo vínculo):</div>' + orf.map(o => `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f0f2f5;font-size:13px;flex-wrap:wrap"><span style="flex:1;color:#54656f">${o.pistas.map(escHtml).join(' · ')}</span><input placeholder="Nome da coluna" id="orf-nome-${escHtml(o.id)}" style="width:150px"><input placeholder="ID externo (opcional)" id="orf-ext-${escHtml(o.id)}" style="width:150px"><button class="pf-topbtn" onclick="recuperarColuna('${_jsAttr(o.id)}')"><i class=ic-bandage></i> Recriar</button></div>`).join('');
     }
     box.innerHTML = h || '<span style="color:#8696a0">Nenhuma coluna excluída ou perdida.</span>';
   } catch (e) { box.innerHTML = '<span style="color:#ef4444">Não consegui carregar.</span>'; }
@@ -17523,28 +17523,28 @@ function _taskRowHTML(t){
     : `<span style="width:17px;flex-shrink:0;display:inline-block"></span>`);
   // O prazo agora é CLICÁVEL: abre as opções de adiar / trocar / tirar
   const due=t.due_at
-    ? `<span onclick="menuPrazoTarefa('${t.id}')" title="Mudar ou adiar o prazo" style="color:${overdue?'#ef4444':'#667781'};font-size:12px;cursor:pointer"><i class=ic-clock></i> ${fmtTaskDue(t.due_at)}</span>`
-    : `<span onclick="menuPrazoTarefa('${t.id}')" title="Definir um prazo" style="color:#8696a0;font-size:12px;cursor:pointer"><i class=ic-clock></i> Sem prazo</span>`;
+    ? `<span onclick="menuPrazoTarefa('${_jsAttr(t.id)}')" title="Mudar ou adiar o prazo" style="color:${overdue?'#ef4444':'#667781'};font-size:12px;cursor:pointer"><i class=ic-clock></i> ${fmtTaskDue(t.due_at)}</span>`
+    : `<span onclick="menuPrazoTarefa('${_jsAttr(t.id)}')" title="Definir um prazo" style="color:#8696a0;font-size:12px;cursor:pointer"><i class=ic-clock></i> Sem prazo</span>`;
   const lead=t.contact_name?`<button onclick="openTaskLead('${_jsAttr(t.phone)}','${_jsAttr(t.contact_name)}',${t.account_id?`'${_jsAttr(t.account_id)}'`:'null'})" title="Abrir a conversa e os dados deste lead" style="display:inline-flex;align-items:center;gap:6px;background:#e7f7ef;border:1px solid #00a884;color:#00806a;border-radius:16px;padding:5px 12px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit"><i class=ic-user></i> ${escHtml(t.contact_name)} <span style="font-size:11px">›</span></button>`:'';
   // O comentário NÃO vira bloco: fica no próprio botão (cor + dica), para que a
   // linha da tarefa tenha sempre a mesma altura.
   const _nota = String(t.notes || '').replace(/\s+/g, ' ').trim();
   const notaBtn = _nota
-    ? `<span class="task-coment" style="font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;flex:1 1 60px;min-width:0" onclick="editTaskNote('${t.id}')" title="${escHtml(_nota.slice(0, 400))}"><i class=ic-note style="flex-shrink:0"></i><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(_nota)}</span></span>`
-    : `<span style="color:#667781;font-size:12px;cursor:pointer" onclick="editTaskNote('${t.id}')" title="Anotação que só você vê"><i class=ic-note></i> Comentar</span>`;
+    ? `<span class="task-coment" style="font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;flex:1 1 60px;min-width:0" onclick="editTaskNote('${_jsAttr(t.id)}')" title="${escHtml(_nota.slice(0, 400))}"><i class=ic-note style="flex-shrink:0"></i><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(_nota)}</span></span>`
+    : `<span style="color:#667781;font-size:12px;cursor:pointer" onclick="editTaskNote('${_jsAttr(t.id)}')" title="Anotação que só você vê"><i class=ic-note></i> Comentar</span>`;
   return `<div class="task-row${overdue?' overdue':''}">
     ${selBox}
-    <button class="task-check" title="${t.done?'Reabrir':'Concluir'}" onclick="toggleTaskGlobal('${t.id}',${t.done?'false':'true'})">${t.done?'✓':''}</button>
+    <button class="task-check" title="${t.done?'Reabrir':'Concluir'}" onclick="toggleTaskGlobal('${_jsAttr(t.id)}',${t.done?'false':'true'})">${t.done?'✓':''}</button>
     <div style="flex:1;min-width:0">
       ${lead ? `<div style="margin-bottom:5px">${lead}</div>` : ''}
       <div style="color:#131c20;font-size:14px;font-weight:700;${t.done?'text-decoration:line-through;opacity:.6':''}">${escHtml(t.title)}</div>
       <div style="display:flex;gap:14px;margin-top:4px;flex-wrap:wrap;align-items:center">${due}
         ${t.created_at ? `<span class="task-criada" style="color:#8696a0;font-size:12px;white-space:nowrap" title="Criada em ${escHtml(fmtTaskCreated(t.created_at))}"><span class="rot">criada </span>${fmtTaskCreatedCurto(t.created_at)}</span>` : ''}
-        <span class="task-editar" style="color:#667781;font-size:12px;cursor:pointer;white-space:nowrap" onclick="editTaskTitle('${t.id}')" title="Editar o texto da tarefa"><i class=ic-pencil></i><span class="rot"> Editar</span></span>
+        <span class="task-editar" style="color:#667781;font-size:12px;cursor:pointer;white-space:nowrap" onclick="editTaskTitle('${_jsAttr(t.id)}')" title="Editar o texto da tarefa"><i class=ic-pencil></i><span class="rot"> Editar</span></span>
         ${notaBtn}
       </div>
     </div>
-    <button title="Excluir" onclick="deleteTaskGlobal('${t.id}')" style="background:none;border:none;color:#667781;cursor:pointer;font-size:14px"><i class=ic-trash></i></button>
+    <button title="Excluir" onclick="deleteTaskGlobal('${_jsAttr(t.id)}')" style="background:none;border:none;color:#667781;cursor:pointer;font-size:14px"><i class=ic-trash></i></button>
   </div>`;
 }
 
