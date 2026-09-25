@@ -350,7 +350,7 @@
   /* ── Janelas do VETRA que substituem as caixas cinzas do navegador ── */
   #vdlg-overlay { position: fixed; inset: 0; background: rgba(11,20,26,.5); z-index: 99000; display: none; align-items: center; justify-content: center; padding: 16px; }
   #vdlg-overlay.open { display: flex; }
-  #vdlg-box { background: #fff; color: #131c20; border-radius: 14px; width: 100%; max-width: 420px; padding: 18px 20px 16px; box-shadow: 0 14px 44px rgba(0,0,0,.35); animation: vPop .16s ease-out; max-height: 88vh; overflow-y: auto; }
+  #vdlg-box { background: #fff; color: #131c20; border-radius: 14px; width: 100%; max-width: 420px; padding: 18px 20px 16px; box-shadow: 0 14px 44px rgba(0,0,0,.35); animation: vPop .16s ease-out; max-height: 88vh; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
   #vdlg-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
   #vdlg-text { font-size: 13.5px; line-height: 1.5; color: #54656f; white-space: pre-wrap; margin-bottom: 12px; }
   #vdlg-campos label { display: block; font-size: 12px; font-weight: 600; color: #54656f; margin: 10px 0 4px; }
@@ -2358,7 +2358,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v488</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v489</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3185,7 +3185,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v488</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v489</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3259,7 +3259,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 488;
+const APP_VER = 489;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -11005,6 +11005,10 @@ let _vdlgResolve = null;
 // a caixa para fora da tela (você digitava a etiqueta às cegas).
 function _ajustaOverlayTeclado(ov, aberto) {
   if (!ov) return;
+  // Dedo na caixa (rolando o formulário): não mexe na posição no meio do gesto — no iPhone
+  // o reposicionar a cada pixel brigava com a rolagem e a tela parecia travada.
+  // O ajuste fica agendado e acontece quando o dedo solta.
+  if (ov._dedo) { ov._ajustePendente = true; return; }
   const vv = window.visualViewport;
   const normal = () => { ov.style.top = ''; ov.style.height = ''; ov.style.bottom = ''; };
   if (!aberto || !vv || window.innerWidth > 768) { normal(); return; }
@@ -11040,6 +11044,21 @@ function _tagSheetAjustaTeclado() {
   _ajustaOverlayTeclado(ov, !!(ov && ov.style.display !== 'none' && ov.style.display !== ''));
 }
 function _ajustaCaixasTeclado() { _vdlgAjustaTeclado(); _tagSheetAjustaTeclado(); }
+// marca "dedo na caixa" enquanto ela é rolada; ao soltar, faz o ajuste que ficou pendente
+(function () {
+  const liga = (id) => {
+    const ov = document.getElementById(id); if (!ov) return;
+    ov.addEventListener('touchstart', () => { ov._dedo = true; }, { passive: true });
+    // dedo no FUNDO escuro (fora da caixa): não arrasta a página por trás (iPhone puxava a
+    // página inteira e a caixa parecia travada). Dentro da caixa a rolagem é normal.
+    ov.addEventListener('touchmove', (e) => { if (e.target === ov && e.cancelable) e.preventDefault(); }, { passive: false });
+    const solta = () => { ov._dedo = false; if (ov._ajustePendente) { ov._ajustePendente = false; setTimeout(_ajustaCaixasTeclado, 60); } };
+    ov.addEventListener('touchend', solta, { passive: true });
+    ov.addEventListener('touchcancel', solta, { passive: true });
+  };
+  const arma = () => { liga('vdlg-overlay'); liga('tag-overlay'); };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', arma); else arma();
+})();
 try { if (window.visualViewport) { window.visualViewport.addEventListener('resize', _ajustaCaixasTeclado); window.visualViewport.addEventListener('scroll', _ajustaCaixasTeclado); } } catch (_) {}
 // Celular que ENCOLHE a página ao abrir o teclado avisa por 'resize' da janela (não do
 // visualViewport) — sem isto a caixa ficava presa no lugar antigo, fora da tela
@@ -19115,12 +19134,25 @@ function createNodeEl(node) {
   return div;
 }
 
+// Categoria do modelo da API oficial (Meta): Marketing custa mais e tem regra de opt-out;
+// Utilidade é a de operação. Aparece na lista, no balão do passo e na prévia.
+function _tmplCat(t) {
+  const c = String((t && t.category) || '').toUpperCase();
+  return { MARKETING: 'Marketing', UTILITY: 'Utilidade', AUTHENTICATION: 'Autenticação' }[c] || (c ? c.charAt(0) + c.slice(1).toLowerCase() : '');
+}
+function _tmplCatSelo(t, claro) {
+  const nome = _tmplCat(t); if (!nome) return '';
+  const mk = String((t && t.category) || '').toUpperCase() === 'MARKETING';
+  const fundo = claro ? (mk ? 'rgba(255,196,0,.35)' : 'rgba(255,255,255,.22)') : (mk ? '#fff3cd' : '#e7f7ef');
+  const cor = claro ? '#fff' : (mk ? '#7a5200' : '#00806a');
+  return `<span class="tmpl-cat" data-cat="${escHtml(nome)}" style="background:${fundo};color:${cor};border-radius:10px;padding:1px 7px;font-size:10px;font-weight:700;margin-left:4px">${escHtml(nome)}</span>`;
+}
 // Balão azul (estilo WhatsApp/Kommo) desenhado DENTRO do nó de mensagem
 function _nodeMsgBubble(node) {
   const cfg = node.config || {};
-  let txt = '', chip = '', rodapeTmpl = '';
+  let txt = '', chip = '', rodapeTmpl = '', _tt = null;
   if (cfg.mode === 'template') {
-    const _tt = _botTmplCache[(cfg.template_name || '') + '|' + (cfg.language || 'pt_BR')]
+    _tt = _botTmplCache[(cfg.template_name || '') + '|' + (cfg.language || 'pt_BR')]
            || Object.values(_botTmplCache).find(x => x.name === cfg.template_name);
     // modelo excluído: o passo fica marcado em vermelho no quadro, não some calado
     const _sumiu = !!cfg.template_name && _tmplCacheLoaded && !_tt;
@@ -19141,7 +19173,7 @@ function _nodeMsgBubble(node) {
     : '';
   return `<div style="background:#3d7bfa;color:#fff;border-radius:14px;padding:12px 13px;font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-word;box-shadow:0 2px 8px rgba(61,123,250,.35)">${
     (cfg.mode === 'template' && cfg.template_name)
-      ? `<span style="background:rgba(255,255,255,.22);border-radius:10px;padding:2px 9px;font-size:10.5px;font-weight:700;display:inline-block"><i class=ic-bot></i> ${escHtml(cfg.template_name)}</span><div style="height:7px"></div>` : ''
+      ? `<span style="background:rgba(255,255,255,.22);border-radius:10px;padding:2px 9px;font-size:10.5px;font-weight:700;display:inline-block"><i class=ic-bot></i> ${escHtml(cfg.template_name)}</span>${_tmplCatSelo(_tt, true)}<div style="height:7px"></div>` : ''
   }${foto}${escHtml(txt)}${
     rodapeTmpl ? `<div style="margin-top:6px;font-size:10.5px;opacity:.72;line-height:1.4">${escHtml(rodapeTmpl)}</div>` : ''
   }${
@@ -19297,7 +19329,8 @@ async function loadBotTmplOptions(node){
       const { t, accounts } = merged[key];
       const selAttr = (node.config.template_name===t.name && (node.config.language||'pt_BR')===t.language) ? 'selected' : '';
       const nums = accounts.length>1 ? ` · ${accounts.length} números` : ` · ${accounts[0]}`;
-      return `<option value="${escHtml(key)}" ${selAttr}>${escHtml(tmplNome(t))} (${t.language})${escHtml(nums)}</option>`;
+      const cat = _tmplCat(t) ? ' · ' + _tmplCat(t) : '';
+      return `<option value="${escHtml(key)}" ${selAttr}>${escHtml(tmplNome(t))} (${t.language})${escHtml(cat)}${escHtml(nums)}</option>`;
     }).join('');
     // Auto-detecta os botões do modelo já configurado (sem precisar re-escolher)
     if(node.config.template_name){
@@ -19361,7 +19394,10 @@ function renderTmplPreview(node){
     ? '<div style="font-size:11.5px;color:#667781;margin-top:6px;line-height:1.4">As lacunas do modelo são preenchidas na hora do envio: a primeira recebe o nome do lead.</div>'
     : '';
   const btns = node.config.buttons || [];
-  el.innerHTML = `<div style="background:linear-gradient(135deg,#4e8cff,#3f7ae0);color:#fff;border-radius:12px;padding:12px 14px;font-size:12.5px;line-height:1.45;white-space:pre-wrap">${escHtml(body)}${
+  const catLinha = _tmplCat(t)
+    ? `<div style="font-size:11.5px;color:#54656f;margin-bottom:6px">Modelo da API oficial · categoria ${_tmplCatSelo(t, false)}${String(t.category || '').toUpperCase() === 'MARKETING' ? ' <span style="color:#7a5200">— custa mais e o lead pode bloquear marketing</span>' : ''}</div>`
+    : '';
+  el.innerHTML = catLinha + `<div style="background:linear-gradient(135deg,#4e8cff,#3f7ae0);color:#fff;border-radius:12px;padding:12px 14px;font-size:12.5px;line-height:1.45;white-space:pre-wrap">${escHtml(body)}${
       rodape ? `<div style="margin-top:7px;font-size:11px;opacity:.75;line-height:1.4">${escHtml(rodape)}</div>` : ''
     }${
       btns.length ? '<div style="margin-top:9px;display:flex;flex-direction:column;gap:6px">' +
