@@ -1,4 +1,4 @@
-// VETRA Service Worker v29 — SÓ NOTIFICAÇÕES PUSH.
+// FILAZ Service Worker v29 — SÓ NOTIFICAÇÕES PUSH.
 // SEM cache de página e SEM interceptar requisições: o navegador busca o site
 // direto do servidor em todo carregamento — a versão nova SEMPRE aparece.
 
@@ -69,7 +69,7 @@ async function _acertaContador(data) {
 }
 function _mostraPush(data) {
   const tasks = [
-    self.registration.showNotification(data.title || 'VETRA', {
+    self.registration.showNotification(data.title || 'FILAZ', {
       body: data.body || 'Nova mensagem recebida',
       icon: '/icons/icon-192.png',
       badge: '/icons/icon-192.png',
