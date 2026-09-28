@@ -380,6 +380,10 @@
   /* Celular: a caixa fica no ALTO da tela (não no centro) — com o teclado aberto o centro
      fica atrás do teclado e o campo "Nova etiqueta" sumia na hora de digitar */
   @media (max-width: 768px) { #vdlg-box { max-width: 100%; } #vdlg-overlay.open { align-items: flex-start; padding-top: max(14px, env(safe-area-inset-top)); } #vdlg-box { max-height: calc(100% - 28px); } }
+  /* "Tarefas do lead" no celular: mesma regra da janela do VETRA — nasce no alto da parte
+     visível e rola por dentro; antes ficava centralizada na tela inteira e o teclado
+     escondia metade (arrastar não adiantava: a página voltava ao lugar) */
+  @media (max-width: 768px) { #tasks-overlay { align-items: flex-start !important; padding: max(14px, env(safe-area-inset-top)) 10px 10px; box-sizing: border-box; } #tasks-box { width: 100% !important; max-width: 100% !important; max-height: calc(100% - 4px) !important; } }
   .btn-cancel { background: #e9edef; border: none; color: #131c20; padding: 9px 18px; border-radius: 8px; cursor: pointer; font-size: 14px; }
   .btn-cancel:hover { background: #d1d7db; }
   .btn-save { background: #00a884; border: none; color: white; padding: 9px 18px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; }
@@ -2316,7 +2320,7 @@ window.addEventListener('load', initAuth);
 </div>
 
 <div id="tasks-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1000;align-items:center;justify-content:center">
-  <div style="background:#f0f2f5;border-radius:12px;width:480px;max-width:95vw;max-height:85vh;overflow-y:auto;padding:20px">
+  <div id="tasks-box" style="background:#f0f2f5;border-radius:12px;width:480px;max-width:95vw;max-height:85vh;overflow-y:auto;padding:20px;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
       <h2 style="font-size:16px;font-weight:600;margin:0">Tarefas do lead</h2>
       <button onclick="closeTasks()" style="background:#e9edef;border:none;color:#131c20;width:30px;height:30px;border-radius:50%;cursor:pointer">✕</button>
@@ -2358,7 +2362,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v489</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v492</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2809,6 +2813,14 @@ window.addEventListener('load', initAuth);
         <button class="pf-topbtn" onclick="copiarTexto(window._diagBancoTudo||'',this)">Copiar o SQL completo (instalação nova)</button>
       </div>
     </div>
+    <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
+      <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">Saída do banco (cota do Supabase)</div>
+      <p style="font-size:12px;color:#667781;margin:0 0 10px;line-height:1.5">O Supabase cobra cada byte que sai do banco (5 GB por ciclo no plano grátis — estourou, ele corta tudo até o ciclo virar). O servidor soma o que sai, mostra quem gasta e freia sozinho: aos 65 % o app passa a atualizar a cada 10 s; aos 85 % ele pausa busca em mensagens, exportações, backup manual, planilha e varredura da IA. O chat nunca para.</p>
+      <div id="diag-gasto" style="font-size:13px;color:#54656f">Medindo…</div>
+      <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
+        <button class="pf-topbtn" onclick="carregaDiagGasto()">Atualizar</button>
+      </div>
+    </div>
 </div>
 <div class="cfg-pane" data-pane="adm">
     <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
@@ -3185,7 +3197,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v489</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v492</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3259,7 +3271,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 489;
+const APP_VER = 492;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3430,14 +3442,44 @@ async function _pollTickInner() {
 }
 let _pollN = 0;
 
+// 💸 Ritmo das consultas: 3 s normal; o servidor pede 10 s (economia) ou 30 s (poupança)
+// pelo cabeçalho X-Vetra-Poll quando a cota de saída do Supabase está acabando.
+// Nunca abaixo de 3 s — foi consultar demais que estourou a cota em setembro/2026.
+const _pollMs = () => Math.max(3000, ((window._pollRitmoSeg || 3) | 0) * 1000);
+let _pollMsAtual = 0;
+// O servidor diz em TODA resposta (cabeçalho X-Vetra-Poll) de quanto em quanto tempo o app
+// pode consultar, e em que modo o banco está (X-Vetra-Banco). Este gancho lê isso e não
+// depende do login ter carregado (o gancho do token, em initAuth, embrulha este por cima).
+(function () {
+  const f = window.fetch.bind(window);
+  window.fetch = async function (i, init) {
+    const r = await f(i, init);
+    try {
+      const rit = r && r.headers && r.headers.get('X-Vetra-Poll');
+      if (rit) { const n = parseInt(rit, 10); if (n >= 3 && n <= 120) window._pollRitmoSeg = n; else if (n > 0) window._pollRitmoSeg = 3; }
+      if (rit && pollInterval && _pollMs() !== _pollMsAtual) startPolling(); // ritmo mudou: rearma na hora (para os dois lados)
+      const niv = r && r.headers && r.headers.get('X-Vetra-Banco');
+      if (niv && niv !== window._bancoNivel) { const antes = window._bancoNivel; window._bancoNivel = niv; if (antes) _bancoAvisaNivel(niv); }
+    } catch (_) {}
+    return r;
+  };
+})();
 function startPolling() {
   if (pollInterval) clearInterval(pollInterval);
+  _pollMsAtual = _pollMs();
   pollInterval = setInterval(() => {
+    if (_pollMs() !== _pollMsAtual) return startPolling(); // o servidor mudou o ritmo: rearma
     // Aba em segundo plano: NÃO consulta o servidor (economiza os créditos do
     // Railway — as notificações push continuam avisando das mensagens novas)
     if (document.hidden) return;
     _pollTick();
-  }, 3000);
+  }, _pollMsAtual);
+}
+function _bancoAvisaNivel(n) {
+  try {
+    if (n === 'poupanca') showToast('Banco em modo POUPANÇA: a cota do Supabase está acabando. Busca em mensagens, exportações e backup ficam pausados até o ciclo virar; o chat continua. Veja Configurações ▸ Diagnóstico.', 'warn', 9000);
+    else if (n === 'economia') showToast('Banco em modo ECONOMIA: a lista passa a atualizar a cada 10 s para poupar a cota do Supabase. Veja Configurações ▸ Diagnóstico.', 'warn', 7000);
+  } catch (_) {}
 }
 
 // Ao voltar para a aba, atualiza na mesma hora (compensa a pausa acima)
@@ -8367,9 +8409,17 @@ function _dimAplica(el) {
     const w = el.naturalWidth, h = el.naturalHeight;
     if (!w || !h) return;
     const wh = _waMediaSize(w, h);
+    // A foto vai mudar de tamanho. Se ela está ACIMA do ponto que você está lendo, a
+    // rolagem compensa a diferença — o que está na sua tela não se mexe um pixel
+    // (era o que puxava a conversa de volta quando você rolava logo após abrir).
+    const a = document.getElementById('messages-area');
+    const antes = el.offsetHeight;
+    let acima = false;
+    try { if (a) { const r = el.getBoundingClientRect(), ar = a.getBoundingClientRect(); acima = r.bottom < ar.top + 10; } } catch (_) {}
     el.style.width = wh[0] + 'px';
     el.style.height = wh[1] + 'px';
     el.classList.remove('sem-medida');
+    if (a && acima) { const dif = el.offsetHeight - antes; if (dif) a.scrollTop += dif; }
   } catch (_) {}
 }
 // MINIATURAS LOCAIS (igual WhatsApp): cada foto já vista fica guardada no
@@ -10904,9 +10954,10 @@ function openTasks() {
   document.getElementById('task-title').value = '';
   document.getElementById('task-due').value = '';
   document.getElementById('tasks-overlay').style.display = 'flex';
+  try { _tasksAjustaTeclado(); setTimeout(_tasksAjustaTeclado, 300); } catch (_) {}
   loadTasks();
 }
-function closeTasks() { document.getElementById('tasks-overlay').style.display = 'none'; }
+function closeTasks() { const ov = document.getElementById('tasks-overlay'); ov.style.display = 'none'; ov.style.top = ''; ov.style.height = ''; ov.style.bottom = ''; }
 async function loadTasks() {
   const list = document.getElementById('tasks-list');
   if (list.dataset.phone !== currentPhone) list.innerHTML = '<p style="color:#667781;font-size:13px">Carregando...</p>';
@@ -11020,7 +11071,7 @@ function _ajustaOverlayTeclado(ov, aberto) {
   try {
     requestAnimationFrame(() => {
       try {
-        const b = ov.querySelector('#vdlg-box') || ov.firstElementChild;
+        const b = ov.querySelector('#vdlg-box') || ov.querySelector('#tasks-box') || ov.firstElementChild;
         if (!b || ov.style.height === '') return;
         const r = b.getBoundingClientRect();
         if (r.bottom < 40 || r.top > window.innerHeight - 40) {
@@ -11043,7 +11094,11 @@ function _tagSheetAjustaTeclado() {
   const ov = document.getElementById('tag-overlay');
   _ajustaOverlayTeclado(ov, !!(ov && ov.style.display !== 'none' && ov.style.display !== ''));
 }
-function _ajustaCaixasTeclado() { _vdlgAjustaTeclado(); _tagSheetAjustaTeclado(); }
+function _tasksAjustaTeclado() {
+  const ov = document.getElementById('tasks-overlay');
+  _ajustaOverlayTeclado(ov, !!(ov && ov.style.display !== 'none' && ov.style.display !== ''));
+}
+function _ajustaCaixasTeclado() { _vdlgAjustaTeclado(); _tagSheetAjustaTeclado(); _tasksAjustaTeclado(); }
 // marca "dedo na caixa" enquanto ela é rolada; ao soltar, faz o ajuste que ficou pendente
 (function () {
   const liga = (id) => {
@@ -11056,7 +11111,7 @@ function _ajustaCaixasTeclado() { _vdlgAjustaTeclado(); _tagSheetAjustaTeclado()
     ov.addEventListener('touchend', solta, { passive: true });
     ov.addEventListener('touchcancel', solta, { passive: true });
   };
-  const arma = () => { liga('vdlg-overlay'); liga('tag-overlay'); };
+  const arma = () => { liga('vdlg-overlay'); liga('tag-overlay'); liga('tasks-overlay'); };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', arma); else arma();
 })();
 try { if (window.visualViewport) { window.visualViewport.addEventListener('resize', _ajustaCaixasTeclado); window.visualViewport.addEventListener('scroll', _ajustaCaixasTeclado); } } catch (_) {}
@@ -13426,6 +13481,30 @@ async function carregaDiagBanco(forcar) {
         + (f.sem_conserto ? ' <span style="color:#c0392b">(tabela principal: recrie o projeto pelo guia)</span>' : '') + '</div>').join('');
   } catch (e) { el.textContent = 'Não deu para conferir agora: ' + (e.message || e); }
 }
+// 💸 Quanto já saiu do banco neste ciclo, em que modo o servidor está e quem gasta
+async function carregaDiagGasto() {
+  const el = document.getElementById('diag-gasto'); if (!el) return;
+  el.textContent = 'Medindo…';
+  const gb = b => (b / 1073741824).toFixed(2) + ' GB', mb = b => (b / 1048576).toFixed(1) + ' MB';
+  const leg = b => b >= 1073741824 ? gb(b) : mb(b);
+  try {
+    const r = await fetch(SERVER_URL + '/diagnostico/gasto');
+    if (r.status === 404) { el.textContent = 'O servidor publicado ainda não tem o medidor — publique o servidor e tente de novo.'; return; }
+    const d = await r.json();
+    if (d.error) { el.textContent = 'Não deu para medir: ' + d.error; return; }
+    const pct = Math.min(100, Math.max(0, d.pct || 0));
+    const cor = d.nivel === 'poupanca' ? '#c0392b' : d.nivel === 'economia' ? '#b45309' : d.nivel === 'atencao' ? '#b45309' : '#00806a';
+    const nome = { ok: 'Normal', atencao: 'Atenção (metade da cota já foi)', economia: 'MODO ECONOMIA (app atualiza a cada 10 s)', poupanca: 'MODO POUPANÇA (rotas pesadas pausadas)' }[d.nivel] || d.nivel;
+    const proj = d.projecao > d.orcamento ? '<span style="color:#c0392b">neste ritmo o ciclo fecha em ' + gb(d.projecao) + ' — acima da cota</span>' : 'neste ritmo o ciclo fecha em ' + gb(d.projecao) + ' (cabe)';
+    const rotas = (d.rotas || []).map(x => '<div style="display:flex;justify-content:space-between;gap:8px;padding:2px 0"><span style="font-family:monospace;font-size:12px">' + escHtml(x.rota) + '</span><span>' + leg(x.bytes) + '</span></div>').join('') || '<div>Nada medido ainda.</div>';
+    el.innerHTML = '<div style="font-weight:700;color:' + cor + '">' + escHtml(nome) + '</div>'
+      + '<div style="margin:6px 0 2px">' + leg(d.gasto) + ' de ' + gb(d.orcamento) + ' (' + pct + '%) — dia ' + d.dia_do_ciclo + ' de ' + d.dias_no_ciclo + ' do ciclo (vira em ' + escHtml(String(d.ciclo_fim || '').split('-').reverse().join('/')) + ')</div>'
+      + '<div style="height:8px;background:#e9edef;border-radius:4px;overflow:hidden;margin:4px 0 6px"><div style="height:100%;width:' + pct + '%;background:' + cor + '"></div></div>'
+      + '<div style="font-size:12px">Hoje: ' + leg(d.hoje || 0) + ' · ' + proj + '</div>'
+      + '<div style="font-size:12px;font-weight:700;margin-top:8px">Quem mais gasta neste ciclo</div>' + rotas
+      + (d.medido_desde ? '<div style="font-size:11px;color:#8696a0;margin-top:6px">Medindo desde ' + escHtml(new Date(d.medido_desde).toLocaleString('pt-BR')) + '. O painel do Supabase (Usage) é a conta oficial; este medidor é a estimativa do servidor.</div>' : '');
+  } catch (e) { el.textContent = 'Não deu para medir agora: ' + (e.message || e); }
+}
 function cfgTab(k) {
   document.querySelectorAll('#cfg-nav .cfg-tab').forEach(b => b.classList.toggle('on', b.dataset.pane === k));
   document.querySelectorAll('#cfg-panes .cfg-pane').forEach(p => p.classList.toggle('on', p.dataset.pane === k));
@@ -13442,7 +13521,7 @@ function cfgTab(k) {
     if (_souFornecedor) carregaBackupAuto();
   }
   if (k === 'apar') _toquePinta();
-  if (k === 'diag') { carregaDiagnostico(); _piscaMostra(); carregaDiagBanco(); }
+  if (k === 'diag') { carregaDiagnostico(); _piscaMostra(); carregaDiagBanco(); carregaDiagGasto(); }
   if (k === 'termos') carregaTermos();
   if (k === 'adm') { carregaAcessoAdmin(); carregaPagamento(); carregaPainelDono(); }
   if (k === 'reg') carregaAuditoria();
