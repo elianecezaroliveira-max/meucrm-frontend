@@ -2362,7 +2362,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v492</span></h1>
+  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v494</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3197,7 +3197,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v492</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v494</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3271,7 +3271,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 492;
+const APP_VER = 494;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4849,7 +4849,7 @@ function scrollMsgsBottom() {
 // Atualiza o número de não lidas no ícone do app (badge)
 function updateAppBadge() {
   if (!('setAppBadge' in navigator)) return;
-  const n = (allContacts || []).filter(c => (c.unread_count || 0) > 0).length;
+  const n = (allContacts || []).filter(c => (c.unread_count || 0) > 0 && !c.muted).length; // 🔇 silenciada não conta (igual WhatsApp)
   try {
     if (n > 0) navigator.setAppBadge(n).catch(() => {});
     else navigator.clearAppBadge().catch(() => {});
@@ -6366,7 +6366,7 @@ async function _selAplicar(acao) {
       if (acao === 'lida') { if (c) { c.unread_count = 0; c.first_unread_at = null; } _pintaBadgeChat(); await fetch(`${SERVER_URL}/contacts/${enc}/read`, { method: 'PUT' }); }
       else if (acao === 'naolida') { if (c && !(c.unread_count > 0)) { c.unread_count = 1; c.first_unread_at = new Date().toISOString(); await fetch(`${SERVER_URL}/contacts/${enc}/unread`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: '{}' }); } }
       else if (acao === 'fixar') { if (c) c.pinned = true; await fetch(`${SERVER_URL}/contacts/${enc}/pin`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pinned: true }) }); }
-      else if (acao === 'silenciar') { if (c) c.muted = true; await fetch(`${SERVER_URL}/contacts/${enc}/mute`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ muted: true }) }); }
+      else if (acao === 'silenciar') { if (c) c.muted = true; _fechaNotificacaoDe(ph); await fetch(`${SERVER_URL}/contacts/${enc}/mute`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ muted: true }) }); }
       else if (acao === 'favoritar') { if (c) c.favorite = true; await fetch(`${SERVER_URL}/contacts/${enc}/favorite`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ favorite: true }) }); }
       else if (acao === 'apagar') { await fetch(`${SERVER_URL}/contacts/${enc}/messages`, { method: 'DELETE' }); if (c) { c.last_message_preview = null; c.unread_count = 0; } }
     } catch (_) {}
@@ -8068,10 +8068,23 @@ async function togglePin(phone) {
 }
 
 // ── Silenciar / Não lida ──
+// 🔇 Silenciou = a notificação daquela conversa sai da bandeja DESTE aparelho na hora
+// (o servidor avisa os outros; no iPhone só este caminho funciona) e o ícone recalcula.
+async function _fechaNotificacaoDe(phone) {
+  try {
+    if (!('serviceWorker' in navigator)) return;
+    const reg = await navigator.serviceWorker.getRegistration();
+    if (!reg || !reg.getNotifications) return;
+    const ns = await reg.getNotifications({ tag: 'chat-' + phone });
+    ns.forEach(n => { try { n.close(); } catch (_) {} });
+  } catch (_) {}
+  try { updateAppBadge(); } catch (_) {}
+}
 async function toggleMute(phone) {
   const c = allContacts.find(x => x.phone === phone);
   const nv = !(c && c.muted);
   if (c) c.muted = nv;
+  if (nv) _fechaNotificacaoDe(phone);
   renderContacts(sortContacts(allContacts));
   try {
     const r = await fetch(SERVER_URL + '/contacts/' + encodeURIComponent(phone) + '/mute', {
@@ -17045,6 +17058,70 @@ async function openFaqPage(){
     area.innerHTML = '<div style="color:#ef4444;padding:20px">Erro ao carregar. Verifique a conexão com o servidor.</div>';
   }
 }
+// 🏆 placar: de tudo que a IA sugeriu, quanto foi aproveitado
+function _iaPlacarHtml(pl) {
+  if (!pl || !pl.dias7) return '';
+  const linha = (p, rot) => p.sugeridas ? rot + ': <b>' + (p.aproveitamento_pct == null ? '—' : p.aproveitamento_pct + '%') + '</b> aproveitadas (' + p.aceitas + ' aceitas + ' + p.editadas + ' editadas de ' + p.sugeridas + ' sugeridas; ' + p.aprendidos + ' aprendidos)' : rot + ': nenhuma sugestão ainda';
+  return '<div id="ia-placar" style="margin-top:6px;font-size:12px;color:#54656f">🏆 ' + linha(pl.dias7, '7 dias') + '<br>🏆 ' + linha(pl.dias30, '30 dias') + '</div>';
+}
+async function iaMemLimpa(btn) {
+  const el = document.getElementById('ia-mem-msg');
+  try {
+    if (btn) btn.disabled = true;
+    const r = await fetch(SERVER_URL + '/ia/memoria/limpar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    const d = await r.json();
+    if (d.error) { if (el) el.textContent = 'Não deu: ' + d.error; return; }
+    if (el) el.textContent = 'Memória limpa: ' + d.antes + ' → ' + d.depois + ' exemplos (' + (d.figurinha || 0) + ' só figurinha, ' + (d.prontos || 0) + ' com texto pronto, ' + (d.repetidos || 0) + ' repetidos; ' + (d.mascarados || 0) + ' com valor/data trocados por [VALOR]/[DATA]).';
+    await _iaSugCarregaStatus(); _iaPag = _iaSugStatus; faqRender();
+    const el2 = document.getElementById('ia-mem-msg'); if (el2 && el) el2.textContent = el.textContent;
+  } catch (e) { if (el) el.textContent = 'Não deu: ' + (e.message || e); }
+  finally { if (btn) btn.disabled = false; }
+}
+let _iaQuandoDados = null;
+async function iaExtrasCarrega() {
+  const nv = document.getElementById('ia-novidades'), qd = document.getElementById('ia-quando');
+  if (!nv || !qd) return;
+  try {
+    const r = await fetch(SERVER_URL + '/ia/novidades'); const d = r.ok ? await r.json() : { novidades: [] };
+    _iaNovidadesPinta(d.novidades || []);
+  } catch (_) { nv.textContent = 'Não deu para carregar.'; }
+  try {
+    const r = await fetch(SERVER_URL + '/ia/quando'); const d = r.ok ? await r.json() : null;
+    if (!d) { qd.textContent = 'Publique o servidor novo para cadastrar os momentos.'; return; }
+    _iaQuandoDados = d;
+    const q = d.quando || { rapidas: {}, bots: {} };
+    const campo = (tipo, chave, rot, previa, val) => '<div style="display:flex;gap:6px;align-items:center;margin:4px 0;flex-wrap:wrap"><span style="min-width:150px;font-size:12px"><b>' + escHtml(rot) + '</b>' + (previa ? ' <span style="color:#8696a0">' + escHtml(previa.slice(0, 50)) + '</span>' : '') + '</span>'
+      + '<input class="ia-quando-in" data-tipo="' + tipo + '" data-chave="' + escHtml(chave) + '" value="' + escHtml(val || '') + '" placeholder="Só quando…" style="flex:1;min-width:200px;background:#f0f2f5;border:1px solid #e0e4e6;border-radius:8px;padding:7px 10px;font-size:13px;color:#131c20"></div>';
+    let h = '';
+    for (const b of (d.bots || [])) h += campo('bots', b.id, '🤖 ' + b.nome, '', q.bots[b.id]);
+    for (const r of (d.rapidas || [])) h += campo('rapidas', r.atalho, '⚡ /' + r.atalho, r.previa, q.rapidas[r.atalho]);
+    qd.innerHTML = h || 'Você ainda não tem rápidas nem bots.';
+  } catch (_) { qd.textContent = 'Não deu para carregar.'; }
+}
+function _iaNovidadesPinta(lista) {
+  const nv = document.getElementById('ia-novidades'); if (!nv) return;
+  if (!lista.length) { nv.textContent = 'Nenhuma novidade anotada ainda.'; return; }
+  nv.innerHTML = lista.map((n, i) => '<div style="display:flex;gap:8px;align-items:center;padding:3px 0"><span style="color:#8696a0;font-size:12px;min-width:44px">' + escHtml(String(n.em || '').split('-').reverse().slice(0, 2).join('/')) + '</span><span style="flex:1">' + escHtml(n.texto || '') + '</span><span class="v-toast-x" title="Apagar" style="cursor:pointer" onclick="iaNovidadeApaga(' + i + ')">✕</span></div>').join('');
+}
+async function iaNovidadeAdd() {
+  const inp = document.getElementById('ia-nov-in'); const t = (inp && inp.value || '').trim(); if (!t) return;
+  try { const r = await fetch(SERVER_URL + '/ia/novidades', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ texto: t }) }); const d = await r.json(); if (d.novidades) { _iaNovidadesPinta(d.novidades); if (inp) inp.value = ''; } } catch (_) {}
+}
+async function iaNovidadeApaga(i) {
+  try { const r = await fetch(SERVER_URL + '/ia/novidades/' + i, { method: 'DELETE' }); const d = await r.json(); if (d.novidades) _iaNovidadesPinta(d.novidades); } catch (_) {}
+}
+async function iaQuandoSalva(btn) {
+  const msg = document.getElementById('ia-quando-msg');
+  const q = { rapidas: {}, bots: {} };
+  document.querySelectorAll('.ia-quando-in').forEach(i => { const v = (i.value || '').trim(); if (v) q[i.dataset.tipo][i.dataset.chave] = v; });
+  try {
+    if (btn) btn.disabled = true;
+    const r = await fetch(SERVER_URL + '/ia/quando', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(q) });
+    const d = await r.json();
+    if (msg) msg.textContent = d.ok ? 'Salvo. A IA só sugere cada um no momento descrito.' : ('Não deu: ' + (d.error || ''));
+  } catch (e) { if (msg) msg.textContent = 'Não deu: ' + (e.message || e); }
+  finally { if (btn) btn.disabled = false; }
+}
 function closeFaqPage(){
   const el = document.getElementById('faq-page');
   const _ab = el.style.display !== 'none';
@@ -17064,14 +17141,26 @@ function faqRender(){
       + '<small>' + (p.ligada ? 'Ligada — quando o lead escreve, a sugestão aparece acima do campo. Nada é enviado sem o seu toque.' : 'Desligada — nenhuma sugestão aparece no chat.') + '</small></div>'
       + '<label class="faq-switch"><input type="checkbox" ' + (p.ligada ? 'checked' : '') + ' onchange="iaSugSetOn(this.checked)"><span class="faq-slider"></span></label>'
       + '</div>'
-      + '<div style="margin-top:8px;font-size:12px;color:#667781">Memória: estilo ' + (m.estilo ? '✓' : '—') + ' · fluxo ' + (m.fluxo ? '✓' : '—') + ' · ' + (m.exemplos || 0) + ' exemplos (' + (m.aprendidos || 0) + ' aprendidos no uso)'
+      + '<div style="margin-top:8px;font-size:12px;color:#667781">Memória: estilo ' + (m.estilo ? '✓' : '—') + ' · fluxo ' + (m.fluxo ? '✓' : '—') + ' · ' + (m.exemplos || 0) + ' exemplos (' + (m.aprendidos || 0) + ' aprendidos no uso)' + (m.novidades ? ' · ' + m.novidades + ' novidade(s)' : '')
       + (p.chave === false && _souDev() ? ' · <span style="color:#c0392b">falta GROQ_API_KEY no servidor</span>' : '') + '</div>'
+      + _iaPlacarHtml(p.placar)
       + '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'
       + '<input type="file" id="ia-mem-arq" multiple accept=".md,.jsonl,.txt" style="display:none" onchange="iaMemImporta(this.files);this.value=\'\'">'
       + '<button class="btn-secondary" onclick="document.getElementById(\'ia-mem-arq\').click()">Importar memória</button>'
-      + '<button class="btn-secondary" onclick="iaMemExporta()">Exportar memória</button></div>'
+      + '<button class="btn-secondary" onclick="iaMemExporta()">Exportar memória</button>'
+      + '<button class="btn-secondary" onclick="iaMemLimpa(this)" title="Tira figurinhas, textos de rápida/bot e repetidos; troca valores reais por [VALOR]">Limpar memória</button></div>'
       + '<div id="ia-mem-msg" style="font-size:12px;color:#667781;margin-top:6px"></div>'
+      // 📌 novidades (informações novas com data) e 🎯 momentos das rápidas/bots — carregam em seguida
+      + '<div style="margin-top:12px;border-top:1px solid #e9edef;padding-top:10px"><b style="font-size:13px">📌 Novidades que a IA anotou</b>'
+      + '<div style="font-size:12px;color:#667781;margin:2px 0 6px">Informações novas e passageiras (banco fora do ar, prazo que mudou…) que ela tira das suas respostas. Valem por 60 dias e ganham do manual quando batem de frente. Você também pode anotar ou apagar.</div>'
+      + '<div id="ia-novidades" style="font-size:13px;color:#54656f">Carregando…</div>'
+      + '<div style="display:flex;gap:6px;margin-top:6px"><input id="ia-nov-in" placeholder="Anotar uma novidade (ex.: BRB sem saldos até sexta)" style="flex:1;background:#f0f2f5;border:1px solid #e0e4e6;border-radius:8px;padding:8px 10px;font-size:13px;color:#131c20"><button class="btn-secondary" onclick="iaNovidadeAdd()">Anotar</button></div></div>'
+      + '<div style="margin-top:12px;border-top:1px solid #e9edef;padding-top:10px"><b style="font-size:13px">🎯 Quando a IA pode sugerir cada rápida e bot</b>'
+      + '<div style="font-size:12px;color:#667781;margin:2px 0 6px">Texto pronto só entra na sugestão no momento que você descrever aqui (ex.: "quando o lead confirma que fez o aceite da solicitação de saldo"). Em branco = a IA nunca sugere esse texto.</div>'
+      + '<div id="ia-quando" style="font-size:13px;color:#54656f">Carregando…</div>'
+      + '<div style="margin-top:6px"><button class="btn-secondary" onclick="iaQuandoSalva(this)">Salvar momentos</button> <span id="ia-quando-msg" style="font-size:12px;color:#667781"></span></div></div>'
       + '</div>';
+    setTimeout(iaExtrasCarrega, 0);
   }
   // interruptor geral
   html += '<div class="faq-master">'
