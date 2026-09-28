@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
-<title>VETRA</title>
+<title>FILAZ</title>
 
 <!-- Supabase Auth (login com Google) -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -14,7 +14,7 @@
 <!-- PWA: Apple / iOS -->
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-<meta name="apple-mobile-web-app-title" content="VETRA" />
+<meta name="apple-mobile-web-app-title" content="FILAZ" />
 <link rel="apple-touch-icon" href="/icons/icon-192.png?v=2" />
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192.png?v=2" />
 
@@ -347,7 +347,7 @@
   #modal input::placeholder { color: #667781; }
   #modal-hint { font-size: 12px; color: #667781; margin-top: 8px; line-height: 1.5; background: #f0f2f5; padding: 10px 12px; border-radius: 8px; border-left: 3px solid #00a884; }
   #modal-actions { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
-  /* ── Janelas do VETRA que substituem as caixas cinzas do navegador ── */
+  /* ── Janelas do FILAZ que substituem as caixas cinzas do navegador ── */
   #vdlg-overlay { position: fixed; inset: 0; background: rgba(11,20,26,.5); z-index: 99000; display: none; align-items: center; justify-content: center; padding: 16px; }
   #vdlg-overlay.open { display: flex; }
   #vdlg-box { background: #fff; color: #131c20; border-radius: 14px; width: 100%; max-width: 420px; padding: 18px 20px 16px; box-shadow: 0 14px 44px rgba(0,0,0,.35); animation: vPop .16s ease-out; max-height: 88vh; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
@@ -380,7 +380,7 @@
   /* Celular: a caixa fica no ALTO da tela (não no centro) — com o teclado aberto o centro
      fica atrás do teclado e o campo "Nova etiqueta" sumia na hora de digitar */
   @media (max-width: 768px) { #vdlg-box { max-width: 100%; } #vdlg-overlay.open { align-items: flex-start; padding-top: max(14px, env(safe-area-inset-top)); } #vdlg-box { max-height: calc(100% - 28px); } }
-  /* "Tarefas do lead" no celular: mesma regra da janela do VETRA — nasce no alto da parte
+  /* "Tarefas do lead" no celular: mesma regra da janela do FILAZ — nasce no alto da parte
      visível e rola por dentro; antes ficava centralizada na tela inteira e o teclado
      escondia metade (arrastar não adiantava: a página voltava ao lugar) */
   @media (max-width: 768px) { #tasks-overlay { align-items: flex-start !important; padding: max(14px, env(safe-area-inset-top)) 10px 10px; box-sizing: border-box; } #tasks-box { width: 100% !important; max-width: 100% !important; max-height: calc(100% - 4px) !important; } }
@@ -1212,7 +1212,7 @@ body.dark{
   #messages-area { overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; }
   #chat-header, #input-area { flex-shrink: 0; }
 
-  /* Chat aberto: TELA INTEIRA — some a barra "VETRA" e o cabeçalho respeita a câmera */
+  /* Chat aberto: TELA INTEIRA — some a barra "FILAZ" e o cabeçalho respeita a câmera */
   body.mobile-chat-open #topbar { display: none; }
   /* Arrastando para voltar: a barra do topo já entra junto com a lista */
   body.mobile-chat-open.voltando #topbar { display: flex; }
@@ -1408,7 +1408,7 @@ body.dark{
   #layout { height: var(--appH, 100dvh); }
 }
 
-/* ── Conjunto de ícones do VETRA (traço, herda a cor do texto) ── */
+/* ── Conjunto de ícones do FILAZ (traço, herda a cor do texto) ── */
 i[class^="ic-"],i[class*=" ic-"]{display:inline-block;width:1.08em;height:1.08em;vertical-align:-.17em;flex:none;background-color:currentColor;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;-webkit-mask-size:100% 100%;mask-size:100% 100%}
 .ic-doc{-webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M14%202H6a2%202%200%200%200-2%202v16a2%202%200%200%200%202%202h12a2%202%200%200%200%202-2V8z%22%2F%3E%3Cpath%20d%3D%22M14%202v6h6%22%2F%3E%3Cpath%20d%3D%22M8%2013h8M8%2017h5%22%2F%3E%3C%2Fsvg%3E");mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M14%202H6a2%202%200%200%200-2%202v16a2%202%200%200%200%202%202h12a2%202%200%200%200%202-2V8z%22%2F%3E%3Cpath%20d%3D%22M14%202v6h6%22%2F%3E%3Cpath%20d%3D%22M8%2013h8M8%2017h5%22%2F%3E%3C%2Fsvg%3E")}
 .ic-file{-webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M14%202H6a2%202%200%200%200-2%202v16a2%202%200%200%200%202%202h12a2%202%200%200%200%202-2V8z%22%2F%3E%3Cpath%20d%3D%22M14%202v6h6%22%2F%3E%3C%2Fsvg%3E");mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M14%202H6a2%202%200%200%200-2%202v16a2%202%200%200%200%202%202h12a2%202%200%200%200%202-2V8z%22%2F%3E%3Cpath%20d%3D%22M14%202v6h6%22%2F%3E%3C%2Fsvg%3E")}
@@ -1485,7 +1485,7 @@ i[class^="ic-"],i[class*=" ic-"]{display:inline-block;width:1.08em;height:1.08em
 .ic-robot{-webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%224%22%20y%3D%228%22%20width%3D%2216%22%20height%3D%2212%22%20rx%3D%223%22%2F%3E%3Cpath%20d%3D%22M12%208V4.5%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%223.5%22%20r%3D%221.2%22%2F%3E%3Cpath%20d%3D%22M9.2%2013.5v1.5M14.8%2013.5v1.5%22%2F%3E%3Cpath%20d%3D%22M2%2013v3M22%2013v3%22%2F%3E%3C%2Fsvg%3E");mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23000%22%20stroke-width%3D%221.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%224%22%20y%3D%228%22%20width%3D%2216%22%20height%3D%2212%22%20rx%3D%223%22%2F%3E%3Cpath%20d%3D%22M12%208V4.5%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%223.5%22%20r%3D%221.2%22%2F%3E%3Cpath%20d%3D%22M9.2%2013.5v1.5M14.8%2013.5v1.5%22%2F%3E%3Cpath%20d%3D%22M2%2013v3M22%2013v3%22%2F%3E%3C%2Fsvg%3E")}
 </style>
 
-<!-- ══════════════ VETRA DESIGN SYSTEM (camada final: unifica botões, campos, janelas) ══════════════ -->
+<!-- ══════════════ FILAZ DESIGN SYSTEM (camada final: unifica botões, campos, janelas) ══════════════ -->
 <style id="vetra-ds">
   :root { --v-green:#00a884; --v-green-d:#00806a; --v-green-l:#e7f7ef; --v-ink:#111b21; --v-ink-2:#41525d; --v-ink-3:#667781; --v-line:#e9edef; --v-bg:#f0f2f5; --v-red:#ef4444; --v-red-l:#fdecec; --v-r:10px; }
   body { font-family: 'Segoe UI', Inter, system-ui, -apple-system, Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
@@ -1677,10 +1677,10 @@ i[class^="ic-"],i[class*=" ic-"]{display:inline-block;width:1.08em;height:1.08em
 <style>
   html.tela-restaurando #layout, html.tela-restaurando #topbar, html.tela-restaurando #mobile-nav { visibility: hidden !important; }
 </style>
-<!-- Tela de abertura: logo VETRA enquanto as conversas carregam -->
+<!-- Tela de abertura: logo FILAZ enquanto as conversas carregam -->
 <div id="splash" style="position:fixed;inset:0;background:#ffffff;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px">
-  <img src="/icons/icon-192.png" alt="VETRA" style="width:96px;height:96px;border-radius:24px;box-shadow:0 8px 28px rgba(0,0,0,.14);animation:splashPulse 1.6s ease-in-out infinite">
-  <div style="font-size:23px;font-weight:700;color:#111b21;letter-spacing:.5px">VETRA</div>
+  <img src="/icons/icon-192.png" alt="FILAZ" style="width:96px;height:96px;border-radius:24px;box-shadow:0 8px 28px rgba(0,0,0,.14);animation:splashPulse 1.6s ease-in-out infinite">
+  <div style="font-size:23px;font-weight:700;color:#111b21;letter-spacing:.5px">FILAZ</div>
   <div style="display:flex;gap:6px;margin-top:2px">
     <i class="sp-dot" style="animation-delay:0s"></i><i class="sp-dot" style="animation-delay:.18s"></i><i class="sp-dot" style="animation-delay:.36s"></i>
   </div>
@@ -1717,7 +1717,7 @@ i[class^="ic-"],i[class*=" ic-"]{display:inline-block;width:1.08em;height:1.08em
 <!-- ===== TELA DE LOGIN (Google via Supabase Auth) ===== -->
 <div id="login-overlay" style="display:none;position:fixed;inset:0;z-index:99999;background:#f0f2f5;flex-direction:column;align-items:center;justify-content:center;gap:18px;font-family:system-ui,-apple-system,'Segoe UI',sans-serif">
   <div style="font-size:30px;color:#8696a0"><i class=ic-chat></i></div>
-  <div style="color:#131c20;font-size:26px;font-weight:700">VETRA</div>
+  <div style="color:#131c20;font-size:26px;font-weight:700">FILAZ</div>
   <div id="login-msg" style="color:#667781;font-size:14px">Faça login para acessar</div>
   <button id="login-btn" onclick="loginGoogle()" style="display:flex;align-items:center;gap:10px;background:#fff;color:#1f1f1f;border:none;border-radius:10px;padding:13px 22px;font-size:15px;font-weight:600;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.3)">
     <img src="https://www.google.com/favicon.ico" width="18" height="18" alt=""/> Entrar com Google
@@ -1739,7 +1739,7 @@ const AUTH_ALLOWED = [
 let _supaAuth = null;
 function _showLogin(){ const o=document.getElementById('login-overlay'); if(o) o.style.display='flex'; }
 function _hideLogin(){ const o=document.getElementById('login-overlay'); if(o) o.style.display='none'; }
-// iPhone com o VETRA na TELA INICIAL: o login do Google abre numa janela do Safari com
+// iPhone com o FILAZ na TELA INICIAL: o login do Google abre numa janela do Safari com
 // um "cofre" separado do app. O login acontecia lá, o app não recebia a sessão e pedia
 // login de novo (loop). Nesse caso o app gera um código de uso único, manda junto no
 // endereço de volta e fica esperando: a janela do login entrega a sessão ao servidor e o
@@ -1784,7 +1784,7 @@ async function loginGoogle(){
     try { localStorage.setItem('vetra_handoff', JSON.stringify({ nonce: codigo, ts: Date.now() })); } catch (_) {}
     volta = window.location.origin + '/?handoff=' + codigo;
     _esperaEntregaLogin(codigo, Date.now() + 10 * 60000);
-    setTimeout(() => { try { const m = document.getElementById('login-msg'); if (m && /Abrindo/.test(m.textContent)) m.textContent = 'Depois de escolher a conta no Google, toque em "OK" (ou "Concluído") no alto para voltar ao VETRA.'; } catch (_) {} }, 2500);
+    setTimeout(() => { try { const m = document.getElementById('login-msg'); if (m && /Abrindo/.test(m.textContent)) m.textContent = 'Depois de escolher a conta no Google, toque em "OK" (ou "Concluído") no alto para voltar ao FILAZ.'; } catch (_) {} }, 2500);
   }
   await _supaAuth.auth.signInWithOAuth({ provider:'google', options:{ redirectTo: volta, queryParams: { prompt: 'select_account' } } }); // sempre PERGUNTA qual conta Google
 }
@@ -1808,13 +1808,13 @@ async function _entregaSessaoAoApp(session){
   try { _supaAuth.auth.stopAutoRefresh(); } catch (_) {}
   try { Object.keys(localStorage).filter(k => /^sb-.*-auth-token/.test(k)).forEach(k => localStorage.removeItem(k)); } catch (_) {}
   try {
-    document.body.innerHTML = '<div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#f0f2f5;padding:24px;font-family:inherit"><div style="max-width:360px;background:#fff;border-radius:14px;padding:26px 22px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.1)"><div style="font-size:34px;color:#00a884;margin-bottom:8px">✓</div><div style="font-size:17px;font-weight:700;color:#131c20;margin-bottom:8px">Login feito!</div><div style="font-size:14px;color:#54656f;line-height:1.6">Toque em <b>OK</b> (ou <b>Concluído</b>) no alto da tela para voltar ao VETRA. O app entra sozinho.</div></div></div>';
+    document.body.innerHTML = '<div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#f0f2f5;padding:24px;font-family:inherit"><div style="max-width:360px;background:#fff;border-radius:14px;padding:26px 22px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.1)"><div style="font-size:34px;color:#00a884;margin-bottom:8px">✓</div><div style="font-size:17px;font-weight:700;color:#131c20;margin-bottom:8px">Login feito!</div><div style="font-size:14px;color:#54656f;line-height:1.6">Toque em <b>OK</b> (ou <b>Concluído</b>) no alto da tela para voltar ao FILAZ. O app entra sozinho.</div></div></div>';
   } catch (_) {}
   return true;
 }
 async function logoutCRM(){
   if(!_supaAuth) return;
-  if (!await vConfirm({ titulo: 'Sair', texto: 'Você vai sair da sua conta do VETRA neste aparelho. Os dados continuam salvos.', confirmar: 'Sair', perigo: true })) return;
+  if (!await vConfirm({ titulo: 'Sair', texto: 'Você vai sair da sua conta do FILAZ neste aparelho. Os dados continuam salvos.', confirmar: 'Sair', perigo: true })) return;
   _gateDesistiu = true; await _supaAuth.auth.signOut({ scope: 'local' }); _showLogin(); _loginBotao(true, 'Faça login para acessar'); } // sai SÓ deste aparelho (o padrão derrubava todos)
 function _emailAllowed(email){
   if(!AUTH_ALLOWED.length) return true; // lista vazia = libera geral
@@ -2029,7 +2029,7 @@ window.addEventListener('load', initAuth);
 <!-- SETUP INICIAL -->
 <div id="setup-overlay">
   <div id="setup-box">
-    <h2>Configurar VETRA</h2>
+    <h2>Configurar FILAZ</h2>
     <p>Cole o endereço do seu servidor para conectar à interface. Você só precisa fazer isso uma vez.</p>
     <label>ENDEREÇO DO SERVIDOR</label>
     <input type="text" id="setup-url" placeholder="https://meucrm-backend-xxxx.up.railway.app" />
@@ -2072,7 +2072,7 @@ window.addEventListener('load', initAuth);
           <option value="">Token: colar um token novo</option>
         </select>
         <input id="acc-token" placeholder="Token permanente (o mesmo das outras contas)" style="width:100%;box-sizing:border-box;background:#fff;border:1px solid #d1d7db;border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit;outline:none;margin-bottom:10px">
-        <p id="acc-token-aviso" style="display:none;font-size:12px;color:#00806a;background:#e7f7ef;border:1px solid #b7e4d3;border-radius:8px;padding:8px 10px;margin:0 0 10px;line-height:1.5">O VETRA vai usar o token que já está guardado nessa conta. Você não precisa gerar um token novo na Meta.</p>
+        <p id="acc-token-aviso" style="display:none;font-size:12px;color:#00806a;background:#e7f7ef;border:1px solid #b7e4d3;border-radius:8px;padding:8px 10px;margin:0 0 10px;line-height:1.5">O FILAZ vai usar o token que já está guardado nessa conta. Você não precisa gerar um token novo na Meta.</p>
         <button onclick="addAccount()" style="width:100%;background:#00a884;border:none;color:#fff;padding:11px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">➕ Adicionar conta</button>
       </div>
     </div>
@@ -2362,7 +2362,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>VETRA <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v494</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v495</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2587,7 +2587,7 @@ window.addEventListener('load', initAuth);
   <div class="cm-item" data-adm onclick="closeInfoMenu();deleteConversation(currentPhone)" style="color:#ef4444"><i class=ic-trash></i> Apagar conversa</div>
 </div>
 
-<!-- Janela padrão do VETRA (confirmar / perguntar / escolher) -->
+<!-- Janela padrão do FILAZ (confirmar / perguntar / escolher) -->
 <div id="vdlg-overlay" onclick="if(event.target===this)_vdlgFecha(null)">
   <div id="vdlg-box" role="dialog" aria-modal="true">
     <div id="vdlg-title"></div>
@@ -2626,7 +2626,7 @@ window.addEventListener('load', initAuth);
 <div class="cfg-pane on" data-pane="integ">
     <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
       <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">Integração</div>
-      <p style="font-size:12px;color:#667781;margin:0 0 10px">Chave de conexão para ligar o VETRA a outras ferramentas (planilhas, automações). A ferramenta deve enviar o cabeçalho <b>X-Api-Token</b> nas chamadas à URL do seu servidor.</p>
+      <p style="font-size:12px;color:#667781;margin:0 0 10px">Chave de conexão para ligar o FILAZ a outras ferramentas (planilhas, automações). A ferramenta deve enviar o cabeçalho <b>X-Api-Token</b> nas chamadas à URL do seu servidor.</p>
       <div style="display:flex;gap:6px">
         <input id="cfg-token" readonly placeholder="Nenhum token gerado ainda" style="flex:1;background:#f0f2f5;border:1px solid #e9edef;border-radius:6px;padding:8px 10px;font-size:12px;color:#131c20;font-family:monospace;min-width:0">
         <button class="pf-topbtn" onclick="copyIntegrationToken(this)">Copiar</button>
@@ -2663,7 +2663,7 @@ window.addEventListener('load', initAuth);
 <div class="cfg-pane" data-pane="sheets">
     <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
       <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">Planilha do Google → Pipeline</div>
-      <p style="font-size:12px;color:#667781;margin:0 0 8px">Lê a planilha de disparo (colunas <b>Lead Titulo</b>, <b>Celular</b>, <b>ID</b> da etapa) e cria os leads no pipeline — o mesmo que o n8n fazia, sem sair do VETRA.</p>
+      <p style="font-size:12px;color:#667781;margin:0 0 8px">Lê a planilha de disparo (colunas <b>Lead Titulo</b>, <b>Celular</b>, <b>ID</b> da etapa) e cria os leads no pipeline — o mesmo que o n8n fazia, sem sair do FILAZ.</p>
       <div id="cfg-sheets-robo" style="font-size:12px;color:#54656f;margin-bottom:8px">Carregando…</div>
       <div style="display:flex;flex-direction:column;gap:6px">
         <input id="cfg-sheets-url" placeholder="Cole o link da planilha (https://docs.google.com/spreadsheets/d/…)" style="background:#f0f2f5;border:1px solid #e9edef;border-radius:6px;padding:8px 10px;font-size:12px;color:#131c20;min-width:0">
@@ -2727,7 +2727,7 @@ window.addEventListener('load', initAuth);
           <div style="flex:1;font-size:12.5px;font-weight:700;color:#131c20">Cópias automáticas</div>
           <button class="pf-topbtn" onclick="backupAgora(this)">Copiar agora</button>
         </div>
-        <p style="font-size:11.5px;color:#667781;margin:0 0 8px;line-height:1.5">O VETRA guarda sozinho uma cópia das suas configurações por dia e mantém os últimos 30 dias. Você não precisa lembrar de nada.</p>
+        <p style="font-size:11.5px;color:#667781;margin:0 0 8px;line-height:1.5">O FILAZ guarda sozinho uma cópia das suas configurações por dia e mantém os últimos 30 dias. Você não precisa lembrar de nada.</p>
         <div id="cfg-bkp-auto" style="font-size:12.5px;color:#54656f">Carregando…</div>
       </div>
     </div>
@@ -2783,7 +2783,7 @@ window.addEventListener('load', initAuth);
 <div class="cfg-pane" data-pane="diag">
     <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
       <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">Diagnóstico da publicação</div>
-      <p style="font-size:12px;color:#667781;margin:0 0 10px;line-height:1.5">O VETRA são duas partes: o <b>app</b> (a tela) e o <b>servidor</b> (o motor). Se uma sobe e a outra não, algumas telas param de funcionar. Aqui você vê as duas.</p>
+      <p style="font-size:12px;color:#667781;margin:0 0 10px;line-height:1.5">O FILAZ são duas partes: o <b>app</b> (a tela) e o <b>servidor</b> (o motor). Se uma sobe e a outra não, algumas telas param de funcionar. Aqui você vê as duas.</p>
       <div id="diag-quadro" style="font-size:13px;color:#54656f">Conferindo…</div>
       <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
         <button class="pf-topbtn" onclick="carregaDiagnostico(true)">Conferir de novo</button>
@@ -2793,7 +2793,7 @@ window.addEventListener('load', initAuth);
     <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
       <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">Mensagem que pisca</div>
       <p style="font-size:12px;color:#667781;margin:0 0 10px;line-height:1.5">
-        O VETRA agora vigia as suas mensagens quadro a quadro. Se alguma sumir da tela por um instante,
+        O FILAZ agora vigia as suas mensagens quadro a quadro. Se alguma sumir da tela por um instante,
         ele a devolve na mesma hora e anota aqui o que aconteceu. Se o pisca voltar, é só me mandar esta lista.
       </p>
       <div id="diag-pisca" style="font-size:13px;color:#54656f">—</div>
@@ -2805,7 +2805,7 @@ window.addEventListener('load', initAuth);
     </div>
     <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
       <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">Banco de dados</div>
-      <p style="font-size:12px;color:#667781;margin:0 0 10px;line-height:1.5">Cada recurso novo do VETRA precisa de uma coluna ou tabela no Supabase. Aqui o servidor confere sozinho o que falta e entrega o SQL pronto: Supabase &rsaquo; SQL Editor &rsaquo; New query &rsaquo; colar &rsaquo; Run. Pode rodar mais de uma vez sem problema.</p>
+      <p style="font-size:12px;color:#667781;margin:0 0 10px;line-height:1.5">Cada recurso novo do FILAZ precisa de uma coluna ou tabela no Supabase. Aqui o servidor confere sozinho o que falta e entrega o SQL pronto: Supabase &rsaquo; SQL Editor &rsaquo; New query &rsaquo; colar &rsaquo; Run. Pode rodar mais de uma vez sem problema.</p>
       <div id="diag-banco" style="font-size:13px;color:#54656f">Conferindo…</div>
       <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
         <button class="pf-topbtn" onclick="carregaDiagBanco(true)">Conferir de novo</button>
@@ -2829,7 +2829,7 @@ window.addEventListener('load', initAuth);
       <div id="adm-trava" style="margin-bottom:10px"></div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
         <input id="adm-novo-email" type="email" placeholder="email@docliente.com" style="flex:1;min-width:190px;box-sizing:border-box;background:#fff;border:1px solid #d1d7db;border-radius:8px;padding:10px 12px;font-size:13px;outline:none">
-        <input id="adm-novo-plano" placeholder="Plano (ex.: VETRA Pro)" style="width:170px;box-sizing:border-box;background:#fff;border:1px solid #d1d7db;border-radius:8px;padding:10px 12px;font-size:13px;outline:none">
+        <input id="adm-novo-plano" placeholder="Plano (ex.: FILAZ Pro)" style="width:170px;box-sizing:border-box;background:#fff;border:1px solid #d1d7db;border-radius:8px;padding:10px 12px;font-size:13px;outline:none">
         <input id="adm-novo-validade" type="date" title="Válido até" style="box-sizing:border-box;background:#fff;border:1px solid #d1d7db;border-radius:8px;padding:9px 11px;font-size:13px;outline:none;font-family:inherit">
         <button class="btn-save" onclick="liberarUsuario(this)">Liberar acesso</button>
       </div>
@@ -2839,7 +2839,7 @@ window.addEventListener('load', initAuth);
     </div>
     <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
       <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">Cobrança automática</div>
-      <p style="font-size:12px;color:#667781;margin:0 0 10px;line-height:1.5">Cole o link de pagamento no plano de cada cliente (em "Plano"). Ele paga por ali, o serviço de pagamento avisa o VETRA e a validade anda sozinha. Se preferir, dá para registrar o pagamento na mão.</p>
+      <p style="font-size:12px;color:#667781;margin:0 0 10px;line-height:1.5">Cole o link de pagamento no plano de cada cliente (em "Plano"). Ele paga por ali, o serviço de pagamento avisa o FILAZ e a validade anda sozinha. Se preferir, dá para registrar o pagamento na mão.</p>
       <div id="adm-pag" style="font-size:13px;color:#54656f">Carregando…</div>
     </div>
     <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
@@ -2859,7 +2859,7 @@ window.addEventListener('load', initAuth);
       <p style="font-size:12px;color:#667781;margin:0 0 8px;line-height:1.5">Aparece sozinho no alto da lista de conversas para quem está começando, e some quando os quatro passos terminam. Use o botão abaixo para ver como o seu cliente vê — ou para trazer de volta se alguém escondeu.</p>
       <button class="pf-topbtn" style="margin-bottom:16px" onclick="verOnboarding()">Ver o passo a passo</button>
       <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">Toque de mensagem nova</div>
-      <p style="font-size:12px;color:#667781;margin:0 0 8px;line-height:1.5">Igual ao WhatsApp: toca quando chega mensagem de um lead — menos na conversa que você está lendo com o VETRA na frente, e menos em conversa silenciada. Vale só <b>neste aparelho</b>. Com o VETRA fechado, quem avisa é a notificação do celular, e aí o som é o do sistema.</p>
+      <p style="font-size:12px;color:#667781;margin:0 0 8px;line-height:1.5">Igual ao WhatsApp: toca quando chega mensagem de um lead — menos na conversa que você está lendo com o FILAZ na frente, e menos em conversa silenciada. Vale só <b>neste aparelho</b>. Com o FILAZ fechado, quem avisa é a notificação do celular, e aí o som é o do sistema.</p>
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:16px">
         <select id="cfg-toque" onchange="toqueEscolhe(this.value)" style="padding:8px 10px;border:1px solid #d1d7db;border-radius:8px;font-family:inherit;font-size:13px;background:#fff;color:#131c20"></select>
         <button class="pf-topbtn" onclick="tocaToque(document.getElementById('cfg-toque').value)">Ouvir</button>
@@ -2995,15 +2995,15 @@ window.addEventListener('load', initAuth);
       <div style="background:#ffffff;border-radius:8px;padding:14px;font-size:13px;color:#667781;line-height:1.6">
         <div style="color:#131c20;font-weight:600;margin-bottom:6px">Como funciona</div>
         Toda mensagem recebida no WhatsApp é encaminhada para o seu N8N via webhook.
-        O N8N processa a mensagem com a lógica que você montar e chama o VETRA para responder.
+        O N8N processa a mensagem com a lógica que você montar e chama o FILAZ para responder.
         <div style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <span style="background:#25D366;color:#000;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:700">WhatsApp</span>
           <span style="color:#667781">→</span>
-          <span style="background:#ffffff;border:1px solid #e9edef;color:#131c20;padding:3px 8px;border-radius:4px;font-size:11px">VETRA recebe</span>
+          <span style="background:#ffffff;border:1px solid #e9edef;color:#131c20;padding:3px 8px;border-radius:4px;font-size:11px">FILAZ recebe</span>
           <span style="color:#667781">→</span>
           <span style="background:#EA4B71;color:#fff;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:700">N8N</span>
           <span style="color:#667781">→</span>
-          <span style="background:#ffffff;border:1px solid #e9edef;color:#131c20;padding:3px 8px;border-radius:4px;font-size:11px">VETRA /send</span>
+          <span style="background:#ffffff;border:1px solid #e9edef;color:#131c20;padding:3px 8px;border-radius:4px;font-size:11px">FILAZ /send</span>
           <span style="color:#667781">→</span>
           <span style="background:#25D366;color:#000;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:700">WhatsApp</span>
         </div>
@@ -3197,7 +3197,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v494</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v495</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3248,8 +3248,8 @@ function _showErrToast(msg) {
     if (typeof _souDev === 'function' && !_souDev()) setTimeout(() => { try { t.remove(); } catch (_) {} }, 6000);
   } catch (_) {}
 }
-// 🔇 Erro que NÃO é do VETRA (extensão do navegador, script de outro site) não vira
-// aviso vermelho na tela: o arquivo do VETRA é o próprio index.html (ou um script do
+// 🔇 Erro que NÃO é do FILAZ (extensão do navegador, script de outro site) não vira
+// aviso vermelho na tela: o arquivo do FILAZ é o próprio index.html (ou um script do
 // mesmo endereço). Um "main.js" de extensão que quebra não é problema seu.
 function _erroEhNosso(arquivo) {
   const f = String(arquivo || '');
@@ -3271,7 +3271,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 494;
+const APP_VER = 495;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3872,7 +3872,7 @@ async function reconnectQR(accountId) {
 // Renomeia a conta (API oficial ou QR Code) — atualiza lista, seletor "Enviar de" e filtros
 async function renameAccount(id) {
   const acc = (window._accountsById || {})[id];
-  const novo = await vPrompt({ titulo: 'Renomear conta', rotulo: 'Nome que aparece no VETRA', valor: acc ? acc.name : '' });
+  const novo = await vPrompt({ titulo: 'Renomear conta', rotulo: 'Nome que aparece no FILAZ', valor: acc ? acc.name : '' });
   if (novo === null) return; // cancelou
   const name = novo.trim();
   if (!name) return alert('O nome não pode ficar vazio.');
@@ -3943,7 +3943,7 @@ async function deleteAccount(id) {
     const d = await r.json();
     if (r.ok && !d.error) dep = d;
   } catch (_) {}
-  let detalhe = '<div>Esta conta de WhatsApp sai do VETRA. As conversas e os leads continuam salvos.</div>';
+  let detalhe = '<div>Esta conta de WhatsApp sai do FILAZ. As conversas e os leads continuam salvos.</div>';
   if (dep) {
     const linhas = [];
     if (dep.conversas) linhas.push('<b>' + dep.conversas + '</b> conversa' + (dep.conversas > 1 ? 's' : ''));
@@ -4043,7 +4043,7 @@ function _listaDoCache() {
 }
 // ═══════════ 🔔 TOQUE DE MENSAGEM NOVA (igual WhatsApp) ═══════════
 // Toca quando chega mensagem de um lead. NÃO toca: na conversa que você está lendo com o
-// VETRA na frente, em conversa silenciada, no que você mesma enviou, nem na primeira
+// FILAZ na frente, em conversa silenciada, no que você mesma enviou, nem na primeira
 // carga da lista (senão tocaria tudo de uma vez ao abrir). O som é sintetizado aqui —
 // sem arquivo, sem rede — e a escolha vale só neste aparelho.
 const _TOQUES = { classico: 'Clássico', sino: 'Sino', gota: 'Gota', duplo: 'Duplo', nenhum: 'Sem som' };
@@ -5528,7 +5528,7 @@ function _updateMsgMenuItems(id) {
   const item = document.getElementById('msg-menu-edit');
   if (!item) return;
   // NOTA INTERNA: só o que faz sentido para uma anotação sua. Ela não sai do
-  // VETRA, então responder/reagir/encaminhar/selecionar ficam escondidos.
+  // FILAZ, então responder/reagir/encaminhar/selecionar ficam escondidos.
   const nota = _ehNota(id);
   ['msg-menu-reply', 'msg-menu-forward', 'msg-menu-select'].forEach(k => {
     const e = document.getElementById(k); if (e) e.style.display = nota ? 'none' : '';
@@ -5661,7 +5661,7 @@ function selCopy() {
 }
 async function selDelete() {
   const ids = _selOrdered(); if (!ids.length) return;
-  if (!await vConfirm({ titulo: 'Apagar mensagens', texto: `Apagar ${ids.length} mensagem(ns) do VETRA? Elas continuam no WhatsApp do cliente.`, confirmar: 'Apagar', perigo: true })) return;
+  if (!await vConfirm({ titulo: 'Apagar mensagens', texto: `Apagar ${ids.length} mensagem(ns) do FILAZ? Elas continuam no WhatsApp do cliente.`, confirmar: 'Apagar', perigo: true })) return;
   for (const id of ids) { try { await fetch(`${SERVER_URL}/messages/id/${id}`, { method: 'DELETE' }); } catch (_) {} }
   exitSelMode(); _lastMsgsSig = ''; loadMessages(currentPhone, false);
 }
@@ -5927,7 +5927,7 @@ async function abrirAgendar() {
   const sug = _agSugestao();
   const d = await vCampos({
     titulo: 'Agendar mensagem',
-    texto: 'A mensagem sai sozinha na data e hora escolhidas (horário de Brasília), mesmo com o VETRA fechado.',
+    texto: 'A mensagem sai sozinha na data e hora escolhidas (horário de Brasília), mesmo com o FILAZ fechado.',
     campos: [
       { id: 'texto', rotulo: 'Mensagem', multilinha: true, valor: (inp && inp.value) || '', dica: 'O que você quer enviar…' },
       { id: 'data',  rotulo: 'Data',  tipo: 'date', valor: sug.data },
@@ -6358,7 +6358,7 @@ function _selPinta() {
 async function _selAplicar(acao) {
   const alvos = Array.from(window._selChats || []);
   if (!alvos.length) return;
-  if (acao === 'apagar' && !await vConfirm({ titulo: 'Apagar conversas', texto: `Apagar ${alvos.length} conversa(s)?\n\nAs mensagens saem do VETRA (não afeta o WhatsApp do cliente). Os leads continuam no Pipeline, com etiquetas e anotações.`, confirmar: 'Apagar', perigo: true })) return;
+  if (acao === 'apagar' && !await vConfirm({ titulo: 'Apagar conversas', texto: `Apagar ${alvos.length} conversa(s)?\n\nAs mensagens saem do FILAZ (não afeta o WhatsApp do cliente). Os leads continuam no Pipeline, com etiquetas e anotações.`, confirmar: 'Apagar', perigo: true })) return;
   for (const ph of alvos) {
     const c = allContacts.find(x => x.phone === ph);
     const enc = encodeURIComponent(ph);
@@ -6732,7 +6732,7 @@ async function openWaProfile(accId) {
   const isQr = acc.type === 'evolution' || acc.evolution_instance;
   const F = (id, label, ph) => `<label style="display:block;font-size:12px;color:#54656f;font-weight:600;margin:10px 0 4px">${label}</label><input id="${id}" placeholder="${escHtml(ph)}" style="width:100%;box-sizing:border-box;background:#fff;border:1px solid #d1d7db;border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit;outline:none">`;
   document.getElementById('wp-fields').innerHTML = isQr
-    ? F('wp-name', 'Nome do perfil', 'Ex.: VETRA Consultoria') + F('wp-about', 'Recado', 'Ex.: Atendimento seg. a sex.')
+    ? F('wp-name', 'Nome do perfil', 'Ex.: FILAZ Consultoria') + F('wp-about', 'Recado', 'Ex.: Atendimento seg. a sex.')
     : F('wp-about', 'Recado (aparece no perfil)', 'Ex.: Portabilidade e refinanciamento') + F('wp-desc', 'Descrição do negócio', '') + F('wp-site', 'Site', 'https://…') + F('wp-email', 'E-mail', '') + F('wp-addr', 'Endereço', '');
   document.getElementById('wp-msg').textContent = isQr ? 'Número QR: foto, nome e recado. Campos vazios não são alterados.' : 'Carregando dados atuais…';
   window._wpPhotoB64 = null;
@@ -7110,7 +7110,7 @@ async function _fillPdfPreviews() {
 }
 
 // VISUALIZADOR INTERNO: abre foto/PDF dentro do próprio app (ao fechar,
-// volta para a conversa exatamente onde estava — sem recarregar o VETRA)
+// volta para a conversa exatamente onde estava — sem recarregar o FILAZ)
 function verMidia(url, tipo, nome) {
   // FOTOS abrem sempre no visualizador do app (é ele que tem o ‹ › para
   // passar para a foto seguinte/anterior da conversa)
@@ -7530,7 +7530,7 @@ async function _albBaixaSel(ok) {
     }
     // CADA FOTO COMO FOTO: uma de cada vez, direto na pasta de downloads.
     // (Na primeira vez o navegador pergunta se pode baixar vários arquivos —
-    //  permita uma vez e ele lembra para o VETRA.)
+    //  permita uma vez e ele lembra para o FILAZ.)
     for (let i = 0; i < arqs.length; i++) {
       ok.textContent = 'Salvando ' + (i + 1) + ' de ' + arqs.length + '…';
       _albSalva(arqs[i].blob, arqs[i].nome);
@@ -7886,7 +7886,7 @@ function lpLoadMedia(phone){
       // Mesma URL do chat (tipo do arquivo + conta da mensagem)
       const urlVer = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${_acct(m)}${m.media_mime_type ? '&mime=' + encodeURIComponent(m.media_mime_type) : ''}`;
       const urlDl  = `${urlVer}&download=1&filename=${encodeURIComponent(fname)}`;
-      // Celular: abre DENTRO do app (o link com navegação recarregava o VETRA ao voltar)
+      // Celular: abre DENTRO do app (o link com navegação recarregava o FILAZ ao voltar)
       return `<div onclick="if(window.matchMedia('(hover: none)').matches){abrirArquivo('${urlVer}','${isPdfDoc?'pdf':'outro'}','${nomeSafe}')}else{baixarMidia('${urlDl}','${nomeSafe}',this)}" style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:#f0f2f5;border-radius:6px;margin-bottom:5px;color:#131c20;font-size:12px;cursor:pointer"><span style="flex:1;word-break:break-all">${escHtml(fname)}</span> </div>`;
     }).join('');
   }
@@ -9980,7 +9980,7 @@ function cancelReply() {
 }
 
 async function deleteMessage(id, btn) {
-  if (!await vConfirm({ titulo: 'Apagar mensagem', texto: 'A mensagem sai do VETRA. Ela continua no WhatsApp do cliente.', confirmar: 'Apagar', perigo: true })) return;
+  if (!await vConfirm({ titulo: 'Apagar mensagem', texto: 'A mensagem sai do FILAZ. Ela continua no WhatsApp do cliente.', confirmar: 'Apagar', perigo: true })) return;
   try {
     const res = await fetch(`${SERVER_URL}/messages/id/${id}`, { method: 'DELETE' });
     if (res.ok) {
@@ -11056,16 +11056,16 @@ function renderTasks() {
 // Aviso rápido no rodapé da tela (some sozinho)
 
 // ══════════════════════════════════════════════════════════════════
-//  JANELAS DO VETRA — substituem as caixas cinzas do navegador
+//  JANELAS DO FILAZ — substituem as caixas cinzas do navegador
 //  vConfirm({...}) → true/false ; vPrompt({...}) → texto ou null
 //  vCampos({...})  → objeto com os campos ; vEscolha({...}) → valor
 // ══════════════════════════════════════════════════════════════════
 let _vdlgResolve = null;
 // Teclado do celular aberto: a área visível encolhe (visualViewport). A caixa passa a
 // ocupar SÓ a parte visível, então título, campo e botões ficam acima do teclado.
-// Caixa (janela do VETRA ou folha de etiquetas) SEMPRE na parte visível da tela quando o
+// Caixa (janela do FILAZ ou folha de etiquetas) SEMPRE na parte visível da tela quando o
 // teclado está aberto. Cada celular faz de um jeito: uns ENCOLHEM a página, outros EMPURRAM
-// a área visível — e, quando empurram, o VETRA desce o app inteiro para caber, o que levava
+// a área visível — e, quando empurram, o FILAZ desce o app inteiro para caber, o que levava
 // a caixa para fora da tela (você digitava a etiqueta às cegas).
 function _ajustaOverlayTeclado(ov, aberto) {
   if (!ov) return;
@@ -11579,7 +11579,7 @@ function showQRForm(index) {
       <div>
         <label style="display:flex;align-items:center;gap:8px">Mensagem <button type="button" id="qr-emoji-btn" onclick="abrirEmojiPara('qr-message', this, event)" title="Inserir emoji" style="margin-left:auto;background:#fff;border:1px solid #e9edef;border-radius:8px;padding:3px 9px;font-size:14px;cursor:pointer;line-height:1">😊 Emoji</button></label>
         <textarea id="qr-message" placeholder="Olá, {nome}! Como posso ajudar?">${r.message}</textarea>
-        <div id="qr-var-hint">Use <span onclick="insertQRVar('{nome}')"><b>{nome}</b></span>, <span onclick="insertQRVar('{telefone}')"><b>{telefone}</b></span>, <span onclick="insertQRVar('{notas}')"><b>{notas}</b></span> ou <span onclick="insertQRData()"><b>{data}</b></span> — o VETRA troca pelos dados do lead; em {data} você escolhe os dias (ex.: {daqui a 7 dias} → 24/09)</div>
+        <div id="qr-var-hint">Use <span onclick="insertQRVar('{nome}')"><b>{nome}</b></span>, <span onclick="insertQRVar('{telefone}')"><b>{telefone}</b></span>, <span onclick="insertQRVar('{notas}')"><b>{notas}</b></span> ou <span onclick="insertQRData()"><b>{data}</b></span> — o FILAZ troca pelos dados do lead; em {data} você escolhe os dias (ex.: {daqui a 7 dias} → 24/09)</div>
       </div>
       <div>
         <label>Foto ou arquivo (opcional)</label>
@@ -12293,7 +12293,7 @@ function _telaSemLiberacao() {
   d.innerHTML = `<div style="max-width:430px;background:#fff;border:1px solid #e9edef;border-radius:14px;padding:26px 24px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.10)">
       <div style="font-size:30px;color:#f0b400;margin-bottom:8px"><i class=ic-lock></i></div>
       <div style="font-size:17px;font-weight:700;color:#131c20;margin-bottom:10px">Acesso ainda não liberado</div>
-      <p style="font-size:13.5px;color:#54656f;line-height:1.65;margin:0 0 8px">O e-mail <b>${escHtml((window._acesso && window._acesso.email) || '')}</b> entrou, mas ainda não tem permissão para usar o VETRA.</p>
+      <p style="font-size:13.5px;color:#54656f;line-height:1.65;margin:0 0 8px">O e-mail <b>${escHtml((window._acesso && window._acesso.email) || '')}</b> entrou, mas ainda não tem permissão para usar o FILAZ.</p>
       <p style="font-size:13px;color:#667781;line-height:1.65;margin:0 0 16px">Se você quer contratar, deixe os seus dados abaixo — o pedido chega direto a quem libera.</p>
       <div id="sl-form" style="display:flex;flex-direction:column;gap:7px;text-align:left;margin-bottom:16px">
         <input id="sl-nome" placeholder="Seu nome" style="background:#fff;border:1px solid #d1d7db;border-radius:8px;padding:10px 12px;font-size:13px;outline:none">
@@ -12381,7 +12381,7 @@ function _avisaPlano() {
   f.style.cssText = 'display:block;padding:9px 12px;font-size:12.5px;line-height:1.5;font-weight:600;border-radius:0;'
     + (grave ? 'background:#fdecea;color:#a93226;border-bottom:1px solid #f5b7b1' : 'background:#fff7e6;color:#8c6d1f;border-bottom:1px solid #ffd591');
   if (p.bloqueado) {
-    f.textContent = (p.motivo || 'Plano suspenso.') + ' O envio de mensagens está pausado. Nada foi perdido: conversas, leads e configurações continuam aqui. Fale com quem fornece o VETRA.';
+    f.textContent = (p.motivo || 'Plano suspenso.') + ' O envio de mensagens está pausado. Nada foi perdido: conversas, leads e configurações continuam aqui. Fale com quem fornece o FILAZ.';
   } else if (p.vencido) {
     const resta = (p.tolerancia_dias || 0) + (p.dias_restantes || 0);
     f.textContent = 'O plano venceu em ' + (p.validade_br || '—') + '. Você ainda envia por ' + (resta > 0 ? resta : 0) + ' dia(s).';
@@ -12400,7 +12400,7 @@ function _avisaPlano() {
 // ═══════════════════════════════════════════════════════════════════
 // 🚀 PRIMEIRO ACESSO: o passo a passo de estreia
 // ═══════════════════════════════════════════════════════════════════
-// Some sozinho quando os quatro passos estão feitos. Quem já usa o VETRA há
+// Some sozinho quando os quatro passos estão feitos. Quem já usa o FILAZ há
 // tempo nem chega a ver (todos os passos já estão prontos).
 async function _onboardingCheca(forcar) {
   const card = document.getElementById('onb-card'); if (!card) return;
@@ -12490,8 +12490,8 @@ async function carregaDiagnostico(forcar) {
       <b>${erro ? 'O servidor não respondeu.' : 'O servidor está atrás do app.'}</b>
       <div style="margin-top:6px">Algumas telas não têm como funcionar assim. O que fazer, nesta ordem:</div>
       <div style="margin-top:4px">1) Rode o <b>DEPLOY.bat</b> e leia o final da janela — ele agora avisa em vermelho se o servidor não subiu.</div>
-      <div>2) Abra o <b>deploy-log.txt</b> na pasta do VETRA: ele diz se o envio do <b>server.js</b> deu certo.</div>
-      <div>3) Se o log estiver certo, o problema é a publicação: abra o Railway → projeto do VETRA → <b>Deployments</b> e veja se o último falhou.</div>
+      <div>2) Abra o <b>deploy-log.txt</b> na pasta do FILAZ: ele diz se o envio do <b>server.js</b> deu certo.</div>
+      <div>3) Se o log estiver certo, o problema é a publicação: abra o Railway → projeto do FILAZ → <b>Deployments</b> e veja se o último falhou.</div>
     </div>`;
   }
   el.innerHTML = html;
@@ -12528,7 +12528,7 @@ async function carregaFaturamento() {
     const d = await (await fetch(SERVER_URL + '/billing')).json();
     const i = d.info || null;
     const v = d.value || {};
-    if (!i) { b.innerHTML = 'Plano: <b>' + escHtml(v.plano || 'VETRA') + '</b> &nbsp;·&nbsp; Validade: <b>' + escHtml(v.validade || '—') + '</b>'; return; }
+    if (!i) { b.innerHTML = 'Plano: <b>' + escHtml(v.plano || 'FILAZ') + '</b> &nbsp;·&nbsp; Validade: <b>' + escHtml(v.validade || '—') + '</b>'; return; }
     if (window._acesso) { window._acesso.plano = i; try { _avisaPlano(); } catch (_) {} }
     let cor = '#00a884', selo = 'Ativo';
     if (i.bloqueado) { cor = '#ef4444'; selo = 'Suspenso'; }
@@ -12538,7 +12538,7 @@ async function carregaFaturamento() {
     const linha = (rot, val) => `<div style="display:flex;gap:10px;align-items:baseline;padding:6px 0;border-bottom:1px solid #f0f2f5">
         <span style="flex:1;color:#667781">${rot}</span><b style="color:#131c20;font-size:14px">${val}</b></div>`;
     let html = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-        <span style="font-size:16px;font-weight:700;color:#131c20">${escHtml(i.plano || 'VETRA')}</span>
+        <span style="font-size:16px;font-weight:700;color:#131c20">${escHtml(i.plano || 'FILAZ')}</span>
         <span style="font-size:11.5px;font-weight:700;color:#fff;background:${cor};border-radius:10px;padding:2px 9px">${escHtml(selo)}</span></div>`;
     html += linha('Validade', escHtml(i.validade_br || 'não definida'));
     if (i.limite_numeros) html += linha('Números incluídos', i.limite_numeros);
@@ -12557,7 +12557,7 @@ async function carregaFaturamento() {
     else if (i.vencido) html += `<div style="margin-top:10px;background:#fff7e6;border:1px solid #ffd591;border-radius:8px;padding:10px 12px;font-size:12.5px;color:#8c6d1f;line-height:1.6">
         Venceu em ${escHtml(i.validade_br)}. Ainda dá para enviar por mais ${Math.max(0, (i.tolerancia_dias || 0) + (i.dias_restantes || 0))} dia(s) antes de pausar.</div>`;
     b.innerHTML = html;
-  } catch (_) { b.textContent = 'Plano: VETRA'; }
+  } catch (_) { b.textContent = 'Plano: FILAZ'; }
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -12575,12 +12575,12 @@ function _textoTermos() {
   const E = _emp('email', '[preencha o e-mail acima]');
   const F = _emp('cidade', '[preencha a cidade acima]');
   return [
-    ['1. Quem somos', N + ', inscrita no CNPJ/CPF ' + C + ', daqui em diante "a Contratada", fornece o VETRA — um sistema de atendimento e gestão de relacionamento por WhatsApp, usado pela internet.'],
-    ['2. O que o VETRA faz', 'O VETRA organiza conversas de WhatsApp, cadastra contatos e leads, guarda etiquetas e anotações, dispara mensagens e permite automações. O envio e o recebimento acontecem pelas plataformas da Meta (WhatsApp Business Platform) ou por conexão via QR Code, conforme o que você contratar.'],
+    ['1. Quem somos', N + ', inscrita no CNPJ/CPF ' + C + ', daqui em diante "a Contratada", fornece o FILAZ — um sistema de atendimento e gestão de relacionamento por WhatsApp, usado pela internet.'],
+    ['2. O que o FILAZ faz', 'O FILAZ organiza conversas de WhatsApp, cadastra contatos e leads, guarda etiquetas e anotações, dispara mensagens e permite automações. O envio e o recebimento acontecem pelas plataformas da Meta (WhatsApp Business Platform) ou por conexão via QR Code, conforme o que você contratar.'],
     ['3. Sua conta', 'O acesso é pessoal. Você é responsável por quem libera na sua equipe e pelo que essas pessoas fazem dentro da sua conta. Cada e-mail liberado pode ter acesso de administrador (mexe em tudo) ou de atendente (só conversa e cuida dos leads).'],
-    ['4. Uso correto', 'Você se compromete a: (a) só enviar mensagens para quem autorizou receber; (b) respeitar as políticas do WhatsApp e da Meta; (c) não usar o VETRA para spam, fraude, conteúdo ilegal ou perturbação; (d) manter os dados dos seus contatos corretos e atualizados. O descumprimento pode levar ao bloqueio do número pela própria Meta, o que foge do controle da Contratada.'],
+    ['4. Uso correto', 'Você se compromete a: (a) só enviar mensagens para quem autorizou receber; (b) respeitar as políticas do WhatsApp e da Meta; (c) não usar o FILAZ para spam, fraude, conteúdo ilegal ou perturbação; (d) manter os dados dos seus contatos corretos e atualizados. O descumprimento pode levar ao bloqueio do número pela própria Meta, o que foge do controle da Contratada.'],
     ['5. Pagamento e vigência', 'O plano contratado tem validade. Depois do vencimento há um prazo de tolerância; passado ele, o ENVIO de mensagens é pausado. Nenhum dado é apagado por falta de pagamento: conversas, leads e configurações continuam guardados e voltam ao normal quando o plano é reativado.'],
-    ['6. Disponibilidade', 'A Contratada trabalha para manter o VETRA no ar, mas não garante funcionamento ininterrupto: existem manutenções, atualizações e falhas de terceiros (Meta, provedores de hospedagem e de banco de dados) fora do seu controle.'],
+    ['6. Disponibilidade', 'A Contratada trabalha para manter o FILAZ no ar, mas não garante funcionamento ininterrupto: existem manutenções, atualizações e falhas de terceiros (Meta, provedores de hospedagem e de banco de dados) fora do seu controle.'],
     ['7. Limite de responsabilidade', 'A Contratada não responde por lucros cessantes, perda de oportunidade de negócio ou por decisões comerciais tomadas com base nas informações do sistema. A responsabilidade fica limitada ao valor pago pelo serviço nos últimos 12 meses.'],
     ['8. Encerramento', 'Qualquer das partes pode encerrar a contratação avisando com 30 dias. No encerramento, você pode exportar seus dados; depois de 30 dias do fim do contrato, os dados podem ser eliminados em definitivo.'],
     ['9. Foro', 'Fica eleito o foro de ' + F + ' para resolver o que não for resolvido de comum acordo.'],
@@ -12591,7 +12591,7 @@ function _textoPrivacidade() {
   const N = _emp('nome', '[preencha a razão social acima]');
   const E = _emp('email', '[preencha o e-mail acima]');
   return [
-    ['1. Por que este documento existe', 'A Lei Geral de Proteção de Dados (Lei 13.709/2018) exige que fique claro quais dados pessoais são tratados, para quê e por quanto tempo. Este texto explica isso em relação ao VETRA.'],
+    ['1. Por que este documento existe', 'A Lei Geral de Proteção de Dados (Lei 13.709/2018) exige que fique claro quais dados pessoais são tratados, para quê e por quanto tempo. Este texto explica isso em relação ao FILAZ.'],
     ['2. Papéis', 'Você (cliente) é o CONTROLADOR dos dados dos seus contatos: é você quem decide para quem escrever e por quê. ' + N + ' é a OPERADORA: trata os dados apenas para fazer o sistema funcionar, seguindo as suas instruções.'],
     ['3. Que dados são tratados', 'Do seu contato final: nome, número de telefone, conteúdo das mensagens trocadas com você, arquivos enviados na conversa, etiquetas e anotações que a sua equipe registrar. Da sua equipe: e-mail de acesso, data e hora dos acessos e o registro de quem enviou cada mensagem.'],
     ['4. Para que servem', 'Exclusivamente para prestar o atendimento: mostrar a conversa, organizar o funil, disparar as automações que você configurou e gerar os números de uso do seu plano. Os dados NÃO são vendidos, alugados nem usados para treinar sistemas de terceiros.'],
@@ -12610,7 +12610,7 @@ function trmAba(k) {
   const titulo = k === 'priv' ? 'Política de Privacidade' : 'Termos de Uso';
   const hoje = new Date(Date.now() - _BRT_OFFSET);
   const p = n => String(n).padStart(2, '0');
-  el.innerHTML = `<div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:2px">${escHtml(titulo)} — VETRA</div>
+  el.innerHTML = `<div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:2px">${escHtml(titulo)} — FILAZ</div>
     <div style="font-size:11px;color:#8696a0;margin-bottom:10px">Versão 1 · gerado em ${p(hoje.getUTCDate())}/${p(hoje.getUTCMonth() + 1)}/${hoje.getUTCFullYear()}</div>`
     + secoes.map(sc => `<div style="margin-bottom:9px"><b style="color:#131c20">${escHtml(sc[0])}</b><div>${escHtml(sc[1])}</div></div>`).join('');
   ['termos', 'priv'].forEach(x => {
@@ -12661,14 +12661,14 @@ async function aceitarTermos(btn) {
   } catch (e) { if (btn) { btn.disabled = false; } showToast(e.message || 'Não consegui registrar o aceite.'); }
 }
 function baixarTermos() {
-  const bloco = (tit, secoes) => '<h1>' + tit + ' — VETRA</h1>' + secoes.map(sc => '<h2>' + escHtml(sc[0]) + '</h2><p>' + escHtml(sc[1]) + '</p>').join('');
-  const html = '<!doctype html><meta charset="utf-8"><title>VETRA — Termos e Privacidade</title>'
+  const bloco = (tit, secoes) => '<h1>' + tit + ' — FILAZ</h1>' + secoes.map(sc => '<h2>' + escHtml(sc[0]) + '</h2><p>' + escHtml(sc[1]) + '</p>').join('');
+  const html = '<!doctype html><meta charset="utf-8"><title>FILAZ — Termos e Privacidade</title>'
     + '<style>body{font-family:Segoe UI,Arial,sans-serif;max-width:760px;margin:36px auto;padding:0 20px;color:#222;line-height:1.65}'
     + 'h1{font-size:20px;border-bottom:2px solid #00a884;padding-bottom:6px;margin-top:36px}h2{font-size:14px;margin:16px 0 4px}p{margin:0 0 8px;font-size:13.5px}</style>'
     + bloco('Termos de Uso', _textoTermos()) + bloco('Política de Privacidade', _textoPrivacidade());
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
-  a.download = 'VETRA-termos-e-privacidade.html';
+  a.download = 'FILAZ-termos-e-privacidade.html';
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 4000);
 }
@@ -12687,7 +12687,7 @@ async function _perguntaTermos() {
     if (!a || !a.pendente) return;
     const ok = await vConfirm({
       titulo: 'Termos de Uso e Privacidade',
-      texto: 'Antes de continuar, confirme que você leu os Termos de Uso e a Política de Privacidade do VETRA.\n\nEles explicam o que o sistema guarda, por quanto tempo e quais são os seus direitos e deveres (LGPD). O texto completo fica em Configurações → Termos e privacidade.',
+      texto: 'Antes de continuar, confirme que você leu os Termos de Uso e a Política de Privacidade do FILAZ.\n\nEles explicam o que o sistema guarda, por quanto tempo e quais são os seus direitos e deveres (LGPD). O texto completo fica em Configurações → Termos e privacidade.',
       confirmar: 'Li e aceito', cancelar: 'Ler primeiro'
     });
     if (ok) {
@@ -12780,7 +12780,7 @@ async function baixarBackupDia(dia) {
     const d = await _apiJson(SERVER_URL + '/backup/auto/' + encodeURIComponent(dia));
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([JSON.stringify(d, null, 2)], { type: 'application/json' }));
-    a.download = 'vetra-backup-' + dia + '.json';
+    a.download = 'filaz-backup-' + dia + '.json';
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   } catch (e) { showToast(e.message || 'Não consegui baixar.', 'err'); }
@@ -12788,7 +12788,7 @@ async function baixarBackupDia(dia) {
 async function restaurarBackupDia(dia) {
   const ok = await vConfirm({
     titulo: 'Voltar para ' + dia.split('-').reverse().join('/'),
-    texto: 'As respostas rápidas, etiquetas, automações por etapa, gotejamento e planilha voltam para como estavam nesse dia.\n\nConversas, leads, bots e etapas NÃO são tocados. E antes de trocar, o VETRA guarda uma cópia de hoje — dá para voltar atrás.',
+    texto: 'As respostas rápidas, etiquetas, automações por etapa, gotejamento e planilha voltam para como estavam nesse dia.\n\nConversas, leads, bots e etapas NÃO são tocados. E antes de trocar, o FILAZ guarda uma cópia de hoje — dá para voltar atrás.',
     confirmar: 'Voltar para esse dia', perigo: true
   });
   if (!ok) return;
@@ -12848,7 +12848,7 @@ async function carregaPagamento() {
         <button class="pf-topbtn" onclick="copiarTexto('${_jsAttr(url)}',this)">Copiar</button>
         <button class="pf-topbtn" onclick="gerarTokenPag()" title="Cria um endereço novo e invalida o antigo">Gerar outro</button>
       </div>
-      <p style="font-size:11.5px;color:#667781;margin:8px 0 0;line-height:1.5">No link de pagamento, coloque o <b>e-mail do cliente</b> no campo de referência externa (<i>external_reference</i>). É por ele que o VETRA sabe qual plano renovar.</p>`;
+      <p style="font-size:11.5px;color:#667781;margin:8px 0 0;line-height:1.5">No link de pagamento, coloque o <b>e-mail do cliente</b> no campo de referência externa (<i>external_reference</i>). É por ele que o FILAZ sabe qual plano renovar.</p>`;
   } else {
     html += `<div style="background:#fff7e6;border:1px solid #ffd591;border-radius:8px;padding:10px 12px;font-size:12.5px;color:#8c6d1f;line-height:1.55">
         Ainda não existe endereço de aviso. Gere um para o serviço de pagamento conseguir renovar os planos sozinho.
@@ -12902,7 +12902,7 @@ async function registrarPagamento(email) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// 🚪 PAINEL DO FORNECEDOR — liberar e bloquear quem usa o VETRA
+// 🚪 PAINEL DO FORNECEDOR — liberar e bloquear quem usa o FILAZ
 // ═══════════════════════════════════════════════════════════════════
 async function carregaAcessoAdmin() {
   const box = document.getElementById('adm-liberados'); if (!box) return;
@@ -12918,11 +12918,11 @@ async function carregaAcessoAdmin() {
     const fora = d.ja_usam_sem_liberacao || [];
     trava.innerHTML = d.ligado
       ? `<div style="background:#e7f7ef;border:1px solid #c8ecd9;border-radius:8px;padding:10px 12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-           <span style="flex:1;min-width:200px;font-size:12.5px;color:#00806a;line-height:1.5"><b>Portaria ligada.</b> Só os e-mails da lista abaixo conseguem usar o VETRA.</span>
+           <span style="flex:1;min-width:200px;font-size:12.5px;color:#00806a;line-height:1.5"><b>Portaria ligada.</b> Só os e-mails da lista abaixo conseguem usar o FILAZ.</span>
            <button class="pf-topbtn" onclick="trocarTrava(false)">Desligar</button>
          </div>`
       : `<div style="background:#fff7e6;border:1px solid #ffd591;border-radius:8px;padding:10px 12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-           <span style="flex:1;min-width:200px;font-size:12.5px;color:#8c6d1f;line-height:1.5"><b>Portaria desligada.</b> Qualquer pessoa que criar um login hoje ganha uma conta e usa o VETRA de graça.${fora.length ? ' Ao ligar, os <b>' + fora.length + '</b> que já usam são liberados automaticamente — ninguém perde acesso.' : ''}</span>
+           <span style="flex:1;min-width:200px;font-size:12.5px;color:#8c6d1f;line-height:1.5"><b>Portaria desligada.</b> Qualquer pessoa que criar um login hoje ganha uma conta e usa o FILAZ de graça.${fora.length ? ' Ao ligar, os <b>' + fora.length + '</b> que já usam são liberados automaticamente — ninguém perde acesso.' : ''}</span>
            <button class="btn-save" onclick="trocarTrava(true)">Ligar a portaria</button>
          </div>`;
   }
@@ -12970,7 +12970,7 @@ async function carregaAcessoAdmin() {
         <span style="color:${eu ? '#c79a00' : '#00a884'}"><i class=${eu ? 'ic-crown' : 'ic-check'}></i></span>
         <span style="flex:1;min-width:150px">
           <span style="display:block;font-size:13px;color:#131c20;word-break:break-all">${escHtml(e)}${eu ? ' <b style="color:#8696a0">(você)</b>' : ''}</span>
-          <span style="display:block;font-size:11.5px;color:#667781">${escHtml(p.plano || 'VETRA')} · ${escHtml(val)}${em[e] && em[e].desde ? ' · liberado ' + escHtml(_acessoTexto(em[e].desde)) : ''}</span>
+          <span style="display:block;font-size:11.5px;color:#667781">${escHtml(p.plano || 'FILAZ')} · ${escHtml(val)}${em[e] && em[e].desde ? ' · liberado ' + escHtml(_acessoTexto(em[e].desde)) : ''}</span>
         </span>
         <button class="pf-topbtn" style="padding:5px 10px;font-size:11.5px" onclick="admEditarPlano('${_jsAttr(e)}')">Plano</button>
         <button class="pf-topbtn" style="padding:5px 10px;font-size:11.5px" onclick="registrarPagamento('${_jsAttr(e)}')" title="Somar dias porque o cliente pagou">Pagou</button>
@@ -13002,7 +13002,7 @@ async function liberarUsuario(btn, emailPronto) {
 async function bloquearUsuario(email) {
   const ok = await vConfirm({
     titulo: 'Bloquear acesso',
-    texto: email + ' deixa de conseguir usar o VETRA na próxima vez que abrir.\n\nNADA é apagado: as conversas, leads e configurações dele continuam guardadas e voltam no mesmo lugar se você liberar de novo.',
+    texto: email + ' deixa de conseguir usar o FILAZ na próxima vez que abrir.\n\nNADA é apagado: as conversas, leads e configurações dele continuam guardadas e voltam no mesmo lugar se você liberar de novo.',
     confirmar: 'Bloquear', perigo: true
   });
   if (!ok) return;
@@ -13019,14 +13019,14 @@ async function trocarTrava(ligar) {
     const lista = fora.length ? '\n\nJá em uso, serão liberados agora:\n· ' + fora.slice(0, 12).join('\n· ') + (fora.length > 12 ? '\n· e mais ' + (fora.length - 12) : '') : '';
     const ok = await vConfirm({
       titulo: 'Ligar a portaria',
-      texto: 'A partir de agora, só os e-mails da sua lista conseguem usar o VETRA. Quem não estiver liberado vê um aviso e não entra.' + lista + '\n\nO seu e-mail nunca é bloqueado.',
+      texto: 'A partir de agora, só os e-mails da sua lista conseguem usar o FILAZ. Quem não estiver liberado vê um aviso e não entra.' + lista + '\n\nO seu e-mail nunca é bloqueado.',
       confirmar: 'Ligar a portaria'
     });
     if (!ok) return;
   } else {
     const ok = await vConfirm({
       titulo: 'Desligar a portaria',
-      texto: 'Voltando ao modo aberto, qualquer pessoa que criar um login ganha uma conta e usa o VETRA sem você liberar.',
+      texto: 'Voltando ao modo aberto, qualquer pessoa que criar um login ganha uma conta e usa o FILAZ sem você liberar.',
       confirmar: 'Desligar', perigo: true
     });
     if (!ok) return;
@@ -13073,7 +13073,7 @@ async function carregaPainelDono(forcar) {
     return `<div style="border:1px solid #e9edef;border-left:4px solid ${cor(c)};border-radius:8px;padding:10px 12px;margin-bottom:8px;background:#fff">
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
         <b style="flex:1;min-width:160px;font-size:13px;color:#131c20;word-break:break-all">${escHtml(c.dono)}</b>
-        <span style="font-size:11.5px;color:#54656f">${escHtml(p.plano || 'VETRA')} · ${escHtml(val)}</span>
+        <span style="font-size:11.5px;color:#54656f">${escHtml(p.plano || 'FILAZ')} · ${escHtml(val)}</span>
         ${c.liberado === false ? '<span style="font-size:11px;font-weight:700;color:#a93226;background:#fdecea;border-radius:8px;padding:2px 8px">sem liberação</span>' : ''}
         <button class="pf-topbtn" style="padding:4px 9px;font-size:11.5px" onclick="admEditarPlano('${_jsAttr(c.dono)}')">Editar plano</button>
       </div>
@@ -13095,7 +13095,7 @@ async function admEditarPlano(dono) {
     titulo: 'Plano de ' + dono,
     texto: 'Vencer NÃO apaga nada: passados os ' + (atual.tolerancia_dias || 5) + ' dias de tolerância, só o ENVIO de mensagens é pausado.',
     campos: [
-      { id: 'plano', rotulo: 'Nome do plano', valor: atual.plano || 'VETRA' },
+      { id: 'plano', rotulo: 'Nome do plano', valor: atual.plano || 'FILAZ' },
       { id: 'validade', rotulo: 'Válido até', tipo: 'date', valor: atual.validade || '' },
       { id: 'limite_numeros', rotulo: 'Números incluídos (vazio = sem limite)', tipo: 'number', valor: atual.limite_numeros || '' },
       { id: 'limite_msgs_mes', rotulo: 'Mensagens por mês (vazio = sem limite)', tipo: 'number', valor: atual.limite_msgs_mes || '' },
@@ -13208,7 +13208,7 @@ function desenhaCustos() {
   html += `<div style="margin-top:12px;background:#fff7e6;border:1px solid #ffd591;border-radius:8px;padding:10px 12px;font-size:12px;color:#8c6d1f;line-height:1.6">
       <b>Como esta conta é feita.</b> Entram só as mensagens que <b>saíram</b> por um número da API oficial e não falharam.
       Não entram: mensagens recebidas, notas internas, mensagens com erro e tudo que passa por número de QR Code.
-      <div style="margin-top:5px">A Meta ainda pode ter regras que o VETRA não enxerga (como a janela gratuita de 72h de anúncios Click-to-WhatsApp). Trate como <b>estimativa próxima</b>, e confira o valor fechado no painel da Meta.</div>
+      <div style="margin-top:5px">A Meta ainda pode ter regras que o FILAZ não enxerga (como a janela gratuita de 72h de anúncios Click-to-WhatsApp). Trate como <b>estimativa próxima</b>, e confira o valor fechado no painel da Meta.</div>
     </div>`;
   el.innerHTML = html;
 }
@@ -13438,7 +13438,7 @@ function _relGraficoHoras(d) {
 function _relTabelaAtendentes(d) {
   if (!d.tem_autor) {
     return `<div style="background:#fff7e6;border:1px solid #ffd591;border-radius:8px;padding:10px 12px;font-size:12.5px;color:#8c6d1f;line-height:1.6">
-      <b>Falta um passo no banco de dados.</b> O VETRA ainda não guarda quem da equipe enviou cada mensagem, então não dá para separar por pessoa.
+      <b>Falta um passo no banco de dados.</b> O FILAZ ainda não guarda quem da equipe enviou cada mensagem, então não dá para separar por pessoa.
       <div style="margin-top:5px">Abra o Supabase → SQL Editor → New query, cole a linha abaixo e clique em Run. É seguro rodar mais de uma vez.</div>
       <code style="display:block;background:#fff;border:1px solid #f0dcae;border-radius:6px;padding:7px 9px;margin-top:6px;font-size:11.5px;color:#131c20;word-break:break-all">alter table messages add column if not exists sent_by text;</code>
       <div style="margin-top:5px">Depois disso, as mensagens novas já entram com o autor.</div></div>`;
@@ -13563,7 +13563,7 @@ async function openConfigModal() {
       + '{ "nome": "Maria Silva", "telefone": "15998887777", "etapa": "1" }';
   } catch (_) {}
   const ct = document.getElementById('cfg-conta');
-  if (ct) ct.innerHTML = 'Você está usando o VETRA com <b>' + escHtml(window._userEmail || '—') + '</b>';
+  if (ct) ct.innerHTML = 'Você está usando o FILAZ com <b>' + escHtml(window._userEmail || '—') + '</b>';
   _avisaServidorAtrasado();
   _carregaUsoConta();
   _renderCfgStageIds();
@@ -13613,7 +13613,7 @@ async function _avisaServidorAtrasado() {
   }
   faixa.style.cssText = 'background:#fff7e6;border:1px solid #ffd591;border-radius:8px;padding:10px 12px;font-size:12.5px;color:#8c6d1f;margin-bottom:10px;line-height:1.6';
   faixa.innerHTML = '<b>O servidor está atrás do app.</b><div>App v' + APP_VER + ' · servidor v' + (v || '?') + ' (o app precisa da v' + SERVIDOR_MIN + ').</div>'
-    + '<div style="margin-top:5px">Rode o DEPLOY.bat e confira o arquivo <b>deploy-log.txt</b> na pasta do VETRA: ele mostra se o envio do <b>server.js</b> deu certo. '
+    + '<div style="margin-top:5px">Rode o DEPLOY.bat e confira o arquivo <b>deploy-log.txt</b> na pasta do FILAZ: ele mostra se o envio do <b>server.js</b> deu certo. '
     + 'Se o log estiver ok, veja em Deployments no Railway se o último deploy falhou.</div>';
 }
 
@@ -13664,7 +13664,7 @@ function _baixaComLogin(url, nome) {
   }).catch(e => showToast('Não consegui gerar: ' + (e.message || e), 'err'));
 }
 async function _apiTexto(url) {
-  const r = await fetch(url); // o login já vai junto (o VETRA anexa em todo fetch)
+  const r = await fetch(url); // o login já vai junto (o FILAZ anexa em todo fetch)
   if (!r.ok) throw new Error('HTTP ' + r.status);
   return await r.text();
 }
@@ -13680,7 +13680,7 @@ async function baixarBackup(btn) {
     const a = document.createElement('a');
     const hoje = new Date(Date.now() - _BRT_OFFSET).toISOString().slice(0, 10);
     a.href = URL.createObjectURL(blob);
-    a.download = 'vetra-backup-' + hoje + '.json';
+    a.download = 'filaz-backup-' + hoje + '.json';
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
     if (st) st.textContent = 'Backup baixado. Guarde o arquivo em lugar seguro.';
@@ -13693,7 +13693,7 @@ async function restaurarBackup(input) {
   const st = document.getElementById('cfg-backup-status');
   let bk = null;
   try { bk = JSON.parse(await f.text()); } catch (_) { if (st) st.innerHTML = '<span style="color:#ef4444">Arquivo inválido.</span>'; return; }
-  if (bk.vetra !== 'backup') { if (st) st.innerHTML = '<span style="color:#ef4444">Este arquivo não é um backup do VETRA.</span>'; return; }
+  if (bk.vetra !== 'backup') { if (st) st.innerHTML = '<span style="color:#ef4444">Este arquivo não é um backup do FILAZ.</span>'; return; }
   const quando = bk.quando ? new Date(bk.quando).toLocaleString('pt-BR') : 'data desconhecida';
   const ok = await vConfirm({
     titulo: 'Restaurar configurações',
@@ -13727,7 +13727,7 @@ async function abrirHistoricoConfig() {
     const lista = await _apiJson(SERVER_URL + '/historico');
     if (!Array.isArray(lista) || !lista.length) {
       el.innerHTML = '<div style="padding:16px 0;text-align:center;color:#8696a0">Nada guardado ainda.'
-        + '<br><span style="font-size:12px">A cada mudança em respostas rápidas, etiquetas, automações, gotejamento ou no fluxo de um bot, o VETRA guarda como estava antes. As versões aparecem aqui.</span></div>';
+        + '<br><span style="font-size:12px">A cada mudança em respostas rápidas, etiquetas, automações, gotejamento ou no fluxo de um bot, o FILAZ guarda como estava antes. As versões aparecem aqui.</span></div>';
       return;
     }
     el.innerHTML = '<div style="font-size:12px;color:#667781;margin-bottom:10px">Cada linha é como a configuração estava <b>antes</b> de uma mudança. Restaurar não mexe em conversas nem em leads.</div>'
@@ -13871,7 +13871,7 @@ async function _restaurarTela(segundaPassada) {
     _mostra();
     setTimeout(() => { try {
       vAviso({ titulo: 'Abri na lista de conversas',
-        texto: 'A última conversa fechou o app algumas vezes seguidas — normalmente é uma conversa muito longa, com muitas fotos e vídeos, que não cabe na memória do celular. Abri na lista para você sair do aperto. Ao entrar nela de novo, o VETRA mostra só as mensagens mais recentes e deixa as antigas atrás de um botão.' });
+        texto: 'A última conversa fechou o app algumas vezes seguidas — normalmente é uma conversa muito longa, com muitas fotos e vídeos, que não cabe na memória do celular. Abri na lista para você sair do aperto. Ao entrar nela de novo, o FILAZ mostra só as mensagens mais recentes e deixa as antigas atrás de um botão.' });
     } catch (_) {} }, 700);
     return;
   }
@@ -13959,7 +13959,7 @@ document.addEventListener('input', function(e) {
     hideQRPopup();
   }
 });
-// Ctrl+. (ou Ctrl+;) abre os emojis do VETRA no campo de mensagem — o Win+. é
+// Ctrl+. (ou Ctrl+;) abre os emojis do FILAZ no campo de mensagem — o Win+. é
 // do próprio Windows e o navegador não consegue interceptá-lo.
 document.addEventListener('keydown', function (e) {
   if (!(e.ctrlKey || e.metaKey) || e.altKey || (e.key !== '.' && e.key !== ';')) return;
@@ -14899,7 +14899,7 @@ async function deleteTemplate(templateName, templateId, accountId) {
     titulo: 'Remover modelo',
     texto: 'O que você quer fazer com "' + (t ? tmplNome(t) : templateName) + '"?',
     opcoes: [
-      { v: 'esconder', t: 'Só esconder no VETRA (continua na Meta)' },
+      { v: 'esconder', t: 'Só esconder no FILAZ (continua na Meta)' },
       { v: 'apagar',   t: 'Apagar de vez na Meta (não tem como desfazer lá)' }
     ]
   });
@@ -14937,7 +14937,7 @@ async function deleteTemplate(templateName, templateId, accountId) {
     titulo: 'Apagar na Meta',
     textoHtml: '<div>O modelo será apagado <b>na Meta</b>. A Meta não guarda cópia e ainda bloqueia o mesmo nome por 30 dias.</div>'
       + '<div style="margin-top:10px;background:#e7f7ef;border:1px solid #b7e4d3;border-radius:8px;padding:9px 11px;font-size:12.5px;color:#00806a;text-align:left">'
-      + 'O VETRA guarda uma cópia completa na <b>Lixeira de modelos</b>, com texto, botões e cabeçalho, para você recriar quando quiser.</div>',
+      + 'O FILAZ guarda uma cópia completa na <b>Lixeira de modelos</b>, com texto, botões e cabeçalho, para você recriar quando quiser.</div>',
     confirmar: 'Apagar na Meta', perigo: true })) return;
 
   // 1) cópia de segurança ANTES de encostar na Meta
@@ -14995,8 +14995,8 @@ async function abrirEscondidos() {
     + '<b style="flex:1;font-size:15px;color:#131c20">Escondidos e lixeira</b>'
     + '<span onclick="fecharEscondidos()" style="cursor:pointer;font-size:20px;color:#667781">✕</span></div>'
     + '<div style="flex:1;overflow-y:auto;padding:12px 14px 14px">'
-    + bloco('Escondidos no VETRA', 'Continuam existindo na Meta — é só trazer de volta.', listaEscondidos)
-    + bloco('Lixeira (apagados na Meta)', 'Cópia guardada pelo VETRA. Recriar envia de novo para análise da Meta.', listaLixo)
+    + bloco('Escondidos no FILAZ', 'Continuam existindo na Meta — é só trazer de volta.', listaEscondidos)
+    + bloco('Lixeira (apagados na Meta)', 'Cópia guardada pelo FILAZ. Recriar envia de novo para análise da Meta.', listaLixo)
     + '</div></div>';
   ov.onclick = (e) => { if (e.target === ov) fecharEscondidos(); };
 }
@@ -15068,7 +15068,7 @@ function removeButton(id) {
 
 // Nome do modelo: você digita como quiser (com ESPAÇO e acento). Na Meta o
 // nome vai sem acento e com _ no lugar do espaço; o nome bonito fica salvo como
-// apelido e é o que aparece na lista de modelos do VETRA.
+// apelido e é o que aparece na lista de modelos do FILAZ.
 function _tmplNomeLimpo(v) {
   return String(v || '').toLowerCase().replace(/[^\p{L}\p{N}_ ]/gu, '').replace(/\s{2,}/g, ' ');
 }
@@ -15590,7 +15590,7 @@ function dripEditar(i) {
     </div></div>`);
 }
 // Mostra o ritmo REAL: o intervalo que você digitou é por NÚMERO; com mais de um
-// número o VETRA move os leads mais rápido, para cada número manter esse ritmo
+// número o FILAZ move os leads mais rápido, para cada número manter esse ritmo
 function _dripPreviaIntervalo() {
   const el = document.getElementById('drip-previa'); if (!el) return;
   const mn = parseInt(document.getElementById('drip-min').value, 10) || 0;
@@ -15601,7 +15601,7 @@ function _dripPreviaIntervalo() {
   if (!a || !b) { el.textContent = ''; return; }
   el.innerHTML = n === 1
     ? `Um lead a cada <b>${min(a)}–${min(b)} min</b>.`
-    : `Cada número envia a cada <b>${min(a)}–${min(b)} min</b>; com <b>${n} números</b> o VETRA move um lead a cada <b>${min(a / n)}–${min(b / n)} min</b>.`;
+    : `Cada número envia a cada <b>${min(a)}–${min(b)} min</b>; com <b>${n} números</b> o FILAZ move um lead a cada <b>${min(a / n)}–${min(b / n)} min</b>.`;
 }
 setTimeout(() => { try { _dripPreviaIntervalo(); } catch (_) {} }, 0);
 function dripConfirmar(i) {
@@ -16555,7 +16555,7 @@ async function deleteConversation(phone) {
   if (!phone) return;
   const c = allContacts.find(x => x.phone === phone);
   const nome = (c && c.name) ? c.name : phone;
-  if (!await vConfirm({ titulo: 'Apagar conversa', texto: `Apagar a conversa com "${nome}"?\n\nAs mensagens saem do VETRA (não afeta o WhatsApp do cliente). O lead continua no Pipeline, com etiquetas e anotações.\n\nIsso não pode ser desfeito.`, confirmar: 'Apagar', perigo: true })) return;
+  if (!await vConfirm({ titulo: 'Apagar conversa', texto: `Apagar a conversa com "${nome}"?\n\nAs mensagens saem do FILAZ (não afeta o WhatsApp do cliente). O lead continua no Pipeline, com etiquetas e anotações.\n\nIsso não pode ser desfeito.`, confirmar: 'Apagar', perigo: true })) return;
   try {
     const r = await fetch(`${SERVER_URL}/contacts/${encodeURIComponent(phone)}/messages`, { method: 'DELETE' });
     const d = await r.json();
@@ -18270,7 +18270,7 @@ async function saveBotFlow() {
     const btn0 = document.getElementById('bot-editor-topbar')?.querySelector('.btn-primary');
     if (btn0) btn0.textContent = 'Salvar';
     await vAviso({ titulo: 'Salvamento recusado (e isso é bom)',
-      textoHtml: '<div>O VETRA barrou a gravação: o fluxo chegou <b>vazio</b> e este bot tem <b>' + (data.passos_salvos || 0) + '</b> passo(s) salvo(s) no servidor.</div>'
+      textoHtml: '<div>O FILAZ barrou a gravação: o fluxo chegou <b>vazio</b> e este bot tem <b>' + (data.passos_salvos || 0) + '</b> passo(s) salvo(s) no servidor.</div>'
         + '<div style="margin-top:8px">Nada foi perdido. Feche o editor, recarregue a página e abra o bot de novo.</div>' });
     return;
   }
@@ -19473,7 +19473,7 @@ async function loadBotTmplOptions(node){
     const results = await Promise.all(apiAccs.map(async a=>{
       try{
         const list = await (await fetch(SERVER_URL+'/templates?account_id='+a.id)).json();
-        // modelo excluído no VETRA não pode mais ser oferecido aqui
+        // modelo excluído no FILAZ não pode mais ser oferecido aqui
         return { acc:a, tmpls: await _semOcultos(Array.isArray(list) ? list.filter(t=>t.status==='APPROVED') : []) };
       }catch(_){ return { acc:a, tmpls:[] }; }
     }));
@@ -19532,7 +19532,7 @@ function _avisaModeloSumiu(node, disponiveis){
   av.id = 'cfg-tmpl-sumiu';
   av.style.cssText = 'background:#fdecea;border:1px solid #f5b7b1;border-radius:8px;padding:9px 11px;font-size:12px;color:#a93226;line-height:1.55;margin-bottom:7px';
   av.innerHTML = '<b>O modelo "' + escHtml(nome) + '" não está mais disponível.</b>'
-    + '<div style="margin-top:4px">Ele foi excluído no VETRA ou na Meta. Enquanto este passo continuar apontando para ele, o bot vai tentar enviar e falhar. Escolha outro modelo abaixo.</div>';
+    + '<div style="margin-top:4px">Ele foi excluído no FILAZ ou na Meta. Enquanto este passo continuar apontando para ele, o bot vai tentar enviar e falhar. Escolha outro modelo abaixo.</div>';
   sel.parentElement.insertBefore(av, sel);
 }
 function onBotTmplSelect(node, key){
@@ -19557,7 +19557,7 @@ function renderTmplPreview(node){
   // junto na mensagem real, então tem de aparecer na prévia — em letra menor e
   // apagada, exatamente como o WhatsApp mostra.
   const rodape = ((t.components || []).find(c => c.type === 'FOOTER') || {}).text || '';
-  // O modelo tem lacunas ({{1}}, {{2}}…): o VETRA preenche sozinho na hora do envio
+  // O modelo tem lacunas ({{1}}, {{2}}…): o FILAZ preenche sozinho na hora do envio
   const aviso = body.includes('{{')
     ? '<div style="font-size:11.5px;color:#667781;margin-top:6px;line-height:1.4">As lacunas do modelo são preenchidas na hora do envio: a primeira recebe o nome do lead.</div>'
     : '';
@@ -20649,7 +20649,7 @@ async function deleteNota(id) {
     _atualizaNotasPainel();
   } catch (_) { alert('Erro ao apagar a nota.'); }
 }
-// Anexos da nota interna: sobem para o cofre do VETRA e aparecem só aqui dentro
+// Anexos da nota interna: sobem para o cofre do FILAZ e aparecem só aqui dentro
 // Um só ponto de bloqueio: com a NOTA INTERNA ligada nada é enviado ao cliente
 // Iniciar bot, agendar mensagem e enviar modelo: são coisas que VÃO para o
 // cliente — a nota interna se desliga sozinha (em vez de travar com aviso)
