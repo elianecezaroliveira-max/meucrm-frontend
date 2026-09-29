@@ -2362,7 +2362,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v498</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v499</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3194,7 +3194,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v498</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v499</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3268,7 +3268,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 498;
+const APP_VER = 499;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -7728,14 +7728,9 @@ function lpRenderTags(phone){
     ? tags.map(t => `<span class="lp-tag">${escHtml(t)} <span onclick="lpRemoveTag('${_jsAttr(phone)}','${_jsAttr(t)}')" style="cursor:pointer;font-weight:700">×</span></span>`).join('')
     : '<span style="color:#8696a0;font-size:12px">Nenhuma etiqueta</span>';
 }
-async function lpAddTag(phone){
-  const raw = await vPrompt({ titulo: 'Nova etiqueta', rotulo: 'Nome da etiqueta', dica: 'ex.: quente, SIAPE, retorno', confirmar: 'Adicionar' }); if (raw === null) return;
-  const tag = String(raw).trim().replace(/,/g,''); if (!tag) return;
-  const c = allContacts.find(x => x.phone === phone); if (!c) return;
-  if (!(c.tags||[]).includes(tag)) c.tags = [...(c.tags||[]), tag];
-  await saveTags(phone, c.tags);
-  renderContacts(allContacts); lpRenderTags(phone);
-}
+// 🏷 "＋ Add" nos detalhes do lead: abre a folha de etiquetas com TODAS as que já existem
+// (antes abria uma caixinha de texto vazia e ela não via o que já tinha criado)
+function lpAddTag(phone){ openTagSheet(phone); }
 async function lpRemoveTag(phone, tag){
   const c = allContacts.find(x => x.phone === phone); if (!c) return;
   c.tags = (c.tags||[]).filter(t => t !== tag);
@@ -14083,6 +14078,7 @@ async function addTag(phone, raw) {
   if (!allTagsList.includes(tag)) { allTagsList.push(tag); allTagsList.sort((a,b)=>a.localeCompare(b)); }
   renderTagManager(contact);
   renderTagSheet();
+  try { if (document.getElementById('lp-tags')) lpRenderTags(phone); } catch (_) {} // painel do lead acompanha
   await saveTags(phone, contact.tags);
   renderContacts(allContacts);
   const pc = pipelineContacts.find(c => c.phone === phone);
@@ -14095,6 +14091,7 @@ async function removeTag(phone, tag) {
   contact.tags = (contact.tags||[]).filter(t => t !== tag);
   renderTagManager(contact);
   renderTagSheet();
+  try { if (document.getElementById('lp-tags')) lpRenderTags(phone); } catch (_) {} // painel do lead acompanha
   await saveTags(phone, contact.tags);
   renderContacts(allContacts);
   const pc = pipelineContacts.find(c => c.phone === phone);
@@ -14103,9 +14100,11 @@ async function removeTag(phone, tag) {
 
 // ── Folha de etiquetas (botão no chat — funciona no celular) ──
 let _tagSheetPhone = null;
-function openTagSheet() {
-  if (!currentPhone) return;
-  _tagSheetPhone = currentPhone;
+function openTagSheet(phone) {
+  phone = phone || currentPhone;
+  if (!phone) return;
+  _tagSheetPhone = phone;
+  if (!(allTagsList || []).length) loadAllTags().then(() => { if (_tagSheetPhone === phone) renderTagSheet(); }); // ainda não carregou: busca e repinta
   document.getElementById('tag-overlay').style.display = 'flex';
   _tagSheetAjustaTeclado();
   setTimeout(_tagSheetAjustaTeclado, 350); // o teclado leva um instante para subir
@@ -14113,9 +14112,20 @@ function openTagSheet() {
   renderTagSheet();
   const inp = document.getElementById('tag-sheet-input');
   inp.value = '';
+  inp.oninput = () => renderTagSheet(); // digitar filtra as existentes
   inp.onkeydown = e => {
-    if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTag(_tagSheetPhone, inp.value); inp.value = ''; }
+    if (e.key === 'Enter' || e.key === ',') {
+      if (e.preventDefault) e.preventDefault();
+      // já existe com outra caixa/acento ("siape" → "SIAPE")? usa a existente, não cria duplicada
+      const igual = getAllTags().find(t => _tagNorm(t) === _tagNorm(inp.value));
+      addTag(_tagSheetPhone, igual || inp.value); inp.value = ''; renderTagSheet();
+    }
   };
+  setTimeout(() => { try { inp.focus(); } catch (_) {} }, 50);
+}
+function _tagSheetCriar() {
+  const inp = document.getElementById('tag-sheet-input'); if (!inp || !_tagSheetPhone) return;
+  addTag(_tagSheetPhone, inp.value); inp.value = ''; renderTagSheet();
 }
 function closeTagSheet() {
   const ov = document.getElementById('tag-overlay');
@@ -14132,11 +14142,19 @@ function renderTagSheet() {
   document.getElementById('tag-sheet-chips').innerHTML = tags.length
     ? tags.map((t,i) => `<span class="tag-chip ${_tagCor(t)} removable" title="Toque para remover" onclick="removeTag('${c.phone}','${esc(t)}')" style="font-size:13px;padding:6px 11px">${escHtml(t)} ×</span>`).join('')
     : '<span style="color:#667781;font-size:13px">Este cliente ainda não tem etiquetas.</span>';
-  const sug = allTagsList.filter(t => !tags.includes(t)).slice(0, 12);
-  document.getElementById('tag-sheet-suggest').innerHTML = sug.length
-    ? '<span style="width:100%;font-size:11px;color:#667781;text-transform:uppercase">Toque para adicionar</span>' +
-      sug.map(t => `<span class="tag-chip tc0" onclick="addTag('${c.phone}','${esc(t)}')" style="cursor:pointer;font-size:13px;padding:6px 11px;opacity:.75">+ ${escHtml(t)}</span>`).join('')
-    : '';
+  // TODAS as etiquetas que já existem (catálogo + as que estão nos leads), menos as do lead;
+  // o que foi digitado filtra (sem acento); o que não existe oferece "Criar"
+  const q = _tagNorm((document.getElementById('tag-sheet-input') || {}).value || '');
+  const temNorm = new Set(tags.map(_tagNorm));
+  const todas = getAllTags().filter(t => !temNorm.has(_tagNorm(t)));
+  const sug = q ? todas.filter(t => _tagNorm(t).includes(q)) : todas;
+  const existe = q && getAllTags().some(t => _tagNorm(t) === q);
+  const bruto = ((document.getElementById('tag-sheet-input') || {}).value || '').trim();
+  document.getElementById('tag-sheet-suggest').innerHTML =
+    (sug.length ? '<span style="width:100%;font-size:11px;color:#667781;text-transform:uppercase">' + (q ? 'Etiquetas encontradas' : 'Etiquetas que já existem — toque para adicionar') + '</span>' : '') +
+    sug.slice(0, 80).map(t => `<span class="tag-chip ${_tagCor(t)}" onclick="addTag('${c.phone}','${esc(t)}')" style="cursor:pointer;font-size:13px;padding:6px 11px">+ ${escHtml(t)}</span>`).join('') +
+    ((q && !existe) ? `<span class="tag-criar" onclick="_tagSheetCriar()" style="cursor:pointer;font-size:13px;padding:6px 11px;border:1px dashed #00a884;border-radius:14px;color:#00806a;font-weight:600">＋ Criar "${escHtml(bruto)}"</span>` : '') +
+    ((!sug.length && !q) ? '<span style="color:#667781;font-size:13px">Nenhuma etiqueta criada ainda — digite acima para criar.</span>' : '');
 }
 
 async function saveTags(phone, tags) {
