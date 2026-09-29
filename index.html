@@ -2393,7 +2393,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v504</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v505</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3226,7 +3226,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v504</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v505</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3300,7 +3300,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 504;
+const APP_VER = 505;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -15932,7 +15932,7 @@ async function closeAutomationPanel() {
 function _actionChip(stageId, idx, a) {
   const stName = {}; (pipelineStages || []).forEach(s => stName[s.id] = s.name);
   let icon = '<i class=ic-cfg></i>', desc = '';
-  if (a.type === 'task')          { icon = '<i class=ic-note></i>'; desc = `Criar tarefa: <b>${escHtml(a.title || '')}</b>${a.due_hours ? ' (prazo ' + a.due_hours + 'h)' : ''}`; }
+  if (a.type === 'task')          { icon = '<i class=ic-note></i>'; const _tpA = _tipoDe(a.tipo); desc = `Criar tarefa: <b>${escHtml(a.title || '')}</b>${a.due_hours ? ' (prazo ' + a.due_hours + 'h)' : ''}${_tpA ? ' · <span style="color:' + escHtml(_tpA.cor) + '"><i class="ic-' + escHtml(_tpA.icone) + '"></i> ' + escHtml(_tpA.nome) + '</span>' : ''}`; }
   if (a.type === 'complete_task') { icon = '<i class=ic-task></i>'; desc = `Concluir tarefas${a.title_filter ? ' com "<b>' + escHtml(a.title_filter) + '</b>"' : ' do lead'}`; }
   if (a.type === 'tags')          { icon = '<i class=ic-tag></i>'; desc = `Tags: ${(a.add||[]).map(t=>'+'+escHtml(t)).join(' ')} ${(a.remove||[]).map(t=>'−'+escHtml(t)).join(' ')}`; }
   if (a.type === 'move_stage')    { icon = '<i class=ic-right></i>'; desc = `Mover lead para: <b>${escHtml(stName[a.stage_id] || '?')}</b>`; }
@@ -16067,13 +16067,15 @@ async function autoAddAction(sel, stageId) {
 async function autoAddActionByType(v, stageId) {
   let a = null;
   if (v === 'task') {
+    await _carregaTiposTarefa();
     const d = await vCampos({ titulo: 'Criar tarefa automaticamente', texto: 'Sempre que um lead entrar nesta etapa, esta tarefa é criada.',
       campos: [
         { id: 'titulo', rotulo: 'Título da tarefa', valor: 'Fazer follow-up com {nome}', dica: 'Use {nome} para o nome do lead' },
-        { id: 'horas', rotulo: 'Prazo em horas (deixe vazio para sem prazo)', valor: '24', tipo: 'number' }
+        { id: 'horas', rotulo: 'Prazo em horas (deixe vazio para sem prazo)', valor: '24', tipo: 'number' },
+        { id: 'tipoauto', rotulo: 'Tipo da tarefa', tipoTarefa: true, valor: '' }
       ], confirmar: 'Adicionar' });
     if (!d || !String(d.titulo || '').trim()) return;
-    a = { type: 'task', title: String(d.titulo).trim(), due_hours: d.horas && !isNaN(parseFloat(d.horas)) ? parseFloat(d.horas) : null };
+    a = { type: 'task', title: String(d.titulo).trim(), due_hours: d.horas && !isNaN(parseFloat(d.horas)) ? parseFloat(d.horas) : null, tipo: d.tipoauto || null };
   } else if (v === 'complete_task') {
     const f = await vPrompt({ titulo: 'Concluir tarefas', texto: 'Ao entrar nesta etapa, as tarefas abertas do lead são concluídas.',
       rotulo: 'Concluir só as que tiverem este texto no título (vazio = todas)', valor: '', confirmar: 'Adicionar' });
@@ -18200,7 +18202,7 @@ function _tipoChipsHtml(inputId, valor){
     + `<button type="button" class="tf-chip" onclick="abrirTiposTarefa()" title="Criar ou editar tipos" style="color:#667781">＋ Tipos</button>`;
 }
 function _tipoChipEscolhe(inputId, el){
-  const inp = document.getElementById(inputId); if (inp) inp.value = el.dataset.v || '';
+  const inp = document.getElementById(inputId); if (inp) { inp.value = el.dataset.v || ''; try { inp.dispatchEvent(new Event('change')); } catch (_) {} }
   el.parentElement.querySelectorAll('.tf-chip[data-v]').forEach(b => b.classList.toggle('on', b === el));
 }
 function _pintaTipoChips(inputId, valor){ const box = document.getElementById(inputId + '-chips'); if (box) box.innerHTML = _tipoChipsHtml(inputId, valor); }
@@ -18259,7 +18261,7 @@ async function ttSalva(){
     // limpa do filtro os tipos que não existem mais
     _tf.tipos = (_tf.tipos || []).filter(v => v === '_sem' || _tarefaTipos.some(x => x.id === v)); _tfSalva();
     try { if (_tarefasPaginaAberta()) renderTasksPage(); } catch (_) {}
-    ['vd-tipo', 'task-tipo'].forEach(id => { const inp = document.getElementById(id); if (inp) _pintaTipoChips(id, inp.value); });
+    ['vd-tipo', 'task-tipo', 'cfg-task-tipo', 'vd-tipoauto'].forEach(id => { const inp = document.getElementById(id); if (inp) _pintaTipoChips(id, inp.value); });
   } catch (e) { showToast('Não consegui salvar os tipos', 'err'); }
 }
 
@@ -20877,8 +20879,12 @@ function renderConfigPanel(node) {
       <label class="bot-cfg-label">Tarefa <span style="color:#667781">(pode usar {nome})</span></label>
       <input class="bot-cfg-input" id="cfg-task-title" placeholder="Ligar para {nome}" value="${escHtml(node.config.title||'')}" />
       <label class="bot-cfg-label" style="margin-top:12px">Vencimento em (horas a partir de agora)</label>
-      <input class="bot-cfg-input" type="number" min="0" id="cfg-task-due" value="${node.config.due_hours||0}" placeholder="0 = sem prazo" onchange="updateNodeConfig('${node.id}',{due_hours:parseFloat(this.value)||0})" />`;
+      <input class="bot-cfg-input" type="number" min="0" id="cfg-task-due" value="${node.config.due_hours||0}" placeholder="0 = sem prazo" onchange="updateNodeConfig('${node.id}',{due_hours:parseFloat(this.value)||0})" />
+      <label class="bot-cfg-label" style="margin-top:12px">Tipo da tarefa</label>
+      <input type="hidden" id="cfg-task-tipo" value="${escHtml(node.config.tipo||'')}"><div class="vd-tipos" id="cfg-task-tipo-chips">${_tipoChipsHtml('cfg-task-tipo', node.config.tipo||'')}</div>`;
     document.getElementById('cfg-task-title').addEventListener('input', function(){ updateNodeConfig(node.id,{title:this.value}); });
+    document.getElementById('cfg-task-tipo').addEventListener('change', function(){ updateNodeConfig(node.id,{tipo:this.value||null}); });
+    if (!_tarefaTipos) _carregaTiposTarefa().then(() => _pintaTipoChips('cfg-task-tipo', (document.getElementById('cfg-task-tipo') || {}).value || ''));
     return;
   }
 
