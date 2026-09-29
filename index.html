@@ -2362,7 +2362,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v497</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v498</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3107,9 +3107,6 @@ window.addEventListener('load', initAuth);
       style="flex:0 1 240px;min-width:140px;background:#fff;border:1px solid #e9edef;color:#131c20;padding:7px 11px;border-radius:8px;font-size:13px;font-family:inherit;outline:none">
     <button class="btn-primary" onclick="abrirNovaTarefa()" title="Criar uma tarefa (com ou sem lead)">+ Nova tarefa</button>
     <button class="btn-secondary" id="tasks-sel-btn" onclick="toggleTaskSelMode()" title="Entrar no modo de seleção de leads">Selecionar</button>
-    <label id="tasks-select-all-wrap" style="display:none;font-size:13px;color:#667781;align-items:center;gap:6px;cursor:pointer" title="Selecionar/desmarcar todos os leads da lista">
-      <input type="checkbox" id="tasks-select-all" onchange="toggleSelectAllTasks(this.checked)" /> Selecionar todos
-    </label>
     <span id="tasks-sel-count" style="font-size:12px;color:#00a884;font-weight:600"></span>
     <button class="btn-secondary" id="tasks-disparo-btn" style="display:none" onclick="openBulkBotMenu(event)" title="Dispara o bot para os leads selecionados">Disparar bot</button>
     <label style="font-size:13px;color:#667781;display:flex;align-items:center;gap:6px;cursor:pointer">
@@ -3197,7 +3194,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v497</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v498</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3271,7 +3268,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 497;
+const APP_VER = 498;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -17756,13 +17753,19 @@ function toggleTaskSelMode(){
   if (!_taskSelMode) _selTaskPhones.clear();
   const btn = document.getElementById('tasks-sel-btn');
   if (btn) { btn.textContent = _taskSelMode ? '✕ Cancelar' : 'Selecionar'; }
-  const wrap = document.getElementById('tasks-select-all-wrap');
-  if (wrap) wrap.style.display = _taskSelMode ? 'flex' : 'none';
   const disp = document.getElementById('tasks-disparo-btn');
   if (disp) disp.style.display = _taskSelMode ? '' : 'none';
   renderTasksPage();
 }
 function toggleTaskSel(phone){ if(_selTaskPhones.has(phone)) _selTaskPhones.delete(phone); else _selTaskPhones.add(phone); renderTasksPage(); }
+// Seleciona/desmarca os leads de UM grupo (Atrasadas, Hoje, Próximos 7 dias…)
+function toggleSelectGroupTasks(chave, checked){
+  const showDone=document.getElementById('tasks-show-done')?.checked;
+  let list=(_allTasksCache||[]).slice(); if(!showDone) list=list.filter(t=>!t.done);
+  const phones=[...new Set(list.filter(t=>t.phone && _grupoPrazo(t)===chave).map(t=>t.phone))];
+  if(checked) phones.forEach(p=>_selTaskPhones.add(p)); else phones.forEach(p=>_selTaskPhones.delete(p));
+  renderTasksPage();
+}
 function toggleSelectAllTasks(checked){
   const showDone=document.getElementById('tasks-show-done')?.checked;
   let list=(_allTasksCache||[]).slice(); if(!showDone) list=list.filter(t=>!t.done);
@@ -17865,11 +17868,19 @@ function renderTasksPage(){
   };
   Object.values(grupos).forEach(g=>g.sort(ordena));
 
-  area.innerHTML=_GRUPOS.map(([chave,rotulo,cor])=>{
+  // ☑ No modo de seleção, o "Selecionar todos" fica NA LISTA, na coluna das caixinhas (como
+  // nas ferramentas de tarefa), e cada grupo ganha a sua caixinha — não mais na barra do topo.
+  const _visPhones=[...new Set(list.filter(t=>t.phone).map(t=>t.phone))];
+  const selAllRow = !_taskSelMode ? '' : `<div class="task-selall" style="display:flex;align-items:center;gap:10px;padding:8px 14px;margin:0 0 4px;border:1px dashed #cfd6da;border-radius:10px;background:#f7f8fa">
+        <label title="Selecionar/desmarcar todos os leads da lista" style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:#131c20;font-weight:600"><input type="checkbox" id="tasks-select-all" onchange="toggleSelectAllTasks(this.checked)" /> Selecionar todos <span style="font-weight:400;color:#8696a0">(${_visPhones.length} lead${_visPhones.length===1?'':'s'})</span></label>
+      </div>`;
+  area.innerHTML=selAllRow+_GRUPOS.map(([chave,rotulo,cor])=>{
     const itens=grupos[chave];
     if(!itens.length) return '';
+    const fonesG=[...new Set(itens.filter(t=>t.phone).map(t=>t.phone))];
+    const cbGrupo = (!_taskSelMode || !fonesG.length) ? '' : `<label title="Selecionar/desmarcar os leads deste grupo" style="display:flex;align-items:center;margin-left:12px;cursor:pointer"><input type="checkbox" class="task-sel-grupo" data-grupo="${chave}" onchange="toggleSelectGroupTasks('${chave}',this.checked)" ${fonesG.every(p=>_selTaskPhones.has(p))?'checked':''} /></label>`;
     return `<div class="task-grupo" style="display:flex;align-items:center;gap:8px;margin:14px 2px 6px">
-        <span style="font-size:12px;font-weight:700;color:${cor};text-transform:uppercase;letter-spacing:.4px">${rotulo}</span>
+        ${cbGrupo}<span style="font-size:12px;font-weight:700;color:${cor};text-transform:uppercase;letter-spacing:.4px">${rotulo}</span>
         <span style="font-size:11px;color:#8696a0">${itens.length}</span>
         <span style="flex:1;height:1px;background:#e9edef"></span>
       </div>` + itens.map(t=>_taskRowHTML(t)).join('');
