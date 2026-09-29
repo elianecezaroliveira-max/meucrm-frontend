@@ -2362,7 +2362,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v496</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v497</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3197,7 +3197,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v496</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v497</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3271,7 +3271,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 496;
+const APP_VER = 497;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -12078,6 +12078,7 @@ async function preverSheets() {
           <span onclick="document.getElementById('sheets-prev-overlay').remove()" style="cursor:pointer;font-size:20px;color:#667781">✕</span>
         </div>
         <div style="padding:10px 16px;font-size:13px;color:#131c20;background:#f7f8fa;border-bottom:1px solid #e9edef">
+          ${(() => { const c = {}; for (const it of (j.itens || [])) { if (it.situacao !== 'novo' && !(j.atualizar_etapa && it.situacao === 'existe')) continue; const k = (it.etapa || '').trim() || 'sem etapa'; c[k] = (c[k] || 0) + 1; } const e = Object.entries(c).sort((a, b) => b[1] - a[1]); return e.length ? `<div id="sheets-por-etapa" style="margin-bottom:6px"><b>Por etapa:</b> ${e.map(([k, n]) => escHtml(k) + ' <b>' + n + '</b>').join(' · ')}</div>` : ''; })()}
           <b>${j.total}</b> linha(s) na planilha · <span style="color:#00a884;font-weight:700">${j.novos} novos</span> · <span style="color:#8696a0">${j.ja_existem} já existem${j.atualizar_etapa ? ' (terão a etapa atualizada)' : ' (não serão mexidos)'}</span>${j.invalidos ? ` · <span style="color:#ef4444">${j.invalidos} telefone(s) inválido(s)</span>` : ''}${j.sem_etapa ? ` · <span style="color:#b45309">${j.sem_etapa} com ID de etapa não encontrado (entram sem etapa)</span>` : ''}${j.truncado ? ' · mostrando as primeiras 500' : ''}
         </div>
         <div style="overflow:auto;flex:1">
@@ -12107,6 +12108,7 @@ function _sheetsProgressoHtml(p) {
     <div style="height:14px;background:#e9edef;border-radius:8px;overflow:hidden;max-width:420px;margin:0 auto">
       <div style="height:100%;width:${p.fase === 'lendo' ? 100 : pct}%;background:${p.fase === 'erro' ? '#ef4444' : '#00a884'};border-radius:8px;transition:width .4s ease;${p.fase === 'lendo' ? 'background-image:linear-gradient(45deg,rgba(255,255,255,.35) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.35) 50%,rgba(255,255,255,.35) 75%,transparent 75%);background-size:28px 28px;animation:qrbar 1s linear infinite' : ''}"></div>
     </div>
+    ${p.por_etapa && Object.keys(p.por_etapa).length ? `<div id="sheets-prog-etapas" style="font-size:12.5px;color:#131c20;margin-top:10px"><b>Por etapa:</b> ${Object.entries(p.por_etapa).sort((a, b) => b[1] - a[1]).map(([k, n]) => escHtml(k) + ' <b>' + n + '</b>').join(' · ')}</div>` : ''}
     <div style="font-size:12px;color:#667781;margin-top:10px">${total ? pct + '%' : ''}${p.importados ? ' · <span style="color:#00a884;font-weight:600">' + p.importados + ' novo(s)</span>' : ''}${p.pulados ? ' · ' + p.pulados + ' já existiam' : ''}${p.erros ? ' · <span style="color:#ef4444">' + p.erros + ' erro(s)</span>' : ''}</div>
     ${p.done && p.resultado && !p.resultado.ok ? `<div style="font-size:12.5px;color:#ef4444;margin-top:8px">${escHtml(p.resultado.erro || '')}</div>` : ''}
   </div>`;
@@ -14277,6 +14279,7 @@ async function _abrirImportArquivo() {
   const stageSel = document.getElementById('import-stage');
   if (stageSel) stageSel.innerHTML = '<option value="">Nenhuma (sem etapa)</option>' +
     (Array.isArray(pipelineStages) ? pipelineStages : []).map(s => `<option value="${s.id}">${escHtml(s.name)}</option>`).join('');
+  if (stageSel) stageSel.onchange = _importRepintaResumo; // o "sem etapa → X" acompanha o menu
   importedContacts = [];
   document.getElementById('import-file').value = '';
   document.getElementById('import-preview').style.display = 'none';
@@ -14316,10 +14319,11 @@ function parseCSV(text) {
   const headers = lines[0].split(sep).map(h => h.trim().toLowerCase().replace(/['"]/g,''));
   const nameIdx = headers.findIndex(h => ['nome','name','lead','contato'].includes(h));
   const phoneIdx = headers.findIndex(h => ['celular','telefone','phone','fone','whatsapp','numero','número'].includes(h));
+  const stageIdx = headers.findIndex(h => _IMPORT_COLS_ETAPA.includes(h)); // coluna de etapa (opcional)
   if (nameIdx === -1 || phoneIdx === -1) return alert(`Colunas não encontradas. O arquivo deve ter colunas "nome" e "celular".\nColunas encontradas: ${headers.join(', ')}`);
   importedContacts = lines.slice(1).map(line => {
     const cols = line.split(sep).map(c => c.trim().replace(/['"]/g,''));
-    return { name: cols[nameIdx] || '', phone: cols[phoneIdx] || '' };
+    return { name: cols[nameIdx] || '', phone: cols[phoneIdx] || '', etapa: stageIdx >= 0 ? (cols[stageIdx] || '') : '' };
   }).filter(c => c.name && c.phone);
   showImportPreview();
 }
@@ -14349,11 +14353,49 @@ function processExcelRows(rows) {
   const keys = Object.keys(rows[0]).map(k => k.toLowerCase());
   const nameKey = Object.keys(rows[0]).find(k => ['nome','name','lead','contato'].includes(k.toLowerCase()));
   const phoneKey = Object.keys(rows[0]).find(k => ['celular','telefone','phone','fone','whatsapp','numero','número'].includes(k.toLowerCase()));
+  const stageKey = Object.keys(rows[0]).find(k => _IMPORT_COLS_ETAPA.includes(k.toLowerCase())); // coluna de etapa (opcional)
   if (!nameKey || !phoneKey) return alert(`Colunas não encontradas. Colunas disponíveis: ${Object.keys(rows[0]).join(', ')}`);
-  importedContacts = rows.map(r => ({ name: String(r[nameKey] || '').trim(), phone: String(r[phoneKey] || '').trim() })).filter(c => c.name && c.phone);
+  importedContacts = rows.map(r => ({ name: String(r[nameKey] || '').trim(), phone: String(r[phoneKey] || '').trim(), etapa: stageKey ? String(r[stageKey] || '').trim() : '' })).filter(c => c.name && c.phone);
   showImportPreview();
 }
 
+// 📊 Importação por etapa: a planilha pode ter uma coluna "etapa" (nome da etapa ou o ID
+// que aparece no Pipeline). Cada lead vai para a etapa da linha dele; quem não tem etapa
+// (ou o nome não bate) vai para a escolhida no menu. A prévia mostra quantos vão para cada uma.
+const _IMPORT_COLS_ETAPA = ['etapa', 'stage', 'status', 'fase', 'coluna', 'pipeline', 'etapa do pipeline', 'id'];
+function _importAchaEtapa(txt) {
+  const t = String(txt || '').trim(); if (!t) return null;
+  const st = Array.isArray(pipelineStages) ? pipelineStages : [];
+  const norm = x => (typeof _semAcento === 'function' ? _semAcento(String(x || '')) : String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')).toLowerCase().trim();
+  return st.find(s => String(s.external_id || '').trim() === t || String(s.id) === t) || st.find(s => norm(s.name) === norm(t)) || null;
+}
+// { porEtapa: [{ id, nome, n }], semEtapa, naoEncontradas: { 'Xyz': n } }
+function _importResumoEtapas(lista) {
+  const menu = document.getElementById('import-stage'); const idMenu = menu ? menu.value : '';
+  const nomeMenu = idMenu ? ((pipelineStages || []).find(s => String(s.id) === idMenu) || {}).name : '';
+  const cont = new Map(); const naoEnc = {}; let semEtapa = 0;
+  for (const c of lista) {
+    const st = _importAchaEtapa(c.etapa);
+    if (st) { cont.set(String(st.id), (cont.get(String(st.id)) || 0) + 1); continue; }
+    if (String(c.etapa || '').trim()) naoEnc[String(c.etapa).trim()] = (naoEnc[String(c.etapa).trim()] || 0) + 1;
+    semEtapa++;
+  }
+  const porEtapa = [...cont.entries()].map(([id, n]) => ({ id, nome: ((pipelineStages || []).find(s => String(s.id) === id) || {}).name || id, n })).sort((a, b) => b.n - a.n);
+  return { porEtapa, semEtapa, naoEncontradas: naoEnc, idMenu, nomeMenu };
+}
+function _importResumoHtml(lista) {
+  const r = _importResumoEtapas(lista);
+  if (!r.porEtapa.length && !Object.keys(r.naoEncontradas).length) return ''; // planilha sem coluna de etapa: nada a mostrar
+  const li = r.porEtapa.map(e => `<div style="display:flex;justify-content:space-between;padding:2px 0"><span>${escHtml(e.nome)}</span><b>${e.n}</b></div>`).join('');
+  const sem = r.semEtapa ? `<div style="display:flex;justify-content:space-between;padding:2px 0;color:#667781"><span>Sem etapa na planilha → ${r.nomeMenu ? escHtml(r.nomeMenu) : 'sem etapa'} (escolha do menu)</span><b>${r.semEtapa}</b></div>` : '';
+  const ne = Object.keys(r.naoEncontradas).length ? `<div style="font-size:12px;color:#b45309;margin-top:4px">Etapa não encontrada no Pipeline (vão para a escolha do menu): ${Object.entries(r.naoEncontradas).map(([k, n]) => escHtml(k) + ' (' + n + ')').join(', ')}</div>` : '';
+  return `<div id="import-por-etapa" style="background:#fff;border:1px solid #e9edef;border-radius:8px;padding:8px 12px;margin:0 0 12px;font-size:13px;color:#131c20"><div style="font-weight:700;margin-bottom:4px">Por etapa</div>${li}${sem}${ne}</div>`;
+}
+function _importRepintaResumo() {
+  const el = document.getElementById('import-por-etapa'); if (!el) return;
+  const valid = importedContacts.filter(c => c.phone.replace(/\D/g,'').length >= 8);
+  el.outerHTML = _importResumoHtml(valid) || '<div id="import-por-etapa" style="display:none"></div>';
+}
 function showImportPreview() {
   const valid = importedContacts.filter(c => c.phone.replace(/\D/g,'').length >= 8);
   const countEl = document.getElementById('import-count');
@@ -14361,10 +14403,11 @@ function showImportPreview() {
   countEl.textContent = `${valid.length} leads encontrados${importedContacts.length !== valid.length ? ` (${importedContacts.length - valid.length} ignorados por celular inválido)` : ''}`;
   const preview = document.getElementById('import-preview');
   const sample = importedContacts.slice(0, 8);
+  const temEtapa = importedContacts.some(c => String(c.etapa || '').trim());
   preview.style.display = 'block';
-  preview.innerHTML = `<table><thead><tr><th>#</th><th>Nome</th><th>Celular</th></tr></thead><tbody>
-    ${sample.map((c,i) => `<tr><td>${i+1}</td><td>${escHtml(c.name)}</td><td>${escHtml(c.phone)}</td></tr>`).join('')}
-    ${importedContacts.length > 8 ? `<tr><td colspan="3" style="color:#667781;text-align:center">... e mais ${importedContacts.length - 8} leads</td></tr>` : ''}
+  preview.innerHTML = _importResumoHtml(valid) + `<table><thead><tr><th>#</th><th>Nome</th><th>Celular</th>${temEtapa ? '<th>Etapa</th>' : ''}</tr></thead><tbody>
+    ${sample.map((c,i) => `<tr><td>${i+1}</td><td>${escHtml(c.name)}</td><td>${escHtml(c.phone)}</td>${temEtapa ? `<td>${escHtml(c.etapa || '')}</td>` : ''}</tr>`).join('')}
+    ${importedContacts.length > 8 ? `<tr><td colspan="${temEtapa ? 4 : 3}" style="color:#667781;text-align:center">... e mais ${importedContacts.length - 8} leads</td></tr>` : ''}
   </tbody></table>`;
   document.getElementById('btn-confirm-import').disabled = valid.length === 0;
 }
@@ -14372,7 +14415,8 @@ function showImportPreview() {
 async function confirmImport() {
   const account_id = document.getElementById('import-account').value || null;
   const stage_id = document.getElementById('import-stage')?.value || null;
-  const valid = importedContacts.filter(c => c.phone.replace(/\D/g,'').length >= 8);
+  const valid = importedContacts.filter(c => c.phone.replace(/\D/g,'').length >= 8)
+    .map(c => { const st = _importAchaEtapa(c.etapa); return st ? { name: c.name, phone: c.phone, stage_id: st.id } : { name: c.name, phone: c.phone }; }); // etapa da linha; sem ela, vale a do menu
   try {
     const res = await fetch(SERVER_URL + '/contacts/import', {
       method: 'POST',
@@ -14383,7 +14427,9 @@ async function confirmImport() {
     if (!res.ok) return alert('Erro: ' + (data.error || 'Tente novamente'));
     closeImport();
     await loadContacts();
-    alert(`${data.count} leads importados com sucesso!`);
+    const pe = data.por_etapa || {};
+    const nomes = Object.entries(pe).map(([id, n]) => (((pipelineStages || []).find(s => String(s.id) === String(id)) || {}).name || (id === 'sem' ? 'sem etapa' : id)) + ': ' + n);
+    alert(`${data.count} leads importados com sucesso!` + (nomes.length ? '\n\nPor etapa:\n' + nomes.join('\n') : ''));
   } catch(e) { alert('Erro ao importar leads.'); }
 }
 
