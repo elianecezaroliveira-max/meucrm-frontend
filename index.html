@@ -2362,7 +2362,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v499</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v502</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2947,6 +2947,7 @@ window.addEventListener('load', initAuth);
   <div class="cm-item" id="msg-menu-reply" onclick="msgMenuReply()">↩ Responder</div>
   <div class="cm-item" id="msg-menu-react" onclick="msgMenuReact()" style="display:none"><i class=ic-chat></i> Reagir</div><!-- os emojis já abrem junto com o menu: item redundante -->
   <div class="cm-item" onclick="msgMenuCopy()"><i class=ic-copy></i> Copiar</div>
+  <div id="msg-menu-emails"></div><!-- "Copiar e-mail": só quando a mensagem tem e-mail -->
   <div class="cm-item" id="msg-menu-forward" onclick="msgMenuForward()"><i class=ic-send></i> Encaminhar</div>
   <div class="cm-item" id="msg-menu-pinmsg" onclick="msgMenuPinMsg()"><i class=ic-pin></i> Fixar</div>
   <div class="cm-item" id="msg-menu-starmsg" onclick="msgMenuStarMsg()"><i class=ic-star></i> Favoritar</div>
@@ -3194,7 +3195,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v499</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v502</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3268,7 +3269,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 499;
+const APP_VER = 502;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5522,6 +5523,7 @@ function _ehNota(id) {
   } catch (_) { return false; }
 }
 function _updateMsgMenuItems(id) {
+  _msgMenuEmails(id);
   const item = document.getElementById('msg-menu-edit');
   if (!item) return;
   // NOTA INTERNA: só o que faz sentido para uma anotação sua. Ela não sai do
@@ -5844,6 +5846,7 @@ document.addEventListener('keydown', (e) => {
     try { if (!fez && document.getElementById('fw-overlay'))  { fecharEncaminhar(); fez = true; } } catch (_) {}
     try { if (!fez && document.getElementById('fav-overlay')) { fecharFavoritas(); fez = true; } } catch (_) {}
     try { if (!fez && document.getElementById('react-picker')) { closeReactPicker(); fez = true; } } catch (_) {}
+    try { if (!fez && document.getElementById('email-menu')?.style.display === 'block') { fechaEmailMenu(); fez = true; } } catch (_) {}
     try { if (!fez && document.getElementById('msg-menu')?.style.display === 'block') { closeMsgMenu(); fez = true; } } catch (_) {}
     try { if (!fez && document.getElementById('contact-menu')?.style.display === 'block') { closeContactMenu(); fez = true; } } catch (_) {}
     try { if (!fez && document.getElementById('reply-bar')?.style.display === 'flex') { cancelReply(); fez = true; } } catch (_) {}
@@ -6044,6 +6047,70 @@ async function msgMenuEdit() {
   }).catch(() => alert('Erro ao editar mensagem.'));
 }
 function msgMenuCopy()   { const id = _msgMenuId; closeMsgMenu(); if (id) copyMsgText(id); }
+// ── COPIAR SÓ O E-MAIL ──
+// O lead manda "E mail: fulano@gmail.com": dá para copiar só o endereço, pelo menu ⌄
+// ("Copiar e-mail") ou tocando no e-mail (menuzinho "Copiar e-mail / Enviar e-mail").
+function _emailsDoTexto(txt) {
+  const vistos = new Set(), out = [];
+  (String(txt || '').match(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g) || []).forEach(e => {
+    e = e.replace(/[.]+$/, ''); const k = e.toLowerCase();
+    if (!vistos.has(k)) { vistos.add(k); out.push(e); }
+  });
+  return out;
+}
+function _msgTextoDe(id) {
+  let txt = (_msgData[id] && _msgData[id].content) || '';
+  if (!txt) {
+    try {
+      const el = document.querySelector(`#messages-area .msg[data-msg-id="${(window.CSS && CSS.escape) ? CSS.escape(String(id)) : String(id)}"]`);
+      txt = el ? (el.dataset.msgContent || '') : '';
+    } catch (_) {}
+  }
+  return txt;
+}
+function _msgMenuEmails(id) {
+  const box = document.getElementById('msg-menu-emails');
+  if (!box) return;
+  const es = _emailsDoTexto(_msgTextoDe(id)).slice(0, 3);
+  box.innerHTML = es.map((e, i) => `<div class="cm-item" onclick="msgMenuCopyEmail(${i})"><i class=ic-copy></i> Copiar e-mail${es.length > 1 ? ': <span style="word-break:break-all">' + escHtml(e) + '</span>' : ''}</div>`).join('');
+  box._emails = es;
+}
+function msgMenuCopyEmail(i) {
+  const box = document.getElementById('msg-menu-emails');
+  const e = box && box._emails ? box._emails[i] : null;
+  closeMsgMenu();
+  if (e) copiaEmail(e);
+}
+function copiaEmail(e) { _copiaComFormato(String(e || ''), () => showCopyToast('E-mail copiado')); }
+let _emailMenuEnd = '';
+function _emailToque(ev, a) {
+  try {
+    if (typeof _selMode !== 'undefined' && _selMode) return false; // selecionando mensagens: o toque é da seleção
+    ev.preventDefault(); ev.stopPropagation();
+    _emailMenuEnd = (a.textContent || '').trim();
+    let m = document.getElementById('email-menu');
+    if (!m) {
+      m = document.createElement('div');
+      m.id = 'email-menu';
+      m.style.cssText = 'display:none;position:fixed;z-index:710;background:#ffffff;border:1px solid #e9edef;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.25);min-width:170px;padding:4px';
+      m.innerHTML = '<div id="email-menu-end" style="padding:6px 12px 4px;font-size:12px;color:#667781;word-break:break-all"></div>'
+        + '<div class="cm-item" onclick="fechaEmailMenu();copiaEmail(_emailMenuEnd)"><i class=ic-copy></i> Copiar e-mail</div>'
+        + '<div class="cm-item" onclick="fechaEmailMenu();_emailEnvia(_emailMenuEnd)"><i class=ic-send></i> Enviar e-mail</div>';
+      document.body.appendChild(m);
+    }
+    document.getElementById('email-menu-end').textContent = _emailMenuEnd;
+    const r = a.getBoundingClientRect();
+    m.style.display = 'block';
+    const mw = m.offsetWidth, mh = m.offsetHeight;
+    m.style.left = Math.max(8, Math.min(r.left, window.innerWidth - mw - 8)) + 'px';
+    m.style.top = (r.bottom + 4 + mh < window.innerHeight - 8 ? r.bottom + 4 : Math.max(8, r.top - mh - 4)) + 'px';
+  } catch (_) {}
+  return false;
+}
+function fechaEmailMenu() { const m = document.getElementById('email-menu'); if (m) m.style.display = 'none'; }
+function _emailEnvia(e) { try { const a = document.createElement('a'); a.href = 'mailto:' + e; a.click(); } catch (_) {} }
+document.addEventListener('click', e => { if (!e.target.closest('#email-menu')) fechaEmailMenu(); });
+document.addEventListener('scroll', () => fechaEmailMenu(), true);
 // Copia o texto da mensagem (estilo WhatsApp) — funciona no celular e no computador
 // Mesma marcação do WhatsApp virando HTML de verdade: assim o negrito viaja
 // junto ao colar no Word, no e-mail ou no Google Docs.
@@ -8564,7 +8631,7 @@ function waFormat(raw) {
     }
     return seg
       // E-mails: azuis e clicáveis, igual aos links (abre o app de e-mail)
-      .replace(/([\w.+-]+@[\w-]+(?:\.[\w-]+)+)/g, '<a href="mailto:$1" style="color:#027eb5;text-decoration:underline;word-break:break-all">$1</a>')
+      .replace(/([\w.+-]+@[\w-]+(?:\.[\w-]+)+)/g, '<a href="mailto:$1" onclick="return _emailToque(event,this)" style="color:#027eb5;text-decoration:underline;word-break:break-all">$1</a>')
       .replace(/\*([^*\n]+)\*/g, '<b>$1</b>')
       .replace(/(^|[\s(])_([^_\n]+)_(?=$|[\s).,!?])/gm, '$1<i>$2</i>')
       .replace(/~([^~\n]+)~/g, '<s>$1</s>');
@@ -9059,7 +9126,9 @@ async function loadMessages(phone, scroll = true, opt = null) {
     }
     // O servidor já cortou: ele diz quantas ficaram de fora (-1 = há mais, sem contagem)
     if (_maisAntigasHdr != null && window._semTetoMsgs !== phone) { const n = parseInt(_maisAntigasHdr, 10); if (n > 0) _msgsAntigas = n; else if (n < 0) _msgsAntigas = -1; }
-    if (_doCache && window._semTetoMsgs !== phone) _msgsAntigas = -1; // cache guarda só as últimas: há mais no servidor
+    // cópia do aparelho guarda só as últimas _MSGS_CACHE_N: só PODE haver antigas se ela está cheia
+    // (antes punha o botão sempre — até em conversa de 2 mensagens)
+    if (_doCache && window._semTetoMsgs !== phone && msgs.length >= _MSGS_CACHE_N) _msgsAntigas = -1;
     currentMessages = msgs; // guarda para a galeria de mídias
     // JÁ RESPONDI: a última mensagem da conversa é MINHA → a divisória "não lidas" sai.
     // Ela some no envio, mas não quando a resposta saiu de OUTRO aparelho (ou por áudio):
@@ -9080,7 +9149,7 @@ async function loadMessages(phone, scroll = true, opt = null) {
     // O polling chama esta função a cada 3s; recriar o innerHTML reinicia o
     // carregamento dos vídeos e fecha a tela cheia. Só re-renderiza se algo mudou
     // e se nenhuma mídia estiver tocando ou em tela cheia.
-    const sig = phone + '::' + msgs.map(m =>
+    const sig = phone + '::' + (_msgsAntigas ? 'antigas' + _msgsAntigas + '::' : '') + msgs.map(m =>
       `${m.id}|${m.status || ''}|${m.reaction || ''}|${m.error_info ? 1 : 0}|${m.starred ? 1 : 0}${m.pinned ? 1 : 0}${m.edited ? 1 : 0}${m.forwarded ? 1 : 0}${m.transcript ? 1 : 0}|${(m.content || '').length}.${String(m.content || '').slice(0, 16)}`).join(';');
     if (!scroll) {
       // "Nada mudou" só vale se a conversa REALMENTE estiver desenhada. Com a
@@ -10302,7 +10371,7 @@ function _mpAjustaTela() {
   // MESMA condição da folha de estilo — os dois têm de concordar sempre
   const noCelular = window.matchMedia('(max-width: 768px) and (pointer: coarse)').matches;
   if (!noCelular || !vv) { // computador: nada disso é preciso
-    ov.style.top = ''; ov.style.height = ''; ov.style.bottom = '';
+    ov.style.top = '0'; ov.style.height = ''; ov.style.bottom = '0'; // '' desfazia o inset:0 e o fundo encolhia
     document.documentElement.style.removeProperty('--mp-img');
     return;
   }
@@ -10326,7 +10395,7 @@ function _mpDesligaTeclado() {
   }
   window._mpVV = null;
   const ov = document.getElementById('media-preview-overlay');
-  if (ov) { ov.style.top = ''; ov.style.height = ''; ov.style.bottom = ''; }
+  if (ov) { ov.style.top = '0'; ov.style.height = ''; ov.style.bottom = '0'; }
   document.documentElement.style.removeProperty('--mp-img');
 }
 function _mpCaptionGrow(ta) {
@@ -10962,7 +11031,7 @@ function openTasks() {
   try { _tasksAjustaTeclado(); setTimeout(_tasksAjustaTeclado, 300); } catch (_) {}
   loadTasks();
 }
-function closeTasks() { const ov = document.getElementById('tasks-overlay'); ov.style.display = 'none'; ov.style.top = ''; ov.style.height = ''; ov.style.bottom = ''; }
+function closeTasks() { const ov = document.getElementById('tasks-overlay'); ov.style.display = 'none'; ov.style.top = '0'; ov.style.height = ''; ov.style.bottom = '0'; }
 async function loadTasks() {
   const list = document.getElementById('tasks-list');
   if (list.dataset.phone !== currentPhone) list.innerHTML = '<p style="color:#667781;font-size:13px">Carregando...</p>';
@@ -11066,7 +11135,7 @@ function _ajustaOverlayTeclado(ov, aberto) {
   // O ajuste fica agendado e acontece quando o dedo solta.
   if (ov._dedo) { ov._ajustePendente = true; return; }
   const vv = window.visualViewport;
-  const normal = () => { ov.style.top = ''; ov.style.height = ''; ov.style.bottom = ''; };
+  const normal = () => { ov.style.top = '0'; ov.style.height = ''; ov.style.bottom = '0'; }; // volta a cobrir a tela inteira
   if (!aberto || !vv || window.innerWidth > 768) { normal(); return; }
   const alt = Math.max(160, Math.min(Math.round(vv.height), window.innerHeight));
   const querTopo = Math.max(0, Math.min(Math.round(vv.offsetTop || 0), Math.max(0, window.innerHeight - alt)));
@@ -14130,7 +14199,7 @@ function _tagSheetCriar() {
 function closeTagSheet() {
   const ov = document.getElementById('tag-overlay');
   ov.style.display = 'none';
-  ov.style.top = ''; ov.style.height = ''; ov.style.bottom = '';
+  ov.style.top = '0'; ov.style.height = ''; ov.style.bottom = '0';
   _tagSheetPhone = null;
 }
 function renderTagSheet() {
@@ -17688,7 +17757,7 @@ async function openTasksPage(){
   _closeAllScreens();
   _telaAtual('tarefas');
   document.getElementById('tasks-page').style.display='flex';
-  _selTaskPhones.clear();
+  _selTaskIds.clear();
   const area=document.getElementById('tasks-list-area');
   area.innerHTML='<div style="color:#667781;font-size:13px;padding:20px">Carregando...</div>';
   try{
@@ -17762,34 +17831,56 @@ async function saveTaskReminder() {
 }
 
 // ── Disparo em massa de bot para os leads SELECIONADOS na lista de tarefas ──
-let _selTaskPhones = new Set();
+// ☑ A seleção é por TAREFA (concluir/excluir em massa); o "Disparar bot" usa os leads delas
+let _selTaskIds = new Set();
+let _tasksVisIds = []; // tarefas que estão na tela agora (respeita busca e "Mostrar concluídas")
+const _selTaskFones = () => [...new Set((_allTasksCache || []).filter(t => _selTaskIds.has(String(t.id)) && t.phone).map(t => t.phone))];
 // Modo de seleção das tarefas: os quadradinhos só aparecem depois de tocar
 // em "Selecionar" (aí surgem também o "Selecionar todos" e o "Disparar bot")
 let _taskSelMode = false;
 function toggleTaskSelMode(){
   _taskSelMode = !_taskSelMode;
-  if (!_taskSelMode) _selTaskPhones.clear();
+  if (!_taskSelMode) _selTaskIds.clear();
+  // no modo de seleção o "Selecionar" do topo some: o "✕ Cancelar" fica embaixo, ao lado do "Selecionar todos"
   const btn = document.getElementById('tasks-sel-btn');
-  if (btn) { btn.textContent = _taskSelMode ? '✕ Cancelar' : 'Selecionar'; }
+  if (btn) { btn.textContent = 'Selecionar'; btn.style.display = _taskSelMode ? 'none' : ''; }
   const disp = document.getElementById('tasks-disparo-btn');
   if (disp) disp.style.display = _taskSelMode ? '' : 'none';
   renderTasksPage();
 }
-function toggleTaskSel(phone){ if(_selTaskPhones.has(phone)) _selTaskPhones.delete(phone); else _selTaskPhones.add(phone); renderTasksPage(); }
-// Seleciona/desmarca os leads de UM grupo (Atrasadas, Hoje, Próximos 7 dias…)
-function toggleSelectGroupTasks(chave, checked){
-  const showDone=document.getElementById('tasks-show-done')?.checked;
-  let list=(_allTasksCache||[]).slice(); if(!showDone) list=list.filter(t=>!t.done);
-  const phones=[...new Set(list.filter(t=>t.phone && _grupoPrazo(t)===chave).map(t=>t.phone))];
-  if(checked) phones.forEach(p=>_selTaskPhones.add(p)); else phones.forEach(p=>_selTaskPhones.delete(p));
+function toggleTaskSel(id){ id=String(id); if(_selTaskIds.has(id)) _selTaskIds.delete(id); else _selTaskIds.add(id); renderTasksPage(); }
+function toggleSelectAllTasks(checked){
+  if(checked) _tasksVisIds.forEach(id=>_selTaskIds.add(id)); else _tasksVisIds.forEach(id=>_selTaskIds.delete(id));
   renderTasksPage();
 }
-function toggleSelectAllTasks(checked){
-  const showDone=document.getElementById('tasks-show-done')?.checked;
-  let list=(_allTasksCache||[]).slice(); if(!showDone) list=list.filter(t=>!t.done);
-  const phones=[...new Set(list.filter(t=>t.phone).map(t=>t.phone))];
-  if(checked) phones.forEach(p=>_selTaskPhones.add(p)); else phones.forEach(p=>_selTaskPhones.delete(p));
+// ✓ Concluir / 🗑 Excluir as tarefas marcadas, com UMA confirmação
+async function tarefasEmMassa(acao){
+  const ids=[..._selTaskIds].filter(id=>(_allTasksCache||[]).some(t=>String(t.id)===id));
+  if(!ids.length){ showToast('Marque ao menos uma tarefa.','warn'); return; }
+  const n=ids.length, rot=n===1?'1 tarefa':n+' tarefas';
+  const ok = acao==='excluir'
+    ? await vConfirm({ titulo: 'Excluir tarefas', texto: `Excluir ${rot}? Não dá para desfazer.`, confirmar: 'Excluir', perigo: true })
+    : await vConfirm({ titulo: 'Concluir tarefas', texto: `Marcar ${rot} como concluída(s)?`, confirmar: 'Concluir' });
+  if(!ok) return;
+  let falhas=0; const fones=new Set();
+  for(let i=0;i<ids.length;i+=5){ // 5 por vez
+    await Promise.all(ids.slice(i,i+5).map(async id=>{
+      try{
+        const r = acao==='excluir'
+          ? await fetch(SERVER_URL+'/tasks/'+id,{method:'DELETE'})
+          : await fetch(SERVER_URL+'/tasks/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({done:true})});
+        if(!r.ok) throw new Error(String(r.status));
+        const t=(_allTasksCache||[]).find(x=>String(x.id)===id); if(t && t.phone) fones.add(t.phone);
+        if(acao==='excluir'){ delete _tarefaEco[id]; _allTasksCache=_allTasksCache.filter(x=>String(x.id)!==id); }
+        else _tarefaAtualiza(id,{done:true});
+        _selTaskIds.delete(id);
+      }catch(_){ falhas++; }
+    }));
+  }
   renderTasksPage();
+  _pintaBadgeTarefas(_allTasksCache.filter(x=>!x.done).length);
+  fones.forEach(f=>{ try{ _sincTarefas(f, true); }catch(_){} });
+  showToast((acao==='excluir'?'Excluída(s): ':'Concluída(s): ')+(n-falhas)+(falhas?' · '+falhas+' não deu (tente de novo)':''), falhas?'warn':'ok');
 }
 // Bot pré-fixado para o disparo em massa na tela de Tarefas
 const BULK_BOT_NAME = 'SEGUE SIMULAÇÃO';
@@ -17797,8 +17888,8 @@ function _normBot(s){ return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'
 // Dispara direto o bot pré-fixado, com UMA só confirmação (sem menu de escolha)
 async function openBulkBotMenu(ev){
   if(ev) ev.stopPropagation();
-  const phones=[..._selTaskPhones];
-  if(!phones.length){ alert('Tique ao menos um lead na lista (ou use "Selecionar todos") antes de disparar.'); return; }
+  const phones=_selTaskFones();
+  if(!phones.length){ alert('Tique ao menos uma tarefa com lead (ou use "Selecionar todos") antes de disparar.'); return; }
   let bots=[];
   try{ bots=((await (await fetch(SERVER_URL+'/bots')).json())||[]); }catch(_){}
   try{ await _carregaBotsFav(); }catch(_){}
@@ -17820,7 +17911,7 @@ async function openBulkBotMenu(ev){
   try{
     const r=await fetch(SERVER_URL+'/bots/'+bot.id+'/start-bulk',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phones})});
     const d=await r.json();
-    if(d.success){ alert(`Disparo iniciado para ${d.total} lead(s).`); _selTaskPhones.clear(); if (typeof _taskSelMode !== 'undefined' && _taskSelMode) toggleTaskSelMode(); else renderTasksPage(); }
+    if(d.success){ alert(`Disparo iniciado para ${d.total} lead(s).`); _selTaskIds.clear(); if (typeof _taskSelMode !== 'undefined' && _taskSelMode) toggleTaskSelMode(); else renderTasksPage(); }
     else alert('Erro: '+(d.error||'tente novamente'));
   }catch(e){ alert('Erro ao disparar o bot em massa.'); }
 }
@@ -17887,36 +17978,37 @@ function renderTasksPage(){
   Object.values(grupos).forEach(g=>g.sort(ordena));
 
   // ☑ No modo de seleção, o "Selecionar todos" fica NA LISTA, na coluna das caixinhas (como
-  // nas ferramentas de tarefa), e cada grupo ganha a sua caixinha — não mais na barra do topo.
-  const _visPhones=[...new Set(list.filter(t=>t.phone).map(t=>t.phone))];
+  // nas ferramentas de tarefa) — uma caixinha só, sem outra por grupo.
+  _tasksVisIds=list.map(t=>String(t.id));
+  const _nSel=_tasksVisIds.filter(id=>_selTaskIds.has(id)).length;
   const selAllRow = !_taskSelMode ? '' : `<div class="task-selall" style="display:flex;align-items:center;gap:10px;padding:8px 14px;margin:0 0 4px;border:1px dashed #cfd6da;border-radius:10px;background:#f7f8fa">
-        <label title="Selecionar/desmarcar todos os leads da lista" style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:#131c20;font-weight:600"><input type="checkbox" id="tasks-select-all" onchange="toggleSelectAllTasks(this.checked)" /> Selecionar todos <span style="font-weight:400;color:#8696a0">(${_visPhones.length} lead${_visPhones.length===1?'':'s'})</span></label>
+        <label title="Selecionar/desmarcar todos os leads da lista" style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:#131c20;font-weight:600"><input type="checkbox" id="tasks-select-all" onchange="toggleSelectAllTasks(this.checked)" /> Selecionar todos <span style="font-weight:400;color:#8696a0">(${_tasksVisIds.length} tarefa${_tasksVisIds.length===1?'':'s'})</span></label>
+        <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn-secondary" id="tasks-sel-concluir" onclick="tarefasEmMassa('concluir')" ${_nSel?'':'disabled'} title="Marcar as tarefas selecionadas como concluídas" style="padding:5px 12px;font-size:13px;${_nSel?'':'opacity:.45;cursor:default'}">✓ Concluir</button>
+          <button class="btn-secondary" id="tasks-sel-excluir" onclick="tarefasEmMassa('excluir')" ${_nSel?'':'disabled'} title="Excluir as tarefas selecionadas" style="padding:5px 12px;font-size:13px;color:#c0392b;${_nSel?'':'opacity:.45;cursor:default'}">Excluir</button>
+          <button class="btn-secondary" id="tasks-sel-cancel" onclick="toggleTaskSelMode()" title="Sair do modo de seleção" style="padding:5px 12px;font-size:13px">✕ Cancelar</button>
+        </span>
       </div>`;
   area.innerHTML=selAllRow+_GRUPOS.map(([chave,rotulo,cor])=>{
     const itens=grupos[chave];
     if(!itens.length) return '';
-    const fonesG=[...new Set(itens.filter(t=>t.phone).map(t=>t.phone))];
-    const cbGrupo = (!_taskSelMode || !fonesG.length) ? '' : `<label title="Selecionar/desmarcar os leads deste grupo" style="display:flex;align-items:center;margin-left:12px;cursor:pointer"><input type="checkbox" class="task-sel-grupo" data-grupo="${chave}" onchange="toggleSelectGroupTasks('${chave}',this.checked)" ${fonesG.every(p=>_selTaskPhones.has(p))?'checked':''} /></label>`;
     return `<div class="task-grupo" style="display:flex;align-items:center;gap:8px;margin:14px 2px 6px">
-        ${cbGrupo}<span style="font-size:12px;font-weight:700;color:${cor};text-transform:uppercase;letter-spacing:.4px">${rotulo}</span>
+        <span style="font-size:12px;font-weight:700;color:${cor};text-transform:uppercase;letter-spacing:.4px">${rotulo}</span>
         <span style="font-size:11px;color:#8696a0">${itens.length}</span>
         <span style="flex:1;height:1px;background:#e9edef"></span>
       </div>` + itens.map(t=>_taskRowHTML(t)).join('');
   }).join('');
 
   // Sincroniza "selecionar todos" e o contador de selecionados
-  const visPhones=[...new Set(list.filter(t=>t.phone).map(t=>t.phone))];
   const selAll=document.getElementById('tasks-select-all');
-  if(selAll) selAll.checked = visPhones.length>0 && visPhones.every(p=>_selTaskPhones.has(p));
+  if(selAll) selAll.checked = _tasksVisIds.length>0 && _tasksVisIds.every(id=>_selTaskIds.has(id));
   const selCnt=document.getElementById('tasks-sel-count');
-  if(selCnt) selCnt.textContent = _selTaskPhones.size ? `${_selTaskPhones.size} selecionado(s)` : '';
+  if(selCnt) selCnt.textContent = _selTaskIds.size ? `${_selTaskIds.size} selecionada(s)` : '';
 }
 function _taskRowHTML(t){
   const now=Date.now();
   const overdue=t.due_at && !t.done && parseUTC(t.due_at)<now;
-  const selBox = !_taskSelMode ? '' : (t.phone
-    ? `<label title="Selecionar para disparo em massa" style="display:flex;align-items:center;flex-shrink:0;margin-right:2px;opacity:.75;cursor:pointer"><input type="checkbox" class="task-sel" onclick="toggleTaskSel('${escHtml(t.phone)}')" ${_selTaskPhones.has(t.phone)?'checked':''} style="width:15px;height:15px;cursor:pointer;accent-color:#8696a0" /></label>`
-    : `<span style="width:17px;flex-shrink:0;display:inline-block"></span>`);
+  const selBox = !_taskSelMode ? '' : `<label title="Selecionar esta tarefa" style="display:flex;align-items:center;flex-shrink:0;margin-right:2px;opacity:.75;cursor:pointer"><input type="checkbox" class="task-sel" onclick="toggleTaskSel('${escHtml(String(t.id))}')" ${_selTaskIds.has(String(t.id))?'checked':''} style="width:15px;height:15px;cursor:pointer;accent-color:#8696a0" /></label>`;
   // O prazo agora é CLICÁVEL: abre as opções de adiar / trocar / tirar
   const due=t.due_at
     ? `<span onclick="menuPrazoTarefa('${t.id}')" title="Mudar ou adiar o prazo" style="color:${overdue?'#ef4444':'#667781'};font-size:12px;cursor:pointer"><i class=ic-clock></i> ${fmtTaskDue(t.due_at)}</span>`
