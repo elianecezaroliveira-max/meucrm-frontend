@@ -186,6 +186,15 @@
   #chat-header .info { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); max-width: 60%; text-align: center; }
   #chat-header .info .name { font-size: 19px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #chat-header .info .phone { font-size: 12px; color: #667781; }
+  /* Etapa do pipeline embaixo do nome — SÓ no celular (no computador ela está nos detalhes do lead) */
+  #chat-etapa { display: none; }
+  @media (max-width: 768px) {
+    #chat-etapa:not(:empty) { display: inline-flex; align-items: center; gap: 4px; margin-top: 2px; max-width: 100%; padding: 1px 9px 1px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; line-height: 18px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: #d9f0fb; color: #1a6d8f; }
+    #chat-etapa.sem { background: #eef1f3; color: #8696a0; font-weight: 500; }
+    #chat-etapa .ch { font-size: 10px; opacity: .8; }
+  }
+  body.dark #chat-etapa { background: #1f3a47; color: #9fd8ee; }
+  body.dark #chat-etapa.sem { background: #2a3942; color: #8696a0; }
   /* ── Painel de detalhes do lead (estilo CRM) ── */
   #lead-panel { width: 300px; flex-shrink: 0; background: #ffffff; border-left: 1px solid #e9edef; border-right: 1px solid #e9edef; display: flex; flex-direction: column; overflow-y: auto; }
   #lead-panel.lp-hidden { display: none; }
@@ -1074,6 +1083,27 @@ body.dark{
 #tasks-page-topbar h2 { font-size:16px;font-weight:700;color:#131c20;flex:1; }
 #tasks-list-area { flex:1;overflow-y:auto;padding:20px;max-width:760px;margin:0 auto;width:100%;box-sizing:border-box; }
 .task-row { display:flex;align-items:flex-start;gap:12px;background:#ffffff;border:1px solid #e9edef;border-radius:10px;padding:12px 14px;margin-bottom:10px; }
+/* Tipos de tarefa + filtros da tela Tarefas */
+.task-tipo { display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:2px 9px;border-radius:12px;cursor:pointer;white-space:nowrap;line-height:1.5 }
+.tf-sec { margin-bottom:12px }
+.tf-sec > b { display:block;font-size:11.5px;color:#667781;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px }
+.tf-chips { display:flex;flex-wrap:wrap;gap:6px }
+.tf-chip { display:inline-flex;align-items:center;gap:5px;border:1px solid #d1d7db;background:#fff;color:#131c20;border-radius:16px;padding:5px 11px;font-size:12.5px;cursor:pointer;font-family:inherit }
+.tf-chip.on { border-color:#00a884;background:#e7f7ef;color:#00806a;font-weight:700 }
+.tf-sel { width:100%;box-sizing:border-box;border:1px solid #d1d7db;border-radius:8px;padding:7px 9px;font-size:13px;background:#fff;color:#131c20;font-family:inherit }
+.tf-ativos { display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 10px }
+.tf-ativo { display:inline-flex;align-items:center;gap:5px;background:#e7f7ef;color:#00806a;border-radius:14px;padding:3px 6px 3px 10px;font-size:12px;font-weight:600 }
+.tf-ativo button { background:none;border:none;color:#00806a;cursor:pointer;font-size:13px;padding:0 3px }
+.tt-linha { display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f0f2f5;flex-wrap:wrap }
+.tt-ico { width:34px;height:34px;border-radius:9px;border:1px solid #e9edef;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0 }
+.tt-cor { width:22px;height:22px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px #d1d7db;cursor:pointer;padding:0 }
+.tt-cor.on { box-shadow:0 0 0 2px #131c20 }
+.tt-grade { display:grid;grid-template-columns:repeat(auto-fill,minmax(36px,1fr));gap:6px;width:100%;padding:8px;background:#f7f8fa;border-radius:8px;box-sizing:border-box }
+.tt-grade button { height:34px;border:1px solid #e9edef;border-radius:8px;background:#fff;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center }
+.tt-grade button.on { border-color:#00a884;background:#e7f7ef }
+.vd-tipos { display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px }
+body.dark .tf-chip, body.dark .tf-sel, body.dark .tt-ico, body.dark .tt-grade button { background:#202c33;color:#e9edef;border-color:#3b4a54 }
+body.dark .tt-grade { background:#111b21 }
 .task-row.overdue { border-color:#ef4444; }
 .task-check { width:24px;height:24px;border-radius:50%;border:2px solid #00a884;background:none;cursor:pointer;flex-shrink:0;color:#00a884;font-size:13px;display:flex;align-items:center;justify-content:center;margin-top:1px;transition:background .15s; }
 .task-check:hover { background:#e7f7ef; }
@@ -2326,6 +2356,7 @@ window.addEventListener('load', initAuth);
       <button onclick="closeTasks()" style="background:#e9edef;border:none;color:#131c20;width:30px;height:30px;border-radius:50%;cursor:pointer">✕</button>
     </div>
     <input id="task-title" placeholder="Descreva a tarefa (opcional)" style="width:100%;box-sizing:border-box;background:#ffffff;border:1px solid #e9edef;color:#131c20;padding:9px 12px;border-radius:8px;outline:none;margin-bottom:8px">
+    <div id="task-tipo-chips" class="vd-tipos"></div><input type="hidden" id="task-tipo" value="">
     <div style="display:flex;gap:8px;margin-bottom:16px">
       <input id="task-due" type="datetime-local" style="flex:1;background:#ffffff;border:1px solid #e9edef;color:#131c20;padding:8px 12px;border-radius:8px;outline:none">
       <button onclick="addTask()" style="background:#00a884;border:none;color:#fff;padding:9px 16px;border-radius:8px;cursor:pointer;font-weight:600">Adicionar</button>
@@ -2362,7 +2393,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v503</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v504</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3110,9 +3141,9 @@ window.addEventListener('load', initAuth);
     <button class="btn-secondary" id="tasks-sel-btn" onclick="toggleTaskSelMode()" title="Entrar no modo de seleção de leads">Selecionar</button>
     <span id="tasks-sel-count" style="font-size:12px;color:#00a884;font-weight:600"></span>
     <button class="btn-secondary" id="tasks-disparo-btn" style="display:none" onclick="openBulkBotMenu(event)" title="Dispara o bot para os leads selecionados">Disparar bot</button>
-    <label style="font-size:13px;color:#667781;display:flex;align-items:center;gap:6px;cursor:pointer">
-      <input type="checkbox" id="tasks-show-done" onchange="renderTasksPage()" /> Mostrar concluídas
-    </label>
+    <input type="checkbox" id="tasks-show-done" onchange="renderTasksPage()" style="display:none" /><!-- antigo "Mostrar concluídas": agora é o filtro Situação -->
+    <button class="btn-secondary" id="tasks-filtros-btn" onclick="tfAbre(event)" title="Filtrar por situação, etapa do pipeline, tipo e data de criação"><i class=ic-filter></i> Filtros<span id="tasks-filtros-n" style="display:none;margin-left:6px;background:#00a884;color:#fff;border-radius:10px;padding:0 7px;font-size:11px;font-weight:700"></span></button>
+    <button class="btn-secondary" onclick="abrirTiposTarefa()" title="Criar e editar os tipos de tarefa (Reunião, Acompanhar…)"><i class=ic-tag></i> Tipos</button>
     <button class="btn-secondary" onclick="openTaskReminderModal()" title="Configurar lembretes de tarefas em aberto">Lembretes</button>
   </div>
 
@@ -3195,7 +3226,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v503</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v504</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3269,7 +3300,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 503;
+const APP_VER = 504;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3487,6 +3518,7 @@ document.addEventListener('visibilitychange', () => {
 
 // Re-renderiza respeitando filtros ativos (usado pelo polling)
 function renderContactsSmartUpdate() {
+  try { setTimeout(_chatEtapaPinta, 0); } catch (_) {}
   const q = (document.getElementById('search-input')?.value || '').trim();
   const stageId = document.getElementById('filter-stage-sel')?.value || '';
   const dateFrom = document.getElementById('filter-date-from')?.value || '';
@@ -4692,6 +4724,7 @@ function _pintaBadgeChat() {
   } catch (_) {}
 }
 function renderContacts(contacts) {
+  try { setTimeout(_chatEtapaPinta, 0); } catch (_) {}
   // Dedo arrastando uma conversa? O redesenho espera — remontar a lista agora
   // arrancaria do lugar justamente a linha que está sendo puxada.
   if (window._arrastandoLista) { _listaPendente = contacts || allContacts; return; }
@@ -6916,6 +6949,7 @@ async function selectContact(phone, name, accountId) {
       </button>
       <div class="info">
         <div class="name"><span id="chat-name-text">${escHtml(_nomeOuTel(name, phone))}</span></div>
+        <div id="chat-etapa" onclick="chatEtapaEscolhe(event)" title="Etapa do pipeline — tocar para mudar"></div>
         <div class="phone" id="chat-presence" style="display:none;color:#00a884"></div>
       </div>
       <button id="btn-chat-search" title="Pesquisar na conversa" onclick="toggleChatSearch()"
@@ -7037,6 +7071,7 @@ async function selectContact(phone, name, accountId) {
       </div>
     </div>
   `;
+  try { _chatEtapaPinta(); } catch (_) {}
 
   // Tags
   const _tagContact = allContacts.find(c => c.phone === phone);
@@ -7804,9 +7839,43 @@ async function lpRemoveTag(phone, tag){
   await saveTags(phone, c.tags);
   renderContacts(allContacts); lpRenderTags(phone);
 }
+// ── ETAPA NO TOPO DA CONVERSA (celular): embaixo do nome, só o nome da etapa ──
+// Tocar abre a lista das etapas para mudar (igual ao seletor dos detalhes do lead).
+let _chatEtapaBusca = null;
+function _chatEtapaPinta(){
+  const el = document.getElementById('chat-etapa'); if (!el) return;
+  const c = (allContacts || []).find(x => x.phone === currentPhone);
+  if (!c) { el.innerHTML = ''; return; }
+  if (!(pipelineStages && pipelineStages.length)) {
+    // as etapas ainda não vieram: busca uma vez e repinta
+    if (!_chatEtapaBusca) _chatEtapaBusca = fetch(SERVER_URL + '/pipeline/stages').then(r => r.json()).then(ss => { if (Array.isArray(ss) && ss.length) pipelineStages = ss; }).catch(() => {}).finally(() => { setTimeout(() => { _chatEtapaBusca = null; }, 30000); _chatEtapaPinta(); });
+    if (!c.stage_id) { el.className = 'sem'; el.innerHTML = 'Sem etapa <span class="ch">⌄</span>'; } else el.innerHTML = '';
+    return;
+  }
+  const e = c.stage_id ? pipelineStages.find(s => String(s.id) === String(c.stage_id)) : null;
+  const html = e ? escHtml(e.name || 'Etapa') + ' <span class="ch">⌄</span>' : 'Sem etapa <span class="ch">⌄</span>';
+  el.className = e ? '' : 'sem';
+  if (el.innerHTML !== html) el.innerHTML = html;
+}
+async function chatEtapaEscolhe(ev){
+  if (ev) ev.stopPropagation();
+  const fone = currentPhone; if (!fone) return;
+  if (!(pipelineStages && pipelineStages.length)) { try { const ss = await (await fetch(SERVER_URL + '/pipeline/stages')).json(); if (Array.isArray(ss)) pipelineStages = ss; } catch (_) {} }
+  const c = (allContacts || []).find(x => x.phone === fone);
+  const atual = c ? String(c.stage_id || '') : '';
+  const etapas = (pipelineStages || []).slice().sort((a, b) => (a.position || 0) - (b.position || 0));
+  const v = await vEscolha({ titulo: 'Etapa do pipeline', opcoes: etapas.map(e => ({ v: String(e.id), t: (String(e.id) === atual ? '✓ ' : '') + (e.name || 'Etapa') })).concat([{ v: '__sem__', t: (atual ? '' : '✓ ') + 'Sem etapa' }]) });
+  if (v == null) return;
+  const novo = v === '__sem__' ? '' : v;
+  if (novo === atual) return;
+  await lpSetStage(fone, novo);
+  _chatEtapaPinta();
+  try { const sel = document.getElementById('lp-stage'); if (sel) sel.value = novo; } catch (_) {}
+}
 async function lpSetStage(phone, val){
   const c = allContacts.find(x => x.phone === phone); if (!c) return;
   const newStage = val || null; c.stage_id = newStage;
+  try { _chatEtapaPinta(); } catch (_) {}
   try { await fetch(`${SERVER_URL}/contacts/${encodeURIComponent(phone)}/stage`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ stage_id: newStage }) }); } catch(_){}
   renderContacts(allContacts);
   if (typeof pipelineContacts !== 'undefined') { const pc = pipelineContacts.find(x => x.phone === phone); if (pc) pc.stage_id = newStage; }
@@ -7878,14 +7947,14 @@ async function lpLoadTasks(phone){
   _lpPintaTarefas(el, phone, tasks.filter(t => t.phone === phone && !t.done));
 }
 function _lpPintaTarefas(el, phone, mine){
-  const ass = JSON.stringify(mine.map(t => [t.id, t.title, t.due_at, t.done, t.notes || '']));
+  const ass = JSON.stringify(mine.map(t => [t.id, t.title, t.due_at, t.done, t.notes || '', t.tipo || '']));
   if (el.dataset.ass === ass && el.dataset.phone === phone) return; // nada mudou: não repinta
   el.dataset.ass = ass; el.dataset.phone = phone;
   window._lpTasks = mine; // guarda o texto das tarefas (a pergunta de concluir mostra ele)
   el.innerHTML = mine.length ? mine.map(t => `
     <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:7px">
       <button onclick="lpToggleTask('${t.id}',${t.done?'false':'true'},'${phone}')" title="${t.done?'Reabrir':'Concluir'}" style="width:18px;height:18px;border-radius:50%;border:2px solid #00a884;background:${t.done?'#00a884':'transparent'};color:#fff;cursor:pointer;flex-shrink:0;font-size:11px;line-height:14px;padding:0">${t.done?'✓':''}</button>
-      <div onclick="editTaskChat('${t.id}')" title="Tocar para editar o texto e o prazo" style="flex:1;min-width:0;font-size:13px;color:#131c20;cursor:pointer;${t.done?'text-decoration:line-through;opacity:.6':''}">${escHtml(t.title)}${t.due_at?`<div style="font-size:11px;color:#667781"><i class=ic-clock></i> ${fmtTaskDue(t.due_at)}</div>`:(t.created_at?`<div style="font-size:11px;color:#8696a0">Criada ${fmtTaskCreated(t.created_at)}</div>`:'')}</div>
+      <div onclick="editTaskChat('${t.id}')" title="Tocar para editar o texto e o prazo" style="flex:1;min-width:0;font-size:13px;color:#131c20;cursor:pointer;${t.done?'text-decoration:line-through;opacity:.6':''}">${_tipoIcoHtml(t.tipo)}${escHtml(t.title)}${t.due_at?`<div style="font-size:11px;color:#667781"><i class=ic-clock></i> ${fmtTaskDue(t.due_at)}</div>`:(t.created_at?`<div style="font-size:11px;color:#8696a0">Criada ${fmtTaskCreated(t.created_at)}</div>`:'')}</div>
       ${_taskComentHtml(t)}
     </div>`).join('') : '<div style="color:#8696a0;font-size:12px">Nenhuma tarefa</div>';
 }
@@ -7928,11 +7997,17 @@ async function lpToggleTask(id, done, phone){
   lpLoadTasks(phone); _sincTarefas(phone);
 }
 async function lpAddTask(phone){
-  const title = await vPrompt({ titulo: 'Nova tarefa', rotulo: 'O que precisa ser feito? (opcional)', dica: 'ex.: ligar amanhã', confirmar: 'Criar' }); if (title === null) return;
-  const tt = title.trim() || 'Tarefa'; // sem texto = nasce como "Tarefa"
+  await _carregaTiposTarefa();
+  const d = await vCampos({ titulo: 'Nova tarefa', campos: [
+    { id: 'texto', rotulo: 'O que precisa ser feito? (opcional)', dica: 'ex.: ligar amanhã', valor: '' },
+    { id: 'tipo', rotulo: 'Tipo', tipoTarefa: true, valor: '' }
+  ], confirmar: 'Criar' });
+  if (!d) return;
+  const tt = String(d.texto || '').trim() || 'Tarefa'; // sem texto = nasce como "Tarefa"
   const c = allContacts.find(x => x.phone === phone);
   try {
-    await fetch(SERVER_URL+'/tasks', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, account_id: c?.account_id || null, title: tt }) });
+    const _r = await fetch(SERVER_URL+'/tasks', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, account_id: c?.account_id || null, title: tt, tipo: d.tipo || null }) });
+    _avisoTipoSemColuna(await _r.json().catch(() => ({})));
     _toast('Tarefa criada!');
   } catch(_){ _toast('Erro ao criar a tarefa.'); }
   lpLoadTasks(phone); _sincTarefas(phone);
@@ -11043,6 +11118,7 @@ function openTasks() {
   if (!currentPhone) return;
   document.getElementById('task-title').value = '';
   document.getElementById('task-due').value = '';
+  try { const ti = document.getElementById('task-tipo'); if (ti) ti.value = ''; _carregaTiposTarefa().then(() => _pintaTipoChips('task-tipo', '')); } catch (_) {}
   document.getElementById('tasks-overlay').style.display = 'flex';
   try { _tasksAjustaTeclado(); setTimeout(_tasksAjustaTeclado, 300); } catch (_) {}
   loadTasks();
@@ -11127,7 +11203,7 @@ function renderTasks() {
     return `<div style="display:flex;align-items:flex-start;gap:10px;padding:10px;background:#ffffff;border-radius:8px;margin-bottom:8px">
       <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask('${t.id}',this.checked)" style="width:18px;height:18px;cursor:pointer;margin-top:2px">
       <div style="flex:1;min-width:0;cursor:pointer" onclick="editTaskChat('${t.id}')" title="Tocar para editar o texto e o prazo">
-        <div style="${t.done?'text-decoration:line-through;opacity:.6':''};word-break:break-word">${escHtml(t.title)}</div>
+        <div style="${t.done?'text-decoration:line-through;opacity:.6':''};word-break:break-word">${_tipoIcoHtml(t.tipo)}${escHtml(t.title)}</div>
         ${due}
         ${(!t.due_at && t.created_at) ? `<div style="font-size:11px;color:#8696a0;margin-top:2px">Criada ${fmtTaskCreated(t.created_at)}</div>` : ''}
       </div>
@@ -11299,6 +11375,8 @@ function vPrompt(opts) {
 // Devolve { id: valor, ... } ou null se cancelar.
 function vCampos(o) {
   const html = (o.campos || []).map(c => {
+    if (c.tipoTarefa) return `<label>${escHtml(c.rotulo || 'Tipo')}</label>
+      <input type="hidden" id="vd-${escHtml(c.id)}" value="${escHtml(c.valor || '')}"><div class="vd-tipos" id="vd-${escHtml(c.id)}-chips">${_tipoChipsHtml('vd-' + c.id, c.valor || '')}</div>`;
     if (c.opcoes) return `<label for="vd-${escHtml(c.id)}">${escHtml(c.rotulo || '')}</label>
       <select id="vd-${escHtml(c.id)}">${c.opcoes.map(op => `<option value="${escHtml(op.v)}" ${String(op.v) === String(c.valor || '') ? 'selected' : ''}>${escHtml(op.t)}</option>`).join('')}</select>`;
     if (c.multilinha) return `<label for="vd-${escHtml(c.id)}">${escHtml(c.rotulo || '')}</label>
@@ -11348,11 +11426,14 @@ async function addTask() {
   const title = document.getElementById('task-title').value.trim() || 'Tarefa'; // nome é OPCIONAL
   const dueRaw = document.getElementById('task-due').value;
   const due_at = dueRaw ? new Date(dueRaw).toISOString() : null;
+  const tipo = (document.getElementById('task-tipo') || {}).value || null;
   try {
-    await fetch(`${SERVER_URL}/tasks`, { method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ phone: currentPhone, account_id: currentAccountId || null, title, due_at }) });
+    const _r = await fetch(`${SERVER_URL}/tasks`, { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ phone: currentPhone, account_id: currentAccountId || null, title, due_at, tipo }) });
+    _avisoTipoSemColuna(await _r.json().catch(() => ({})));
     document.getElementById('task-title').value = '';
     document.getElementById('task-due').value = '';
+    try { document.getElementById('task-tipo').value = ''; _pintaTipoChips('task-tipo', ''); } catch (_) {}
     _toast('Tarefa criada!');
     loadTasks();
     _sincTarefas(currentPhone); // detalhes do lead mostram a tarefa NA HORA
@@ -11367,6 +11448,7 @@ async function editTaskChat(id) {
   const noPainel = (window._lpTasks || []).find(x => String(x.id) === String(id));
   const t = naJanela || noPainel;
   if (!t) { _toast('Não achei essa tarefa. Atualize a tela e tente de novo.'); return; }
+  await _carregaTiposTarefa();
   let dData = '', dHora = '09:00';
   if (t.due_at) { // prazo mostrado no horário de Brasília
     const d = new Date(parseUTC(t.due_at) - _BRT_OFFSET);
@@ -11378,6 +11460,7 @@ async function editTaskChat(id) {
     texto: 'Mude o texto ou o prazo. Deixe a data em branco para ficar sem prazo.',
     campos: [
       { id: 'texto', rotulo: 'O que precisa ser feito?', multilinha: true, valor: t.title || '' },
+      { id: 'tipo', rotulo: 'Tipo', tipoTarefa: true, valor: t.tipo || '' },
       { id: 'data', rotulo: 'Prazo — data (opcional)', tipo: 'date', valor: dData },
       { id: 'hora', rotulo: 'Prazo — hora', tipo: 'time', valor: dHora }
     ],
@@ -11391,13 +11474,15 @@ async function editTaskChat(id) {
     if (isFinite(ms)) due_at = new Date(ms).toISOString();
   }
   try {
+    const tipo = r.tipo || null;
     const res = await fetch(SERVER_URL + '/tasks/' + id, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: titulo, due_at })
+      body: JSON.stringify({ title: titulo, due_at, tipo })
     });
     if (!res.ok) throw new Error('HTTP ' + res.status);
-    t.title = titulo; t.due_at = due_at;
-    try { _tarefaAtualiza(id, { title: titulo, due_at }); } catch (_) {}
+    const _semCol = _avisoTipoSemColuna(await res.json().catch(() => ({})));
+    t.title = titulo; t.due_at = due_at; if (!_semCol) t.tipo = tipo;
+    try { _tarefaAtualiza(id, _semCol ? { title: titulo, due_at } : { title: titulo, due_at, tipo }); } catch (_) {}
     if (naJanela) { // a janela do chat repinta na hora
       const l = document.getElementById('tasks-list'); if (l) l.dataset.ass = '';
       try { renderTasks(); } catch (_) {}
@@ -17791,6 +17876,8 @@ async function openTasksPage(){
   if(_tarefasCarregou) renderTasksPage();
   else area.innerHTML='<div style="color:#667781;font-size:13px;padding:20px">Carregando...</div>';
   _tarefasBusca(1);
+  // tipos de tarefa (selos coloridos) e etapas (filtro) — chegam e a lista se repinta
+  if(!_tarefaTipos) _carregaTiposTarefa().then(()=>{ if(_tarefasPaginaAberta() && _tarefasCarregou) renderTasksPage(); });
 }
 let _tarefasTimer = null;
 async function _tarefasBusca(tentativa){
@@ -17980,10 +18067,12 @@ const _GRUPOS = [
 function renderTasksPage(){
   const area=document.getElementById('tasks-list-area');
   if(!area) return;
-  const showDone=document.getElementById('tasks-show-done')?.checked;
+  const sit=_tfSit();
+  const showDone=(sit==='concluidas'||sit==='todas');
   const busca=(document.getElementById('tasks-busca')?.value||'').toLowerCase().trim();
-  let list=_allTasksCache.slice();
-  if(!showDone) list=list.filter(t=>!t.done);
+  let list=_tfAplica(_allTasksCache.slice());
+  _tfPintaBotao();
+  const _ativosHtml=_tfAtivosHtml();
   if(busca) list=list.filter(t =>
     String(t.title||'').toLowerCase().includes(busca) ||
     String(t.notes||'').toLowerCase().includes(busca) ||
@@ -18005,9 +18094,11 @@ function renderTasksPage(){
     return;
   }
   if(!list.length){
-    const vazio = busca
+    const vazio = _ativosHtml + (busca
       ? `<div class="empty-state"><div class="es-ico"><i class=ic-search></i></div><b>Nada encontrado</b><span>Nenhuma tarefa com "${escHtml(busca)}".</span></div>`
-      : `<div class="empty-state"><div class="es-ico"><i class=ic-task></i></div><b>Nenhuma tarefa ${showDone?'':'em aberto'}</b><span>${showDone ? 'Nada por aqui ainda.' : 'Use o botão + Nova tarefa aqui em cima, o painel do lead, ou um bot com o passo "Criar tarefa".'}</span></div>`;
+      : _tfContaAtivos()
+      ? `<div class="empty-state"><div class="es-ico"><i class=ic-filter></i></div><b>Nenhuma tarefa com esses filtros</b><span><button class="btn-secondary" onclick="tfLimpa()">Limpar filtros</button></span></div>`
+      : `<div class="empty-state"><div class="es-ico"><i class=ic-task></i></div><b>Nenhuma tarefa ${showDone?'':'em aberto'}</b><span>${showDone ? 'Nada por aqui ainda.' : 'Use o botão + Nova tarefa aqui em cima, o painel do lead, ou um bot com o passo "Criar tarefa".'}</span></div>`);
     area.innerHTML=vazio;
     const sc0=document.getElementById('tasks-sel-count'); if(sc0) sc0.textContent='';
     const sa0=document.getElementById('tasks-select-all'); if(sa0) sa0.checked=false;
@@ -18036,7 +18127,7 @@ function renderTasksPage(){
           <button class="btn-secondary" id="tasks-sel-cancel" onclick="toggleTaskSelMode()" title="Sair do modo de seleção" style="padding:5px 12px;font-size:13px">✕ Cancelar</button>
         </span>
       </div>`;
-  area.innerHTML=selAllRow+_GRUPOS.map(([chave,rotulo,cor])=>{
+  area.innerHTML=_ativosHtml+selAllRow+_GRUPOS.map(([chave,rotulo,cor])=>{
     const itens=grupos[chave];
     if(!itens.length) return '';
     return `<div class="task-grupo" style="display:flex;align-items:center;gap:8px;margin:14px 2px 6px">
@@ -18074,6 +18165,7 @@ function _taskRowHTML(t){
       ${lead ? `<div style="margin-bottom:5px">${lead}</div>` : ''}
       <div style="color:#131c20;font-size:14px;font-weight:700;${t.done?'text-decoration:line-through;opacity:.6':''}">${escHtml(t.title)}</div>
       <div style="display:flex;gap:14px;margin-top:4px;flex-wrap:wrap;align-items:center">${due}
+        ${_tipoPillHtml(t)}
         ${t.created_at ? `<span class="task-criada" style="color:#8696a0;font-size:12px;white-space:nowrap" title="Criada em ${escHtml(fmtTaskCreated(t.created_at))}"><span class="rot">criada </span>${fmtTaskCreatedCurto(t.created_at)}</span>` : ''}
         <span class="task-editar" style="color:#667781;font-size:12px;cursor:pointer;white-space:nowrap" onclick="editTaskTitle('${t.id}')" title="Editar o texto da tarefa"><i class=ic-pencil></i><span class="rot"> Editar</span></span>
         ${notaBtn}
@@ -18083,8 +18175,202 @@ function _taskRowHTML(t){
   </div>`;
 }
 
+// ══ TIPOS DE TAREFA (Reunião, Acompanhar… e os seus) ══
+let _tarefaTipos = null, _tarefaIcones = [];
+const _TT_CORES = ['#5a4fd6','#22c3e6','#00a884','#f59e0b','#ef4444','#ff2f8e','#3b82f6','#667781'];
+async function _carregaTiposTarefa(forcar){
+  if (_tarefaTipos && !forcar) return _tarefaTipos;
+  try {
+    const r = await fetch(SERVER_URL + '/tarefa-tipos'); const j = await r.json().catch(() => ({}));
+    if (r.ok && Array.isArray(j.tipos)) { _tarefaTipos = j.tipos; _tarefaIcones = Array.isArray(j.icones) ? j.icones : []; }
+  } catch (_) {}
+  return _tarefaTipos || [];
+}
+function _tipoDe(id){ return id ? ((_tarefaTipos || []).find(x => x.id === id) || null) : null; }
+function _tipoIcoHtml(id){ const tp = _tipoDe(id); return tp ? `<i class="ic-${escHtml(tp.icone)}" title="${escHtml(tp.nome)}" style="color:${escHtml(tp.cor)};margin-right:5px"></i>` : ''; }
+function _tipoPillHtml(t){
+  const tp = _tipoDe(t.tipo);
+  if (!tp) return '';
+  return `<span class="task-tipo" onclick="editTaskTitle('${escHtml(String(t.id))}')" title="Tipo: ${escHtml(tp.nome)} — tocar para trocar" style="color:${escHtml(tp.cor)};background:${escHtml(tp.cor)}1a"><i class="ic-${escHtml(tp.icone)}"></i>${escHtml(tp.nome)}</span>`;
+}
+function _tipoChipsHtml(inputId, valor){
+  const tipos = _tarefaTipos || [];
+  const chip = (v, rot, ico, cor) => `<button type="button" class="tf-chip${String(valor||'') === v ? ' on' : ''}" data-v="${escHtml(v)}" onclick="_tipoChipEscolhe('${escHtml(inputId)}',this)">${ico ? `<i class="ic-${escHtml(ico)}" style="color:${escHtml(cor)}"></i>` : ''}${escHtml(rot)}</button>`;
+  return chip('', 'Sem tipo') + tipos.map(tp => chip(tp.id, tp.nome, tp.icone, tp.cor)).join('')
+    + `<button type="button" class="tf-chip" onclick="abrirTiposTarefa()" title="Criar ou editar tipos" style="color:#667781">＋ Tipos</button>`;
+}
+function _tipoChipEscolhe(inputId, el){
+  const inp = document.getElementById(inputId); if (inp) inp.value = el.dataset.v || '';
+  el.parentElement.querySelectorAll('.tf-chip[data-v]').forEach(b => b.classList.toggle('on', b === el));
+}
+function _pintaTipoChips(inputId, valor){ const box = document.getElementById(inputId + '-chips'); if (box) box.innerHTML = _tipoChipsHtml(inputId, valor); }
+// Banco sem a coluna "tipo": a tarefa foi salva, mas sem o tipo — avisa o que fazer
+function _avisoTipoSemColuna(j){
+  if (j && j.aviso === 'sem_coluna_tipo') { showToast('Tarefa salva, mas SEM o tipo: falta atualizar o banco (Configurações ▸ Diagnóstico ▸ Copiar o SQL que falta).', 'warn'); return true; }
+  return false;
+}
+// Gerenciar os tipos: nome, figura e cor
+let _ttEdit = [];
+async function abrirTiposTarefa(){
+  await _carregaTiposTarefa(true);
+  _ttEdit = (_tarefaTipos || []).map(x => Object.assign({}, x));
+  let ov = document.getElementById('tt-overlay');
+  if (!ov) {
+    ov = document.createElement('div'); ov.id = 'tt-overlay';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99500;display:flex;align-items:center;justify-content:center';
+    ov.onclick = e => { if (e.target === ov) fechaTiposTarefa(); };
+    ov.innerHTML = `<div style="background:#fff;border-radius:12px;max-width:520px;width:94%;max-height:88vh;overflow-y:auto;padding:18px 20px;box-shadow:0 10px 40px rgba(0,0,0,.35);box-sizing:border-box">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><h3 style="flex:1;margin:0;font-size:16px;color:#131c20">Tipos de tarefa</h3>
+      <button onclick="fechaTiposTarefa()" style="background:none;border:none;font-size:20px;color:#667781;cursor:pointer">✕</button></div>
+      <p style="font-size:12.5px;color:#667781;margin:0 0 8px">Dê um nome, escolha a figura e a cor. Trocar aqui muda todas as tarefas daquele tipo.</p>
+      <div id="tt-lista"></div>
+      <button class="btn-secondary" onclick="ttNovo()" style="margin-top:10px">＋ Novo tipo</button>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+        <button class="btn-secondary" onclick="fechaTiposTarefa()">Cancelar</button>
+        <button class="btn-primary" id="tt-salvar" onclick="ttSalva()">Salvar</button></div></div>`;
+    document.body.appendChild(ov);
+  }
+  ov.style.display = 'flex';
+  _ttPinta();
+}
+function fechaTiposTarefa(){ const ov = document.getElementById('tt-overlay'); if (ov) ov.style.display = 'none'; }
+function _ttPinta(abertoIcone){
+  const el = document.getElementById('tt-lista'); if (!el) return;
+  const icones = _tarefaIcones.length ? _tarefaIcones : ['task'];
+  el.innerHTML = _ttEdit.length ? _ttEdit.map((tp, i) => `<div class="tt-linha">
+      <button class="tt-ico" onclick="_ttPinta(${abertoIcone === i ? -1 : i})" title="Escolher a figura"><i class="ic-${escHtml(tp.icone)}" style="color:${escHtml(tp.cor)}"></i></button>
+      <input value="${escHtml(tp.nome)}" maxlength="30" placeholder="Nome do tipo" oninput="_ttEdit[${i}].nome=this.value" style="flex:1 1 140px;min-width:120px;border:1px solid #d1d7db;border-radius:8px;padding:7px 9px;font-size:13.5px;font-family:inherit">
+      <span style="display:flex;gap:5px;align-items:center;flex-wrap:wrap">${_TT_CORES.map(c => `<button class="tt-cor${tp.cor === c ? ' on' : ''}" title="${c}" style="background:${c}" onclick="_ttEdit[${i}].cor='${c}';_ttPinta(${abertoIcone == null ? 'undefined' : abertoIcone})"></button>`).join('')}
+        <input type="color" value="${escHtml(tp.cor)}" title="Outra cor" onchange="_ttEdit[${i}].cor=this.value;_ttPinta(${abertoIcone == null ? 'undefined' : abertoIcone})" style="width:26px;height:26px;border:none;padding:0;background:none;cursor:pointer"></span>
+      <button onclick="_ttEdit.splice(${i},1);_ttPinta()" title="Excluir este tipo" style="background:none;border:none;color:#c0392b;cursor:pointer;font-size:15px"><i class=ic-trash></i></button>
+      ${abertoIcone === i ? `<div class="tt-grade">${icones.map(ic => `<button class="${tp.icone === ic ? 'on' : ''}" onclick="_ttEdit[${i}].icone='${ic}';_ttPinta(${i})" title="${ic}"><i class="ic-${ic}" style="color:${escHtml(tp.cor)}"></i></button>`).join('')}</div>` : ''}
+    </div>`).join('') : '<p style="color:#8696a0;font-size:13px">Nenhum tipo. Toque em "＋ Novo tipo".</p>';
+}
+function ttNovo(){ _ttEdit.push({ id: '', nome: '', icone: 'task', cor: _TT_CORES[_ttEdit.length % _TT_CORES.length] }); _ttPinta(_ttEdit.length - 1); try { const ins = document.querySelectorAll('#tt-lista input[placeholder="Nome do tipo"]'); ins[ins.length - 1].focus(); } catch (_) {} }
+async function ttSalva(){
+  const tipos = _ttEdit.map(x => ({ id: x.id, nome: String(x.nome || '').trim(), icone: x.icone, cor: x.cor })).filter(x => x.nome);
+  try {
+    const r = await fetch(SERVER_URL + '/tarefa-tipos', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tipos }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !Array.isArray(j.tipos)) { showToast(j.error || 'Não consegui salvar os tipos', 'err'); return; }
+    _tarefaTipos = j.tipos;
+    fechaTiposTarefa();
+    showToast('Tipos salvos', 'ok');
+    // limpa do filtro os tipos que não existem mais
+    _tf.tipos = (_tf.tipos || []).filter(v => v === '_sem' || _tarefaTipos.some(x => x.id === v)); _tfSalva();
+    try { if (_tarefasPaginaAberta()) renderTasksPage(); } catch (_) {}
+    ['vd-tipo', 'task-tipo'].forEach(id => { const inp = document.getElementById(id); if (inp) _pintaTipoChips(id, inp.value); });
+  } catch (e) { showToast('Não consegui salvar os tipos', 'err'); }
+}
+
+// ══ FILTROS DA TELA TAREFAS: situação, etapa do pipeline, tipo e data de criação ══
+const _TF_PADRAO = { sit: 'abertas', etapa: '', tipos: [], criada: '', de: '', ate: '' };
+let _tf = Object.assign({}, _TF_PADRAO);
+try { const v = JSON.parse(localStorage.getItem('filaz_tarefas_filtros') || 'null'); if (v && typeof v === 'object') _tf = Object.assign({}, _TF_PADRAO, v, { tipos: Array.isArray(v.tipos) ? v.tipos : [] }); } catch (_) {}
+function _tfSalva(){ try { localStorage.setItem('filaz_tarefas_filtros', JSON.stringify(_tf)); } catch (_) {} }
+function _tfSit(){
+  const antigo = document.getElementById('tasks-show-done')?.checked; // o antigo "Mostrar concluídas"
+  return (antigo && _tf.sit === 'abertas') ? 'todas' : (_tf.sit || 'abertas');
+}
+function _tfDiaDe(ymd){ const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(ymd || '')); return m ? Math.floor(Date.UTC(+m[1], +m[2] - 1, +m[3]) / 86400000) : null; }
+function _tfAplica(list){
+  const sit = _tfSit(), agora = Date.now();
+  if (sit === 'abertas') list = list.filter(t => !t.done);
+  else if (sit === 'atrasadas') list = list.filter(t => !t.done && t.due_at && parseUTC(t.due_at) < agora);
+  else if (sit === 'concluidas') list = list.filter(t => t.done);
+  if (_tf.etapa === '_sem') list = list.filter(t => !t.contact_stage_id);
+  else if (_tf.etapa) list = list.filter(t => String(t.contact_stage_id || '') === String(_tf.etapa));
+  if (_tf.tipos && _tf.tipos.length) list = list.filter(t => { const tp = _tipoDe(t.tipo); return _tf.tipos.includes(tp ? tp.id : '_sem'); });
+  if (_tf.criada) {
+    const hoje = Math.floor((agora - _BRT_OFFSET) / 86400000);
+    let ini = null, fim = null;
+    if (_tf.criada === 'hoje') { ini = fim = hoje; }
+    else if (_tf.criada === 'ontem') { ini = fim = hoje - 1; }
+    else if (_tf.criada === '7d') { ini = hoje - 6; fim = hoje; }
+    else if (_tf.criada === '30d') { ini = hoje - 29; fim = hoje; }
+    else if (_tf.criada === 'periodo') { ini = _tfDiaDe(_tf.de); fim = _tfDiaDe(_tf.ate); }
+    if (ini != null || fim != null) list = list.filter(t => { if (!t.created_at) return false; const d = _diaBrt(t.created_at); return (ini == null || d >= ini) && (fim == null || d <= fim); });
+  }
+  return list;
+}
+function _tfContaAtivos(){
+  let n = 0;
+  if (_tfSit() !== 'abertas') n++;
+  if (_tf.etapa) n++;
+  if (_tf.tipos && _tf.tipos.length) n++;
+  if (_tf.criada && (_tf.criada !== 'periodo' || _tf.de || _tf.ate)) n++;
+  return n;
+}
+function _tfPintaBotao(){
+  const b = document.getElementById('tasks-filtros-n'); if (!b) return;
+  const n = _tfContaAtivos(); b.textContent = String(n); b.style.display = n ? 'inline-block' : 'none';
+}
+const _TF_SITS = [['abertas', 'Em aberto'], ['atrasadas', 'Atrasadas'], ['concluidas', 'Concluídas'], ['todas', 'Todas']];
+const _TF_CRIADA = [['', 'Qualquer data'], ['hoje', 'Hoje'], ['ontem', 'Ontem'], ['7d', 'Últimos 7 dias'], ['30d', 'Últimos 30 dias'], ['periodo', 'Escolher o período…']];
+function _tfFmtDia(ymd){ const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(ymd || '')); return m ? m[3] + '/' + m[2] : '…'; }
+function _tfEtapaNome(id){ if (id === '_sem') return 'Sem etapa'; const e = (pipelineStages || []).find(x => String(x.id) === String(id)); return e ? e.name : 'Etapa'; }
+// Os filtros LIGADOS aparecem acima da lista, cada um com ✕ para tirar
+function _tfAtivosHtml(){
+  const it = [];
+  const sit = _tfSit();
+  if (sit !== 'abertas') it.push([(_TF_SITS.find(x => x[0] === sit) || [, sit])[1], "tfMuda('sit','abertas')"]);
+  if (_tf.etapa) it.push(['Etapa: ' + _tfEtapaNome(_tf.etapa), "tfMuda('etapa','')"]);
+  (_tf.tipos || []).forEach(v => { const tp = _tipoDe(v); it.push([v === '_sem' ? 'Sem tipo' : (tp ? tp.nome : 'Tipo'), `tfTipo('${escHtml(v)}')`]); });
+  if (_tf.criada && (_tf.criada !== 'periodo' || _tf.de || _tf.ate)) it.push(['Criada: ' + (_tf.criada === 'periodo' ? _tfFmtDia(_tf.de) + ' a ' + _tfFmtDia(_tf.ate) : (_TF_CRIADA.find(x => x[0] === _tf.criada) || [, ''])[1].toLowerCase()), "tfMuda('criada','')"]);
+  if (!it.length) return '';
+  return `<div class="tf-ativos"><span style="font-size:12px;color:#667781">Filtrando:</span>${it.map(([t, fn]) => `<span class="tf-ativo">${escHtml(t)}<button onclick="${fn}" title="Tirar este filtro">✕</button></span>`).join('')}<button class="btn-secondary" onclick="tfLimpa()" style="padding:3px 10px;font-size:12px">Limpar</button></div>`;
+}
+function tfMuda(k, v){
+  _tf[k] = v;
+  if (k === 'sit') { const cb = document.getElementById('tasks-show-done'); if (cb) cb.checked = false; }
+  _tfSalva(); renderTasksPage(); _tfPintaPainel();
+}
+function tfTipo(v){ const a = _tf.tipos || []; _tf.tipos = a.includes(v) ? a.filter(x => x !== v) : a.concat([v]); _tfSalva(); renderTasksPage(); _tfPintaPainel(); }
+function tfLimpa(){ _tf = Object.assign({}, _TF_PADRAO, { tipos: [] }); const cb = document.getElementById('tasks-show-done'); if (cb) cb.checked = false; _tfSalva(); renderTasksPage(); _tfPintaPainel(); }
+async function tfAbre(ev){
+  if (ev) ev.stopPropagation();
+  let p = document.getElementById('tf-painel');
+  if (p && p.style.display !== 'none') { tfFecha(); return; }
+  if (!p) {
+    p = document.createElement('div'); p.id = 'tf-painel';
+    p.style.cssText = 'display:none;position:fixed;z-index:760;background:#fff;border:1px solid #e9edef;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.25);padding:14px 16px;width:340px;max-width:calc(100vw - 20px);max-height:calc(100vh - 90px);overflow-y:auto;box-sizing:border-box';
+    p.onclick = e => e.stopPropagation();
+    document.body.appendChild(p);
+    document.addEventListener('click', () => tfFecha());
+  }
+  const b = document.getElementById('tasks-filtros-btn');
+  const r = b ? b.getBoundingClientRect() : { left: 10, bottom: 60 };
+  p.style.left = Math.max(10, Math.min(r.left, window.innerWidth - Math.min(340, window.innerWidth - 20) - 10)) + 'px';
+  p.style.top = (r.bottom + 6) + 'px';
+  p.style.display = 'block';
+  _tfPintaPainel();
+  // etapas e tipos podem ainda não estar carregados
+  const faltaEtapa = !(pipelineStages && pipelineStages.length);
+  await Promise.all([_carregaTiposTarefa(), faltaEtapa ? fetch(SERVER_URL + '/pipeline/stages').then(r => r.json()).then(ss => { if (Array.isArray(ss)) pipelineStages = ss; }).catch(() => {}) : null]);
+  _tfPintaPainel();
+}
+function tfFecha(){ const p = document.getElementById('tf-painel'); if (p) p.style.display = 'none'; }
+function _tfPintaPainel(){
+  const p = document.getElementById('tf-painel'); if (!p || p.style.display === 'none') return;
+  const sit = _tfSit();
+  const etapas = (pipelineStages || []).slice().sort((a, b) => (a.position || 0) - (b.position || 0));
+  const tipos = _tarefaTipos || [];
+  p.innerHTML = `<div style="display:flex;align-items:center;margin-bottom:10px"><b style="flex:1;font-size:15px;color:#131c20">Filtrar tarefas</b><button onclick="tfFecha()" style="background:none;border:none;font-size:18px;color:#667781;cursor:pointer">✕</button></div>
+    <div class="tf-sec"><b>Situação</b><div class="tf-chips">${_TF_SITS.map(([v, t]) => `<button class="tf-chip${sit === v ? ' on' : ''}" onclick="tfMuda('sit','${v}')">${t}</button>`).join('')}</div></div>
+    <div class="tf-sec"><b>Etapa do pipeline (do lead)</b><select class="tf-sel" id="tf-etapa" onchange="tfMuda('etapa',this.value)">
+      <option value="">Todas as etapas</option>${etapas.map(e => `<option value="${escHtml(String(e.id))}" ${String(_tf.etapa) === String(e.id) ? 'selected' : ''}>${escHtml(e.name || '')}</option>`).join('')}
+      <option value="_sem" ${_tf.etapa === '_sem' ? 'selected' : ''}>Sem etapa / sem lead</option></select></div>
+    <div class="tf-sec"><b>Tipo de tarefa</b><div class="tf-chips">${tipos.map(tp => `<button class="tf-chip${(_tf.tipos || []).includes(tp.id) ? ' on' : ''}" onclick="tfTipo('${escHtml(tp.id)}')"><i class="ic-${escHtml(tp.icone)}" style="color:${escHtml(tp.cor)}"></i>${escHtml(tp.nome)}</button>`).join('')}
+      <button class="tf-chip${(_tf.tipos || []).includes('_sem') ? ' on' : ''}" onclick="tfTipo('_sem')">Sem tipo</button>
+      <button class="tf-chip" onclick="tfFecha();abrirTiposTarefa()" style="color:#667781">✎ Editar tipos</button></div></div>
+    <div class="tf-sec"><b>Criada em</b><select class="tf-sel" id="tf-criada" onchange="tfMuda('criada',this.value)">${_TF_CRIADA.map(([v, t]) => `<option value="${v}" ${_tf.criada === v ? 'selected' : ''}>${t}</option>`).join('')}</select>
+      ${_tf.criada === 'periodo' ? `<div style="display:flex;gap:8px;margin-top:8px;align-items:center"><input type="date" class="tf-sel" id="tf-de" value="${escHtml(_tf.de || '')}" onchange="tfMuda('de',this.value)"><span style="color:#667781;font-size:12px">até</span><input type="date" class="tf-sel" id="tf-ate" value="${escHtml(_tf.ate || '')}" onchange="tfMuda('ate',this.value)"></div>` : ''}</div>
+    <div style="display:flex;gap:8px;justify-content:space-between;margin-top:6px"><button class="btn-secondary" onclick="tfLimpa()">Limpar filtros</button><button class="btn-primary" onclick="tfFecha()">Ver ${_tfAplica(_allTasksCache.slice()).length} tarefa(s)</button></div>`;
+}
+
 // ── Criar tarefa direto na aba (com ou sem lead) ──
 async function abrirNovaTarefa(){
+  await _carregaTiposTarefa();
   const contatos=[...(allContacts||[])].slice(0,300);
   const sug=(typeof _agSugestao==='function') ? _agSugestao() : {data:'',hora:''};
   const d=await vCampos({
@@ -18092,6 +18378,7 @@ async function abrirNovaTarefa(){
     texto:'O prazo é opcional. Sem lead, a tarefa fica só sua.',
     campos:[
       { id:'texto', rotulo:'O que precisa ser feito?', multilinha:true, valor:'', dica:'Ex.: ligar para confirmar os documentos' },
+      { id:'tipo',  rotulo:'Tipo', tipoTarefa:true, valor:'' },
       { id:'lead',  rotulo:'Lead (opcional)', opcoes:[{v:'',t:'— Sem lead —'}].concat(contatos.map(c=>({v:c.phone,t:(c.name||c.phone)}))) },
       { id:'data',  rotulo:'Prazo — data (opcional)', tipo:'date', valor:'' },
       { id:'hora',  rotulo:'Prazo — hora', tipo:'time', valor:sug.hora||'09:00' }
@@ -18109,9 +18396,10 @@ async function abrirNovaTarefa(){
   const c=(allContacts||[]).find(x=>String(x.phone)===String(d.lead||''));
   try{
     const r=await fetch(SERVER_URL+'/tasks',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({ phone: d.lead||null, account_id: (c&&c.account_id)||null, title: titulo, due_at })});
+      body:JSON.stringify({ phone: d.lead||null, account_id: (c&&c.account_id)||null, title: titulo, due_at, tipo: d.tipo||null })});
     const j=await r.json().catch(()=>({}));
     if(!r.ok||j.error){ showToast(j.error||'Não consegui criar a tarefa','err'); return; }
+    _avisoTipoSemColuna(j);
     showToast('Tarefa criada','ok');
     openTasksPage();
     _sincTarefas(d.lead||null, true);
@@ -18184,12 +18472,18 @@ async function toggleTaskGlobal(id, done){
 // CAMPO ÚNICO: edita o próprio texto da tarefa (o "comentário" separado saiu)
 async function editTaskTitle(id){
   const t=_allTasksCache.find(x=>String(x.id)===String(id));
-  const val=await vPrompt({ titulo: 'Editar tarefa', rotulo: 'Texto da tarefa', valor: t?.title||'', multilinha: true });
-  if(val===null) return; // cancelou
-  const novo=val.trim()||'Tarefa';
+  await _carregaTiposTarefa();
+  const d=await vCampos({ titulo: 'Editar tarefa', campos: [
+    { id: 'texto', rotulo: 'Texto da tarefa', valor: t?.title||'', multilinha: true },
+    { id: 'tipo', rotulo: 'Tipo', tipoTarefa: true, valor: t?.tipo||'' }
+  ], confirmar: 'Salvar' });
+  if(!d) return; // cancelou
+  const novo=String(d.texto||'').trim()||'Tarefa';
+  const tipo=d.tipo||null;
   try{
-    await fetch(SERVER_URL+'/tasks/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:novo})});
-    const _t2 = _tarefaAtualiza(id, { title: novo });
+    const _r=await fetch(SERVER_URL+'/tasks/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:novo, tipo})});
+    const _semCol=_avisoTipoSemColuna(await _r.json().catch(()=>({})));
+    const _t2 = _tarefaAtualiza(id, _semCol ? { title: novo } : { title: novo, tipo });
     renderTasksPage(); _sincTarefas((_t2 || t || {}).phone, true);
   }catch(e){ alert('Erro ao salvar a tarefa'); }
 }
