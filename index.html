@@ -2362,7 +2362,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v502</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v503</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3195,7 +3195,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v502</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v503</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3269,7 +3269,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 502;
+const APP_VER = 503;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -7859,9 +7859,25 @@ function lpIrNota(id){
 }
 async function lpLoadTasks(phone){
   const el = document.getElementById('lp-tasks'); if (!el) return;
-  let tasks = [];
-  try { tasks = (await (await fetch(SERVER_URL+'/tasks')).json()) || []; } catch(_){}
-  const mine = (Array.isArray(tasks)?tasks:[]).filter(t => t.phone === phone && !t.done);
+  clearTimeout(el._tenta);
+  // Outro lead: o que já sei aparece na hora; sem nada ainda, "Carregando…" (não as tarefas do lead anterior)
+  if (el.dataset.phone !== phone) {
+    if (_tarefasCarregou) _lpPintaTarefas(el, phone, _allTasksCache.filter(t => t.phone === phone && !t.done));
+    else { el.dataset.phone = ''; el.dataset.ass = ''; el.innerHTML = '<div style="color:#8696a0;font-size:12px">Carregando...</div>'; }
+  }
+  let tasks = null;
+  try { const r = await fetch(SERVER_URL+'/tasks'); const d = await r.json(); if (r.ok && Array.isArray(d)) tasks = d; } catch(_){}
+  if (!tasks) {
+    // Busca falhou: NÃO é "Nenhuma tarefa". Mantém o que está na tela e tenta de novo sozinho.
+    el._n = (el._n || 0) + 1;
+    el._tenta = setTimeout(() => { if (window._lpPhone === phone && document.getElementById('lp-tasks') === el) lpLoadTasks(phone); }, _tarefasEspera(el._n));
+    return;
+  }
+  el._n = 0;
+  _allTasksCache = _tarefaAplicaEco(tasks); _tarefasCarregou = true;
+  _lpPintaTarefas(el, phone, tasks.filter(t => t.phone === phone && !t.done));
+}
+function _lpPintaTarefas(el, phone, mine){
   const ass = JSON.stringify(mine.map(t => [t.id, t.title, t.due_at, t.done, t.notes || '']));
   if (el.dataset.ass === ass && el.dataset.phone === phone) return; // nada mudou: não repinta
   el.dataset.ass = ass; el.dataset.phone = phone;
@@ -11038,12 +11054,18 @@ async function loadTasks() {
   try {
     const r = await fetch(`${SERVER_URL}/tasks?phone=${encodeURIComponent(currentPhone)}`);
     const novas = await r.json();
+    if (!r.ok || !Array.isArray(novas)) throw new Error('HTTP ' + r.status); // erro não é "nenhuma tarefa"
     const ass = JSON.stringify((Array.isArray(novas)?novas:[]).map(t => [t.id, t.title, t.due_at, t.done]));
     if (list.dataset.ass === ass && list.dataset.phone === currentPhone) return; // nada mudou
     list.dataset.ass = ass; list.dataset.phone = currentPhone;
     currentTasks = novas;
     renderTasks();
-  } catch(e) { list.innerHTML = '<p style="color:#ef4444;font-size:13px">Erro ao carregar tarefas.</p>'; }
+  } catch(e) {
+    const fone = currentPhone;
+    if (list.dataset.phone !== fone) list.innerHTML = '<p style="color:#667781;font-size:13px">Carregando... <span style="color:#8696a0">(tentando de novo)</span></p>';
+    clearTimeout(list._tenta);
+    list._tenta = setTimeout(() => { const ov = document.getElementById('tasks-overlay'); if (ov && ov.style.display !== 'none' && currentPhone === fone) loadTasks(); }, 4000);
+  }
 }
 function fmtTaskDue(due) {
   if (!due) return '';
@@ -17711,6 +17733,11 @@ async function faqDelete(id){
 
 // ── Aba global de Tarefas ──
 let _allTasksCache = [];
+// A lista JÁ CHEGOU do servidor ao menos uma vez? Enquanto não chegou, a tela diz
+// "Carregando…" — nunca "Nenhuma tarefa" (ela via "não tem tarefas" com tarefas lá).
+let _tarefasCarregou = false;
+// Busca que falhou (servidor acordando, login chegando): tenta de novo sozinha, cada vez mais espaçado
+function _tarefasEspera(n) { return Math.min(30000, 4000 * Math.pow(2, Math.max(0, (n || 1) - 1))); }
 function fmtTaskDue(ts){
   if(!ts) return '';
   const iso=new Date(parseUTC(ts) - _BRT_OFFSET).toISOString();
@@ -17736,8 +17763,9 @@ async function atualizaBadgeTarefas(){
   try{
     const r = await fetch(SERVER_URL + '/tasks');
     const lista = await r.json();
-    if (!Array.isArray(lista)) return;
+    if (!r.ok || !Array.isArray(lista)) return;
     _allTasksCache = _tarefaAplicaEco(lista); // aproveita para deixar a lista pronta
+    _tarefasCarregou = true;
     _pintaBadgeTarefas(_allTasksCache.filter(t => !t.done).length);
     // Tela de Tarefas aberta? Ela acompanha na hora (antes ficava desatualizada)
     if (_tarefasPaginaAberta()) { try { renderTasksPage(); } catch (_) {} }
@@ -17759,15 +17787,29 @@ async function openTasksPage(){
   document.getElementById('tasks-page').style.display='flex';
   _selTaskIds.clear();
   const area=document.getElementById('tasks-list-area');
-  area.innerHTML='<div style="color:#667781;font-size:13px;padding:20px">Carregando...</div>';
+  // Já carregou antes? Mostra NA HORA o que tenho e atualiza por trás (sem piscar "Carregando")
+  if(_tarefasCarregou) renderTasksPage();
+  else area.innerHTML='<div style="color:#667781;font-size:13px;padding:20px">Carregando...</div>';
+  _tarefasBusca(1);
+}
+let _tarefasTimer = null;
+async function _tarefasBusca(tentativa){
+  clearTimeout(_tarefasTimer);
   try{
     const res=await fetch(SERVER_URL+'/tasks');
-    _allTasksCache=await res.json();
-    if(!Array.isArray(_allTasksCache)) _allTasksCache=[];
+    let lista=null; try{ lista=await res.json(); }catch(_){}
+    // Erro (401/500/503…) NÃO é "lista vazia": antes virava "Nenhuma tarefa em aberto"
+    if(!res.ok || !Array.isArray(lista)) throw new Error('HTTP '+res.status);
+    _allTasksCache=lista; _tarefasCarregou=true;
     _tarefaAplicaEco(_allTasksCache); // o que acabei de salvar não se perde
-    renderTasksPage();
+    if(_tarefasPaginaAberta()) renderTasksPage();
     _pintaBadgeTarefas(_allTasksCache.filter(t=>!t.done).length);
-  }catch(e){ area.innerHTML='<div style="color:#ef4444;padding:20px">Erro ao carregar tarefas</div>'; }
+  }catch(e){
+    if(!_tarefasPaginaAberta()) return;
+    const area=document.getElementById('tasks-list-area');
+    if(!_tarefasCarregou && area) area.innerHTML='<div style="color:#667781;font-size:13px;padding:20px">Carregando... <span style="color:#8696a0">(o servidor demorou a responder — tentando de novo)</span> <button class="pf-topbtn" style="margin-left:6px" onclick="_tarefasBusca(1)">Tentar agora</button></div>';
+    _tarefasTimer=setTimeout(()=>{ if(_tarefasPaginaAberta()) _tarefasBusca((tentativa||1)+1); }, _tarefasEspera(tentativa));
+  }
 }
 function closeTasksPage(){
   const el = document.getElementById('tasks-page');
@@ -17957,6 +17999,11 @@ function renderTasksPage(){
   if(elAtras) elAtras.textContent = (nAbertas ? (nAbertas===1?'1 em aberto':nAbertas+' em aberto') : '') + (nAtras ? ' · ' + (nAtras===1?'1 atrasada':nAtras+' atrasadas') : '');
   _pintaBadgeTarefas(nAbertas); // a bolinha acompanha a tela na hora
 
+  if(!list.length && !_tarefasCarregou){
+    // A lista ainda não chegou: "Carregando…", nunca "Nenhuma tarefa"/"Nada encontrado"
+    area.innerHTML='<div style="color:#667781;font-size:13px;padding:20px">Carregando...</div>';
+    return;
+  }
   if(!list.length){
     const vazio = busca
       ? `<div class="empty-state"><div class="es-ico"><i class=ic-search></i></div><b>Nada encontrado</b><span>Nenhuma tarefa com "${escHtml(busca)}".</span></div>`
