@@ -2395,7 +2395,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v509</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v510</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3228,7 +3228,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v509</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v510</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3302,7 +3302,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 509;
+const APP_VER = 510;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -12259,7 +12259,8 @@ async function preverSheets() {
     if (!r.ok) throw new Error(j.error || 'falha');
     const cor = { novo: '#00a884', existe: '#8696a0', invalido: '#ef4444', repetido: '#b45309' };
     const rot = { novo: 'Novo', existe: 'Já existe', invalido: 'Telefone inválido', repetido: 'Repetido na planilha' };
-    const linhas = (j.itens || []).map(it => `<tr style="border-bottom:1px solid #f0f2f5">
+    window._sheetsPrev = j;
+    const linhas = (j.itens || []).map(it => `<tr class="${it.situacao === 'existe' ? 'sh-existe' : ''}" style="border-bottom:1px solid #f0f2f5;${it.situacao === 'existe' && j.ja_existem ? 'display:none' : ''}">
         <td style="padding:5px 6px;color:#8696a0;font-size:11px">${it.linha}</td>
         <td style="padding:5px 6px">${escHtml(it.name)}</td>
         <td style="padding:5px 6px;font-family:monospace;font-size:12px">${escHtml(it.phone)}</td>
@@ -12274,8 +12275,8 @@ async function preverSheets() {
           <span onclick="document.getElementById('sheets-prev-overlay').remove()" style="cursor:pointer;font-size:20px;color:#667781">✕</span>
         </div>
         <div style="padding:10px 16px;font-size:13px;color:#131c20;background:#f7f8fa;border-bottom:1px solid #e9edef">
-          ${(() => { const c = {}; for (const it of (j.itens || [])) { if (it.situacao !== 'novo' && !(j.atualizar_etapa && it.situacao === 'existe')) continue; const k = (it.etapa || '').trim() || 'sem etapa'; c[k] = (c[k] || 0) + 1; } const e = Object.entries(c).sort((a, b) => b[1] - a[1]); return e.length ? `<div id="sheets-por-etapa" style="margin-bottom:6px"><b>Por etapa:</b> ${e.map(([k, n]) => escHtml(k) + ' <b>' + n + '</b>').join(' · ')}</div>` : ''; })()}
-          <b>${j.total}</b> linha(s) na planilha · <span style="color:#00a884;font-weight:700">${j.novos} novos</span> · <span style="color:#8696a0">${j.ja_existem} já existem${j.atualizar_etapa ? ' (terão a etapa atualizada)' : ' (não serão mexidos)'}</span>${j.invalidos ? ` · <span style="color:#ef4444">${j.invalidos} telefone(s) inválido(s)</span>` : ''}${j.sem_etapa ? ` · <span style="color:#b45309">${j.sem_etapa} com ID de etapa não encontrado (entram sem etapa)</span>` : ''}${j.truncado ? ' · mostrando as primeiras 500' : ''}
+          <div id="sheets-resumo">${_sheetsResumoHtml(j, !!j.ja_existem)}</div>
+          ${j.ja_existem ? `<label style="display:flex;align-items:center;gap:7px;margin-top:8px;font-size:13px;font-weight:600;color:#131c20;cursor:pointer"><input type="checkbox" id="sheets-pular-exist" checked onchange="_sheetsPularMuda(this.checked)" style="width:16px;height:16px"> Não importar os ${j.ja_existem} que já existem (tirar desta importação)</label>` : ''}
         </div>
         <div style="overflow:auto;flex:1">
           <table style="width:100%;border-collapse:collapse;font-size:12.5px">
@@ -12285,7 +12286,7 @@ async function preverSheets() {
         </div>
         <div style="display:flex;gap:8px;justify-content:flex-end;padding:12px 16px;border-top:1px solid #e9edef">
           <button class="btn-cancel" onclick="document.getElementById('sheets-prev-overlay').remove()">Cancelar</button>
-          <button class="btn-save" id="btn-sheets-confirm" onclick="sincronizarSheets(true)" ${(j.novos + (j.atualizar_etapa ? j.ja_existem : 0)) ? '' : 'disabled'}>Confirmar e importar ${j.novos ? j.novos + ' novo(s)' : ''}</button>
+          <button class="btn-save" id="btn-sheets-confirm" onclick="sincronizarSheets(true)" ${j.novos ? '' : 'disabled'}>Confirmar e importar ${j.novos ? j.novos + ' novo(s)' : ''}</button>
         </div>
       </div></div>`);
     if (st) st.textContent = '';
@@ -12309,6 +12310,24 @@ function _sheetsProgressoHtml(p) {
     ${p.done && p.resultado && !p.resultado.ok ? `<div style="font-size:12.5px;color:#ef4444;margin-top:8px">${escHtml(p.resultado.erro || '')}</div>` : ''}
   </div>`;
 }
+// Resumo da prévia: com "não importar os que já existem" marcado, eles saem da conta,
+// da lista e da contagem por etapa (e o servidor pula eles NESTA importação)
+function _sheetsResumoHtml(j, pular) {
+  const atualiza = !pular && !!j.atualizar_etapa;
+  const c = {};
+  for (const it of (j.itens || [])) { if (it.situacao !== 'novo' && !(atualiza && it.situacao === 'existe')) continue; const k = (it.etapa || '').trim() || 'sem etapa'; c[k] = (c[k] || 0) + 1; }
+  const e = Object.entries(c).sort((a, b) => b[1] - a[1]);
+  const porEtapa = e.length ? `<div id="sheets-por-etapa" style="margin-bottom:6px"><b>Por etapa:</b> ${e.map(([k, n]) => escHtml(k) + ' <b>' + n + '</b>').join(' · ')}</div>` : '';
+  const exist = pular ? `${j.ja_existem} já existem (fora desta importação)` : `${j.ja_existem} já existem${j.atualizar_etapa ? ' (terão a etapa atualizada)' : ' (não serão mexidos)'}`;
+  return porEtapa + `<b>${j.total}</b> linha(s) na planilha · <span style="color:#00a884;font-weight:700">${j.novos} novos</span> · <span style="color:#8696a0">${exist}</span>${j.invalidos ? ` · <span style="color:#ef4444">${j.invalidos} telefone(s) inválido(s)</span>` : ''}${j.sem_etapa ? ` · <span style="color:#b45309">${j.sem_etapa} com ID de etapa não encontrado (entram sem etapa)</span>` : ''}${j.truncado ? ' · mostrando as primeiras 500' : ''}`;
+}
+function _sheetsPularMuda(pular) {
+  const j = window._sheetsPrev || {};
+  const r = document.getElementById('sheets-resumo'); if (r) r.innerHTML = _sheetsResumoHtml(j, pular);
+  document.querySelectorAll('#sheets-prev-overlay tr.sh-existe').forEach(tr => { tr.style.display = pular ? 'none' : ''; });
+  const b = document.getElementById('btn-sheets-confirm');
+  if (b) { const n = (j.novos || 0) + (!pular && j.atualizar_etapa ? (j.ja_existem || 0) : 0); b.disabled = !n; }
+}
 async function sincronizarSheets(confirmado) {
   const st = document.getElementById('cfg-sheets-status'), b = document.getElementById('btn-sheets-sync');
   if (!confirmado) return preverSheets();
@@ -12316,7 +12335,8 @@ async function sincronizarSheets(confirmado) {
   const card = ov ? ov.firstElementChild : null;
   if (b) { b.disabled = true; b.textContent = 'Importando…'; }
   try {
-    const r = await fetch(SERVER_URL + '/sheets/sync?bg=1', { method: 'POST' });
+    const _px = document.getElementById('sheets-pular-exist');
+    const r = await fetch(SERVER_URL + '/sheets/sync?bg=1' + (_px ? '&existentes=' + (_px.checked ? 'pular' : 'padrao') : ''), { method: 'POST' });
     const j = await r.json();
     if (!r.ok) throw new Error(j.error || j.erro || 'falha');
     // troca a prévia pela tela de progresso
