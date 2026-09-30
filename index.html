@@ -2395,7 +2395,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v507</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v508</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3228,7 +3228,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v507</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v508</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3302,7 +3302,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 507;
+const APP_VER = 508;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3412,15 +3412,37 @@ async function init(url) {
   _avisaServidorNoApp(); // avisa NA HORA se o servidor ficou para trás
   setInterval(() => { _verServidor = null; _avisaServidorNoApp(); }, 60 * 60 * 1000);
   startPolling();
+  _acordaLoop();
   refreshNoticesBadge();
   setInterval(refreshNoticesBadge, 5 * 60 * 1000); // bolinha de avisos a cada 5 min
 }
 
 // ── POLLING ──
-let _pollBusy = false;
+let _pollBusy = false, _pollDeNovo = false;
 async function _pollTick() {
-  if (_pollBusy) return; _pollBusy = true;
+  if (_pollBusy) { _pollDeNovo = true; return; } _pollBusy = true;
   try { await _pollTickInner(); } finally { _pollBusy = false; }
+  if (_pollDeNovo) { _pollDeNovo = false; setTimeout(() => { _pollTick().catch(() => {}); }, 50); }
+}
+// 🔔 CAMPAINHA: um pedido fica esperando no servidor e volta assim que algo é gravado
+// (mensagem do bot, do lead, de outro aparelho) → a tela atualiza NA HORA, sem esperar
+// a próxima conferência de 3 s. Não gasta cota do banco.
+let _acordaV = '', _acordaRodando = false;
+async function _acordaLoop() {
+  if (_acordaRodando) return; _acordaRodando = true;
+  while (true) {
+    try {
+      if (document.hidden || !SERVER_URL || !pollInterval) { await new Promise(r => setTimeout(r, 2000)); continue; }
+      const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 35000);
+      const r = await fetch(SERVER_URL + '/acorda?v=' + encodeURIComponent(_acordaV), { signal: ctl.signal });
+      clearTimeout(to);
+      if (!r.ok) { await new Promise(res => setTimeout(res, r.status === 404 ? 60000 : 5000)); continue; }
+      const j = await r.json().catch(() => ({}));
+      const primeira = !_acordaV;
+      if (j && j.v) _acordaV = j.v;
+      if (j && j.mudou && !primeira && !document.hidden && pollInterval) _pollTick().catch(() => {});
+    } catch (_) { await new Promise(r => setTimeout(r, 5000)); }
+  }
 }
 async function _pollTickInner() {
   // Snapshot do que aparece na lista (não lidas, PRÉVIA, horário, tiques) antes de atualizar
