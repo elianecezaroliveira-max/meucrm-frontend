@@ -2395,7 +2395,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v508</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v509</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3228,7 +3228,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v508</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v509</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3302,7 +3302,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 508;
+const APP_VER = 509;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -16276,10 +16276,11 @@ function renderPipelineList(contacts) {
   if (!el) return;
   const stName = {}, stPos = {};
   (pipelineStages || []).forEach((s, i) => { stName[s.id] = s.name; stPos[s.id] = (s.position ?? i); });
-  // Ordena por etapa (ordem do funil) e, dentro dela, pela conversa mais recente
+  // Ordena por etapa (ordem do funil) e, dentro dela, numa ordem FIXA (não pela última
+  // mensagem): antes, cada mensagem enviada fazia o lead pular de posição na lista
+  contacts.forEach(_pipeRank); // quem ainda não tem posição ganha agora, na ordem em que chegou
   const rows = [...contacts].sort((a, b) =>
-    ((stPos[a.stage_id] ?? 999) - (stPos[b.stage_id] ?? 999)) ||
-    String(b.last_message_at || '').localeCompare(String(a.last_message_at || '')));
+    ((stPos[a.stage_id] ?? 999) - (stPos[b.stage_id] ?? 999)) || _pipeOrdemFixa(a, b));
   if (!rows.length) { el.innerHTML = '<div style="padding:24px;color:#667781;font-size:14px">' + (_pipelineCarregou ? 'Nenhum lead encontrado.' : 'Carregando leads...') + '</div>'; return; }
   const allSel = rows.length > 0 && rows.every(c => selectedLeads.has(c.phone));
   const header = `<div class="plist-head">
@@ -16357,9 +16358,24 @@ function _pipeEstadoRestaura() {
   } catch (_) {}
 }
 
+// ── ORDEM FIXA NO PIPELINE ──
+// A posição do lead NÃO muda quando você manda ou recebe mensagem (ela pediu): dentro da
+// etapa vale a data de CADASTRO do lead (mais novo em cima). Sem data de cadastro, vale a
+// ordem em que o lead apareceu pela primeira vez nesta sessão (lead novo entra no topo).
+const _pipeVisto = new Map(); let _pipeVistoN = 0;
+function _pipeRank(c){ if (!_pipeVisto.has(c.phone)) _pipeVisto.set(c.phone, _pipeVistoN++); return _pipeVisto.get(c.phone); }
+function _pipeOrdemFixa(a, b){
+  const ca = a.created_at ? Date.parse(a.created_at) : NaN, cb = b.created_at ? Date.parse(b.created_at) : NaN;
+  if (!isNaN(ca) && !isNaN(cb) && ca !== cb) return cb - ca;
+  const ra = _pipeRank(a), rb = _pipeRank(b);
+  if (ra !== rb) return ra - rb;
+  return String(a.phone).localeCompare(String(b.phone));
+}
 function renderKanbanWith(contacts) {
   const board = document.getElementById('kanban-board');
   if (!board) return;
+  contacts.forEach(_pipeRank);
+  contacts = [...contacts].sort(_pipeOrdemFixa); // posição fixa também nas colunas
 
   // Agrupa contatos por stage
   const byStage = {};
