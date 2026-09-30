@@ -2395,7 +2395,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v510</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v512</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3228,7 +3228,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v510</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v512</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3302,7 +3302,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 510;
+const APP_VER = 512;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -10545,7 +10545,10 @@ async function sendMessage() {
   // Se há arquivo pendente, envia o arquivo (com ou sem legenda)
   if (selectedFile) { await sendFile(); return; }
   const input = document.getElementById('msg-input');
-  const message = input.value.trim();
+  const message = input.value.trim(); // o texto vai EXATAMENTE como você escreveu (nada é editado)
+  // Texto maior que o WhatsApp aceita (4.096 caracteres): avisa ANTES e NÃO envia — o texto
+  // continua no campo para você mesma reduzir (espaços invisíveis também contam)
+  if (message.length > 4096) { try { const _esp = (message.match(/[ \t\u00a0]+$/gm) || []).reduce((n, x) => n + x.length, 0); vAviso({ titulo: 'Mensagem longa demais', texto: 'Esta mensagem tem ' + message.length.toLocaleString('pt-BR') + ' caracteres e o WhatsApp aceita até 4.096.' + (_esp > 50 ? ' Dessas, ' + _esp.toLocaleString('pt-BR') + ' são espaços invisíveis no fim das linhas (texto colado de planilha).' : '') + ' Nada foi enviado — reduza o texto e envie de novo.' }); } catch (_) {} return; }
   // Bot no rascunho e nada digitado → o ENVIAR dispara o bot
   if (!message && _botPendente) { await _disparaBotPendente(); return; }
   if (!message || !currentPhone) return;
