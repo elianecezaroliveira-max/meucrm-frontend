@@ -2355,7 +2355,7 @@ window.addEventListener('load', initAuth);
       <h2 style="font-size:16px;font-weight:600;margin:0">Tarefas do lead</h2>
       <button onclick="closeTasks()" style="background:#e9edef;border:none;color:#131c20;width:30px;height:30px;border-radius:50%;cursor:pointer">✕</button>
     </div>
-    <input id="task-title" placeholder="Descreva a tarefa (opcional)" style="width:100%;box-sizing:border-box;background:#ffffff;border:1px solid #e9edef;color:#131c20;padding:9px 12px;border-radius:8px;outline:none;margin-bottom:8px">
+    <input id="task-title" placeholder="Comentário (opcional)" style="width:100%;box-sizing:border-box;background:#ffffff;border:1px solid #e9edef;color:#131c20;padding:9px 12px;border-radius:8px;outline:none;margin-bottom:8px">
     <div id="task-tipo-chips" class="vd-tipos"></div><input type="hidden" id="task-tipo" value="">
     <div style="display:flex;gap:8px;margin-bottom:16px">
       <input id="task-due" type="datetime-local" style="flex:1;background:#ffffff;border:1px solid #e9edef;color:#131c20;padding:8px 12px;border-radius:8px;outline:none">
@@ -2393,7 +2393,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v505</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v506</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3226,7 +3226,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v505</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v506</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3300,7 +3300,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 505;
+const APP_VER = 506;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -7954,7 +7954,7 @@ function _lpPintaTarefas(el, phone, mine){
   el.innerHTML = mine.length ? mine.map(t => `
     <div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:7px">
       <button onclick="lpToggleTask('${t.id}',${t.done?'false':'true'},'${phone}')" title="${t.done?'Reabrir':'Concluir'}" style="width:18px;height:18px;border-radius:50%;border:2px solid #00a884;background:${t.done?'#00a884':'transparent'};color:#fff;cursor:pointer;flex-shrink:0;font-size:11px;line-height:14px;padding:0">${t.done?'✓':''}</button>
-      <div onclick="editTaskChat('${t.id}')" title="Tocar para editar o texto e o prazo" style="flex:1;min-width:0;font-size:13px;color:#131c20;cursor:pointer;${t.done?'text-decoration:line-through;opacity:.6':''}">${_tipoIcoHtml(t.tipo)}${escHtml(t.title)}${t.due_at?`<div style="font-size:11px;color:#667781"><i class=ic-clock></i> ${fmtTaskDue(t.due_at)}</div>`:(t.created_at?`<div style="font-size:11px;color:#8696a0">Criada ${fmtTaskCreated(t.created_at)}</div>`:'')}</div>
+      <div onclick="editTaskChat('${t.id}')" title="Tocar para editar o texto e o prazo" style="flex:1;min-width:0;font-size:13px;color:#131c20;cursor:pointer;${t.done?'text-decoration:line-through;opacity:.6':''}">${_tarefaRotuloHtml(t)}${t.due_at?`<div style="font-size:11px;color:#667781"><i class=ic-clock></i> ${fmtTaskDue(t.due_at)}</div>`:(t.created_at?`<div style="font-size:11px;color:#8696a0">Criada ${fmtTaskCreated(t.created_at)}</div>`:'')}</div>
       ${_taskComentHtml(t)}
     </div>`).join('') : '<div style="color:#8696a0;font-size:12px">Nenhuma tarefa</div>';
 }
@@ -7999,14 +7999,13 @@ async function lpToggleTask(id, done, phone){
 async function lpAddTask(phone){
   await _carregaTiposTarefa();
   const d = await vCampos({ titulo: 'Nova tarefa', campos: [
-    { id: 'texto', rotulo: 'O que precisa ser feito? (opcional)', dica: 'ex.: ligar amanhã', valor: '' },
-    { id: 'tipo', rotulo: 'Tipo', tipoTarefa: true, valor: '' }
+    { id: 'tipo', rotulo: 'Tipo', tipoTarefa: true, valor: '' },
+    { id: 'coment', rotulo: 'Comentário (opcional)', multilinha: true, dica: 'ex.: ligar amanhã cedo', valor: '' }
   ], confirmar: 'Criar' });
   if (!d) return;
-  const tt = String(d.texto || '').trim() || 'Tarefa'; // sem texto = nasce como "Tarefa"
   const c = allContacts.find(x => x.phone === phone);
   try {
-    const _r = await fetch(SERVER_URL+'/tasks', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, account_id: c?.account_id || null, title: tt, tipo: d.tipo || null }) });
+    const _r = await fetch(SERVER_URL+'/tasks', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, account_id: c?.account_id || null, title: _tarefaTituloPara(d.tipo), notes: String(d.coment || '').trim() || null, tipo: d.tipo || null }) });
     _avisoTipoSemColuna(await _r.json().catch(() => ({})));
     _toast('Tarefa criada!');
   } catch(_){ _toast('Erro ao criar a tarefa.'); }
@@ -11131,7 +11130,7 @@ async function loadTasks() {
     const r = await fetch(`${SERVER_URL}/tasks?phone=${encodeURIComponent(currentPhone)}`);
     const novas = await r.json();
     if (!r.ok || !Array.isArray(novas)) throw new Error('HTTP ' + r.status); // erro não é "nenhuma tarefa"
-    const ass = JSON.stringify((Array.isArray(novas)?novas:[]).map(t => [t.id, t.title, t.due_at, t.done]));
+    const ass = JSON.stringify((Array.isArray(novas)?novas:[]).map(t => [t.id, t.title, t.due_at, t.done, t.tipo || '', t.notes || '']));
     if (list.dataset.ass === ass && list.dataset.phone === currentPhone) return; // nada mudou
     list.dataset.ass = ass; list.dataset.phone = currentPhone;
     currentTasks = novas;
@@ -11203,7 +11202,7 @@ function renderTasks() {
     return `<div style="display:flex;align-items:flex-start;gap:10px;padding:10px;background:#ffffff;border-radius:8px;margin-bottom:8px">
       <input type="checkbox" ${t.done?'checked':''} onchange="toggleTask('${t.id}',this.checked)" style="width:18px;height:18px;cursor:pointer;margin-top:2px">
       <div style="flex:1;min-width:0;cursor:pointer" onclick="editTaskChat('${t.id}')" title="Tocar para editar o texto e o prazo">
-        <div style="${t.done?'text-decoration:line-through;opacity:.6':''};word-break:break-word">${_tipoIcoHtml(t.tipo)}${escHtml(t.title)}</div>
+        <div style="${t.done?'text-decoration:line-through;opacity:.6':''};word-break:break-word">${_tarefaRotuloHtml(t)}</div>
         ${due}
         ${(!t.due_at && t.created_at) ? `<div style="font-size:11px;color:#8696a0;margin-top:2px">Criada ${fmtTaskCreated(t.created_at)}</div>` : ''}
       </div>
@@ -11423,13 +11422,14 @@ function _toast(msg) {
   } catch (_) {}
 }
 async function addTask() {
-  const title = document.getElementById('task-title').value.trim() || 'Tarefa'; // nome é OPCIONAL
+  const notes = document.getElementById('task-title').value.trim() || null; // o campo agora é o COMENTÁRIO
   const dueRaw = document.getElementById('task-due').value;
   const due_at = dueRaw ? new Date(dueRaw).toISOString() : null;
   const tipo = (document.getElementById('task-tipo') || {}).value || null;
+  const title = _tarefaTituloPara(tipo); // sem nome: a tarefa leva o nome do tipo
   try {
     const _r = await fetch(`${SERVER_URL}/tasks`, { method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ phone: currentPhone, account_id: currentAccountId || null, title, due_at, tipo }) });
+      body: JSON.stringify({ phone: currentPhone, account_id: currentAccountId || null, title, notes, due_at, tipo }) });
     _avisoTipoSemColuna(await _r.json().catch(() => ({})));
     document.getElementById('task-title').value = '';
     document.getElementById('task-due').value = '';
@@ -11457,17 +11457,18 @@ async function editTaskChat(id) {
   }
   const r = await vCampos({
     titulo: 'Editar tarefa',
-    texto: 'Mude o texto ou o prazo. Deixe a data em branco para ficar sem prazo.',
+    texto: 'Mude o tipo, o comentário ou o prazo. Deixe a data em branco para ficar sem prazo.',
     campos: [
-      { id: 'texto', rotulo: 'O que precisa ser feito?', multilinha: true, valor: t.title || '' },
       { id: 'tipo', rotulo: 'Tipo', tipoTarefa: true, valor: t.tipo || '' },
+      { id: 'coment', rotulo: 'Comentário (opcional)', multilinha: true, valor: t.notes || '' },
       { id: 'data', rotulo: 'Prazo — data (opcional)', tipo: 'date', valor: dData },
       { id: 'hora', rotulo: 'Prazo — hora', tipo: 'time', valor: dHora }
     ],
     confirmar: 'Salvar'
   });
   if (!r) return; // cancelou
-  const titulo = String(r.texto || '').trim() || 'Tarefa';
+  const titulo = _tarefaNomeProprio(t) || _tarefaTituloPara(r.tipo); // nome antigo fica; senão, o nome do tipo
+  const notes = String(r.coment || '').trim() || null;
   let due_at = null;
   if (r.data) {
     const ms = new Date(r.data + 'T' + (r.hora || '09:00') + ':00.000Z').getTime() + _BRT_OFFSET;
@@ -11477,12 +11478,12 @@ async function editTaskChat(id) {
     const tipo = r.tipo || null;
     const res = await fetch(SERVER_URL + '/tasks/' + id, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: titulo, due_at, tipo })
+      body: JSON.stringify({ title: titulo, notes, due_at, tipo })
     });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const _semCol = _avisoTipoSemColuna(await res.json().catch(() => ({})));
-    t.title = titulo; t.due_at = due_at; if (!_semCol) t.tipo = tipo;
-    try { _tarefaAtualiza(id, _semCol ? { title: titulo, due_at } : { title: titulo, due_at, tipo }); } catch (_) {}
+    t.title = titulo; t.notes = notes; t.due_at = due_at; if (!_semCol) t.tipo = tipo;
+    try { _tarefaAtualiza(id, _semCol ? { title: titulo, notes, due_at } : { title: titulo, notes, due_at, tipo }); } catch (_) {}
     if (naJanela) { // a janela do chat repinta na hora
       const l = document.getElementById('tasks-list'); if (l) l.dataset.ass = '';
       try { renderTasks(); } catch (_) {}
@@ -15932,7 +15933,7 @@ async function closeAutomationPanel() {
 function _actionChip(stageId, idx, a) {
   const stName = {}; (pipelineStages || []).forEach(s => stName[s.id] = s.name);
   let icon = '<i class=ic-cfg></i>', desc = '';
-  if (a.type === 'task')          { icon = '<i class=ic-note></i>'; const _tpA = _tipoDe(a.tipo); desc = `Criar tarefa: <b>${escHtml(a.title || '')}</b>${a.due_hours ? ' (prazo ' + a.due_hours + 'h)' : ''}${_tpA ? ' · <span style="color:' + escHtml(_tpA.cor) + '"><i class="ic-' + escHtml(_tpA.icone) + '"></i> ' + escHtml(_tpA.nome) + '</span>' : ''}`; }
+  if (a.type === 'task')          { icon = '<i class=ic-note></i>'; const _tpA = _tipoDe(a.tipo); desc = `Criar tarefa: <b>${escHtml(a.title || (_tipoDe(a.tipo) ? '' : 'Tarefa'))}</b>${a.notes ? ' — ' + escHtml(a.notes) : ''}${a.due_hours ? ' (prazo ' + a.due_hours + 'h)' : ''}${_tpA ? ' · <span style="color:' + escHtml(_tpA.cor) + '"><i class="ic-' + escHtml(_tpA.icone) + '"></i> ' + escHtml(_tpA.nome) + '</span>' : ''}`; }
   if (a.type === 'complete_task') { icon = '<i class=ic-task></i>'; desc = `Concluir tarefas${a.title_filter ? ' com "<b>' + escHtml(a.title_filter) + '</b>"' : ' do lead'}`; }
   if (a.type === 'tags')          { icon = '<i class=ic-tag></i>'; desc = `Tags: ${(a.add||[]).map(t=>'+'+escHtml(t)).join(' ')} ${(a.remove||[]).map(t=>'−'+escHtml(t)).join(' ')}`; }
   if (a.type === 'move_stage')    { icon = '<i class=ic-right></i>'; desc = `Mover lead para: <b>${escHtml(stName[a.stage_id] || '?')}</b>`; }
@@ -16070,12 +16071,12 @@ async function autoAddActionByType(v, stageId) {
     await _carregaTiposTarefa();
     const d = await vCampos({ titulo: 'Criar tarefa automaticamente', texto: 'Sempre que um lead entrar nesta etapa, esta tarefa é criada.',
       campos: [
-        { id: 'titulo', rotulo: 'Título da tarefa', valor: 'Fazer follow-up com {nome}', dica: 'Use {nome} para o nome do lead' },
-        { id: 'horas', rotulo: 'Prazo em horas (deixe vazio para sem prazo)', valor: '24', tipo: 'number' },
-        { id: 'tipoauto', rotulo: 'Tipo da tarefa', tipoTarefa: true, valor: '' }
+        { id: 'tipoauto', rotulo: 'Tipo da tarefa', tipoTarefa: true, valor: '' },
+        { id: 'coment', rotulo: 'Comentário (opcional)', valor: '', dica: 'Use {nome} para o nome do lead' },
+        { id: 'horas', rotulo: 'Prazo em horas (deixe vazio para sem prazo)', valor: '24', tipo: 'number' }
       ], confirmar: 'Adicionar' });
-    if (!d || !String(d.titulo || '').trim()) return;
-    a = { type: 'task', title: String(d.titulo).trim(), due_hours: d.horas && !isNaN(parseFloat(d.horas)) ? parseFloat(d.horas) : null, tipo: d.tipoauto || null };
+    if (!d) return;
+    a = { type: 'task', notes: String(d.coment || '').trim() || null, due_hours: d.horas && !isNaN(parseFloat(d.horas)) ? parseFloat(d.horas) : null, tipo: d.tipoauto || null };
   } else if (v === 'complete_task') {
     const f = await vPrompt({ titulo: 'Concluir tarefas', texto: 'Ao entrar nesta etapa, as tarefas abertas do lead são concluídas.',
       rotulo: 'Concluir só as que tiverem este texto no título (vazio = todas)', valor: '', confirmar: 'Adicionar' });
@@ -18165,11 +18166,10 @@ function _taskRowHTML(t){
     <button class="task-check" title="${t.done?'Reabrir':'Concluir'}" onclick="toggleTaskGlobal('${t.id}',${t.done?'false':'true'})">${t.done?'✓':''}</button>
     <div style="flex:1;min-width:0">
       ${lead ? `<div style="margin-bottom:5px">${lead}</div>` : ''}
-      <div style="color:#131c20;font-size:14px;font-weight:700;${t.done?'text-decoration:line-through;opacity:.6':''}">${escHtml(t.title)}</div>
+      <div class="task-rotulo" onclick="editTaskTitle('${t.id}')" style="cursor:pointer;color:#131c20;font-size:14px;font-weight:700;${t.done?'text-decoration:line-through;opacity:.6':''}">${_tarefaRotuloHtml(t, true)}</div>
       <div style="display:flex;gap:14px;margin-top:4px;flex-wrap:wrap;align-items:center">${due}
-        ${_tipoPillHtml(t)}
         ${t.created_at ? `<span class="task-criada" style="color:#8696a0;font-size:12px;white-space:nowrap" title="Criada em ${escHtml(fmtTaskCreated(t.created_at))}"><span class="rot">criada </span>${fmtTaskCreatedCurto(t.created_at)}</span>` : ''}
-        <span class="task-editar" style="color:#667781;font-size:12px;cursor:pointer;white-space:nowrap" onclick="editTaskTitle('${t.id}')" title="Editar o texto da tarefa"><i class=ic-pencil></i><span class="rot"> Editar</span></span>
+        <span class="task-editar" style="color:#667781;font-size:12px;cursor:pointer;white-space:nowrap" onclick="editTaskTitle('${t.id}')" title="Editar o tipo e o comentário"><i class=ic-pencil></i><span class="rot"> Editar</span></span>
         ${notaBtn}
       </div>
     </div>
@@ -18189,6 +18189,17 @@ async function _carregaTiposTarefa(forcar){
   return _tarefaTipos || [];
 }
 function _tipoDe(id){ return id ? ((_tarefaTipos || []).find(x => x.id === id) || null) : null; }
+// A tarefa NÃO tem mais nome: o que aparece é o TIPO (figura + cor) e o comentário.
+// Tarefas antigas com nome próprio continuam mostrando esse nome.
+function _tarefaNomeProprio(t){ const tp = _tipoDe(t && t.tipo); const ti = String((t && t.title) || '').trim(); return (ti && ti !== 'Tarefa' && (!tp || ti !== tp.nome)) ? ti : ''; }
+function _tarefaTituloPara(tipoId){ const tp = _tipoDe(tipoId); return tp ? tp.nome : 'Tarefa'; }
+function _tarefaRotuloHtml(t, grande){
+  const tp = _tipoDe(t.tipo), prop = _tarefaNomeProprio(t);
+  const tipo = tp ? `<span class="task-tipo" style="color:${escHtml(tp.cor)};background:${escHtml(tp.cor)}1a;${grande ? 'font-size:13.5px;padding:3px 11px' : ''}"><i class="ic-${escHtml(tp.icone)}"></i>${escHtml(tp.nome)}</span>` : '';
+  if (tp && prop) return tipo + ` <span style="font-weight:600">${escHtml(prop)}</span>`;
+  if (tp) return tipo;
+  return escHtml(prop || 'Tarefa');
+}
 function _tipoIcoHtml(id){ const tp = _tipoDe(id); return tp ? `<i class="ic-${escHtml(tp.icone)}" title="${escHtml(tp.nome)}" style="color:${escHtml(tp.cor)};margin-right:5px"></i>` : ''; }
 function _tipoPillHtml(t){
   const tp = _tipoDe(t.tipo);
@@ -18379,8 +18390,8 @@ async function abrirNovaTarefa(){
     titulo:'Nova tarefa',
     texto:'O prazo é opcional. Sem lead, a tarefa fica só sua.',
     campos:[
-      { id:'texto', rotulo:'O que precisa ser feito?', multilinha:true, valor:'', dica:'Ex.: ligar para confirmar os documentos' },
       { id:'tipo',  rotulo:'Tipo', tipoTarefa:true, valor:'' },
+      { id:'coment', rotulo:'Comentário (opcional)', multilinha:true, valor:'', dica:'Ex.: confirmar os documentos' },
       { id:'lead',  rotulo:'Lead (opcional)', opcoes:[{v:'',t:'— Sem lead —'}].concat(contatos.map(c=>({v:c.phone,t:(c.name||c.phone)}))) },
       { id:'data',  rotulo:'Prazo — data (opcional)', tipo:'date', valor:'' },
       { id:'hora',  rotulo:'Prazo — hora', tipo:'time', valor:sug.hora||'09:00' }
@@ -18388,8 +18399,8 @@ async function abrirNovaTarefa(){
     confirmar:'Criar tarefa'
   });
   if(!d) return;
-  const titulo=String(d.texto||'').trim();
-  if(!titulo){ _toast('Escreva o que precisa ser feito.'); return; }
+  const titulo=_tarefaTituloPara(d.tipo);
+  const notes=String(d.coment||'').trim()||null;
   let due_at=null;
   if(d.data){
     const ms=new Date(d.data+'T'+(d.hora||'09:00')+':00.000Z').getTime()+_BRT_OFFSET;
@@ -18398,7 +18409,7 @@ async function abrirNovaTarefa(){
   const c=(allContacts||[]).find(x=>String(x.phone)===String(d.lead||''));
   try{
     const r=await fetch(SERVER_URL+'/tasks',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({ phone: d.lead||null, account_id: (c&&c.account_id)||null, title: titulo, due_at, tipo: d.tipo||null })});
+      body:JSON.stringify({ phone: d.lead||null, account_id: (c&&c.account_id)||null, title: titulo, notes, due_at, tipo: d.tipo||null })});
     const j=await r.json().catch(()=>({}));
     if(!r.ok||j.error){ showToast(j.error||'Não consegui criar a tarefa','err'); return; }
     _avisoTipoSemColuna(j);
@@ -18476,16 +18487,17 @@ async function editTaskTitle(id){
   const t=_allTasksCache.find(x=>String(x.id)===String(id));
   await _carregaTiposTarefa();
   const d=await vCampos({ titulo: 'Editar tarefa', campos: [
-    { id: 'texto', rotulo: 'Texto da tarefa', valor: t?.title||'', multilinha: true },
-    { id: 'tipo', rotulo: 'Tipo', tipoTarefa: true, valor: t?.tipo||'' }
+    { id: 'tipo', rotulo: 'Tipo', tipoTarefa: true, valor: t?.tipo||'' },
+    { id: 'coment', rotulo: 'Comentário (opcional)', valor: t?.notes||'', multilinha: true }
   ], confirmar: 'Salvar' });
   if(!d) return; // cancelou
-  const novo=String(d.texto||'').trim()||'Tarefa';
   const tipo=d.tipo||null;
+  const novo=_tarefaNomeProprio(t||{}) || _tarefaTituloPara(tipo);
+  const notes=String(d.coment||'').trim()||null;
   try{
-    const _r=await fetch(SERVER_URL+'/tasks/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:novo, tipo})});
+    const _r=await fetch(SERVER_URL+'/tasks/'+id,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:novo, notes, tipo})});
     const _semCol=_avisoTipoSemColuna(await _r.json().catch(()=>({})));
-    const _t2 = _tarefaAtualiza(id, _semCol ? { title: novo } : { title: novo, tipo });
+    const _t2 = _tarefaAtualiza(id, _semCol ? { title: novo, notes } : { title: novo, notes, tipo });
     renderTasksPage(); _sincTarefas((_t2 || t || {}).phone, true);
   }catch(e){ alert('Erro ao salvar a tarefa'); }
 }
@@ -19912,7 +19924,7 @@ function getNodePreview(node) {
     const parts=[]; if(a.length) parts.push('+'+a.join(', ')); if(r.length) parts.push('−'+r.join(', '));
     return parts.join('  ') || '(configure as tags)';
   }
-  if (node.type==='task') return cfg.title ? (cfg.title.length>50?cfg.title.substring(0,50)+'…':cfg.title) : '(descreva a tarefa)';
+  if (node.type==='task') { const _tp = _tipoDe(cfg.tipo); const _tx = String(cfg.title || cfg.notes || '').trim(); const _cm = _tx.length > 50 ? _tx.substring(0, 50) + '…' : _tx; return (_tp ? _tp.nome : 'Tarefa') + (_cm ? ' — ' + _cm : ''); }
   if (node.type==='complete_task') return cfg.title_filter ? ('Concluir: "'+cfg.title_filter+'"') : 'Concluir todas as tarefas do lead';
   if (node.type==='business_hours') {
     const dn=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
@@ -20876,13 +20888,13 @@ function renderConfigPanel(node) {
 
   if (node.type==='task') {
     form.innerHTML = `
-      <label class="bot-cfg-label">Tarefa <span style="color:#667781">(pode usar {nome})</span></label>
-      <input class="bot-cfg-input" id="cfg-task-title" placeholder="Ligar para {nome}" value="${escHtml(node.config.title||'')}" />
+      <label class="bot-cfg-label">Comentário <span style="color:#667781">(opcional — pode usar {nome})</span></label>
+      <textarea class="bot-cfg-input" id="cfg-task-title" rows="2" placeholder="Ex.: confirmar os documentos de {nome}">${escHtml(node.config.notes != null ? node.config.notes : (node.config.title || ''))}</textarea>
       <label class="bot-cfg-label" style="margin-top:12px">Vencimento em (horas a partir de agora)</label>
       <input class="bot-cfg-input" type="number" min="0" id="cfg-task-due" value="${node.config.due_hours||0}" placeholder="0 = sem prazo" onchange="updateNodeConfig('${node.id}',{due_hours:parseFloat(this.value)||0})" />
       <label class="bot-cfg-label" style="margin-top:12px">Tipo da tarefa</label>
       <input type="hidden" id="cfg-task-tipo" value="${escHtml(node.config.tipo||'')}"><div class="vd-tipos" id="cfg-task-tipo-chips">${_tipoChipsHtml('cfg-task-tipo', node.config.tipo||'')}</div>`;
-    document.getElementById('cfg-task-title').addEventListener('input', function(){ updateNodeConfig(node.id,{title:this.value}); });
+    document.getElementById('cfg-task-title').addEventListener('input', function(){ updateNodeConfig(node.id,{notes:this.value, title:''}); }); // a tarefa não tem mais nome: vira comentário
     document.getElementById('cfg-task-tipo').addEventListener('change', function(){ updateNodeConfig(node.id,{tipo:this.value||null}); });
     if (!_tarefaTipos) _carregaTiposTarefa().then(() => _pintaTipoChips('cfg-task-tipo', (document.getElementById('cfg-task-tipo') || {}).value || ''));
     return;
