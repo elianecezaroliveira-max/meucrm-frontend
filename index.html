@@ -2415,7 +2415,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v517</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v518</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3249,7 +3249,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v517</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v518</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3323,7 +3323,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 517;
+const APP_VER = 518;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -18660,7 +18660,7 @@ function _tfPintaPainel(){
 
 // ══ KANBAN DAS TAREFAS: ATRASADAS · HOJE · AMANHÃ ══
 // Arrastar um cartão para HOJE ou AMANHÃ muda o prazo (mesma hora; se a hora de hoje já
-// passou, fica para o fim do dia). Tarefas sem prazo ou para depois de amanhã ficam só na Lista.
+// passou, fica para o fim do dia). Tarefa SEM PRAZO fica em HOJE; depois de amanhã, só na Lista.
 function _tarefasVisaoAtual(){ try { return localStorage.getItem('filaz_tarefas_visao') === 'kanban' ? 'kanban' : 'lista'; } catch (_) { return 'lista'; } }
 function tarefasVisao(v){
   try { localStorage.setItem('filaz_tarefas_visao', v); } catch (_) {}
@@ -18674,7 +18674,8 @@ function _tarefasVisaoPinta(){
   const pg = document.getElementById('tasks-page'); if (pg) pg.classList.toggle('kanban-on', v === 'kanban');
 }
 function _tarefaColuna(t){
-  if (t.done || !t.due_at) return null;
+  if (t.done) return null;
+  if (!t.due_at) return 'hoje'; // sem prazo = é para HOJE (ela pediu)
   const hoje = Math.floor((Date.now() - _BRT_OFFSET) / 86400000), dia = _diaBrt(t.due_at);
   if (parseUTC(t.due_at) < Date.now()) return 'atrasadas';
   if (dia === hoje) return 'hoje';
@@ -18686,19 +18687,20 @@ function _tarefasKanbanHtml(list){
   _tarefasVisaoPinta();
   const cols = { atrasadas: [], hoje: [], amanha: [] };
   list.forEach(t => { const c = _tarefaColuna(t); if (c) cols[c].push(t); });
-  Object.values(cols).forEach(a => a.sort((x, y) => parseUTC(x.due_at) - parseUTC(y.due_at)));
+  // com prazo primeiro (pela hora); as sem prazo no fim da coluna
+  Object.values(cols).forEach(a => a.sort((x, y) => (x.due_at ? parseUTC(x.due_at) : Infinity) - (y.due_at ? parseUTC(y.due_at) : Infinity)));
   const fora = list.filter(t => !t.done && !_tarefaColuna(t)).length;
   const card = t => {
     const nota = String(t.notes || '').replace(/\s+/g, ' ').trim();
     const lead = t.contact_name ? `<button onclick="event.stopPropagation();openTaskLead('${t.phone}','${_jsAttr(t.contact_name)}',${t.account_id ? `'${t.account_id}'` : 'null'})" title="Abrir a conversa" style="display:inline-flex;align-items:center;gap:5px;background:#e7f7ef;border:1px solid #00a884;color:#00806a;border-radius:14px;padding:3px 10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><i class=ic-user></i> ${escHtml(t.contact_name)}</button>` : '';
-    const atras = parseUTC(t.due_at) < Date.now();
+    const atras = !!t.due_at && parseUTC(t.due_at) < Date.now();
     return `<div class="tk-card" draggable="true" data-id="${escHtml(String(t.id))}" ondblclick="editTaskTitle('${t.id}')" title="Arraste para Hoje ou Amanhã · 2 cliques para editar">
       <div style="display:flex;align-items:flex-start;gap:8px">
         <button class="task-check" title="Concluir" onclick="event.stopPropagation();toggleTaskGlobal('${t.id}',true)" style="flex-shrink:0"></button>
         <div style="flex:1;min-width:0">
           <div style="font-weight:700;font-size:13.5px;color:#131c20;margin-bottom:5px">${_tarefaRotuloHtml(t)}</div>
           ${lead ? `<div style="margin-bottom:5px">${lead}</div>` : ''}
-          <div style="font-size:12px;color:${atras ? '#ef4444' : '#667781'};cursor:pointer" onclick="event.stopPropagation();menuPrazoTarefa('${t.id}')"><i class=ic-clock></i> ${fmtTaskDue(t.due_at)}</div>
+          <div style="font-size:12px;color:${atras ? '#ef4444' : '#667781'};cursor:pointer" onclick="event.stopPropagation();menuPrazoTarefa('${t.id}')"><i class=ic-clock></i> ${t.due_at ? fmtTaskDue(t.due_at) : 'Sem prazo'}</div>
           ${nota ? `<div style="font-size:12px;color:#54656f;margin-top:4px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical"><i class=ic-note></i> ${escHtml(nota)}</div>` : ''}
         </div>
       </div>
@@ -18707,7 +18709,7 @@ function _tarefasKanbanHtml(list){
   return `<div class="tk-board">${_TK_COLS.map(([k, rot, cor]) => `<div class="tk-col" data-col="${k}">
       <div class="tk-col-head" style="color:${cor}">${rot} <span class="n">${cols[k].length}</span></div>
       ${cols[k].length ? cols[k].map(card).join('') : `<div class="tk-vazio">${k === 'atrasadas' ? 'Nada atrasado 🎉' : 'Nenhuma tarefa'}</div>`}
-    </div>`).join('')}</div>` + (fora ? `<div style="margin-top:12px;font-size:12px;color:#8696a0">${fora} tarefa(s) sem prazo ou para depois de amanhã — veja em <a href="#" onclick="event.preventDefault();tarefasVisao('lista')">Lista</a>.</div>` : '');
+    </div>`).join('')}</div>` + (fora ? `<div style="margin-top:12px;font-size:12px;color:#8696a0">${fora} tarefa(s) para depois de amanhã — veja em <a href="#" onclick="event.preventDefault();tarefasVisao('lista')">Lista</a>.</div>` : '');
 }
 function _tarefasKanbanLiga(){
   const area = document.getElementById('tasks-list-area'); if (!area) return;
