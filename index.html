@@ -2395,7 +2395,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v512</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v513</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3228,7 +3228,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v512</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v513</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3302,7 +3302,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 512;
+const APP_VER = 513;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -6164,6 +6164,37 @@ function _emailToque(ev, a) {
   } catch (_) {}
   return false;
 }
+// Tocar no telefone: "Ligar / Copiar número / Abrir conversa" (sem sair da tela, nada é enviado)
+let _foneMenuNum = '';
+function _foneToque(ev, a) {
+  try {
+    if (typeof _selMode !== 'undefined' && _selMode) return false;
+    ev.preventDefault(); ev.stopPropagation();
+    _foneMenuNum = (a.textContent || '').trim();
+    const dig = _foneMenuNum.replace(/\D/g, '');
+    let m = document.getElementById('fone-menu');
+    if (!m) {
+      m = document.createElement('div'); m.id = 'fone-menu';
+      m.style.cssText = 'display:none;position:fixed;z-index:710;background:#ffffff;border:1px solid #e9edef;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.25);min-width:180px;padding:4px';
+      document.body.appendChild(m);
+      document.addEventListener('click', e => { if (!e.target.closest('#fone-menu')) fechaFoneMenu(); });
+      document.addEventListener('scroll', () => fechaFoneMenu(), true);
+    }
+    const c = (allContacts || []).find(x => { const p = String(x.phone || ''); return p === dig || p === '55' + dig || (dig.length >= 10 && p.endsWith(dig.slice(-8)) && p.slice(-10, -8) === dig.slice(-10, -8)); });
+    m.innerHTML = '<div style="padding:6px 12px 4px;font-size:12px;color:#667781">' + escHtml(_foneMenuNum) + '</div>'
+      + '<div class="cm-item" onclick="fechaFoneMenu();_foneLiga()"><i class=ic-call></i> Ligar</div>'
+      + '<div class="cm-item" onclick="fechaFoneMenu();_copiaComFormato(_foneMenuNum,()=>showCopyToast(\'Número copiado\'))"><i class=ic-copy></i> Copiar número</div>'
+      + (c ? `<div class="cm-item" onclick="fechaFoneMenu();openLeadChat('${_jsAttr(c.phone)}','${_jsAttr(c.name || '')}','${_jsAttr(c.account_id || '')}')"><i class=ic-chat></i> Abrir conversa</div>` : '');
+    const r = a.getBoundingClientRect();
+    m.style.display = 'block';
+    const mw = m.offsetWidth, mh = m.offsetHeight;
+    m.style.left = Math.max(8, Math.min(r.left, window.innerWidth - mw - 8)) + 'px';
+    m.style.top = (r.bottom + 4 + mh < window.innerHeight - 8 ? r.bottom + 4 : Math.max(8, r.top - mh - 4)) + 'px';
+  } catch (_) {}
+  return false;
+}
+function fechaFoneMenu() { const m = document.getElementById('fone-menu'); if (m) m.style.display = 'none'; }
+function _foneLiga() { try { const a = document.createElement('a'); a.href = 'tel:' + _foneMenuNum.replace(/[^\d+]/g, ''); a.click(); } catch (_) {} }
 function fechaEmailMenu() { const m = document.getElementById('email-menu'); if (m) m.style.display = 'none'; }
 function _emailEnvia(e) { try { const a = document.createElement('a'); a.href = 'mailto:' + e; a.click(); } catch (_) {} }
 document.addEventListener('click', e => { if (!e.target.closest('#email-menu')) fechaEmailMenu(); });
@@ -8738,6 +8769,20 @@ function _keepBottom(el) {
 }
 
 // Formatação do WhatsApp: links clicáveis + *negrito*, _itálico_, ~riscado~
+// 📞 Números de telefone azuis e tocáveis, igual ao WhatsApp (0800 645 6094, (61) 99999-9999,
+// +55 61 99999-9999, 61999999999…). Valor em dinheiro, data e hora não viram telefone.
+function _linkaFones(txt) {
+  return String(txt).replace(/(^|[^\w/@.$,:+(-])(\+?\(?\d[\d ().-]{6,20}\d)(?![\w/@]|[.,]\d)/g, (m, antes, num) => {
+    const dig = num.replace(/\D/g, '');
+    if (dig.length < 8 || dig.length > 13) return m;
+    // só dígitos colados (sem espaço/traço/parêntese): só vale com DDD (10–11) ou 55+DDD (12–13) ou 0800
+    if (/^\d+$/.test(num) && !(/^0[358]00/.test(dig) || dig.length === 10 || dig.length === 11 || (/^55/.test(dig) && dig.length >= 12))) return m;
+    if (/^\d{1,2}[./-]\d{1,2}[./-]\d{2,4}$/.test(num)) return m;      // data
+    if (/[.]\d{3}[.]\d{3}/.test(num)) return m;                       // CPF/CNPJ (123.456.789)
+    if (/ {2,}/.test(num) || /\n/.test(num)) return m;
+    return antes + `<a href="tel:${dig}" class="wa-fone" onclick="return _foneToque(event,this)" style="color:#027eb5;text-decoration:underline">${num}</a>`;
+  });
+}
 function waFormat(raw) {
   const t = escHtml(raw == null ? '' : String(raw));
   const parts = t.split(/((?:https?:\/\/|www\.)[^\s<]+)/g);
@@ -8746,9 +8791,10 @@ function waFormat(raw) {
       const href = seg.startsWith('http') ? seg : 'https://' + seg;
       return `<a href="${href}" target="_blank" rel="noopener" style="color:#027eb5;text-decoration:underline;word-break:break-all">${seg}</a>`;
     }
-    return seg
-      // E-mails: azuis e clicáveis, igual aos links (abre o app de e-mail)
-      .replace(/([\w.+-]+@[\w-]+(?:\.[\w-]+)+)/g, '<a href="mailto:$1" onclick="return _emailToque(event,this)" style="color:#027eb5;text-decoration:underline;word-break:break-all">$1</a>')
+    // E-mails: azuis e clicáveis, igual aos links. Telefones também (fora dos e-mails)
+    return seg.split(/([\w.+-]+@[\w-]+(?:\.[\w-]+)+)/g).map((pd, k) => k % 2 === 1
+        ? `<a href="mailto:${pd}" onclick="return _emailToque(event,this)" style="color:#027eb5;text-decoration:underline;word-break:break-all">${pd}</a>`
+        : _linkaFones(pd)).join('')
       .replace(/\*([^*\n]+)\*/g, '<b>$1</b>')
       .replace(/(^|[\s(])_([^_\n]+)_(?=$|[\s).,!?])/gm, '$1<i>$2</i>')
       .replace(/~([^~\n]+)~/g, '<s>$1</s>');
