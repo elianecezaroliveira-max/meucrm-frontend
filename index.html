@@ -921,7 +921,12 @@
   .msg:has(video):not(:has(.media-caption)) .time .msg-ticks:not(.read),
   .msg[data-key^="alb-"] .time .msg-ticks:not(.read) { color: #fff; }
   /* No celular o arquivo abre com um toque — a linha "Baixar" não existe no WhatsApp */
-  @media (hover: none) { .doc-wrap .media-dl-link { display: none; } }
+  @media (hover: none) { .doc-wrap .media-dl-link, .doc-wrap .doc-acoes { display: none !important; } }
+  /* "Ver | Salvar como..." embaixo do arquivo (igual ao WhatsApp Web) */
+  .doc-acoes { display:flex; border-top:1px solid rgba(0,0,0,.08); margin:2px -10px -8px; }
+  .doc-acoes button { flex:1; background:none; border:none; color:#008069; font-size:13.5px; font-weight:600; padding:9px 4px; cursor:pointer; font-family:inherit; }
+  .doc-acoes button:hover { background:rgba(0,0,0,.04); }
+  body.dark .doc-acoes button { color:#00a884; }
   .msg-image:hover { opacity:.88; }
   .media-caption { font-size:13px; margin-top:2px; }
   .doc-wrap { background:rgba(0,0,0,.05); border-radius:6px; padding:8px 10px; font-size:13px; display:flex; flex-direction:column; gap:6px; }
@@ -1083,6 +1088,21 @@ body.dark{
 #faq-form .faq-form-actions { display:flex;gap:10px;justify-content:flex-end;margin-top:16px; }
 #tasks-page-topbar { background:#f0f2f5; padding:10px 16px; display:flex; align-items:center; gap:12px; border-bottom:1px solid #e9edef; flex-shrink:0; }
 #tasks-page-topbar h2 { font-size:16px;font-weight:700;color:#131c20;flex:1; }
+/* Kanban das tarefas: ATRASADAS · HOJE · AMANHÃ */
+#tasks-page.kanban-on #tasks-list-area { max-width:none; }
+.tk-board { display:grid; grid-template-columns:repeat(3, minmax(260px, 1fr)); gap:14px; align-items:start; }
+@media (max-width: 768px) { .tk-board { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; } .tk-col { min-width:86vw; scroll-snap-align:start; } }
+.tk-col { background:#f0f2f5; border-radius:12px; padding:10px; min-height:140px; border:2px solid transparent; }
+.tk-col.drag-over { border-color:#00a884; background:#e7f7ef; }
+.tk-col-head { display:flex; align-items:center; gap:8px; margin:2px 4px 10px; font-size:12.5px; font-weight:800; letter-spacing:.5px; }
+.tk-col-head .n { background:rgba(0,0,0,.08); border-radius:10px; padding:0 8px; font-size:11.5px; color:#54656f; }
+.tk-card { background:#fff; border:1px solid #e9edef; border-radius:10px; padding:10px 11px; margin-bottom:8px; cursor:grab; box-shadow:0 1px 2px rgba(0,0,0,.05); }
+.tk-card:active { cursor:grabbing; }
+.tk-card.dragging { opacity:.45; }
+.tk-vazio { color:#8696a0; font-size:12.5px; text-align:center; padding:18px 6px; }
+.tk-vbtn { padding:6px 10px !important; }
+.tk-vbtn.on { background:#e7f7ef !important; color:#00806a !important; border-color:#00a884 !important; }
+body.dark .tk-col { background:#111b21; } body.dark .tk-card { background:#202c33; border-color:#3b4a54; }
 #tasks-list-area { flex:1;overflow-y:auto;padding:20px;max-width:760px;margin:0 auto;width:100%;box-sizing:border-box; }
 .task-row { display:flex;align-items:flex-start;gap:12px;background:#ffffff;border:1px solid #e9edef;border-radius:10px;padding:12px 14px;margin-bottom:10px; }
 /* Tipos de tarefa + filtros da tela Tarefas */
@@ -2395,7 +2415,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v514</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v517</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3144,6 +3164,7 @@ window.addEventListener('load', initAuth);
     <span id="tasks-sel-count" style="font-size:12px;color:#00a884;font-weight:600"></span>
     <button class="btn-secondary" id="tasks-disparo-btn" style="display:none" onclick="openBulkBotMenu(event)" title="Dispara o bot para os leads selecionados">Disparar bot</button>
     <input type="checkbox" id="tasks-show-done" onchange="renderTasksPage()" style="display:none" /><!-- antigo "Mostrar concluídas": agora é o filtro Situação -->
+    <span style="display:inline-flex;gap:4px"><button class="btn-secondary tk-vbtn" id="tasks-v-lista" onclick="tarefasVisao('lista')" title="Ver em lista">☰ Lista</button><button class="btn-secondary tk-vbtn" id="tasks-v-kanban" onclick="tarefasVisao('kanban')" title="Ver em colunas: Atrasadas, Hoje e Amanhã">▥ Kanban</button></span>
     <button class="btn-secondary" id="tasks-filtros-btn" onclick="tfAbre(event)" title="Filtrar por situação, etapa do pipeline, tipo e data de criação"><i class=ic-filter></i> Filtros<span id="tasks-filtros-n" style="display:none;margin-left:6px;background:#00a884;color:#fff;border-radius:10px;padding:0 7px;font-size:11px;font-weight:700"></span></button>
     <button class="btn-secondary" onclick="abrirTiposTarefa()" title="Criar e editar os tipos de tarefa (Reunião, Acompanhar…)"><i class=ic-tag></i> Tipos</button>
     <button class="btn-secondary" onclick="openTaskReminderModal()" title="Configurar lembretes de tarefas em aberto">Lembretes</button>
@@ -3228,7 +3249,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v514</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v517</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3302,7 +3323,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 514;
+const APP_VER = 517;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -6103,7 +6124,38 @@ async function msgMenuEdit() {
     loadMessages(currentPhone, false); // atualiza a bolha com o texto novo
   }).catch(() => alert('Erro ao editar mensagem.'));
 }
-function msgMenuCopy()   { const id = _msgMenuId; closeMsgMenu(); if (id) copyMsgText(id); }
+function msgMenuCopy()   {
+  const id = _msgMenuId; closeMsgMenu(); if (!id) return;
+  // FOTO/figurinha: o "Copiar" copia a IMAGEM (antes copiava só o texto — e foto sem legenda
+  // dava "Nada para copiar", e o botão direito não deixava o menu do navegador aparecer)
+  try {
+    const el = document.querySelector(`#messages-area .msg[data-msg-id="${(window.CSS && CSS.escape) ? CSS.escape(String(id)) : String(id)}"]`);
+    const tipo = el ? (el.dataset.msgType || '') : '';
+    const img = el ? el.querySelector('img.msg-image, img[alt="Figurinha"]') : null;
+    if ((tipo === 'image' || tipo === 'sticker') && img && img.src) { copiaImagem(img.currentSrc || img.src); return; }
+  } catch (_) {}
+  copyMsgText(id);
+}
+// Copia a FOTO para a área de transferência (colar no WhatsApp, e-mail, Word…). A área de
+// transferência só aceita PNG: outras imagens são convertidas. O ClipboardItem recebe a
+// promessa NA HORA do toque (o iPhone exige isso).
+function copiaImagem(url) {
+  const pngDe = async () => {
+    const r = await fetch(url, { credentials: 'omit' }); if (!r.ok) throw new Error('HTTP ' + r.status);
+    const b = await r.blob();
+    if (b.type === 'image/png') return b;
+    const bmp = await createImageBitmap(b);
+    const cv = document.createElement('canvas'); cv.width = bmp.width; cv.height = bmp.height;
+    cv.getContext('2d').drawImage(bmp, 0, 0);
+    return await new Promise((ok, err) => cv.toBlob(x => x ? ok(x) : err(new Error('png')), 'image/png'));
+  };
+  try {
+    if (!(navigator.clipboard && navigator.clipboard.write && window.ClipboardItem)) throw new Error('sem suporte');
+    navigator.clipboard.write([new ClipboardItem({ 'image/png': pngDe() })])
+      .then(() => showCopyToast('Imagem copiada'))
+      .catch(() => showToast('Não consegui copiar a imagem neste navegador. Abra a foto e use "Baixar".', 'warn'));
+  } catch (_) { showToast('Este navegador não deixa copiar imagem. Abra a foto e use "Baixar".', 'warn'); }
+}
 // ── COPIAR SÓ O E-MAIL ──
 // O lead manda "E mail: fulano@gmail.com": dá para copiar só o endereço, pelo menu ⌄
 // ("Copiar e-mail") ou tocando no e-mail (menuzinho "Copiar e-mail / Enviar e-mail").
@@ -7711,6 +7763,87 @@ function _albFim(ok, fecha) {
 
 // Baixa o arquivo DIRETO na pasta de downloads do navegador (sem abrir aba
 // nem a janela "Salvar como": traz o arquivo para a memória e salva com o nome certo)
+// ── ARQUIVOS: "Ver" (abre SEM baixar) e "Salvar como..." (escolhe onde salvar) ──
+// PDF, foto e texto: o próprio navegador mostra numa aba nova (nada vai para Downloads).
+// Word (.docx) e Excel (.xlsx/.xls/.csv): mostrados AQUI, convertidos no seu aparelho
+// (o arquivo não sai para nenhum site de fora). Outros tipos: avisa e oferece salvar.
+function _arqTipo(nome, mime) {
+  const ext = (String(nome || '').split('.').pop() || '').toLowerCase(), mm = String(mime || '').toLowerCase();
+  if (ext === 'pdf' || mm.includes('pdf')) return 'aba';
+  if (/^(png|jpe?g|gif|webp|bmp|txt)$/.test(ext) || mm.startsWith('image/') || mm === 'text/plain') return 'aba';
+  if (ext === 'docx' || mm.includes('wordprocessingml')) return 'docx';
+  if (/^(xlsx|xls|csv|ods)$/.test(ext) || mm.includes('spreadsheet') || mm.includes('ms-excel') || mm === 'text/csv') return 'planilha';
+  return 'nao';
+}
+function _carregaScript(src) {
+  return new Promise((ok, err) => { if (document.querySelector('script[src="' + src + '"]')) return ok(); const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = () => err(new Error('não carregou')); document.head.appendChild(s); });
+}
+async function verArquivo(url, nome, mime) {
+  const tipo = _arqTipo(nome, mime);
+  if (tipo === 'aba') { const a = document.createElement('a'); a.href = url; a.target = '_blank'; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove(); return; }
+  const dl = url + (url.includes('?') ? '&' : '?') + 'download=1&filename=' + encodeURIComponent(nome || 'arquivo');
+  let ov = document.getElementById('doc-viewer');
+  if (!ov) {
+    document.body.insertAdjacentHTML('beforeend', `<div id="doc-viewer" style="position:fixed;inset:0;background:#0b141a;z-index:3000;display:none;flex-direction:column">
+      <div style="display:flex;align-items:center;gap:10px;padding:calc(8px + env(safe-area-inset-top)) 14px 8px;background:#111b21;color:#e9edef;flex-shrink:0">
+        <span onclick="fechaDocViewer()" title="Fechar (Esc)" style="cursor:pointer;font-size:24px;padding:2px 10px;line-height:1">‹</span>
+        <span id="dv-nome" style="flex:1;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+        <button id="dv-salvar" style="background:#00a884;color:#fff;border:none;border-radius:16px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer">Salvar como...</button>
+      </div>
+      <div id="dv-corpo" style="flex:1;overflow:auto;background:#fff;color:#131c20;padding:24px;font-size:14px;line-height:1.5"></div>
+    </div>`);
+    ov = document.getElementById('doc-viewer');
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && ov.style.display === 'flex') fechaDocViewer(); });
+  }
+  document.getElementById('dv-nome').textContent = nome || 'Arquivo';
+  document.getElementById('dv-salvar').onclick = (e) => salvarArquivoComo(dl, nome, e.currentTarget);
+  const corpo = document.getElementById('dv-corpo');
+  ov.style.display = 'flex';
+  if (tipo === 'nao') { corpo.innerHTML = '<div style="padding:30px;text-align:center;color:#54656f">Este tipo de arquivo não dá para ver aqui dentro.<br>Use <b>Salvar como...</b> para guardar e abrir no seu computador.</div>'; return; }
+  corpo.innerHTML = '<div style="padding:30px;text-align:center;color:#8696a0">Abrindo…</div>';
+  try {
+    const r = await fetch(url); if (!r.ok) throw new Error('HTTP ' + r.status);
+    const ab = await r.arrayBuffer();
+    if (tipo === 'docx') {
+      await _carregaScript('https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js');
+      const res = await window.mammoth.convertToHtml({ arrayBuffer: ab });
+      _poeHtmlSeguro(corpo, '<div style="max-width:820px;margin:0 auto" class="dv-docx">' + res.value + '</div>');
+    } else {
+      await _carregaScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+      const wb = window.XLSX.read(new Uint8Array(ab), { type: 'array' });
+      _poeHtmlSeguro(corpo, wb.SheetNames.map(n => '<h3 style="margin:14px 0 6px;font-size:14px;color:#00806a">' + escHtml(n) + '</h3><div style="overflow:auto">' + window.XLSX.utils.sheet_to_html(wb.Sheets[n], { header: '', footer: '' }) + '</div>').join(''));
+      corpo.querySelectorAll('table').forEach(t => { t.style.borderCollapse = 'collapse'; t.style.fontSize = '13px'; });
+      corpo.querySelectorAll('td,th').forEach(c => { c.style.border = '1px solid #e0e4e7'; c.style.padding = '4px 8px'; c.style.whiteSpace = 'nowrap'; });
+    }
+  } catch (e) {
+    corpo.innerHTML = '<div style="padding:30px;text-align:center;color:#54656f">Não consegui mostrar este arquivo aqui.<br>Use <b>Salvar como...</b> para guardar e abrir no seu computador.</div>';
+  }
+}
+// monta o HTML num <template> (inerte: nada roda), limpa e só então põe na tela
+function _poeHtmlSeguro(alvo, html) { const t = document.createElement('template'); t.innerHTML = html; _limpaHtmlArquivo(t.content); alvo.replaceChildren(t.content); }
+function _limpaHtmlArquivo(raiz) {
+  try {
+    raiz.querySelectorAll('script,iframe,object,embed,link,meta,style,form,input,button').forEach(e => e.remove());
+    raiz.querySelectorAll('*').forEach(e => { for (const a of Array.from(e.attributes)) { const n = a.name.toLowerCase(), v = String(a.value || '').trim().toLowerCase(); if (n.startsWith('on') || ((n === 'href' || n === 'src' || n === 'xlink:href') && (v.startsWith('javascript:') || v.startsWith('vbscript:')))) e.removeAttribute(a.name); } if (e.tagName === 'A') { e.setAttribute('target', '_blank'); e.setAttribute('rel', 'noopener'); } });
+  } catch (_) {}
+}
+function fechaDocViewer() { const ov = document.getElementById('doc-viewer'); if (ov) { ov.style.display = 'none'; const c = document.getElementById('dv-corpo'); if (c) c.innerHTML = ''; } }
+// "Salvar como...": no Chrome/Edge do computador abre a janela para escolher a pasta e o nome;
+// nos outros navegadores baixa normalmente (como antes)
+async function salvarArquivoComo(url, nome, el) {
+  if (!window.showSaveFilePicker) return baixarMidia(url, nome, el);
+  let alvo;
+  try { alvo = await window.showSaveFilePicker({ suggestedName: nome || 'arquivo' }); }
+  catch (e) { if (e && e.name === 'AbortError') return; return baixarMidia(url, nome, el); } // cancelou: não faz nada
+  const txt = el ? el.textContent : '';
+  try {
+    if (el) el.textContent = 'Salvando…';
+    const r = await fetch(url); if (!r.ok) throw new Error('HTTP ' + r.status);
+    const w = await alvo.createWritable(); await w.write(await r.blob()); await w.close();
+    if (el) el.textContent = txt;
+    showCopyToast('Arquivo salvo');
+  } catch (e) { if (el) el.textContent = txt; showToast('Não consegui salvar o arquivo', 'err'); }
+}
 async function baixarMidia(url, nome, el) {
   try {
     if (el) { el._txt = el.innerHTML; el.innerHTML = '…'; }
@@ -9012,7 +9145,7 @@ function renderMessageContent(m) {
       const _isPdf = _ext === 'pdf' || String(m.media_mime_type || '').toLowerCase().includes('pdf');
       return quotedHtml + `<div class="media-wrap doc-wrap" style="cursor:pointer" title="Toque para abrir"
         onclick="if(window.matchMedia('(hover: none)').matches){event.stopPropagation();abrirArquivo('${proxyUrl}','${_isPdf ? 'pdf' : 'outro'}','${_jsAttr(fileName)}');}"
-        ondblclick="window.open('${proxyUrl}','_blank')">
+        ondblclick="event.stopPropagation();verArquivo('${proxyUrl}','${_jsAttr(fileName)}','${escHtml(String(m.media_mime_type || ''))}')">
         ${(() => { if (!_isPdf) return '';
           const _pK = String(m.media_id || m.id || '');
           const _pC = _pdfPrevCache[_pK];
@@ -9029,7 +9162,7 @@ function renderMessageContent(m) {
               return `<span class="pdf-pgs" style="font-size:11.5px;color:#8696a0;display:block;margin-top:1px;height:15px;line-height:15px;overflow:hidden">${_tx}</span>`; })()}
           </span>
         </div>
-        <a href="#" class="media-dl-link" onclick="event.preventDefault();event.stopPropagation();baixarMidia('${dlUrl}','${_jsAttr(fileName)}',this)"><i class=ic-down></i> Baixar arquivo</a>
+        <div class="doc-acoes"><button type="button" onclick="event.stopPropagation();verArquivo('${proxyUrl}','${_jsAttr(fileName)}','${escHtml(String(m.media_mime_type || ''))}')">Ver</button><button type="button" onclick="event.stopPropagation();salvarArquivoComo('${dlUrl}','${_jsAttr(fileName)}',this)">Salvar como...</button></div>
       </div>`;
     }
   }
@@ -18021,6 +18154,7 @@ async function openTasksPage(){
   if(_tarefasCarregou) renderTasksPage();
   else area.innerHTML='<div style="color:#667781;font-size:13px;padding:20px">Carregando...</div>';
   _tarefasBusca(1);
+  try { _tarefasVisaoPinta(); } catch (_) {}
   // tipos de tarefa (selos coloridos) e etapas (filtro) — chegam e a lista se repinta
   if(!_tarefaTipos) _carregaTiposTarefa().then(()=>{ if(_tarefasPaginaAberta() && _tarefasCarregou) renderTasksPage(); });
 }
@@ -18262,6 +18396,7 @@ function renderTasksPage(){
 
   // ☑ No modo de seleção, o "Selecionar todos" fica NA LISTA, na coluna das caixinhas (como
   // nas ferramentas de tarefa) — uma caixinha só, sem outra por grupo.
+  if (_tarefasVisaoAtual() === 'kanban' && !_taskSelMode) { _tasksVisIds=list.map(t=>String(t.id)); area.innerHTML = _ativosHtml + _tarefasKanbanHtml(list); _tarefasKanbanLiga(); return; }
   _tasksVisIds=list.map(t=>String(t.id));
   const _nSel=_tasksVisIds.filter(id=>_selTaskIds.has(id)).length;
   const selAllRow = !_taskSelMode ? '' : `<div class="task-selall" style="display:flex;align-items:center;gap:10px;padding:8px 14px;margin:0 0 4px;border:1px dashed #cfd6da;border-radius:10px;background:#f7f8fa">
@@ -18521,6 +18656,91 @@ function _tfPintaPainel(){
     <div class="tf-sec"><b>Criada em</b><select class="tf-sel" id="tf-criada" onchange="tfMuda('criada',this.value)">${_TF_CRIADA.map(([v, t]) => `<option value="${v}" ${_tf.criada === v ? 'selected' : ''}>${t}</option>`).join('')}</select>
       ${_tf.criada === 'periodo' ? `<div style="display:flex;gap:8px;margin-top:8px;align-items:center"><input type="date" class="tf-sel" id="tf-de" value="${escHtml(_tf.de || '')}" onchange="tfMuda('de',this.value)"><span style="color:#667781;font-size:12px">até</span><input type="date" class="tf-sel" id="tf-ate" value="${escHtml(_tf.ate || '')}" onchange="tfMuda('ate',this.value)"></div>` : ''}</div>
     <div style="display:flex;gap:8px;justify-content:space-between;margin-top:6px"><button class="btn-secondary" onclick="tfLimpa()">Limpar filtros</button><button class="btn-primary" onclick="tfFecha()">Ver ${_tfAplica(_allTasksCache.slice()).length} tarefa(s)</button></div>`;
+}
+
+// ══ KANBAN DAS TAREFAS: ATRASADAS · HOJE · AMANHÃ ══
+// Arrastar um cartão para HOJE ou AMANHÃ muda o prazo (mesma hora; se a hora de hoje já
+// passou, fica para o fim do dia). Tarefas sem prazo ou para depois de amanhã ficam só na Lista.
+function _tarefasVisaoAtual(){ try { return localStorage.getItem('filaz_tarefas_visao') === 'kanban' ? 'kanban' : 'lista'; } catch (_) { return 'lista'; } }
+function tarefasVisao(v){
+  try { localStorage.setItem('filaz_tarefas_visao', v); } catch (_) {}
+  if (v === 'kanban' && _taskSelMode) { try { toggleTaskSelMode(); } catch (_) {} }
+  _tarefasVisaoPinta(); renderTasksPage();
+}
+function _tarefasVisaoPinta(){
+  const v = _tarefasVisaoAtual();
+  const l = document.getElementById('tasks-v-lista'), k = document.getElementById('tasks-v-kanban');
+  if (l) l.classList.toggle('on', v === 'lista'); if (k) k.classList.toggle('on', v === 'kanban');
+  const pg = document.getElementById('tasks-page'); if (pg) pg.classList.toggle('kanban-on', v === 'kanban');
+}
+function _tarefaColuna(t){
+  if (t.done || !t.due_at) return null;
+  const hoje = Math.floor((Date.now() - _BRT_OFFSET) / 86400000), dia = _diaBrt(t.due_at);
+  if (parseUTC(t.due_at) < Date.now()) return 'atrasadas';
+  if (dia === hoje) return 'hoje';
+  if (dia === hoje + 1) return 'amanha';
+  return null;
+}
+const _TK_COLS = [['atrasadas', 'ATRASADAS', '#ef4444'], ['hoje', 'HOJE', '#c07b00'], ['amanha', 'AMANHÃ', '#00806a']];
+function _tarefasKanbanHtml(list){
+  _tarefasVisaoPinta();
+  const cols = { atrasadas: [], hoje: [], amanha: [] };
+  list.forEach(t => { const c = _tarefaColuna(t); if (c) cols[c].push(t); });
+  Object.values(cols).forEach(a => a.sort((x, y) => parseUTC(x.due_at) - parseUTC(y.due_at)));
+  const fora = list.filter(t => !t.done && !_tarefaColuna(t)).length;
+  const card = t => {
+    const nota = String(t.notes || '').replace(/\s+/g, ' ').trim();
+    const lead = t.contact_name ? `<button onclick="event.stopPropagation();openTaskLead('${t.phone}','${_jsAttr(t.contact_name)}',${t.account_id ? `'${t.account_id}'` : 'null'})" title="Abrir a conversa" style="display:inline-flex;align-items:center;gap:5px;background:#e7f7ef;border:1px solid #00a884;color:#00806a;border-radius:14px;padding:3px 10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><i class=ic-user></i> ${escHtml(t.contact_name)}</button>` : '';
+    const atras = parseUTC(t.due_at) < Date.now();
+    return `<div class="tk-card" draggable="true" data-id="${escHtml(String(t.id))}" ondblclick="editTaskTitle('${t.id}')" title="Arraste para Hoje ou Amanhã · 2 cliques para editar">
+      <div style="display:flex;align-items:flex-start;gap:8px">
+        <button class="task-check" title="Concluir" onclick="event.stopPropagation();toggleTaskGlobal('${t.id}',true)" style="flex-shrink:0"></button>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:13.5px;color:#131c20;margin-bottom:5px">${_tarefaRotuloHtml(t)}</div>
+          ${lead ? `<div style="margin-bottom:5px">${lead}</div>` : ''}
+          <div style="font-size:12px;color:${atras ? '#ef4444' : '#667781'};cursor:pointer" onclick="event.stopPropagation();menuPrazoTarefa('${t.id}')"><i class=ic-clock></i> ${fmtTaskDue(t.due_at)}</div>
+          ${nota ? `<div style="font-size:12px;color:#54656f;margin-top:4px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical"><i class=ic-note></i> ${escHtml(nota)}</div>` : ''}
+        </div>
+      </div>
+    </div>`;
+  };
+  return `<div class="tk-board">${_TK_COLS.map(([k, rot, cor]) => `<div class="tk-col" data-col="${k}">
+      <div class="tk-col-head" style="color:${cor}">${rot} <span class="n">${cols[k].length}</span></div>
+      ${cols[k].length ? cols[k].map(card).join('') : `<div class="tk-vazio">${k === 'atrasadas' ? 'Nada atrasado 🎉' : 'Nenhuma tarefa'}</div>`}
+    </div>`).join('')}</div>` + (fora ? `<div style="margin-top:12px;font-size:12px;color:#8696a0">${fora} tarefa(s) sem prazo ou para depois de amanhã — veja em <a href="#" onclick="event.preventDefault();tarefasVisao('lista')">Lista</a>.</div>` : '');
+}
+function _tarefasKanbanLiga(){
+  const area = document.getElementById('tasks-list-area'); if (!area) return;
+  area.querySelectorAll('.tk-card').forEach(c => {
+    c.addEventListener('dragstart', e => { c.classList.add('dragging'); try { e.dataTransfer.setData('text/plain', c.dataset.id); e.dataTransfer.effectAllowed = 'move'; } catch (_) {} });
+    c.addEventListener('dragend', () => c.classList.remove('dragging'));
+  });
+  area.querySelectorAll('.tk-col').forEach(col => {
+    col.addEventListener('dragover', e => { if (col.dataset.col === 'atrasadas') return; e.preventDefault(); col.classList.add('drag-over'); });
+    col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
+    col.addEventListener('drop', e => { e.preventDefault(); col.classList.remove('drag-over'); let id = ''; try { id = e.dataTransfer.getData('text/plain'); } catch (_) {} if (id) tarefaMoveColuna(id, col.dataset.col); });
+  });
+}
+// Muda o prazo conforme a coluna: HOJE (mesma hora; se já passou, 23:59) ou AMANHÃ (mesma hora)
+async function tarefaMoveColuna(id, col){
+  if (col !== 'hoje' && col !== 'amanha') return;
+  const t = _allTasksCache.find(x => String(x.id) === String(id)); if (!t) return;
+  if (_tarefaColuna(t) === col) return;
+  let hh = 9, mm = 0;
+  if (t.due_at) { const d = new Date(parseUTC(t.due_at) - _BRT_OFFSET); hh = d.getUTCHours(); mm = d.getUTCMinutes(); }
+  const base = new Date(Date.now() - _BRT_OFFSET);
+  base.setUTCDate(base.getUTCDate() + (col === 'amanha' ? 1 : 0)); base.setUTCHours(hh, mm, 0, 0);
+  let ms = base.getTime() + _BRT_OFFSET;
+  if (col === 'hoje' && ms <= Date.now()) { const fim = new Date(Date.now() - _BRT_OFFSET); fim.setUTCHours(23, 59, 0, 0); ms = fim.getTime() + _BRT_OFFSET; }
+  const due_at = new Date(ms).toISOString();
+  const antes = t.due_at;
+  _tarefaAtualiza(id, { due_at }); renderTasksPage(); // muda na hora; se o servidor recusar, volta
+  try {
+    const r = await fetch(SERVER_URL + '/tasks/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ due_at }) });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    _sincTarefas(t.phone, true);
+    showToast('Prazo: ' + fmtTaskDue(due_at), 'ok');
+  } catch (e) { _tarefaAtualiza(id, { due_at: antes }); renderTasksPage(); showToast('Não consegui mudar o prazo', 'err'); }
 }
 
 // ── Criar tarefa direto na aba (com ou sem lead) ──
