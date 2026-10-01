@@ -2395,7 +2395,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v513</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v514</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3228,7 +3228,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v513</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v514</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3302,7 +3302,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 513;
+const APP_VER = 514;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -8934,6 +8934,12 @@ function renderMessageContent(m) {
       let temWf = false;
       try {
         const wfArr = m.waveform ? JSON.parse(m.waveform) : (JSON.parse(localStorage.getItem('vetra_wf') || '{}'))[String(aid)];
+        // A onda foi calculada SÓ neste aparelho (guardada aqui): manda para o servidor, para o
+        // celular desenhar igual (antes o celular mostrava pauzinhos de enfeite)
+        if (!m.waveform && m.id && Array.isArray(wfArr) && wfArr.length) _wfSobe(m.id, wfArr, m.phone);
+        // Ainda sem onda em lugar nenhum: o computador calcula sozinho (o iPhone não consegue
+        // decodificar o áudio de voz do WhatsApp) e manda para o servidor
+        if (!m.waveform && !(Array.isArray(wfArr) && wfArr.length) && m.id && !_IS_IOS) _wfFila(String(aid), proxyUrl);
         if (Array.isArray(wfArr) && wfArr.length) {
           // Normaliza pela PRÓPRIA onda (o WhatsApp usa escalas diferentes: 0–1, 0–100, 0–255)
           const mxW = Math.max.apply(null, wfArr);
@@ -9946,11 +9952,33 @@ function _vpApplyPitch(a){
   } catch(_){}
 }
 
+// 🎙️ ONDA DO ÁUDIO IGUAL EM TODOS OS APARELHOS: a onda calculada é guardada no servidor
+// (messages.waveform) — o celular passa a desenhar a mesma que o computador.
+const _wfEnviadas = new Set();
+function _wfSobe(id, arr, fone) {
+  try {
+    if (!id || _wfEnviadas.has(String(id)) || !Array.isArray(arr) || !arr.length) return;
+    _wfEnviadas.add(String(id));
+    fetch(SERVER_URL + '/messages/' + encodeURIComponent(id) + '/waveform', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone: fone || currentPhone || null, waveform: arr.slice(0, 64).map(v => Math.max(0, Math.min(255, Math.round(Number(v) || 0)))) }) }).catch(() => {});
+  } catch (_) {}
+}
+// fila: um áudio por vez, no máximo 12 por sessão (cada um é baixado UMA vez e nunca mais)
+const _wfFilaIds = []; let _wfFilaRodando = false, _wfFilaTotal = 0;
+function _wfFila(id, url) {
+  if (_wfFilaTotal >= 12 || _wfFilaIds.some(x => x[0] === id)) return;
+  _wfFilaTotal++; _wfFilaIds.push([id, url]);
+  if (!_wfFilaRodando) setTimeout(_wfFilaAnda, 1500);
+}
+async function _wfFilaAnda() {
+  if (_wfFilaRodando) return; _wfFilaRodando = true;
+  try { while (_wfFilaIds.length) { const [id, url] = _wfFilaIds.shift(); await new Promise(res => _computeWf(id, url, res)); await new Promise(r => setTimeout(r, 400)); } }
+  finally { _wfFilaRodando = false; }
+}
 // Calcula a forma de onda REAL de um áudio (uma vez) e redesenha as barrinhas
-function _computeWf(id, url) {
+function _computeWf(id, url, pronto) {
   try {
     const cache = JSON.parse(localStorage.getItem('vetra_wf') || '{}');
-    if (cache[String(id)]) { _medeDurExata(id, url); return; } // forma de onda guardada: só a duração exata
+    if (cache[String(id)]) { _wfSobe(id, cache[String(id)]); if (pronto) pronto(); else _medeDurExata(id, url); return; } // forma de onda guardada: só a duração exata
     fetch(url).then(r => r.arrayBuffer()).then(ab => {
       const AC = window.AudioContext || window.webkitAudioContext; const ctx = new AC();
       return ctx.decodeAudioData(ab).then(bu => {
@@ -9963,10 +9991,12 @@ function _computeWf(id, url) {
         localStorage.setItem('vetra_wf', JSON.stringify(cache));
         const w = document.querySelector('#vp-' + ((window.CSS && CSS.escape) ? CSS.escape(String(id)) : id) + ' .vp-bars');
         if (w) { const bs = w.querySelectorAll('i'); const stp = 40 / bs.length; bs.forEach((b, bi2) => { b.style.height = Math.max(4, Math.round(4 + (cache[String(id)][Math.floor(bi2 * stp)] / 100) * 20)) + 'px'; }); }
+        try { const au = document.querySelector('#vp-' + ((window.CSS && CSS.escape) ? CSS.escape(String(id)) : id) + ' audio'); if (au) au.dataset.haswf = '1'; } catch (_) {}
+        _wfSobe(id, cache[String(id)]); // os outros aparelhos desenham a mesma onda
         try { ctx.close(); } catch (_) {}
       });
-    }).catch(() => {});
-  } catch (_) {}
+    }).catch(() => {}).finally(() => { if (pronto) pronto(); });
+  } catch (_) { if (pronto) pronto(); }
 }
 // 🎯 DURAÇÃO EXATA: decodifica o arquivo uma vez (como a forma de onda) e anota quantos
 // segundos ele tem DE VERDADE. O <audio> do navegador erra a duração dos áudios de voz
