@@ -2415,7 +2415,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v518</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v520</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3166,6 +3166,7 @@ window.addEventListener('load', initAuth);
     <input type="checkbox" id="tasks-show-done" onchange="renderTasksPage()" style="display:none" /><!-- antigo "Mostrar concluídas": agora é o filtro Situação -->
     <span style="display:inline-flex;gap:4px"><button class="btn-secondary tk-vbtn" id="tasks-v-lista" onclick="tarefasVisao('lista')" title="Ver em lista">☰ Lista</button><button class="btn-secondary tk-vbtn" id="tasks-v-kanban" onclick="tarefasVisao('kanban')" title="Ver em colunas: Atrasadas, Hoje e Amanhã">▥ Kanban</button></span>
     <button class="btn-secondary" id="tasks-filtros-btn" onclick="tfAbre(event)" title="Filtrar por situação, etapa do pipeline, tipo e data de criação"><i class=ic-filter></i> Filtros<span id="tasks-filtros-n" style="display:none;margin-left:6px;background:#00a884;color:#fff;border-radius:10px;padding:0 7px;font-size:11px;font-weight:700"></span></button>
+    <select id="tasks-ordem" onchange="tfOrdem(this.value)" title="Ordenar as tarefas: pelo prazo ou pela data de criação" style="border:1px solid #d1d7db;border-radius:8px;padding:6px 8px;font-size:13px;background:#fff;color:#131c20;font-family:inherit;cursor:pointer;max-width:200px"><option value="prazo">↕ Ordem: prazo</option><option value="antigas">↕ Mais antigas primeiro</option><option value="recentes">↕ Mais recentes primeiro</option></select>
     <button class="btn-secondary" onclick="abrirTiposTarefa()" title="Criar e editar os tipos de tarefa (Reunião, Acompanhar…)"><i class=ic-tag></i> Tipos</button>
     <button class="btn-secondary" onclick="openTaskReminderModal()" title="Configurar lembretes de tarefas em aberto">Lembretes</button>
   </div>
@@ -3249,7 +3250,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v518</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v520</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3323,7 +3324,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 518;
+const APP_VER = 520;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -8123,7 +8124,8 @@ async function lpLoadTasks(phone){
     else { el.dataset.phone = ''; el.dataset.ass = ''; el.innerHTML = '<div style="color:#8696a0;font-size:12px">Carregando...</div>'; }
   }
   let tasks = null;
-  try { const r = await fetch(SERVER_URL+'/tasks'); const d = await r.json(); if (r.ok && Array.isArray(d)) tasks = d; } catch(_){}
+  // 💸 só as tarefas EM ABERTO DESTE lead (antes baixava a lista inteira de todas as tarefas)
+  try { const r = await fetch(SERVER_URL+'/tasks?pending=1&phone='+encodeURIComponent(phone)); const d = await r.json(); if (r.ok && Array.isArray(d)) tasks = d; } catch(_){}
   if (!tasks) {
     // Busca falhou: NÃO é "Nenhuma tarefa". Mantém o que está na tela e tenta de novo sozinho.
     el._n = (el._n || 0) + 1;
@@ -8131,7 +8133,7 @@ async function lpLoadTasks(phone){
     return;
   }
   el._n = 0;
-  _allTasksCache = _tarefaAplicaEco(tasks); _tarefasCarregou = true;
+  _tarefaAplicaEco(tasks);
   _lpPintaTarefas(el, phone, tasks.filter(t => t.phone === phone && !t.done));
 }
 function _lpPintaTarefas(el, phone, mine){
@@ -18124,6 +18126,13 @@ function _tarefaAplicaEco(lista) {
 }
 async function atualizaBadgeTarefas(){
   try{
+    // 💸 Tela Tarefas fechada: a bolinha só precisa das EM ABERTO (lista bem menor)
+    if (!_tarefasPaginaAberta()) {
+      const rp = await fetch(SERVER_URL + '/tasks?pending=1');
+      const ab = await rp.json();
+      if (rp.ok && Array.isArray(ab)) _pintaBadgeTarefas(_tarefaAplicaEco(ab).filter(t => !t.done).length);
+      return;
+    }
     const r = await fetch(SERVER_URL + '/tasks');
     const lista = await r.json();
     if (!r.ok || !Array.isArray(lista)) return;
@@ -18350,7 +18359,7 @@ function renderTasksPage(){
   const showDone=(sit==='concluidas'||sit==='todas');
   const busca=(document.getElementById('tasks-busca')?.value||'').toLowerCase().trim();
   let list=_tfAplica(_allTasksCache.slice());
-  _tfPintaBotao();
+  _tfPintaBotao(); _tfOrdemPinta();
   const _ativosHtml=_tfAtivosHtml();
   if(busca) list=list.filter(t =>
     String(t.title||'').toLowerCase().includes(busca) ||
@@ -18387,12 +18396,9 @@ function renderTasksPage(){
   // Separa em grupos e ordena cada um pelo prazo
   const grupos={}; _GRUPOS.forEach(g=>grupos[g[0]]=[]);
   list.forEach(t=>{ (grupos[_grupoPrazo(t)] || grupos.semprazo).push(t); });
-  const ordena=(a,b)=>{
-    const da=a.due_at?parseUTC(a.due_at):Infinity, db=b.due_at?parseUTC(b.due_at):Infinity;
-    if(da!==db) return da-db;
-    return String(b.created_at||'').localeCompare(String(a.created_at||''));
-  };
-  Object.values(grupos).forEach(g=>g.sort(ordena));
+  Object.values(grupos).forEach(g=>g.sort(_tfOrdena));
+  // Ordem pela CRIAÇÃO: uma lista só (os grupos de prazo misturariam a ordem)
+  const _porCriacao = _tfOrdem() !== 'prazo';
 
   // ☑ No modo de seleção, o "Selecionar todos" fica NA LISTA, na coluna das caixinhas (como
   // nas ferramentas de tarefa) — uma caixinha só, sem outra por grupo.
@@ -18407,7 +18413,9 @@ function renderTasksPage(){
           <button class="btn-secondary" id="tasks-sel-cancel" onclick="toggleTaskSelMode()" title="Sair do modo de seleção" style="padding:5px 12px;font-size:13px">✕ Cancelar</button>
         </span>
       </div>`;
-  area.innerHTML=_ativosHtml+selAllRow+_GRUPOS.map(([chave,rotulo,cor])=>{
+  const _gruposVer = _porCriacao ? [['_criacao', (_TF_ORDENS.find(o=>o[0]===_tfOrdem())||[,''])[1], '#667781']] : _GRUPOS;
+  if (_porCriacao) grupos._criacao = list.slice().sort(_tfOrdena);
+  area.innerHTML=_ativosHtml+selAllRow+_gruposVer.map(([chave,rotulo,cor])=>{
     const itens=grupos[chave];
     if(!itens.length) return '';
     return `<div class="task-grupo" style="display:flex;align-items:center;gap:8px;margin:14px 2px 6px">
@@ -18554,7 +18562,21 @@ async function ttSalva(){
 }
 
 // ══ FILTROS DA TELA TAREFAS: situação, etapa do pipeline, tipo e data de criação ══
-const _TF_PADRAO = { sit: 'abertas', etapa: '', tipos: [], criada: '', de: '', ate: '' };
+const _TF_PADRAO = { sit: 'abertas', etapa: '', tipos: [], criada: '', de: '', ate: '', ordem: 'prazo' };
+// ↕ ORDEM da lista: pelo prazo (padrão) ou pela data em que a tarefa foi CRIADA
+const _TF_ORDENS = [['prazo', 'Prazo (mais próximo primeiro)'], ['antigas', 'Mais antigas primeiro'], ['recentes', 'Mais recentes primeiro']];
+function _tfOrdem(){ return _TF_ORDENS.some(o => o[0] === _tf.ordem) ? _tf.ordem : 'prazo'; }
+function _tfCriadaMs(t){ const v = t && t.created_at ? parseUTC(t.created_at) : NaN; return Number.isFinite(v) ? v : 0; }
+function _tfOrdena(a, b){
+  const o = _tfOrdem();
+  if (o === 'antigas') return (_tfCriadaMs(a) - _tfCriadaMs(b)) || String(a.id).localeCompare(String(b.id));
+  if (o === 'recentes') return (_tfCriadaMs(b) - _tfCriadaMs(a)) || String(b.id).localeCompare(String(a.id));
+  const da = a.due_at ? parseUTC(a.due_at) : Infinity, db = b.due_at ? parseUTC(b.due_at) : Infinity;
+  if (da !== db) return da - db;
+  return String(b.created_at || '').localeCompare(String(a.created_at || ''));
+}
+function tfOrdem(v){ _tf.ordem = v; _tfSalva(); renderTasksPage(); _tfPintaPainel(); }
+function _tfOrdemPinta(){ const e = document.getElementById('tasks-ordem'); if (e && e.value !== _tfOrdem()) e.value = _tfOrdem(); }
 let _tf = Object.assign({}, _TF_PADRAO);
 try { const v = JSON.parse(localStorage.getItem('filaz_tarefas_filtros') || 'null'); if (v && typeof v === 'object') _tf = Object.assign({}, _TF_PADRAO, v, { tipos: Array.isArray(v.tipos) ? v.tipos : [] }); } catch (_) {}
 function _tfSalva(){ try { localStorage.setItem('filaz_tarefas_filtros', JSON.stringify(_tf)); } catch (_) {} }
@@ -18616,7 +18638,7 @@ function tfMuda(k, v){
   _tfSalva(); renderTasksPage(); _tfPintaPainel();
 }
 function tfTipo(v){ const a = _tf.tipos || []; _tf.tipos = a.includes(v) ? a.filter(x => x !== v) : a.concat([v]); _tfSalva(); renderTasksPage(); _tfPintaPainel(); }
-function tfLimpa(){ _tf = Object.assign({}, _TF_PADRAO, { tipos: [] }); const cb = document.getElementById('tasks-show-done'); if (cb) cb.checked = false; _tfSalva(); renderTasksPage(); _tfPintaPainel(); }
+function tfLimpa(){ _tf = Object.assign({}, _TF_PADRAO, { tipos: [], ordem: _tfOrdem() }); const cb = document.getElementById('tasks-show-done'); if (cb) cb.checked = false; _tfSalva(); renderTasksPage(); _tfPintaPainel(); }
 async function tfAbre(ev){
   if (ev) ev.stopPropagation();
   let p = document.getElementById('tf-painel');
@@ -18653,6 +18675,7 @@ function _tfPintaPainel(){
     <div class="tf-sec"><b>Tipo de tarefa</b><div class="tf-chips">${tipos.map(tp => `<button class="tf-chip${(_tf.tipos || []).includes(tp.id) ? ' on' : ''}" onclick="tfTipo('${escHtml(tp.id)}')"><i class="ic-${escHtml(tp.icone)}" style="color:${escHtml(tp.cor)}"></i>${escHtml(tp.nome)}</button>`).join('')}
       <button class="tf-chip${(_tf.tipos || []).includes('_sem') ? ' on' : ''}" onclick="tfTipo('_sem')">Sem tipo</button>
       <button class="tf-chip" onclick="tfFecha();abrirTiposTarefa()" style="color:#667781">✎ Editar tipos</button></div></div>
+    <div class="tf-sec"><b>Ordenar</b><div class="tf-chips">${_TF_ORDENS.map(([v, t]) => `<button class="tf-chip${_tfOrdem() === v ? ' on' : ''}" onclick="tfOrdem('${v}')">${t}</button>`).join('')}</div></div>
     <div class="tf-sec"><b>Criada em</b><select class="tf-sel" id="tf-criada" onchange="tfMuda('criada',this.value)">${_TF_CRIADA.map(([v, t]) => `<option value="${v}" ${_tf.criada === v ? 'selected' : ''}>${t}</option>`).join('')}</select>
       ${_tf.criada === 'periodo' ? `<div style="display:flex;gap:8px;margin-top:8px;align-items:center"><input type="date" class="tf-sel" id="tf-de" value="${escHtml(_tf.de || '')}" onchange="tfMuda('de',this.value)"><span style="color:#667781;font-size:12px">até</span><input type="date" class="tf-sel" id="tf-ate" value="${escHtml(_tf.ate || '')}" onchange="tfMuda('ate',this.value)"></div>` : ''}</div>
     <div style="display:flex;gap:8px;justify-content:space-between;margin-top:6px"><button class="btn-secondary" onclick="tfLimpa()">Limpar filtros</button><button class="btn-primary" onclick="tfFecha()">Ver ${_tfAplica(_allTasksCache.slice()).length} tarefa(s)</button></div>`;
@@ -18687,8 +18710,8 @@ function _tarefasKanbanHtml(list){
   _tarefasVisaoPinta();
   const cols = { atrasadas: [], hoje: [], amanha: [] };
   list.forEach(t => { const c = _tarefaColuna(t); if (c) cols[c].push(t); });
-  // com prazo primeiro (pela hora); as sem prazo no fim da coluna
-  Object.values(cols).forEach(a => a.sort((x, y) => (x.due_at ? parseUTC(x.due_at) : Infinity) - (y.due_at ? parseUTC(y.due_at) : Infinity)));
+  // pelo prazo: com prazo primeiro (pela hora), as sem prazo no fim; ou pela criação, se escolhido
+  Object.values(cols).forEach(a => a.sort(_tfOrdena));
   const fora = list.filter(t => !t.done && !_tarefaColuna(t)).length;
   const card = t => {
     const nota = String(t.notes || '').replace(/\s+/g, ' ').trim();
