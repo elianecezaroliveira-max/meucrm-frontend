@@ -2415,7 +2415,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v522</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v524</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3250,7 +3250,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v522</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v524</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3324,7 +3324,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 522;
+const APP_VER = 524;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5179,11 +5179,20 @@ async function _iaSugPede(phone, chave, forcar) {
   }
   delete _iaSugFalhas[chave];
   // itens: texto, ⚡ resposta rápida (pelo atalho) ou 🤖 bot — servidor antigo manda só "mensagens" (textos)
-  const itens = (Array.isArray(d.itens) && d.itens.length) ? d.itens.filter(it => it && (it.tipo === 'texto' ? !!it.texto : it.tipo === 'rapida' ? !!it.atalho : it.tipo === 'bot' ? !!it.id : false)) : d.mensagens.map(t => ({ tipo: 'texto', texto: t }));
+  let itens = (Array.isArray(d.itens) && d.itens.length) ? d.itens.filter(it => it && (it.tipo === 'texto' ? !!it.texto : it.tipo === 'rapida' ? !!it.atalho : it.tipo === 'bot' ? !!it.id : false)) : d.mensagens.map(t => ({ tipo: 'texto', texto: t }));
+  // Guarda da tela: um "texto" que na verdade é {"rapida":"/tarde"} (ou [rapida: /tarde]) vira a
+  // resposta rápida — e se ela não existir, sai da sugestão. Nada disso vai para o lead como texto.
+  itens = itens.map(it => { if (it.tipo !== 'texto') return it; const o = _iaSugTorto(it.texto); if (!o) return it; if (o.rapida) { const r = (quickReplies || []).find(q => String(q.title || '').toLowerCase().replace(/^\//, '') === o.rapida); return r ? { tipo: 'rapida', atalho: String(r.title).toLowerCase(), texto: r.message || '', previa: String(r.message || '').replace(/\s+/g, ' ').slice(0, 90), anexo: !!r.media_url } : null; } return null; }).filter(Boolean);
   if (!itens.length) { _iaSugPinta(); return; }
   const rotulo = it => it.tipo === 'rapida' ? '[rapida: /' + it.atalho + ']' : it.tipo === 'bot' ? '[bot: ' + it.nome + ']' : it.texto; // como a memória registra
   _iaSug = { phone, chave, itens, msgs: itens.map(rotulo), usadas: new Set(), noCampo: null, enviadas: [], lead: d.lead || [], contexto: d.contexto || [], transcricoes: Array.isArray(d.transcricoes) ? d.transcricoes : [] };
   _iaSugPinta();
+}
+function _iaSugTorto(s) {
+  const t = String(s || '').trim();
+  if (/^\{[\s\S]*\}$/.test(t)) { try { const o = JSON.parse(t); if (o && typeof o === 'object' && o.rapida != null) return { rapida: String(o.rapida).trim().toLowerCase().replace(/^\//, '') }; if (o && typeof o === 'object' && o.bot != null) return { bot: String(o.bot) }; } catch (_) {} return /"(rapida|bot|mensagens)"/.test(t) ? { bot: '' } : null; }
+  const m = t.match(/^\[?\s*r[aá]pida\s*:\s*\/?\s*([\w-]+)\s*\]?$/i); if (m) return { rapida: m[1].toLowerCase() };
+  return null;
 }
 function _iaSugPinta() {
   const bar = document.getElementById('ia-sug-bar'); if (!bar) return;
@@ -7770,8 +7779,11 @@ function _albFim(ok, fecha) {
 // (o arquivo não sai para nenhum site de fora). Outros tipos: avisa e oferece salvar.
 function _arqTipo(nome, mime) {
   const ext = (String(nome || '').split('.').pop() || '').toLowerCase(), mm = String(mime || '').toLowerCase();
-  if (ext === 'pdf' || mm.includes('pdf')) return 'aba';
-  if (/^(png|jpe?g|gif|webp|bmp|txt)$/.test(ext) || mm.startsWith('image/') || mm === 'text/plain') return 'aba';
+  // PDF, foto e texto abrem DENTRO do FILAZ: em aba nova o Chrome baixava o PDF em vez de mostrar
+  // (quando o navegador está com "baixar PDF" ligado, ou o arquivo vem sem o tipo certo)
+  if (ext === 'pdf' || mm.includes('pdf')) return 'pdf';
+  if (/^(png|jpe?g|gif|webp|bmp)$/.test(ext) || mm.startsWith('image/')) return 'imagem';
+  if (ext === 'txt' || mm === 'text/plain') return 'texto';
   if (ext === 'docx' || mm.includes('wordprocessingml')) return 'docx';
   if (/^(xlsx|xls|csv|ods)$/.test(ext) || mm.includes('spreadsheet') || mm.includes('ms-excel') || mm === 'text/csv') return 'planilha';
   return 'nao';
@@ -7781,7 +7793,6 @@ function _carregaScript(src) {
 }
 async function verArquivo(url, nome, mime) {
   const tipo = _arqTipo(nome, mime);
-  if (tipo === 'aba') { const a = document.createElement('a'); a.href = url; a.target = '_blank'; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove(); return; }
   const dl = url + (url.includes('?') ? '&' : '?') + 'download=1&filename=' + encodeURIComponent(nome || 'arquivo');
   let ov = document.getElementById('doc-viewer');
   if (!ov) {
@@ -7802,10 +7813,35 @@ async function verArquivo(url, nome, mime) {
   ov.style.display = 'flex';
   if (tipo === 'nao') { corpo.innerHTML = '<div style="padding:30px;text-align:center;color:#54656f">Este tipo de arquivo não dá para ver aqui dentro.<br>Use <b>Salvar como...</b> para guardar e abrir no seu computador.</div>'; return; }
   corpo.innerHTML = '<div style="padding:30px;text-align:center;color:#8696a0">Abrindo…</div>';
+  corpo.style.background = '#fff'; corpo.style.padding = '24px'; corpo.classList.remove('dv-pdf'); delete corpo.dataset.paginas;
   try {
     const r = await fetch(url); if (!r.ok) throw new Error('HTTP ' + r.status);
     const ab = await r.arrayBuffer();
-    if (tipo === 'docx') {
+    if (tipo === 'pdf') {
+      // cada página vira uma imagem (pdf.js) — nada sai do FILAZ, nada é baixado
+      await _loadPdfJs();
+      const pdf = await window.pdfjsLib.getDocument({ data: new Uint8Array(ab) }).promise;
+      corpo.innerHTML = ''; corpo.style.background = '#525659'; corpo.style.padding = '16px 8px';
+      const larg = Math.min(900, Math.max(320, corpo.clientWidth - 16));
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const pg = await pdf.getPage(i);
+        const v1 = pg.getViewport({ scale: 1 }); const esc = larg / v1.width; const vp = pg.getViewport({ scale: esc * (window.devicePixelRatio || 1) });
+        const c = document.createElement('canvas'); c.width = vp.width; c.height = vp.height;
+        c.style.cssText = 'display:block;width:' + larg + 'px;max-width:100%;margin:0 auto 12px;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.4)';
+        corpo.appendChild(c);
+        await pg.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+      }
+      corpo.classList.add('dv-pdf'); corpo.dataset.paginas = String(pdf.numPages);
+    } else if (tipo === 'imagem') {
+      const b = new Blob([ab], { type: (mime && mime.startsWith('image/')) ? mime : 'image/jpeg' });
+      corpo.innerHTML = ''; corpo.style.background = '#0b141a'; corpo.style.padding = '12px';
+      const im = document.createElement('img'); im.src = URL.createObjectURL(b); im.alt = nome || ''; im.style.cssText = 'display:block;max-width:100%;max-height:calc(100vh - 90px);margin:0 auto;object-fit:contain';
+      corpo.appendChild(im);
+    } else if (tipo === 'texto') {
+      corpo.style.background = '#fff'; corpo.style.padding = '24px';
+      const pre = document.createElement('pre'); pre.style.cssText = 'white-space:pre-wrap;word-break:break-word;font:13px/1.5 ui-monospace,Menlo,Consolas,monospace;max-width:900px;margin:0 auto';
+      pre.textContent = new TextDecoder('utf-8').decode(ab); corpo.innerHTML = ''; corpo.appendChild(pre);
+    } else if (tipo === 'docx') {
       await _carregaScript('https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js');
       const res = await window.mammoth.convertToHtml({ arrayBuffer: ab });
       _poeHtmlSeguro(corpo, '<div style="max-width:820px;margin:0 auto" class="dv-docx">' + res.value + '</div>');
