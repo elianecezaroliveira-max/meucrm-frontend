@@ -2415,7 +2415,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v520</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v521</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3250,7 +3250,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v520</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v521</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3324,7 +3324,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 520;
+const APP_VER = 521;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -15768,24 +15768,51 @@ async function confirmSendTemplate() {
     });
     components.push({ type: 'body', parameters: params });
   }
+  const corpo = {
+    to: currentPhone, account_id: currentAccountId,
+    template_name: selectedTemplate.name, language_code: selectedTemplate.language,
+    components, body_text: bodyText
+  };
+  // A janela fecha NA HORA e o balão aparece com o relógio — antes nada mudava na tela
+  // até a Meta responder, e o 2º clique mandava o modelo duas vezes.
+  closeSendTemplate();
+  await _enviaModelo(corpo, false);
+}
+const _tmplEmEnvio = {}; // fone|modelo|texto → enviando agora (o 2º clique não envia)
+async function _enviaModelo(corpo, forcar) {
+  const texto = String(corpo.body_text || '').trim() || ('[Template: ' + corpo.template_name + ']');
+  const chave = corpo.to + '|' + corpo.template_name + '|' + texto;
+  if (_tmplEmEnvio[chave]) { showToast('Este modelo já está sendo enviado — aguarde aparecer na conversa.', 'err'); return; }
+  _tmplEmEnvio[chave] = true;
+  let tempEl = null;
+  try { if (currentPhone === corpo.to) tempEl = appendPendingBubble(texto, null, 'tmpl-' + Date.now().toString(36)); } catch (_) {}
+  const tiraTemp = () => { try { if (tempEl) tempEl.remove(); } catch (_) {} };
   try {
-    const res = await fetch(SERVER_URL + '/send-template', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        to: currentPhone,
-        account_id: currentAccountId,
-        template_name: selectedTemplate.name,
-        language_code: selectedTemplate.language,
-        components,
-        body_text: bodyText
-      })
-    });
-    const data = await res.json();
-    if (!res.ok) return alert('O WhatsApp recusou o envio:\n\n' + (data.error || 'Tente novamente') + (data.detail ? '\n\n' + data.detail : '') + (data.code ? '\n\n(código ' + data.code + ')' : ''));
-    closeSendTemplate();
-    await loadMessages(currentPhone);
-  } catch(e) { alert('Erro ao enviar template.'); }
+    let res = null, data = {};
+    try {
+      res = await fetch(SERVER_URL + '/send-template', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(Object.assign({}, corpo, { client_id: 't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 9), forcar: !!forcar })) });
+      data = await res.json().catch(() => ({}));
+    } catch (_) { res = null; }
+    if (!res) { tiraTemp(); vAviso({ titulo: 'Sem confirmação', texto: 'A internet falhou e não consegui confirmar se o modelo saiu. Confira a conversa antes de enviar de novo — nada foi reenviado sozinho.' }); return; }
+    if (!res.ok) {
+      tiraTemp();
+      if (res.status === 409 && data.recente) {
+        delete _tmplEmEnvio[chave];
+        const ok = await vConfirm({ titulo: 'Modelo já enviado', texto: (data.error || 'Este modelo acabou de ser enviado para este lead.') + ' Quer enviar de novo mesmo assim?', confirmar: 'Enviar de novo', cancelar: 'Não enviar' });
+        if (ok) await _enviaModelo(corpo, true);
+        return;
+      }
+      if (res.status === 409) { showToast(data.error || 'Este modelo já está sendo enviado.', 'err'); return; }
+      alert('O WhatsApp recusou o envio:\n\n' + (data.error || 'Tente novamente') + (data.detail ? '\n\n' + data.detail : '') + (data.code ? '\n\n(código ' + data.code + ')' : ''));
+      return;
+    }
+    if (currentPhone !== corpo.to) return;
+    try { const tk = tempEl && tempEl.querySelector('.msg-ticks'); if (tk) { tk.innerHTML = TICK_ONE; tk.className = 'msg-ticks sent'; tk.title = ''; } } catch (_) {}
+    await loadMessages(corpo.to, false);
+    _tiraTempQuandoChegar(tempEl, texto);
+  } catch (e) { console.warn('Modelo: erro depois do envio', e && e.message); }
+  finally { delete _tmplEmEnvio[chave]; }
 }
 
 // ── PIPELINE KANBAN ──
