@@ -1091,6 +1091,8 @@ body.dark{
 /* Kanban das tarefas: ATRASADAS · HOJE · AMANHÃ */
 #tasks-page.kanban-on #tasks-list-area { max-width:none; }
 .tk-board { display:grid; grid-template-columns:repeat(3, minmax(260px, 1fr)); gap:14px; align-items:start; }
+.tk-board.tipos { display:flex; overflow-x:auto; padding-bottom:8px; } .tk-board.tipos .tk-col { flex:0 0 280px; }
+.tk-modo { display:none; gap:4px; margin-left:2px; } #tasks-page.kanban-on .tk-modo { display:inline-flex; }
 @media (max-width: 768px) { .tk-board { display:flex; overflow-x:auto; scroll-snap-type:x mandatory; } .tk-col { min-width:86vw; scroll-snap-align:start; } }
 .tk-col { background:#f0f2f5; border-radius:12px; padding:10px; min-height:140px; border:2px solid transparent; }
 .tk-col.drag-over { border-color:#00a884; background:#e7f7ef; }
@@ -2415,7 +2417,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v524</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v528</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3164,7 +3166,8 @@ window.addEventListener('load', initAuth);
     <span id="tasks-sel-count" style="font-size:12px;color:#00a884;font-weight:600"></span>
     <button class="btn-secondary" id="tasks-disparo-btn" style="display:none" onclick="openBulkBotMenu(event)" title="Dispara o bot para os leads selecionados">Disparar bot</button>
     <input type="checkbox" id="tasks-show-done" onchange="renderTasksPage()" style="display:none" /><!-- antigo "Mostrar concluídas": agora é o filtro Situação -->
-    <span style="display:inline-flex;gap:4px"><button class="btn-secondary tk-vbtn" id="tasks-v-lista" onclick="tarefasVisao('lista')" title="Ver em lista">☰ Lista</button><button class="btn-secondary tk-vbtn" id="tasks-v-kanban" onclick="tarefasVisao('kanban')" title="Ver em colunas: Atrasadas, Hoje e Amanhã">▥ Kanban</button></span>
+    <span style="display:inline-flex;gap:4px"><button class="btn-secondary tk-vbtn" id="tasks-v-lista" onclick="tarefasVisao('lista')" title="Ver em lista">☰ Lista</button><button class="btn-secondary tk-vbtn" id="tasks-v-kanban" onclick="tarefasVisao('kanban')" title="Ver em colunas">▥ Kanban</button></span>
+    <span class="tk-modo"><button class="btn-secondary tk-vbtn" id="tasks-k-prazo" onclick="tarefasKanbanModo('prazo')" title="Colunas: Atrasadas, Hoje e Amanhã">Por prazo</button><button class="btn-secondary tk-vbtn" id="tasks-k-tipo" onclick="tarefasKanbanModo('tipo')" title="Uma coluna para cada tipo de tarefa">Por tipo</button></span>
     <button class="btn-secondary" id="tasks-filtros-btn" onclick="tfAbre(event)" title="Filtrar por situação, etapa do pipeline, tipo e data de criação"><i class=ic-filter></i> Filtros<span id="tasks-filtros-n" style="display:none;margin-left:6px;background:#00a884;color:#fff;border-radius:10px;padding:0 7px;font-size:11px;font-weight:700"></span></button>
     <select id="tasks-ordem" onchange="tfOrdem(this.value)" title="Ordenar as tarefas: pelo prazo ou pela data de criação" style="border:1px solid #d1d7db;border-radius:8px;padding:6px 8px;font-size:13px;background:#fff;color:#131c20;font-family:inherit;cursor:pointer;max-width:200px"><option value="prazo">↕ Ordem: prazo</option><option value="antigas">↕ Mais antigas primeiro</option><option value="recentes">↕ Mais recentes primeiro</option></select>
     <button class="btn-secondary" onclick="abrirTiposTarefa()" title="Criar e editar os tipos de tarefa (Reunião, Acompanhar…)"><i class=ic-tag></i> Tipos</button>
@@ -3250,7 +3253,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v524</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v528</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3324,7 +3327,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 524;
+const APP_VER = 528;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4747,9 +4750,11 @@ async function _buscaDigitando() {
     return mudou;
   } catch (_) { return false; }
 }
-function _digitandoDe(phone) {
+function _digitandoDe(phone, c) {
   // o servidor já descarta o que passou de 12s; aqui vale o último minuto de busca
   if (!phone || Date.now() - _digitandoTs > 12000) return null;
+  // o lead acabou de ENVIAR (mensagem mais nova que a última olhada no "digitando"): parou de digitar
+  try { if (c && c.last_message_direction === 'inbound' && c.last_message_at && parseUTC(c.last_message_at) >= _digitandoTs - 1500) return null; } catch (_) {}
   return _digitando[phone] || null;
 }
 let _listaPendente = null;
@@ -4828,7 +4833,7 @@ function renderContacts(contacts) {
       ? (stTick ? stTick + shownPrev : `<span style="color:#667781">Você: </span>${shownPrev}`)
       : shownPrev;
     // O lead está digitando AGORA? Isso vem na frente de tudo (igual WhatsApp)
-    const _dig = _digitandoDe(c.phone);
+    const _dig = _digitandoDe(c.phone, c);
     if (_dig) previewHtml = `<span style="color:#00a884;font-weight:600">${_dig === 'recording' ? 'gravando áudio…' : 'digitando…'}</span>`;
     // Rascunho pendente nesta conversa? Mostra em verde, igual WhatsApp.
     // No celular, com a LISTA em cena, mostra até para a conversa "atual"
@@ -5175,9 +5180,12 @@ async function _iaSugPede(phone, chave, forcar) {
     // nunca vinha — era o que acontecia quando o lead respondia durante o DEPLOY do servidor)
     if (!d || d.motivo) { _iaSugFeitas.delete(chave); _iaSugFalhas[chave] = Date.now(); setTimeout(() => { try { if (currentPhone === phone) _iaSugAvalia(phone, currentMessages); } catch (_) {} }, 21000); }
     if (forcar) showToast(d && d.motivo ? 'Sem sugestão: ' + d.motivo : 'Sem sugestão agora', 'erro');
+    // Antes, quando a IA voltava vazia, a tela ficava MUDA — ela não sabia se a IA tinha
+    // pensado e nem tinha como pedir de novo. Agora o cartão diz o que houve e tem o ↻.
+    if (currentPhone === phone && !(d && d.motivo === 'desligada')) _iaSugVazia = { phone, chave, motivo: (d && d.motivo) || (d ? 'a IA não teve o que sugerir para esta fala' : 'o servidor não respondeu') };
     _iaSugPinta(); return;
   }
-  delete _iaSugFalhas[chave];
+  delete _iaSugFalhas[chave]; _iaSugVazia = null;
   // itens: texto, ⚡ resposta rápida (pelo atalho) ou 🤖 bot — servidor antigo manda só "mensagens" (textos)
   let itens = (Array.isArray(d.itens) && d.itens.length) ? d.itens.filter(it => it && (it.tipo === 'texto' ? !!it.texto : it.tipo === 'rapida' ? !!it.atalho : it.tipo === 'bot' ? !!it.id : false)) : d.mensagens.map(t => ({ tipo: 'texto', texto: t }));
   // Guarda da tela: um "texto" que na verdade é {"rapida":"/tarde"} (ou [rapida: /tarde]) vira a
@@ -5194,9 +5202,19 @@ function _iaSugTorto(s) {
   const m = t.match(/^\[?\s*r[aá]pida\s*:\s*\/?\s*([\w-]+)\s*\]?$/i); if (m) return { rapida: m[1].toLowerCase() };
   return null;
 }
+let _iaSugVazia = null; // { phone, chave, motivo } — a última fala do lead ficou SEM sugestão
 function _iaSugPinta() {
   const bar = document.getElementById('ia-sug-bar'); if (!bar) return;
-  if (!_iaSug || _iaSug.phone !== currentPhone || _iaSug.fechado || !_iaSugSobrou()) { bar.style.display = 'none'; bar.innerHTML = ''; return; }
+  if (!_iaSug || _iaSug.phone !== currentPhone || _iaSug.fechado || !_iaSugSobrou()) {
+    // sem sugestão para a última fala do lead: cartão curto com o motivo e o ↻ (some quando eu respondo)
+    const reais = (currentMessages || []).filter(m => m && m.type !== 'note'); const ult = reais[reais.length - 1];
+    if (_iaSugVazia && _iaSugVazia.phone === currentPhone && ult && ult.direction !== 'outbound' && _iaSugVazia.chave === currentPhone + '|' + ult.id && _iaSugAtiva()) {
+      bar.innerHTML = '<div class="ia-sug-cab"><span>✨ Sugestão</span><small>sem sugestão desta vez — ' + escHtml(String(_iaSugVazia.motivo || '')) + '</small>'
+        + '<button onclick="_iaSugDeNovo()" title="Tentar de novo">↻</button><button onclick="_iaSugVazia=null;_iaSugPinta()" title="Fechar">✕</button></div>';
+      bar.style.display = 'flex'; return;
+    }
+    bar.style.display = 'none'; bar.innerHTML = ''; return;
+  }
   bar.innerHTML = '<div class="ia-sug-cab"><span>✨ Sugestão</span><small>toque para pôr no campo — só vai quando você enviar</small>'
     + '<button onclick="_iaSugDeNovo()" title="Outra sugestão">↻</button><button onclick="_iaSugFecha()" title="Fechar">✕</button></div>'
     + (_iaSug.transcricoes || []).map(t => '<div class="ia-sug-audio" title="O que o lead disse no áudio">🎤 ' + escHtml(t) + '</div>').join('')
@@ -5228,7 +5246,7 @@ function _iaSugUsar(i) {
   try { inp.focus({ preventScroll: true }); inp.setSelectionRange(inp.value.length, inp.value.length); } catch (_) {}
   _iaSugPinta();
 }
-function _iaSugDeNovo() { if (!currentPhone) return; if (_iaSug) _iaSug.fechado = false; _iaSugPede(currentPhone, (_iaSug && _iaSug.chave) || (currentPhone + '|denovo'), true); }
+function _iaSugDeNovo() { if (!currentPhone) return; if (_iaSug) _iaSug.fechado = false; const _re = (currentMessages || []).filter(m => m && m.type !== 'note'), _ul = _re[_re.length - 1]; const ch = (_iaSug && _iaSug.chave) || (_iaSugVazia && _iaSugVazia.chave) || (_ul && _ul.direction !== 'outbound' ? currentPhone + '|' + _ul.id : currentPhone + '|denovo'); _iaSugVazia = null; _iaSugPede(currentPhone, ch, true); }
 function _iaSugFecha() { if (_iaSug) _iaSug.fechado = true; _iaSugPinta(); } // some da tela, mas segue aprendendo com o que você mandar
 // Enviou com o cartão aberto → o par vira exemplo (o servidor anonimiza e guarda)
 function _iaSugAprende(texto, phone) {
@@ -6682,7 +6700,7 @@ async function toggleFavorite(phone, semAviso) {
   const c = allContacts.find(x => x.phone === phone);
   const fav = !(c && c.favorite);
   if (c) c.favorite = fav;
-  if (!semAviso) { try { showToast(fav ? 'Conversa favoritada' : 'Removida dos favoritos', 'ok', 4000, { label: 'Desfazer', fn: () => toggleFavorite(phone, true) }); } catch (_) {} }
+  // (sem aviso "Conversa favoritada": ela pediu para tirar — a estrela na linha já mostra)
   _pintaLinhaContato(phone);
   _redesenhaListaDepois();
   try {
@@ -18759,10 +18777,15 @@ function tarefasVisao(v){
   if (v === 'kanban' && _taskSelMode) { try { toggleTaskSelMode(); } catch (_) {} }
   _tarefasVisaoPinta(); renderTasksPage();
 }
+// ▥ Kanban "por prazo" (Atrasadas · Hoje · Amanhã) ou "por tipo" (uma coluna para cada tipo de tarefa)
+function _tarefasKanbanModo(){ try { return localStorage.getItem('filaz_tarefas_kanban') === 'tipo' ? 'tipo' : 'prazo'; } catch (_) { return 'prazo'; } }
+function tarefasKanbanModo(m){ try { localStorage.setItem('filaz_tarefas_kanban', m); } catch (_) {} _tarefasVisaoPinta(); renderTasksPage(); }
 function _tarefasVisaoPinta(){
-  const v = _tarefasVisaoAtual();
+  const v = _tarefasVisaoAtual(), km = _tarefasKanbanModo();
   const l = document.getElementById('tasks-v-lista'), k = document.getElementById('tasks-v-kanban');
   if (l) l.classList.toggle('on', v === 'lista'); if (k) k.classList.toggle('on', v === 'kanban');
+  const kp = document.getElementById('tasks-k-prazo'), kt = document.getElementById('tasks-k-tipo');
+  if (kp) kp.classList.toggle('on', km === 'prazo'); if (kt) kt.classList.toggle('on', km === 'tipo');
   const pg = document.getElementById('tasks-page'); if (pg) pg.classList.toggle('kanban-on', v === 'kanban');
 }
 function _tarefaColuna(t){
@@ -18777,6 +18800,7 @@ function _tarefaColuna(t){
 const _TK_COLS = [['atrasadas', 'ATRASADAS', '#ef4444'], ['hoje', 'HOJE', '#c07b00'], ['amanha', 'AMANHÃ', '#00806a']];
 function _tarefasKanbanHtml(list){
   _tarefasVisaoPinta();
+  if (_tarefasKanbanModo() === 'tipo') return _tarefasKanbanTiposHtml(list);
   const cols = { atrasadas: [], hoje: [], amanha: [] };
   list.forEach(t => { const c = _tarefaColuna(t); if (c) cols[c].push(t); });
   // pelo prazo: com prazo primeiro (pela hora), as sem prazo no fim; ou pela criação, se escolhido
@@ -18803,6 +18827,50 @@ function _tarefasKanbanHtml(list){
       ${cols[k].length ? cols[k].map(card).join('') : `<div class="tk-vazio">${k === 'atrasadas' ? 'Nada atrasado 🎉' : 'Nenhuma tarefa'}</div>`}
     </div>`).join('')}</div>` + (fora ? `<div style="margin-top:12px;font-size:12px;color:#8696a0">${fora} tarefa(s) para depois de amanhã — veja em <a href="#" onclick="event.preventDefault();tarefasVisao('lista')">Lista</a>.</div>` : '');
 }
+// Uma coluna por TIPO (na ordem dos seus tipos) + "Sem tipo" quando alguma tarefa não tem.
+// Arrastar o cartão para outra coluna TROCA o tipo da tarefa.
+function _tarefasKanbanTiposHtml(list){
+  const tipos = (_tarefaTipos || []).slice();
+  const abertas = list.filter(t => !t.done);
+  const cols = tipos.map(tp => ({ k: 'tipo:' + tp.id, rot: tp.nome, cor: tp.cor, ico: tp.icone, itens: abertas.filter(t => _tipoDe(t.tipo) && _tipoDe(t.tipo).id === tp.id) }));
+  const semTipo = abertas.filter(t => !_tipoDe(t.tipo));
+  if (semTipo.length || !tipos.length) cols.push({ k: 'tipo:', rot: 'Sem tipo', cor: '#667781', ico: '', itens: semTipo });
+  cols.forEach(c => c.itens.sort(_tfOrdena));
+  const card = t => {
+    const nota = String(t.notes || '').replace(/\s+/g, ' ').trim();
+    const lead = t.contact_name ? `<button onclick="event.stopPropagation();openTaskLead('${t.phone}','${_jsAttr(t.contact_name)}',${t.account_id ? `'${t.account_id}'` : 'null'})" title="Abrir a conversa" style="display:inline-flex;align-items:center;gap:5px;background:#e7f7ef;border:1px solid #00a884;color:#00806a;border-radius:14px;padding:3px 10px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><i class=ic-user></i> ${escHtml(t.contact_name)}</button>` : '';
+    const atras = !!t.due_at && parseUTC(t.due_at) < Date.now();
+    return `<div class="tk-card" draggable="true" data-id="${escHtml(String(t.id))}" ondblclick="editTaskTitle('${t.id}')" title="Arraste para outro tipo · 2 cliques para editar">
+      <div style="display:flex;align-items:flex-start;gap:8px">
+        <button class="task-check" title="Concluir" onclick="event.stopPropagation();toggleTaskGlobal('${t.id}',true)" style="flex-shrink:0"></button>
+        <div style="flex:1;min-width:0">
+          ${lead ? `<div style="margin-bottom:5px">${lead}</div>` : ''}
+          <div style="font-size:12px;color:${atras ? '#ef4444' : '#667781'};cursor:pointer" onclick="event.stopPropagation();menuPrazoTarefa('${t.id}')"><i class=ic-clock></i> ${t.due_at ? fmtTaskDue(t.due_at) : 'Sem prazo'}</div>
+          ${nota ? `<div style="font-size:12px;color:#54656f;margin-top:4px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical"><i class=ic-note></i> ${escHtml(nota)}</div>` : ''}
+        </div>
+      </div>
+    </div>`;
+  };
+  return `<div class="tk-board tipos">${cols.map(c => `<div class="tk-col" data-col="${escHtml(c.k)}">
+      <div class="tk-col-head" style="color:${escHtml(c.cor)}">${c.ico ? `<i class="ic-${escHtml(c.ico)}"></i>` : ''}${escHtml(String(c.rot).toUpperCase())} <span class="n">${c.itens.length}</span></div>
+      ${c.itens.length ? c.itens.map(card).join('') : '<div class="tk-vazio">Nenhuma tarefa</div>'}
+    </div>`).join('')}</div><div style="margin-top:10px;font-size:12px;color:#8696a0">Arraste um cartão para outra coluna para trocar o tipo · <a href="#" onclick="event.preventDefault();abrirTiposTarefa()">editar tipos</a></div>`;
+}
+async function tarefaMoveTipo(id, tipo){
+  const t = _allTasksCache.find(x => String(x.id) === String(id)); if (!t) return;
+  const atual = _tipoDe(t.tipo) ? _tipoDe(t.tipo).id : '';
+  if (atual === (tipo || '')) return;
+  const antes = t.tipo, tituloAntes = t.title;
+  const title = _tarefaTituloPara(tipo || null);
+  _tarefaAtualiza(id, { tipo: tipo || null, title }); renderTasksPage(); // muda na hora; se o servidor recusar, volta
+  try {
+    const r = await fetch(SERVER_URL + '/tasks/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tipo: tipo || null, title }) });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    _avisoTipoSemColuna(await r.json().catch(() => ({})));
+    _sincTarefas(t.phone, true);
+    showToast('Tipo: ' + (tipo ? _tarefaTituloPara(tipo) : 'sem tipo'), 'ok');
+  } catch (e) { _tarefaAtualiza(id, { tipo: antes, title: tituloAntes }); renderTasksPage(); showToast('Não consegui trocar o tipo', 'err'); }
+}
 function _tarefasKanbanLiga(){
   const area = document.getElementById('tasks-list-area'); if (!area) return;
   area.querySelectorAll('.tk-card').forEach(c => {
@@ -18812,7 +18880,7 @@ function _tarefasKanbanLiga(){
   area.querySelectorAll('.tk-col').forEach(col => {
     col.addEventListener('dragover', e => { if (col.dataset.col === 'atrasadas') return; e.preventDefault(); col.classList.add('drag-over'); });
     col.addEventListener('dragleave', () => col.classList.remove('drag-over'));
-    col.addEventListener('drop', e => { e.preventDefault(); col.classList.remove('drag-over'); let id = ''; try { id = e.dataTransfer.getData('text/plain'); } catch (_) {} if (id) tarefaMoveColuna(id, col.dataset.col); });
+    col.addEventListener('drop', e => { e.preventDefault(); col.classList.remove('drag-over'); let id = ''; try { id = e.dataTransfer.getData('text/plain'); } catch (_) {} if (!id) return; const c = String(col.dataset.col || ''); if (c.startsWith('tipo:')) tarefaMoveTipo(id, c.slice(5)); else tarefaMoveColuna(id, c); });
   });
 }
 // Muda o prazo conforme a coluna: HOJE (mesma hora; se já passou, 23:59) ou AMANHÃ (mesma hora)
