@@ -2417,7 +2417,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v535</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v536</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3253,7 +3253,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v535</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v536</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3327,7 +3327,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 535;
+const APP_VER = 536;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4776,33 +4776,33 @@ function _pintaBadgeChat() {
     _pintaAbaNavegador(n);
   } catch (_) {}
 }
-// 🔴 Bolinha vermelha na ABA do navegador (igual WhatsApp Web): o ícone ganha o número de
-// conversas não lidas e o título vira "(N) FILAZ". Some quando não há nenhuma.
+// 🔴 Bolinha vermelha na ABA do navegador (igual WhatsApp Web): a logo continua do mesmo
+// tamanho e ganha só um pontinho vermelho no canto quando há conversa não lida. Sem número e
+// sem "(N)" no título — ela pediu.
 let _abaIcone = null, _abaUltimoN = -1, _abaImg = null;
 function _pintaAbaNavegador(n) {
   try {
     n = Number(n) || 0;
-    if (n === _abaUltimoN) return;
-    _abaUltimoN = n;
-    document.title = n > 0 ? '(' + (n > 99 ? '99+' : n) + ') FILAZ' : 'FILAZ';
+    const tem = n > 0;
+    if ((tem ? 1 : 0) === _abaUltimoN) return;
+    _abaUltimoN = tem ? 1 : 0;
+    document.title = 'FILAZ';
     const links = Array.from(document.querySelectorAll('link[rel="icon"], link[rel="shortcut icon"]'));
     if (!links.length) return;
     if (!_abaIcone) _abaIcone = links[0].getAttribute('href');
-    if (n === 0) { links.forEach(l => l.setAttribute('href', _abaIcone)); return; }
+    if (!tem) { links.forEach(l => l.setAttribute('href', _abaIcone)); return; }
     const desenha = () => {
-      const c = document.createElement('canvas'); c.width = 64; c.height = 64; const g = c.getContext('2d');
-      if (_abaImg && _abaImg.complete && _abaImg.naturalWidth) g.drawImage(_abaImg, 0, 0, 64, 64);
-      else { g.fillStyle = '#00a884'; g.beginPath(); g.arc(32, 32, 30, 0, Math.PI * 2); g.fill(); }
-      const txt = n > 99 ? '99+' : String(n);
-      const r = txt.length > 2 ? 17 : 14, cx = 64 - r - 1, cy = r + 1;
-      g.fillStyle = '#e53935'; g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fill();
-      g.lineWidth = 3; g.strokeStyle = '#fff'; g.stroke();
-      g.fillStyle = '#fff'; g.font = 'bold ' + (txt.length > 2 ? 15 : 19) + 'px Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-      g.fillText(txt, cx, cy + 1);
+      if (!_abaImg || !_abaImg.complete || !_abaImg.naturalWidth) return; // sem a logo carregada, deixa o ícone como está
+      if (_abaUltimoN !== 1) return; // zerou enquanto a logo carregava
+      const T = 128; const c = document.createElement('canvas'); c.width = T; c.height = T; const g = c.getContext('2d');
+      g.drawImage(_abaImg, 0, 0, T, T); // a logo INTEIRA, no tamanho de sempre
+      const r = 22, cx = T - r - 4, cy = r + 4;
+      g.beginPath(); g.arc(cx, cy, r + 5, 0, Math.PI * 2); g.fillStyle = '#fff'; g.fill(); // aro branco para destacar
+      g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fillStyle = '#e53935'; g.fill();
       const url = c.toDataURL('image/png');
       links.forEach(l => l.setAttribute('href', url));
     };
-    if (!_abaImg) { _abaImg = new Image(); _abaImg.onload = desenha; _abaImg.onerror = desenha; _abaImg.src = _abaIcone; }
+    if (!_abaImg) { _abaImg = new Image(); _abaImg.onload = desenha; _abaImg.src = _abaIcone; }
     desenha();
   } catch (_) {}
 }
