@@ -2417,7 +2417,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v528</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v531</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3253,7 +3253,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v528</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v531</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3327,7 +3327,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 528;
+const APP_VER = 531;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4350,11 +4350,11 @@ async function transcreverAudio(msgId, aid) {
 
 // BUSCA DENTRO DAS MENSAGENS: além das conversas, lista as mensagens que
 // contêm o termo; clicar abre a conversa e pula até a mensagem
-let _msgHits = [], _msgHitsQ = '', _msgHitsPronto = false, _msgHitsTemMais = false, _msgHitsCarregando = false;
+let _msgHits = [], _msgHitsQ = '', _msgHitsPronto = false, _msgHitsTemMais = false, _msgHitsCarregando = false, _msgHitsErro = '';
 const _MSG_HITS_PAG = 60; // o servidor devolve de 60 em 60
 const _tsHit = h => { try { return parseUTC(h.timestamp) || 0; } catch (_) { return 0; } };
 async function buscarMensagens(q, mais) {
-  if (!mais) { _msgHitsQ = q; _msgHitsPronto = false; _msgHitsTemMais = false; }
+  if (!mais) { _msgHitsQ = q; _msgHitsPronto = false; _msgHitsTemMais = false; _msgHitsErro = ''; }
   if (!q || q.length < 2) { _msgHits = []; _msgHitsPronto = true; renderMsgHits(); return; }
   if (mais && (_msgHitsCarregando || !_msgHits.length)) return;
   _msgHitsCarregando = true; if (mais) renderMsgHits();
@@ -4366,6 +4366,8 @@ async function buscarMensagens(q, mais) {
     const r = await fetch(url);
     const data = await r.json();
     if (_msgHitsQ !== q) return; // resposta atrasada de outra busca
+    // servidor recusou (ex.: modo poupança do banco): a tela diz o MOTIVO, não "Nenhum resultado"
+    _msgHitsErro = (!Array.isArray(data) && data && data.error) ? String(data.error) : '';
     const veio = Array.isArray(data) ? data : [];
     const ja = new Set(mais ? _msgHits.map(h => String(h.id)) : []);
     const novos = veio.filter(h => !ja.has(String(h.id)));
@@ -4421,6 +4423,7 @@ function renderMsgHits() {
   if (!buscando || q.length < 2) { if (old) old.remove(); return; }
   let corpo;
   if (!_msgHitsPronto && !_msgHits.length) corpo = '<div class="msg-hit-vazio">Procurando nas mensagens…</div>';
+  else if (!_msgHits.length && _msgHitsErro) corpo = `<div class="msg-hit-vazio" style="color:#c07b00">⚠️ A busca dentro das mensagens não rodou: ${escHtml(_msgHitsErro)}${linhas ? '' : '<br><span style="color:#667781">Nenhuma conversa com esse nome ou número.</span>'}</div>`;
   else if (!_msgHits.length) corpo = linhas ? '' : `<div class="msg-hit-vazio">Nenhum resultado para “${escHtml(q)}”</div>`;
   else corpo = _msgHits.map(h => {
     const ql = q.toLowerCase();
@@ -5182,7 +5185,11 @@ async function _iaSugPede(phone, chave, forcar) {
     if (forcar) showToast(d && d.motivo ? 'Sem sugestão: ' + d.motivo : 'Sem sugestão agora', 'erro');
     // Antes, quando a IA voltava vazia, a tela ficava MUDA — ela não sabia se a IA tinha
     // pensado e nem tinha como pedir de novo. Agora o cartão diz o que houve e tem o ↻.
-    if (currentPhone === phone && !(d && d.motivo === 'desligada')) _iaSugVazia = { phone, chave, motivo: (d && d.motivo) || (d ? 'a IA não teve o que sugerir para esta fala' : 'o servidor não respondeu') };
+    // Limite de uso do Groq (tokens por minuto) acabou: NADA de cartão — ela pediu (o texto da
+    // Groq é enorme e não tem o que ela fazer; o app tenta de novo sozinho em 20 s)
+    const _mot = String((d && d.motivo) || '');
+    if (/rate limit|too large|tokens per minute|\(TPM\)|\(RPM\)|requests per minute|console\.groq\.com/i.test(_mot)) { _iaSugVazia = null; _iaSugPinta(); return; }
+    if (currentPhone === phone && !(d && d.motivo === 'desligada')) _iaSugVazia = { phone, chave, motivo: (_mot ? _mot.slice(0, 110) + (_mot.length > 110 ? '…' : '') : (d ? 'a IA não teve o que sugerir para esta fala' : 'o servidor não respondeu')) };
     _iaSugPinta(); return;
   }
   delete _iaSugFalhas[chave]; _iaSugVazia = null;
@@ -21479,6 +21486,7 @@ function renderConfigPanel(node) {
         <input type="checkbox" id="cfg-bh-wait" ${node.config.wait!==false?'checked':''} onchange="onBizWaitChange('${node.id}',this.checked)"/>
         <span>Fora do expediente, <b>aguardar até reabrir</b> e então seguir por "Em expediente"</span>
       </label>
+      <div id="cfg-bh-agora" style="margin-top:12px;font-size:12.5px;padding:8px 10px;border-radius:8px;background:#f0f2f5;color:#131c20">${_bhAgoraHtml(node.config)}</div>
       <div style="font-size:11px;color:#667781;margin-top:10px">Horário de Brasília (UTC-3).<br>• <b>Em expediente</b>: caminho seguido quando está dentro do horário agora (coloque aqui a mensagem extra do horário comercial).<br>• Se desmarcar o "aguardar", aparece a saída <b>Fora do expediente</b> para tratar fora de hora — por exemplo, ligar a um passo <b>Aguardar até um horário</b> (08:00) seguido de uma mensagem de bom dia.</div>`;
     return;
   }
@@ -21544,6 +21552,20 @@ function toggleBizDay(id, day, on){
 }
 function onBizWaitChange(id, on){
   updateNodeConfig(id, {wait:on}); // muda as saídas (mostra/esconde "Fora do expediente")
+}
+// "AGORA é expediente?" — mesma conta do servidor (hora de Brasília), para ela ver na hora
+// por qual saída o bot seguiria se um lead entrasse neste instante
+function _bhAgoraHtml(cfg){
+  try {
+    cfg = cfg || {};
+    const days = (cfg.days && cfg.days.length) ? cfg.days.map(Number) : [1,2,3,4,5];
+    const [sh, sm] = String(cfg.start || '08:00').split(':').map(Number), [eh, em] = String(cfg.end || '18:00').split(':').map(Number);
+    const brt = new Date(Date.now() - 3 * 3600000); const dow = brt.getUTCDay(); const minNow = brt.getUTCHours() * 60 + brt.getUTCMinutes();
+    const aberto = days.includes(dow) && minNow >= sh * 60 + sm && minNow < eh * 60 + em;
+    const dn = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+    const hm = String(brt.getUTCHours()).padStart(2, '0') + ':' + String(brt.getUTCMinutes()).padStart(2, '0');
+    return 'Agora (' + dn[dow] + ', ' + hm + ' em Brasília): <b style="color:' + (aberto ? '#00806a' : '#c0392b') + '">' + (aberto ? 'EM EXPEDIENTE' : 'FORA DO EXPEDIENTE') + '</b> — um lead que entrasse agora seguiria por <b>' + (aberto ? 'Em expediente' : (cfg.wait === false ? 'Fora do expediente' : 'aguardar até reabrir')) + '</b>.';
+  } catch (_) { return ''; }
 }
 
 function updateOptionLabel(idx, val) {
