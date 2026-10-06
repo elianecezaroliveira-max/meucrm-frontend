@@ -2417,7 +2417,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v536</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v537</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3253,7 +3253,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v536</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v537</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3327,7 +3327,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 536;
+const APP_VER = 537;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3457,7 +3457,9 @@ async function _acordaLoop() {
   if (_acordaRodando) return; _acordaRodando = true;
   while (true) {
     try {
-      if (document.hidden || !SERVER_URL || !pollInterval) { await new Promise(r => setTimeout(r, 2000)); continue; }
+      if (!SERVER_URL || !pollInterval) { await new Promise(r => setTimeout(r, 2000)); continue; }
+      // (com a aba em segundo plano a campainha CONTINUA ligada — custa zero de banco — só para
+      //  acender o pontinho vermelho na aba quando chega mensagem; ela pediu para não precisar abrir a aba)
       const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 35000);
       const r = await fetch(SERVER_URL + '/acorda?v=' + encodeURIComponent(_acordaV), { signal: ctl.signal });
       clearTimeout(to);
@@ -3465,9 +3467,19 @@ async function _acordaLoop() {
       const j = await r.json().catch(() => ({}));
       const primeira = !_acordaV;
       if (j && j.v) _acordaV = j.v;
-      if (j && j.mudou && !primeira && !document.hidden && pollInterval) _pollTick().catch(() => {});
+      if (j && j.mudou && !primeira) { if (!document.hidden && pollInterval) _pollTick().catch(() => {}); else if (document.hidden) _abaEscondidaConfere().catch(() => {}); }
     } catch (_) { await new Promise(r => setTimeout(r, 5000)); }
   }
+}
+// Aba em segundo plano: só pergunta ao servidor QUANTAS conversas estão não lidas (uma contagem,
+// zero bytes do banco) e acende/apaga o pontinho na aba — a lista inteira só atualiza ao voltar
+let _abaEscondidaT = 0;
+async function _abaEscondidaConfere() {
+  if (Date.now() - _abaEscondidaT < 1500) return; _abaEscondidaT = Date.now();
+  try {
+    const r = await fetch(SERVER_URL + '/nao-lidas'); if (!r.ok) return;
+    const j = await r.json(); if (j && typeof j.n === 'number') _pintaAbaNavegador(j.n);
+  } catch (_) {}
 }
 async function _pollTickInner() {
   // Snapshot do que aparece na lista (não lidas, PRÉVIA, horário, tiques) antes de atualizar
