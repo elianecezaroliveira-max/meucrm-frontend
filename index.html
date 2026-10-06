@@ -2417,7 +2417,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v532</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v535</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3253,7 +3253,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v532</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v535</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3327,7 +3327,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 532;
+const APP_VER = 535;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3554,10 +3554,8 @@ function startPolling() {
   }, _pollMsAtual);
 }
 function _bancoAvisaNivel(n) {
-  try {
-    if (n === 'poupanca') showToast('Banco em modo POUPANÇA: a cota do Supabase está acabando. Busca em mensagens, exportações e backup ficam pausados até o ciclo virar; o chat continua. Veja Configurações ▸ Diagnóstico.', 'warn', 9000);
-    else if (n === 'economia') showToast('Banco em modo ECONOMIA: a lista passa a atualizar a cada 10 s para poupar a cota do Supabase. Veja Configurações ▸ Diagnóstico.', 'warn', 7000);
-  } catch (_) {}
+  // (sem balão na tela: ela pediu para parar — o aviso continua na central de Avisos e em
+  //  Configurações ▸ Diagnóstico; o ritmo de atualização muda do mesmo jeito, em silêncio)
 }
 
 // Ao voltar para a aba, atualiza na mesma hora (compensa a pausa acima)
@@ -4775,6 +4773,37 @@ function _pintaBadgeChat() {
   try {
     const n = (allContacts || []).filter(c => (Number(c.unread_count) || 0) > 0).length;
     document.querySelectorAll('.chat-badge').forEach(e => { e.textContent = n > 99 ? '99+' : String(n); e.style.display = n > 0 ? 'block' : 'none'; });
+    _pintaAbaNavegador(n);
+  } catch (_) {}
+}
+// 🔴 Bolinha vermelha na ABA do navegador (igual WhatsApp Web): o ícone ganha o número de
+// conversas não lidas e o título vira "(N) FILAZ". Some quando não há nenhuma.
+let _abaIcone = null, _abaUltimoN = -1, _abaImg = null;
+function _pintaAbaNavegador(n) {
+  try {
+    n = Number(n) || 0;
+    if (n === _abaUltimoN) return;
+    _abaUltimoN = n;
+    document.title = n > 0 ? '(' + (n > 99 ? '99+' : n) + ') FILAZ' : 'FILAZ';
+    const links = Array.from(document.querySelectorAll('link[rel="icon"], link[rel="shortcut icon"]'));
+    if (!links.length) return;
+    if (!_abaIcone) _abaIcone = links[0].getAttribute('href');
+    if (n === 0) { links.forEach(l => l.setAttribute('href', _abaIcone)); return; }
+    const desenha = () => {
+      const c = document.createElement('canvas'); c.width = 64; c.height = 64; const g = c.getContext('2d');
+      if (_abaImg && _abaImg.complete && _abaImg.naturalWidth) g.drawImage(_abaImg, 0, 0, 64, 64);
+      else { g.fillStyle = '#00a884'; g.beginPath(); g.arc(32, 32, 30, 0, Math.PI * 2); g.fill(); }
+      const txt = n > 99 ? '99+' : String(n);
+      const r = txt.length > 2 ? 17 : 14, cx = 64 - r - 1, cy = r + 1;
+      g.fillStyle = '#e53935'; g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.fill();
+      g.lineWidth = 3; g.strokeStyle = '#fff'; g.stroke();
+      g.fillStyle = '#fff'; g.font = 'bold ' + (txt.length > 2 ? 15 : 19) + 'px Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(txt, cx, cy + 1);
+      const url = c.toDataURL('image/png');
+      links.forEach(l => l.setAttribute('href', url));
+    };
+    if (!_abaImg) { _abaImg = new Image(); _abaImg.onload = desenha; _abaImg.onerror = desenha; _abaImg.src = _abaIcone; }
+    desenha();
   } catch (_) {}
 }
 function renderContacts(contacts) {
@@ -7825,14 +7854,27 @@ async function verArquivo(url, nome, mime) {
       <div style="display:flex;align-items:center;gap:10px;padding:calc(8px + env(safe-area-inset-top)) 14px 8px;background:#111b21;color:#e9edef;flex-shrink:0">
         <span onclick="fechaDocViewer()" title="Fechar (Esc)" style="cursor:pointer;font-size:24px;padding:2px 10px;line-height:1">‹</span>
         <span id="dv-nome" style="flex:1;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+        <span id="dv-zoom" style="display:none;align-items:center;gap:2px;margin-right:6px">
+          <button onclick="dvZoom(-1)" title="Diminuir (Ctrl −)" style="background:#202c33;color:#e9edef;border:none;border-radius:8px;width:30px;height:28px;font-size:16px;cursor:pointer">−</button>
+          <button id="dv-zoom-pct" onclick="dvZoom(0)" title="Voltar a 100%" style="background:#202c33;color:#e9edef;border:none;border-radius:8px;min-width:54px;height:28px;font-size:12.5px;cursor:pointer">100%</button>
+          <button onclick="dvZoom(1)" title="Aumentar (Ctrl +)" style="background:#202c33;color:#e9edef;border:none;border-radius:8px;width:30px;height:28px;font-size:16px;cursor:pointer">+</button>
+        </span>
         <button id="dv-salvar" style="background:#00a884;color:#fff;border:none;border-radius:16px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer">Salvar como...</button>
       </div>
       <div id="dv-corpo" style="flex:1;overflow:auto;background:#fff;color:#131c20;padding:24px;font-size:14px;line-height:1.5"></div>
     </div>`);
     ov = document.getElementById('doc-viewer');
-    document.addEventListener('keydown', e => { if (e.key === 'Escape' && ov.style.display === 'flex') fechaDocViewer(); });
+    document.addEventListener('keydown', e => {
+      if (ov.style.display !== 'flex') return;
+      if (e.key === 'Escape') fechaDocViewer();
+      // Ctrl + / Ctrl − / Ctrl 0 fazem zoom no PDF (em vez de mexer na página inteira)
+      if ((e.ctrlKey || e.metaKey) && _dvZoomLigado()) { if (e.key === '+' || e.key === '=') { e.preventDefault(); dvZoom(1); } else if (e.key === '-') { e.preventDefault(); dvZoom(-1); } else if (e.key === '0') { e.preventDefault(); dvZoom(0); } }
+    });
+    // Ctrl + roda do mouse sobre o PDF = zoom (como nos leitores de PDF)
+    document.getElementById('dv-corpo').addEventListener('wheel', e => { if ((e.ctrlKey || e.metaKey) && _dvZoomLigado()) { e.preventDefault(); dvZoom(e.deltaY < 0 ? 1 : -1); } }, { passive: false });
   }
   document.getElementById('dv-nome').textContent = nome || 'Arquivo';
+  _dvZoomFator = 1; const _zb = document.getElementById('dv-zoom'); if (_zb) _zb.style.display = 'none';
   document.getElementById('dv-salvar').onclick = (e) => salvarArquivoComo(dl, nome, e.currentTarget);
   const corpo = document.getElementById('dv-corpo');
   ov.style.display = 'flex';
@@ -7848,15 +7890,21 @@ async function verArquivo(url, nome, mime) {
       const pdf = await window.pdfjsLib.getDocument({ data: new Uint8Array(ab) }).promise;
       corpo.innerHTML = ''; corpo.style.background = '#525659'; corpo.style.padding = '16px 8px';
       const larg = Math.min(900, Math.max(320, corpo.clientWidth - 16));
+      corpo.dataset.largBase = String(larg);
+      // desenha com folga de resolução (2×) para o zoom até 300% continuar nítido
+      const _res = Math.max(2, window.devicePixelRatio || 1);
       for (let i = 1; i <= pdf.numPages; i++) {
         const pg = await pdf.getPage(i);
-        const v1 = pg.getViewport({ scale: 1 }); const esc = larg / v1.width; const vp = pg.getViewport({ scale: esc * (window.devicePixelRatio || 1) });
-        const c = document.createElement('canvas'); c.width = vp.width; c.height = vp.height;
-        c.style.cssText = 'display:block;width:' + larg + 'px;max-width:100%;margin:0 auto 12px;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.4)';
+        const v1 = pg.getViewport({ scale: 1 }); const esc = larg / v1.width; const vp = pg.getViewport({ scale: esc * _res });
+        const c = document.createElement('canvas'); c.width = vp.width; c.height = vp.height; c.className = 'dv-pagina';
+        c.style.cssText = 'display:block;width:' + larg + 'px;margin:0 auto 12px;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.4)';
         corpo.appendChild(c);
         await pg.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
       }
       corpo.classList.add('dv-pdf'); corpo.dataset.paginas = String(pdf.numPages);
+      // 🔍 zoom (só no PC: no celular o dedo já faz)
+      if (!window.matchMedia('(hover: none)').matches) { const zb = document.getElementById('dv-zoom'); if (zb) zb.style.display = 'inline-flex'; }
+      _dvZoomAplica();
     } else if (tipo === 'imagem') {
       const b = new Blob([ab], { type: (mime && mime.startsWith('image/')) ? mime : 'image/jpeg' });
       corpo.innerHTML = ''; corpo.style.background = '#0b141a'; corpo.style.padding = '12px';
@@ -7892,6 +7940,22 @@ function _limpaHtmlArquivo(raiz) {
 function fechaDocViewer() { const ov = document.getElementById('doc-viewer'); if (ov) { ov.style.display = 'none'; const c = document.getElementById('dv-corpo'); if (c) c.innerHTML = ''; } }
 // "Salvar como...": no Chrome/Edge do computador abre a janela para escolher a pasta e o nome;
 // nos outros navegadores baixa normalmente (como antes)
+// 🔍 Zoom do PDF dentro do FILAZ: 50 % a 300 %, em passos de 25 %
+let _dvZoomFator = 1;
+const _DV_ZOOMS = [0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3];
+function _dvZoomLigado(){ const c = document.getElementById('dv-corpo'); return !!(c && c.classList.contains('dv-pdf')); }
+function dvZoom(dir){
+  if (!_dvZoomLigado()) return;
+  if (dir === 0) _dvZoomFator = 1;
+  else { const i = _DV_ZOOMS.findIndex(z => Math.abs(z - _dvZoomFator) < 0.01); const j = Math.max(0, Math.min(_DV_ZOOMS.length - 1, (i < 0 ? 2 : i) + dir)); _dvZoomFator = _DV_ZOOMS[j]; }
+  _dvZoomAplica();
+}
+function _dvZoomAplica(){
+  const corpo = document.getElementById('dv-corpo'); if (!corpo) return;
+  const base = Number(corpo.dataset.largBase) || 800, w = Math.round(base * _dvZoomFator);
+  corpo.querySelectorAll('canvas.dv-pagina').forEach(c => { c.style.width = w + 'px'; c.style.margin = w > corpo.clientWidth - 16 ? '0 0 12px' : '0 auto 12px'; });
+  const p = document.getElementById('dv-zoom-pct'); if (p) p.textContent = Math.round(_dvZoomFator * 100) + '%';
+}
 async function salvarArquivoComo(url, nome, el) {
   if (!window.showSaveFilePicker) return baixarMidia(url, nome, el);
   let alvo;
