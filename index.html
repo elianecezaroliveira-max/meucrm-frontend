@@ -2417,7 +2417,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v538</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v539</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3253,7 +3253,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v538</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v539</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3327,7 +3327,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 538;
+const APP_VER = 539;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -7813,6 +7813,19 @@ async function _albBaixaSel(ok) {
   const acct = encodeURIComponent(currentAccountId || '');
   const quem = (currentName || currentPhone || 'lead').replace(/[\\/:*?"<>|]/g, '').trim().slice(0, 40); // só para o título da folha de compartilhar
   try {
+    // PC: pergunta a PASTA primeiro, AINDA NO CLIQUE. O navegador só abre o seletor de pasta
+    // logo depois de um clique (uns 5 s): buscar as 55 fotos antes fazia a janela nem abrir e
+    // tudo caía direto no Downloads, sem perguntar onde salvar.
+    if (!(_albEhCelular() && navigator.canShare)) {
+      const arqs = escolhidas.map(g => ({
+        nome: 'imagem.' + _albExt(g.mime || 'image/jpeg'),
+        url: SERVER_URL + '/media-proxy/' + encodeURIComponent(g.id) + '?account_id=' + acct + (g.mime ? '&mime=' + encodeURIComponent(g.mime) : ''),
+      }));
+      const como = await _baixaEmLote(arqs, t => { ok.textContent = t; });
+      if (como === 'cancelou') { _albFim(ok); return; }
+      try { showToast(arqs.length === 1 ? 'Foto baixada.' : arqs.length + ' fotos baixadas' + (como === 'pasta' ? ' na pasta escolhida.' : '.'), 'ok'); } catch (_) {}
+      _albFim(ok, true); return;
+    }
     const arqs = [];
     for (let i = 0; i < escolhidas.length; i++) {
       ok.textContent = 'Buscando ' + (i + 1) + ' de ' + escolhidas.length + '…';
@@ -7864,7 +7877,7 @@ async function _baixaEmLote(arqs, aoProgredir) {
   if (arqs.length > 1 && window.showDirectoryPicker && !_albEhCelular()) {
     let pasta = null;
     try { pasta = await window.showDirectoryPicker({ mode: 'readwrite', startIn: 'downloads' }); }
-    catch (e) { if (e && e.name === 'AbortError') return 'cancelou'; pasta = null; }
+    catch (e) { if (e && e.name === 'AbortError') return 'cancelou'; pasta = null; try { console.warn('Seletor de pasta não abriu — baixando um a um:', e && (e.name + ': ' + e.message)); } catch (_) {} }
     if (pasta) {
       const usados = new Set();
       for (let i = 0; i < arqs.length; i++) {
