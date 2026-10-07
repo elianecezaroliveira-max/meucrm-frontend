@@ -909,6 +909,9 @@
   .media-caption { padding: 2px 6px 4px; }
   /* A mídia NUNCA passa da borda da bolha */
   .media-wrap, .media-wrap > div { max-width: 100%; }
+  /* Foto COM legenda (igual WhatsApp): a bolha tem a largura da FOTO e a legenda quebra
+     embaixo dela — antes a legenda comprida alargava a bolha e sobrava verde ao lado da foto */
+  .media-wrap:has(.msg-image) .media-caption { box-sizing: border-box; overflow-wrap: anywhere; }
   .media-wrap video { max-width: 100% !important; border-radius: 6px; }
   /* Foto/vídeo/álbum SEM legenda: horário DENTRO da mídia (igual WhatsApp) */
   .msg:has(.msg-image):not(:has(.media-caption)) .time,
@@ -2417,7 +2420,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v540</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v542</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3253,7 +3256,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v540</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v542</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3327,7 +3330,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 540;
+const APP_VER = 542;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -7450,6 +7453,11 @@ function abrirArquivo(url, tipo, nome) {
       <div id="fv-top" style="display:flex;align-items:center;gap:10px;padding:calc(8px + env(safe-area-inset-top)) 14px 8px;background:#111b21;color:#e9edef;flex-shrink:0">
         <span onclick="fecharArquivo()" title="Fechar (Esc)" style="cursor:pointer;font-size:24px;padding:2px 10px;line-height:1">‹</span>
         <span id="fv-nome" style="flex:1;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+        <span id="fv-zoomctl" style="display:none;align-items:center;gap:2px;margin-right:6px">
+          <button onclick="event.stopPropagation();fvZoom(-1)" title="Diminuir (Ctrl −)" style="background:#202c33;color:#e9edef;border:none;border-radius:8px;width:30px;height:28px;font-size:16px;cursor:pointer">−</button>
+          <button id="fv-zoom-pct" onclick="event.stopPropagation();fvZoom(0)" title="Voltar a 100%" style="background:#202c33;color:#e9edef;border:none;border-radius:8px;min-width:54px;height:28px;font-size:12.5px;cursor:pointer">100%</button>
+          <button onclick="event.stopPropagation();fvZoom(1)" title="Aumentar (Ctrl +)" style="background:#202c33;color:#e9edef;border:none;border-radius:8px;width:30px;height:28px;font-size:16px;cursor:pointer">+</button>
+        </span>
         <span id="fv-share" style="display:none"></span>
         <span id="fv-baixar" style="display:none"></span>
       </div>
@@ -7470,6 +7478,8 @@ function abrirArquivo(url, tipo, nome) {
   }
   ov.style.display = 'flex';
   _fvZoomReset();
+  // PC (mouse): botões − 100% + no topo. No celular o zoom é a pinça.
+  try { const zc = document.getElementById('fv-zoomctl'); if (zc) zc.style.display = window.matchMedia('(hover: none)').matches ? 'none' : 'inline-flex'; } catch (_) {}
   document.getElementById('fv-nome').textContent = nome || 'Arquivo';
   const fvBx = document.getElementById('fv-baixar');
   if (fvBx) fvBx.onclick = () => baixarMidia(url.includes('download=1') ? url : url + '&download=1&filename=' + encodeURIComponent(nome || 'arquivo'), nome || 'arquivo');
@@ -7583,7 +7593,14 @@ function _fvNav(dir) {
 // Teclado (PC) e arrastar o dedo para o lado (celular) também trocam de foto
 document.addEventListener('keydown', (e) => {
   const ov = document.getElementById('file-viewer');
-  if (!ov || ov.style.display === 'none' || !_fvFotos.length) return;
+  if (!ov || ov.style.display === 'none') return;
+  // Zoom pelo teclado (PC): Ctrl + / Ctrl − / Ctrl 0 — sem deixar o navegador dar zoom na página toda
+  if ((e.ctrlKey || e.metaKey) && ['+', '=', '-', '_', '0'].includes(e.key)) {
+    e.preventDefault();
+    fvZoom(e.key === '0' ? 0 : (e.key === '-' || e.key === '_') ? -1 : 1);
+    return;
+  }
+  if (!_fvFotos.length) return;
   if (e.key === 'ArrowLeft') _fvNav(-1);
   else if (e.key === 'ArrowRight') _fvNav(1);
 });
@@ -7594,7 +7611,24 @@ let _fvS = 1, _fvDoc = null, _fvSharpTimer = null, _fvSharpBusy = false;
 function _fvZoomReset() {
   _fvS = 1;
   const z = document.getElementById('fv-zoom'); if (z) z.style.transform = '';
-  const b = document.getElementById('fv-body'); if (b) { b.scrollTop = 0; b.scrollLeft = 0; }
+  const b = document.getElementById('fv-body'); if (b) { b.scrollTop = 0; b.scrollLeft = 0; b.style.cursor = ''; }
+  _fvZoomPinta();
+}
+function _fvZoomPinta() {
+  const p = document.getElementById('fv-zoom-pct'); if (p) p.textContent = Math.round(_fvS * 100) + '%';
+  const b = document.getElementById('fv-body'); if (b) b.style.cursor = _fvS > 1.05 ? 'grab' : '';
+}
+// Botões − / 100% / + do PC: degraus fixos, sempre ampliando a partir do centro da tela
+const _FV_ZOOMS = [1, 1.5, 2, 3, 4, 5];
+function fvZoom(dir) {
+  const b = document.getElementById('fv-body'); if (!b) return;
+  let alvo = 1;
+  if (dir) {
+    const i = _FV_ZOOMS.findIndex(z => z >= _fvS - 0.01);
+    const j = Math.max(0, Math.min(_FV_ZOOMS.length - 1, (i < 0 ? _FV_ZOOMS.length - 1 : i) + dir));
+    alvo = _FV_ZOOMS[j];
+  }
+  _fvAplicaZoom(alvo, b.clientWidth / 2, b.clientHeight / 2);
 }
 function _fvAplicaZoom(alvo, mx, my) {
   const b = document.getElementById('fv-body'), z = document.getElementById('fv-zoom');
@@ -7606,6 +7640,7 @@ function _fvAplicaZoom(alvo, mx, my) {
   // Mantém o ponto da pinça parado na tela enquanto a escala muda
   b.scrollLeft = (b.scrollLeft + mx) * k - mx;
   b.scrollTop  = (b.scrollTop + my) * k - my;
+  _fvZoomPinta();
   // Parou de mexer? Re-renderiza as páginas visíveis na resolução do zoom (nítido)
   clearTimeout(_fvSharpTimer);
   _fvSharpTimer = setTimeout(_fvSharpen, 320);
@@ -7685,6 +7720,36 @@ function _fvGestos() {
   // Bloqueia o gesto de zoom do Safari NA PÁGINA (que bagunçava/derrubava o app)
   ['gesturestart', 'gesturechange', 'gestureend'].forEach(ev =>
     b.addEventListener(ev, e => e.preventDefault()));
+  // ── PC (mouse) ──
+  // Ctrl + roda do mouse: zoom no ponto do cursor (sem dar zoom na página toda)
+  b.addEventListener('wheel', e => {
+    if (!(e.ctrlKey || e.metaKey)) return;
+    e.preventDefault();
+    const r = b.getBoundingClientRect();
+    _fvAplicaZoom(_fvS * (e.deltaY < 0 ? 1.15 : 1 / 1.15), e.clientX - r.left, e.clientY - r.top);
+  }, { passive: false });
+  // Clique duplo: alterna 1x ↔ 2,2x no ponto clicado (no celular o toque duplo já foi tratado acima)
+  let ultimoToque = 0;
+  b.addEventListener('touchend', () => { ultimoToque = Date.now(); }, { passive: true });
+  b.addEventListener('dblclick', e => {
+    if (Date.now() - ultimoToque < 800) return;
+    e.preventDefault();
+    const r = b.getBoundingClientRect();
+    _fvAplicaZoom(_fvS > 1.2 ? 1 : 2.2, e.clientX - r.left, e.clientY - r.top);
+  });
+  // Com zoom, arrastar com o mouse move a foto
+  let arr = null;
+  b.addEventListener('mousedown', e => {
+    if (_fvS <= 1.05 || e.button !== 0) return;
+    arr = { x: e.clientX, y: e.clientY, sl: b.scrollLeft, st: b.scrollTop };
+    b.style.cursor = 'grabbing'; e.preventDefault();
+  });
+  window.addEventListener('mousemove', e => {
+    if (!arr) return;
+    b.scrollLeft = arr.sl - (e.clientX - arr.x);
+    b.scrollTop = arr.st - (e.clientY - arr.y);
+  });
+  window.addEventListener('mouseup', () => { if (arr) { arr = null; b.style.cursor = _fvS > 1.05 ? 'grab' : ''; } });
 }
 function fecharArquivo() {
   const o = document.getElementById('file-viewer'); if (o) o.style.display = 'none';
@@ -8966,6 +9031,7 @@ function _dimAplica(el) {
     el.style.width = wh[0] + 'px';
     el.style.height = wh[1] + 'px';
     el.classList.remove('sem-medida');
+    try { const mw = el.closest('.media-wrap'); const lg = mw && mw.querySelector('.media-caption'); if (lg) lg.style.maxWidth = wh[0] + 'px'; } catch (_) {} // legenda acompanha a largura da foto
     if (a && acima) { const dif = el.offsetHeight - antes; if (dif) a.scrollTop += dif; }
   } catch (_) {}
 }
@@ -9232,9 +9298,12 @@ function renderMessageContent(m) {
 
     } else if (m.type === 'image') {
       const _legI = _legendaMidia(m);
-      const caption = _legI ? `<div class="media-caption">${waFormat(_legI)}</div>` : '';
       const dlUrl = `${proxyUrl}&download=1&filename=${encodeURIComponent('imagem.jpg')}`;
       const _midKey = String(m.media_id || m.id || '').replace(/['"<>]/g, '');
+      // Legenda com a LARGURA DA FOTO (igual WhatsApp): quebra embaixo dela, sem alargar a bolha.
+      // Largura já conhecida → usa; senão, a do espaço reservado (240px) — _dimAplica ajusta ao carregar.
+      const _legW = (String(_dimCss(_midKey)).match(/width:(\d+)px/) || [])[1] || 240;
+      const caption = _legI ? `<div class="media-caption" style="max-width:${_legW}px">${waFormat(_legI)}</div>` : '';
       // Ordem de prioridade do endereço: MINIATURA local (instantânea, igual
       // WhatsApp) → prévia local recém-enviada → rede (1ª vez; gera a miniatura)
       const _th = _thumbGet(_midKey);
