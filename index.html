@@ -2417,7 +2417,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v539</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v540</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3253,7 +3253,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v539</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v540</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3327,7 +3327,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 539;
+const APP_VER = 540;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5776,7 +5776,7 @@ function enterSelMode(firstId) {
         <b id="sel-count" style="flex:1">0 selecionada(s)</b>
         <span onclick="selForward()" style="cursor:pointer" title="Encaminhar para outra conversa"><i class=ic-send></i> Encaminhar</span>
         <span onclick="selCopy()" style="cursor:pointer" title="Copiar"><i class=ic-copy></i> Copiar</span>
-        <span id="sel-baixar" onclick="selBaixar()" style="cursor:pointer;display:none" title="Baixar as fotos e arquivos selecionados (a pasta é escolhida uma vez só)"><i class=ic-down></i> Baixar</span>
+        <span id="sel-baixar" onclick="selBaixar()" style="cursor:pointer;display:none" title="Baixar as fotos e arquivos selecionados"><i class=ic-down></i> Baixar</span>
         <span onclick="selDelete()" style="cursor:pointer" title="Apagar do CRM"><i class=ic-trash></i> Apagar</span>
       </div>`);
     bar = document.getElementById('sel-bar');
@@ -5826,7 +5826,7 @@ async function selBaixar() {
     const como = await _baixaEmLote(arqs, t => { if (b) b.textContent = t; });
     if (b) { b.innerHTML = txt; b._ocupado = false; }
     if (como === 'cancelou') return;
-    try { showToast(arqs.length === 1 ? 'Arquivo baixado.' : arqs.length + ' arquivos baixados' + (como === 'pasta' ? ' na pasta escolhida.' : '.'), 'ok'); } catch (_) {}
+    try { showToast(arqs.length === 1 ? 'Arquivo baixado.' : arqs.length + ' arquivos baixados.', 'ok'); } catch (_) {}
     exitSelMode();
   } catch (e) { if (b) { b.innerHTML = txt; b._ocupado = false; } try { showToast('Não consegui baixar: ' + (e.message || e), 'err'); } catch (_) {} }
 }
@@ -7813,9 +7813,7 @@ async function _albBaixaSel(ok) {
   const acct = encodeURIComponent(currentAccountId || '');
   const quem = (currentName || currentPhone || 'lead').replace(/[\\/:*?"<>|]/g, '').trim().slice(0, 40); // só para o título da folha de compartilhar
   try {
-    // PC: pergunta a PASTA primeiro, AINDA NO CLIQUE. O navegador só abre o seletor de pasta
-    // logo depois de um clique (uns 5 s): buscar as 55 fotos antes fazia a janela nem abrir e
-    // tudo caía direto no Downloads, sem perguntar onde salvar.
+    // PC: baixa direto na pasta de downloads do navegador (sem janela de pasta nem ZIP)
     if (!(_albEhCelular() && navigator.canShare)) {
       const arqs = escolhidas.map(g => ({
         nome: 'imagem.' + _albExt(g.mime || 'image/jpeg'),
@@ -7823,7 +7821,7 @@ async function _albBaixaSel(ok) {
       }));
       const como = await _baixaEmLote(arqs, t => { ok.textContent = t; });
       if (como === 'cancelou') { _albFim(ok); return; }
-      try { showToast(arqs.length === 1 ? 'Foto baixada.' : arqs.length + ' fotos baixadas' + (como === 'pasta' ? ' na pasta escolhida.' : '.'), 'ok'); } catch (_) {}
+      try { showToast(arqs.length === 1 ? 'Foto baixada.' : arqs.length + ' fotos baixadas.', 'ok'); } catch (_) {}
       _albFim(ok, true); return;
     }
     const arqs = [];
@@ -7857,42 +7855,23 @@ async function _albBaixaSel(ok) {
       } catch (e) { cancelou = e && (e.name === 'AbortError' || /abort|cancel/i.test(e.message || '')); }
       if (cancelou) { _albFim(ok); return; }
     }
-    // PC: escolhe a PASTA uma vez e grava todas lá (ou um a um, se o navegador não tiver o seletor)
+    // PC: baixa direto na pasta de downloads do navegador
     const como = await _baixaEmLote(arqs, t => { ok.textContent = t; });
     if (como === 'cancelou') { _albFim(ok); return; }
-    try { showToast(arqs.length === 1 ? 'Foto baixada.' : arqs.length + ' fotos baixadas' + (como === 'pasta' ? ' na pasta escolhida.' : '.'), 'ok'); } catch (_) {}
+    try { showToast(arqs.length === 1 ? 'Foto baixada.' : arqs.length + ' fotos baixadas.', 'ok'); } catch (_) {}
     _albFim(ok, true); return;
   } catch (e) {
     try { showToast('Não consegui baixar: ' + (e.message || e), 'err'); } catch (_) {}
   }
   _albFim(ok);
 }
-// 📁 BAIXAR EM LOTE: no PC pergunta a pasta UMA vez (showDirectoryPicker) e grava todos os
-// arquivos nela — antes, com o Chrome em "perguntar onde salvar", ele perguntava para cada um.
-// Se o navegador não tiver o seletor de pasta (ou ela cancelar), cai no jeito antigo (um a um).
-// arqs: [{ nome, blob }] ou [{ nome, url }] (url é buscada na hora). Devolve 'pasta' | 'um-a-um' | 'cancelou'.
+// 📁 BAIXAR EM LOTE: salva todos DIRETO na pasta de downloads do navegador, sem janela nenhuma.
+// (Ela não quer a janela do Chrome de "escolher a pasta" — a única forma de gravar vários
+// arquivos soltos num lugar escolhido — nem ZIP. Vai como o navegador baixa: um atrás do outro.)
+// arqs: [{ nome, blob }] ou [{ nome, url }] (url é buscada na hora). Devolve 'um-a-um'.
 async function _baixaEmLote(arqs, aoProgredir) {
   const diz = (t) => { try { if (aoProgredir) aoProgredir(t); } catch (_) {} };
   const pega = async (a, i) => { if (a.blob) return a.blob; diz('Buscando ' + (i + 1) + ' de ' + arqs.length + '…'); const r = await fetch(a.url); if (!r.ok) throw new Error('HTTP ' + r.status); return await r.blob(); };
-  if (arqs.length > 1 && window.showDirectoryPicker && !_albEhCelular()) {
-    let pasta = null;
-    try { pasta = await window.showDirectoryPicker({ mode: 'readwrite', startIn: 'downloads' }); }
-    catch (e) { if (e && e.name === 'AbortError') return 'cancelou'; pasta = null; try { console.warn('Seletor de pasta não abriu — baixando um a um:', e && (e.name + ': ' + e.message)); } catch (_) {} }
-    if (pasta) {
-      const usados = new Set();
-      for (let i = 0; i < arqs.length; i++) {
-        const bl = await pega(arqs[i], i);
-        // nome repetido (imagem.jpg, imagem.jpg…) ganha número, igual ao navegador
-        let nome = String(arqs[i].nome || 'arquivo'), base = nome.replace(/(\.[^.]+)?$/, ''), ext = (nome.match(/\.[^.]+$/) || [''])[0], k = 1;
-        while (usados.has(nome)) nome = base + ' (' + (k++) + ')' + ext;
-        usados.add(nome);
-        diz('Salvando ' + (i + 1) + ' de ' + arqs.length + '…');
-        const fh = await pasta.getFileHandle(nome, { create: true });
-        const w = await fh.createWritable(); await w.write(bl); await w.close();
-      }
-      return 'pasta';
-    }
-  }
   for (let i = 0; i < arqs.length; i++) {
     const bl = await pega(arqs[i], i);
     diz('Salvando ' + (i + 1) + ' de ' + arqs.length + '…');
