@@ -2417,7 +2417,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v537</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v538</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3253,7 +3253,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v537</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v538</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3327,7 +3327,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 537;
+const APP_VER = 538;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5776,6 +5776,7 @@ function enterSelMode(firstId) {
         <b id="sel-count" style="flex:1">0 selecionada(s)</b>
         <span onclick="selForward()" style="cursor:pointer" title="Encaminhar para outra conversa"><i class=ic-send></i> Encaminhar</span>
         <span onclick="selCopy()" style="cursor:pointer" title="Copiar"><i class=ic-copy></i> Copiar</span>
+        <span id="sel-baixar" onclick="selBaixar()" style="cursor:pointer;display:none" title="Baixar as fotos e arquivos selecionados (a pasta é escolhida uma vez só)"><i class=ic-down></i> Baixar</span>
         <span onclick="selDelete()" style="cursor:pointer" title="Apagar do CRM"><i class=ic-trash></i> Apagar</span>
       </div>`);
     bar = document.getElementById('sel-bar');
@@ -5794,7 +5795,40 @@ function _toggleSel(id) {
   if (_selIds.has(id)) { _selIds.delete(id); el.classList.remove('selected'); }
   else { _selIds.add(id); el.classList.add('selected'); }
   const c = document.getElementById('sel-count'); if (c) c.textContent = _selIds.size + ' selecionada(s)';
+  try { const b = document.getElementById('sel-baixar'); if (b) b.style.display = _selMidias().length ? 'inline' : 'none'; } catch (_) {}
   if (!_selIds.size) exitSelMode();
+}
+// Mídias (foto, vídeo, áudio, arquivo) entre as mensagens selecionadas, na ordem da conversa
+function _selMidias() {
+  const acct = encodeURIComponent(currentAccountId || '');
+  const itens = [];
+  for (const id of _selOrdered()) {
+    const alb = (window._albuns || {})['alb-' + id];
+    if (alb && alb.length) { alb.forEach(g => itens.push({ id, type: 'image', media_id: g.id, mime: g.mime || '', content: '', account_id: (_msgData[id] || {}).account_id })); continue; } // álbum selecionado = todas as fotos dele
+    const d = _msgData[id]; if (d) itens.push(Object.assign({ id }, d));
+  }
+  return itens.filter(d => d && d.media_id && ['image', 'video', 'audio', 'document', 'sticker'].includes(d.type)).map(d => {
+    const url = SERVER_URL + '/media-proxy/' + encodeURIComponent(d.media_id) + '?account_id=' + encodeURIComponent(d.account_id || currentAccountId || '') + (d.mime ? '&mime=' + encodeURIComponent(d.mime) : '');
+    let nome = 'arquivo';
+    if (d.type === 'image') nome = 'imagem.' + _albExt(d.mime || 'image/jpeg');
+    else if (d.type === 'sticker') nome = 'figurinha.webp';
+    else if (d.type === 'video') nome = 'video.mp4';
+    else if (d.type === 'audio') nome = 'audio.' + (/mp4|m4a|aac/i.test(d.mime) ? 'm4a' : /mpeg|mp3/i.test(d.mime) ? 'mp3' : 'ogg');
+    else { const m = /^\[Documento: (.+)\]$/.exec(String(d.content || '').trim()); nome = (m ? m[1] : 'documento').replace(/[\\/:*?"<>|]/g, '_'); }
+    return { nome, url };
+  });
+}
+async function selBaixar() {
+  const arqs = _selMidias(); if (!arqs.length) return;
+  const b = document.getElementById('sel-baixar'); const txt = b ? b.innerHTML : '';
+  if (b && b._ocupado) return; if (b) { b._ocupado = true; }
+  try {
+    const como = await _baixaEmLote(arqs, t => { if (b) b.textContent = t; });
+    if (b) { b.innerHTML = txt; b._ocupado = false; }
+    if (como === 'cancelou') return;
+    try { showToast(arqs.length === 1 ? 'Arquivo baixado.' : arqs.length + ' arquivos baixados' + (como === 'pasta' ? ' na pasta escolhida.' : '.'), 'ok'); } catch (_) {}
+    exitSelMode();
+  } catch (e) { if (b) { b.innerHTML = txt; b._ocupado = false; } try { showToast('Não consegui baixar: ' + (e.message || e), 'err'); } catch (_) {} }
 }
 document.addEventListener('click', function (e) {
   if (!_selMode) return;
@@ -7810,20 +7844,49 @@ async function _albBaixaSel(ok) {
       } catch (e) { cancelou = e && (e.name === 'AbortError' || /abort|cancel/i.test(e.message || '')); }
       if (cancelou) { _albFim(ok); return; }
     }
-    // CADA FOTO COMO FOTO: uma de cada vez, direto na pasta de downloads.
-    // (Na primeira vez o navegador pergunta se pode baixar vários arquivos —
-    //  permita uma vez e ele lembra para o FILAZ.)
-    for (let i = 0; i < arqs.length; i++) {
-      ok.textContent = 'Salvando ' + (i + 1) + ' de ' + arqs.length + '…';
-      _albSalva(arqs[i].blob, arqs[i].nome);
-      if (i < arqs.length - 1) await new Promise(r => setTimeout(r, 320)); // o navegador engasga se vierem todas de uma vez
-    }
-    try { showToast(arqs.length === 1 ? 'Foto baixada.' : arqs.length + ' fotos baixadas.', 'ok'); } catch (_) {}
+    // PC: escolhe a PASTA uma vez e grava todas lá (ou um a um, se o navegador não tiver o seletor)
+    const como = await _baixaEmLote(arqs, t => { ok.textContent = t; });
+    if (como === 'cancelou') { _albFim(ok); return; }
+    try { showToast(arqs.length === 1 ? 'Foto baixada.' : arqs.length + ' fotos baixadas' + (como === 'pasta' ? ' na pasta escolhida.' : '.'), 'ok'); } catch (_) {}
     _albFim(ok, true); return;
   } catch (e) {
     try { showToast('Não consegui baixar: ' + (e.message || e), 'err'); } catch (_) {}
   }
   _albFim(ok);
+}
+// 📁 BAIXAR EM LOTE: no PC pergunta a pasta UMA vez (showDirectoryPicker) e grava todos os
+// arquivos nela — antes, com o Chrome em "perguntar onde salvar", ele perguntava para cada um.
+// Se o navegador não tiver o seletor de pasta (ou ela cancelar), cai no jeito antigo (um a um).
+// arqs: [{ nome, blob }] ou [{ nome, url }] (url é buscada na hora). Devolve 'pasta' | 'um-a-um' | 'cancelou'.
+async function _baixaEmLote(arqs, aoProgredir) {
+  const diz = (t) => { try { if (aoProgredir) aoProgredir(t); } catch (_) {} };
+  const pega = async (a, i) => { if (a.blob) return a.blob; diz('Buscando ' + (i + 1) + ' de ' + arqs.length + '…'); const r = await fetch(a.url); if (!r.ok) throw new Error('HTTP ' + r.status); return await r.blob(); };
+  if (arqs.length > 1 && window.showDirectoryPicker && !_albEhCelular()) {
+    let pasta = null;
+    try { pasta = await window.showDirectoryPicker({ mode: 'readwrite', startIn: 'downloads' }); }
+    catch (e) { if (e && e.name === 'AbortError') return 'cancelou'; pasta = null; }
+    if (pasta) {
+      const usados = new Set();
+      for (let i = 0; i < arqs.length; i++) {
+        const bl = await pega(arqs[i], i);
+        // nome repetido (imagem.jpg, imagem.jpg…) ganha número, igual ao navegador
+        let nome = String(arqs[i].nome || 'arquivo'), base = nome.replace(/(\.[^.]+)?$/, ''), ext = (nome.match(/\.[^.]+$/) || [''])[0], k = 1;
+        while (usados.has(nome)) nome = base + ' (' + (k++) + ')' + ext;
+        usados.add(nome);
+        diz('Salvando ' + (i + 1) + ' de ' + arqs.length + '…');
+        const fh = await pasta.getFileHandle(nome, { create: true });
+        const w = await fh.createWritable(); await w.write(bl); await w.close();
+      }
+      return 'pasta';
+    }
+  }
+  for (let i = 0; i < arqs.length; i++) {
+    const bl = await pega(arqs[i], i);
+    diz('Salvando ' + (i + 1) + ' de ' + arqs.length + '…');
+    _albSalva(bl, arqs[i].nome);
+    if (i < arqs.length - 1) await new Promise(r => setTimeout(r, 320)); // o navegador engasga se vierem todas de uma vez
+  }
+  return 'um-a-um';
 }
 function _albSalva(blob, nome) {
   const url = URL.createObjectURL(blob);
@@ -9152,7 +9215,7 @@ function renderMessageContent(m) {
   // .replace no final: mensagens com BOTÕES vêm com quebras de linha sobrando,
   // que viravam a faixa branca vazia no rodapé da bolha — cortadas aqui.
   const safeContent = (m.content == null ? '' : String(m.content)).replace(/\s+$/, '');
-  _msgData[m.id] = { content: safeContent, direction: m.direction };
+  _msgData[m.id] = { content: safeContent, direction: m.direction, type: m.type || 'text', media_id: m.media_id || null, mime: m.media_mime_type || '', account_id: m.account_id || null };
 
   // Quoted bubble (resposta a mensagem anterior)
   let quotedHtml = '';
