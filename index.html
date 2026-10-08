@@ -2420,7 +2420,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v542</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v544</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3256,7 +3256,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v542</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v544</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3330,7 +3330,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 542;
+const APP_VER = 544;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4876,8 +4876,9 @@ function renderContacts(contacts) {
       pending:   '<span class="msg-ticks pending" style="margin:0 4px 0 0">' + TICK_CLOCK + '</span>',
       failed:    '<span style="margin:0 4px 0 0"><i class=ic-alert></i></span>'
     }[c.last_message_status] || '';
+    // "Você reagiu com 🙏 a: …" já diz quem foi: sem "Você:" na frente e sem tique (igual WhatsApp)
     let previewHtml = isOut
-      ? (stTick ? stTick + shownPrev : `<span style="color:#667781">Você: </span>${shownPrev}`)
+      ? (/^Você reagiu com /.test(preview) ? shownPrev : (stTick ? stTick + shownPrev : `<span style="color:#667781">Você: </span>${shownPrev}`))
       : shownPrev;
     // O lead está digitando AGORA? Isso vem na frente de tudo (igual WhatsApp)
     const _dig = _digitandoDe(c.phone, c);
@@ -9176,12 +9177,17 @@ function _linkaFones(txt) {
     return antes + `<a href="tel:${dig}" class="wa-fone" onclick="return _foneToque(event,this)" style="color:#027eb5;text-decoration:underline">${num}</a>`;
   });
 }
+// LINK igual WhatsApp: "https://…", "www.…" e também o endereço SEM nada na frente
+// ("emprestimo.inter.co", "exemplo.com.br/x") — desde que termine num domínio conhecido.
+// Não pega e-mail (x@site.com), valor (733.00), data, nem "palavra.outra" sem domínio.
+const _TLDS = 'com\\.br|net\\.br|org\\.br|gov\\.br|edu\\.br|app\\.br|com|br|co|net|org|io|app|me|link|site|online|digital|info|biz|dev|ai|cc|tv|us|uk|pt|es|ar|shop|store|page|blog|cloud|xyz|top|vip|club|one|pro|lat|global|bank|finance|credit|bet|gg|ly|to';
+const _URL_SRC = '(?:https?:\\/\\/|www\\.)[^\\s<]+|(?<![\\w@.\\/-])(?:[a-z0-9-]+\\.)+(?:' + _TLDS + ')(?![\\w-])(?:\\/[^\\s<]*)?';
 function waFormat(raw) {
   const t = escHtml(raw == null ? '' : String(raw));
-  const parts = t.split(/((?:https?:\/\/|www\.)[^\s<]+)/g);
+  const parts = t.split(new RegExp('(' + _URL_SRC + ')', 'gi'));
   return parts.map((seg, i) => {
     if (i % 2 === 1) {
-      const href = seg.startsWith('http') ? seg : 'https://' + seg;
+      const href = /^https?:\/\//i.test(seg) ? seg : 'https://' + seg;
       return `<a href="${href}" target="_blank" rel="noopener" style="color:#027eb5;text-decoration:underline;word-break:break-all">${seg}</a>`;
     }
     // E-mails: azuis e clicáveis, igual aos links. Telefones também (fora dos e-mails)
@@ -9497,10 +9503,10 @@ function renderMessageContent(m) {
       <div style="border-top:1px solid rgba(0,0,0,.08);padding-top:8px;text-align:center;font-size:13px;color:#027eb5;font-weight:500">${totalVotos ? 'Ver votos' : 'Aguardando votos'}</div>
     </div>`;
   }
-  const _urlM = (m.type === 'text' || !m.type) ? safeContent.match(/(?:https?:\/\/|www\.)[^\s<]+/) : null;
+  const _urlM = (m.type === 'text' || !m.type) ? safeContent.match(new RegExp(_URL_SRC, 'i')) : null;
   let _lpHtml = '';
   if (_urlM) {
-    const _lpU = _urlM[0].startsWith('http') ? _urlM[0] : 'https://' + _urlM[0];
+    const _lpU = /^https?:\/\//i.test(_urlM[0]) ? _urlM[0] : 'https://' + _urlM[0];
     const _lpD = _lpCache[_lpU];
     if (_lpD !== undefined) {
       // Link já conhecido: cartão entra JUNTO com a mensagem (sem pulo depois)
