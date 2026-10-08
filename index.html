@@ -2425,7 +2425,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v547</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v548</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3261,7 +3261,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v547</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v548</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3335,7 +3335,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 547;
+const APP_VER = 548;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -15268,7 +15268,7 @@ function openTemplates() {
   _telaAtual('modelos');
   document.getElementById('templates-overlay').classList.add('open');
   populateTmplAccounts();
-  carregarApelidosModelos().then(() => switchTmplTab('list'));
+  carregarApelidosModelos(true).then(() => switchTmplTab('list'));
 }
 function closeTemplates() {
   const el = document.getElementById('templates-overlay');
@@ -15427,10 +15427,11 @@ async function _salvaOcultos() {
   try { localStorage.setItem(_uKey('hiddenTemplates'), JSON.stringify(ids)); } catch (_) {}
   try { await fetch(SERVER_URL + '/tmpl-ocultos', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ids }) }); } catch (_) {}
 }
-function hideTemplate(id) {
+async function hideTemplate(id) {
   if (!id) return;
-  const h = getHiddenTemplates();
-  if (!h.includes(id)) { h.push(id); _tmplOcultos = h; _salvaOcultos(); }
+  try { await _carregaOcultos(); } catch (_) {} // junta com o que já está escondido na conta (outro aparelho)
+  const h = getHiddenTemplates().map(String);
+  if (!h.includes(String(id))) { h.push(String(id)); _tmplOcultos = h; await _salvaOcultos(); }
   _limpaCacheOcultos();
 }
 // Um modelo escondido/apagado tem de sumir de TODA parte que oferece modelos:
@@ -15439,8 +15440,8 @@ function hideTemplate(id) {
 // impressão de que a exclusão não tinha funcionado.
 async function _semOcultos(lista) {
   try { await _carregaOcultos(); } catch (_) {}
-  const h = getHiddenTemplates();
-  return (Array.isArray(lista) ? lista : []).filter(t => t && !h.includes(t.id));
+  const h = getHiddenTemplates().map(String);
+  return (Array.isArray(lista) ? lista : []).filter(t => t && !h.includes(String(t.id)));
 }
 // Tira do cache do editor de bots o que já foi escondido (senão a prévia do nó
 // continuava mostrando o texto de um modelo que não existe mais)
@@ -15536,10 +15537,20 @@ async function carregarApelidosModelos(force) {
   _tmplAliasCarregado = true;
   return _tmplAlias;
 }
-function tmplNome(t) { return (t && _tmplAlias[t.id]) ? _tmplAlias[t.id] : (t ? t.name : ''); }
+function tmplNome(t) {
+  if (!t) return '';
+  const a = _tmplAlias[t.id] || _tmplAlias[String(t.id)];
+  if (a) return a;
+  // o mesmo modelo noutro número tem OUTRO id na Meta: vale o apelido dado em qualquer um deles
+  const irm = (t._ids || []).map(i => _tmplAlias[i] || _tmplAlias[String(i)]).find(Boolean);
+  return irm || t.name;
+}
 async function salvarApelidoModelo() {
   if (!_tmplViewId) return;
   const v = (document.getElementById('tmpl-alias-input').value || '').trim();
+  // Recarrega a lista gravada na conta ANTES de mexer: a cópia deste aparelho podia estar
+  // velha (apelidos dados no celular ou noutra aba) e, ao salvar, apagava os outros apelidos
+  try { await carregarApelidosModelos(true); } catch (_) {}
   if (v) _tmplAlias[_tmplViewId] = v; else delete _tmplAlias[_tmplViewId];
   try {
     const r = await fetch(SERVER_URL + '/settings/tmpl_alias', { method: 'PUT', headers: { 'Content-Type': 'application/json' },
@@ -16023,7 +16034,7 @@ async function loadApprovedTemplates() {
   const el = document.getElementById('tmpl-select-list');
   el.innerHTML = '<p style="color:#667781;font-size:13px">Carregando...</p>';
   try {
-    await carregarApelidosModelos();
+    await carregarApelidosModelos(true); // sempre a lista da conta (apelido dado noutro aparelho)
     const res = await fetch(SERVER_URL + '/templates?account_id=' + currentAccountId);
     const templates = await res.json();
     const approved = await _semOcultos((Array.isArray(templates) ? templates : []).filter(t => t.status === 'APPROVED'));
@@ -20781,15 +20792,20 @@ async function loadBotTmplOptions(node){
       apiAccs = chos.filter(a=>a.type!=='evolution');
     }
     if(!apiAccs.length){ sel.innerHTML='<option value="">Nenhuma conta da API disponível</option>'; return; }
-    await carregarApelidosModelos();
+    await carregarApelidosModelos(true); // sempre a lista da conta (apelido dado no celular/outra aba vale aqui)
     await _carregaOcultos();
     const results = await Promise.all(apiAccs.map(async a=>{
       try{
         const list = await (await fetch(SERVER_URL+'/templates?account_id='+a.id)).json();
         // modelo excluído no FILAZ não pode mais ser oferecido aqui
-        return { acc:a, tmpls: await _semOcultos(Array.isArray(list) ? list.filter(t=>t.status==='APPROVED') : []) };
-      }catch(_){ return { acc:a, tmpls:[] }; }
+        const aprov = Array.isArray(list) ? list.filter(t=>t.status==='APPROVED') : [];
+        const vis = await _semOcultos(aprov);
+        // escondido num número = escondido em todos (o mesmo modelo tem outro id em cada número)
+        const escondidos = aprov.filter(t => !vis.includes(t)).map(t => t.name+'|'+t.language);
+        return { acc:a, tmpls: vis, escondidos };
+      }catch(_){ return { acc:a, tmpls:[], escondidos:[] }; }
     }));
+    const _escTodos = new Set([].concat(...results.map(r => r.escondidos || [])));
     // Une e deduplica por nome+idioma, guardando de quais números o modelo veio.
     // IMPORTANTE: NÃO zera o cache global — os balões dos OUTROS nós (outros
     // números) dependem dele para mostrar o texto no quadro.
@@ -20800,9 +20816,11 @@ async function loadBotTmplOptions(node){
         const key = t.name+'|'+t.language;
         if(!merged[key]) merged[key] = { t, accounts:[] };
         if(!merged[key].accounts.includes(label)) merged[key].accounts.push(label);
-        _botTmplCache[key] = t;
+        merged[key].t._ids = (merged[key].t._ids || []).concat([t.id]).filter((x, i, arr) => arr.indexOf(x) === i); // ids do mesmo modelo nos vários números
+        _botTmplCache[key] = merged[key].t;
       }
     }
+    for (const k of Object.keys(merged)) if (_escTodos.has(k)) delete merged[k];
     const keys = Object.keys(merged).sort((a,b)=>a.localeCompare(b));
     _avisaModeloSumiu(node, merged);
     if(!keys.length){ sel.innerHTML='<option value="">Nenhum modelo aprovado</option>'; return; }
