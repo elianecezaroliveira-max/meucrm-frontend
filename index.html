@@ -2420,7 +2420,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v544</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v545</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3256,7 +3256,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v544</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v545</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3330,7 +3330,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 544;
+const APP_VER = 545;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5680,6 +5680,21 @@ function _ehNota(id) {
     return !!(el && el.dataset.msgType === 'note');
   } catch (_) { return false; }
 }
+// A mensagem saiu por uma conta QR Code? Olha a conta DA MENSAGEM; se ela não tiver,
+// a conta escolhida no chat; se nenhuma, vale se a dona só tem contas QR (ou alguma QR
+// e a conversa não tem conta) — antes só olhava a conta do chat e, quando a conversa
+// não tinha conta marcada, o "Editar" nunca aparecia.
+function _msgEhQr(id) {
+  try {
+    const contas = window._accountsById || {};
+    const ehQr = a => !!(a && (a.type === 'evolution' || a.evolution_instance));
+    const d = _msgData[id] || {};
+    if (d.account_id && contas[d.account_id]) return ehQr(contas[d.account_id]);
+    if (currentAccountId && contas[currentAccountId]) return ehQr(contas[currentAccountId]);
+    const lista = Object.values(contas);
+    return lista.length > 0 && lista.some(ehQr) && (lista.every(ehQr) || !currentAccountId);
+  } catch (_) { return false; }
+}
 function _updateMsgMenuItems(id) {
   _msgMenuEmails(id);
   const item = document.getElementById('msg-menu-edit');
@@ -5708,10 +5723,9 @@ function _updateMsgMenuItems(id) {
   try {
     const el = document.querySelector(`#messages-area .msg[data-msg-id="${(window.CSS && CSS.escape) ? CSS.escape(String(id)) : String(id)}"]`);
     if (el && el.dataset.msgDir === 'outbound' && el.dataset.msgWamid && (el.dataset.msgType || 'text') === 'text') {
-      const acc = (window._accountsById || {})[currentAccountId];
-      const isQr = !!(acc && (acc.type === 'evolution' || acc.evolution_instance));
+      const isQr = _msgEhQr(id);
       const ts = el.dataset.msgTs ? parseUTC(el.dataset.msgTs) : 0;
-      show = isQr && ts > 0 && (Date.now() - ts) < 15 * 60000;
+      show = isQr && (!ts || (Date.now() - ts) < 15 * 60000);
     }
   } catch (_) {}
   item.style.display = show ? '' : 'none';
@@ -5734,10 +5748,7 @@ function _updateMsgMenuItems(id) {
     let showR = false;
     try {
       const el2 = document.querySelector(`#messages-area .msg[data-msg-id="${(window.CSS && CSS.escape) ? CSS.escape(String(id)) : String(id)}"]`);
-      if (el2 && el2.dataset.msgDir === 'outbound' && el2.dataset.msgWamid) {
-        const acc2 = (window._accountsById || {})[currentAccountId];
-        showR = !!(acc2 && (acc2.type === 'evolution' || acc2.evolution_instance));
-      }
+      if (el2 && el2.dataset.msgDir === 'outbound' && el2.dataset.msgWamid) showR = _msgEhQr(id);
     } catch (_) {}
     rev.style.display = showR ? '' : 'none';
   }
@@ -6232,7 +6243,7 @@ async function msgMenuEdit() {
   if (!text || text === atual) return;
   fetch(SERVER_URL + '/edit-message', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ to: currentPhone, wamid, text, account_id: currentAccountId || null })
+    body: JSON.stringify({ to: currentPhone, wamid, text, account_id: (_msgData[id] && _msgData[id].account_id) || currentAccountId || null })
   }).then(r => r.json()).then(d => {
     if (d.error) return alert('Erro: ' + d.error);
     loadMessages(currentPhone, false); // atualiza a bolha com o texto novo
