@@ -877,6 +877,11 @@
   /* 2 fotos: lado a lado */
   /* 3 fotos: uma larga em cima, duas embaixo (nada de buraco de 4ª foto) */
   .alb-3 .alb-t:first-child { grid-column: 1 / -1; aspect-ratio: 16 / 9; }
+  /* Só PANORÂMICAS (prints de uma linha, tiras): uma embaixo da outra, inteiras — no quadro
+     quadrado só aparecia um pedaço ampliado ("Retenção re…") */
+  .alb.alb-pano { grid-template-columns: 1fr; }
+  .alb.alb-pano .alb-t { aspect-ratio: auto; }
+  .alb.alb-pano .alb-t img { height: auto !important; max-height: 220px; object-fit: cover !important; }
   /* 4 ou mais: 2x2, com +N na última */
   /* Botão "baixar todas" da grade de fotos */
   .alb-baixar {
@@ -2420,7 +2425,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v545</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v546</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3256,7 +3261,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v545</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v546</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3330,7 +3335,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 545;
+const APP_VER = 546;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -7554,6 +7559,25 @@ function abrirArquivo(url, tipo, nome) {
   // Outros formatos: tenta exibir; se o aparelho não suportar, o resolve
   body.innerHTML = `<iframe src="${url}" style="width:100%;height:78vh;border:none;background:#fff;border-radius:4px"></iframe>`;
 }
+// Foto do álbum carregou: ajusta a grade pela PROPORÇÃO real. Só panorâmicas (print de uma
+// linha, tira) → uma embaixo da outra, inteiras; uma extrema no meio de fotos normais → inteira
+// no quadro (contain) em vez de um pedaço ampliado.
+function _albAjusta(img) {
+  try {
+    const tile = img.closest('.alb-t'), grid = img.closest('.alb');
+    if (!tile || !grid || !img.naturalWidth || !img.naturalHeight) return;
+    const r = img.naturalWidth / img.naturalHeight;
+    tile.dataset.r = r.toFixed(2);
+    const tiles = Array.from(grid.querySelectorAll('.alb-t'));
+    const rs = tiles.map(t => parseFloat(t.dataset.r || '0'));
+    if (rs.every(x => x > 1.8)) {
+      if (!grid.classList.contains('alb-pano')) { grid.classList.add('alb-pano'); try { _keepBottom(img); } catch (_) {} }
+      tiles.forEach(t => { const i = t.querySelector('img'); if (i) i.style.objectFit = 'cover'; });
+    } else if (r > 2.2 || r < 0.45) {
+      img.style.objectFit = 'contain';
+    }
+  } catch (_) {}
+}
 // Foto do álbum que não carregou: tenta de novo (até 2x) — várias fotos
 // pedidas ao mesmo tempo faziam algumas voltarem vazias (quadrado em branco)
 function _albRetry(img) {
@@ -9940,19 +9964,24 @@ async function loadMessages(phone, scroll = true, opt = null) {
           const _mostra = _qtd === 3 ? 3 : Math.min(_qtd, 4); // 3 fotos = 3 quadros (1 larga + 2)
           const vis = grupo.slice(0, _mostra);
           const sobra = _qtd - _mostra;
+          // Proporção já conhecida (medida guardada): decide a grade ANTES de carregar, sem pulo
+          const _razAlb = vis.map(g => { const d = _dimGet(String(g.media_id || g.id || '').replace(/['"<>]/g, '')); return (d && d[0] && d[1]) ? d[0] / d[1] : 0; });
+          const _todasPano = _razAlb.length > 0 && _razAlb.every(r => r > 1.8);
           const tiles = vis.map((g, gi) => {
             const mp = g.media_mime_type ? `&mime=${encodeURIComponent(g.media_mime_type)}` : '';
             const u = `${SERVER_URL}/media-proxy/${encodeURIComponent(g.media_id)}?account_id=${acctA}${mp}`;
             const kA = String(g.media_id || g.id || '').replace(/['"<>]/g, '');
             const srcA = _thumbGet(kA) || u; // miniatura local = aparece na hora
+            const _rz = _razAlb[gi];
+            const _fit = (!_todasPano && _rz && (_rz > 2.2 || _rz < 0.45)) ? 'contain' : 'cover'; // extrema no meio das outras: inteira, sem cortar
             // O selo +N não pode "comer" o toque (antes o clique nele não abria a foto)
             const extra = (gi === vis.length - 1 && sobra > 0) ? `<span style="position:absolute;inset:0;background:rgba(11,20,26,.55);color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:600;border-radius:6px;pointer-events:none">+${sobra}</span>` : '';
             // Foto em branco: era o carregamento falhando sem nova tentativa —
             // agora tenta de novo (2x) antes de desistir
             return `<span class="alb-t" onclick="verMidia('${u}','img','Foto')"><img src="${srcA}" loading="${_midiaJa(g.media_id) ? 'eager' : 'lazy'}" fetchpriority="${_midiaJa(g.media_id) ? 'high' : 'auto'}" decoding="async" data-fullsrc="${u}" data-try="0"
-              onload="_thumbSave('${kA}',this)"
+              onload="_thumbSave('${kA}',this);_dimSave('${kA}',this);_albAjusta(this)"
               onerror="_albRetry(this)"
-              style="width:100%;height:100%;object-fit:cover;border-radius:6px;display:block;background:rgba(0,0,0,.06)">${extra}</span>`;
+              style="width:100%;height:100%;object-fit:${_fit};border-radius:6px;display:block;background:rgba(0,0,0,.06)">${extra}</span>`;
           }).join('');
           const tk = (ult.direction === 'outbound')
             ? (ult.status === 'read' ? '<span class="msg-ticks read">' + TICK_TWO + '</span>' : ult.status === 'delivered' ? '<span class="msg-ticks delivered">' + TICK_TWO + '</span>' : '<span class="msg-ticks sent">' + TICK_ONE + '</span>') : '';
@@ -9975,7 +10004,7 @@ async function loadMessages(phone, scroll = true, opt = null) {
             <div class="msg-actions">
               <button class="msg-menu-btn" title="Opções" onclick="openMsgMenu(event,'${safeId}')">⌄</button>
             </div>
-            <div class="alb alb-${Math.min(_qtd, 4)}">${tiles}</div>${_capAlb}
+            <div class="alb alb-${Math.min(_qtd, 4)}${_todasPano ? ' alb-pano' : ''}">${tiles}</div>${_capAlb}
             <div class="alb-baixar" onclick="event.stopPropagation();baixarAlbum(this,'${chaveAlb}')" title="Escolher e baixar as ${_qtd} fotos"><i class=ic-down></i> Baixar fotos (${_qtd})</div>
             <div class="time">${_brtTime(parseUTC(ult.timestamp))}${tk}</div>
             ${_badgeAlb}
