@@ -937,6 +937,9 @@
   body.dark .doc-acoes button { color:#00a884; }
   .msg-image:hover { opacity:.88; }
   .media-caption { font-size:13px; margin-top:2px; }
+  /* Foto dentro da NOTA INTERNA: moldura amarela, título e horário continuam como numa nota */
+  .msg.nota .nota-img { display:block; max-width:min(260px,100%); max-height:320px; width:auto; height:auto; border-radius:8px; border:1px solid #f2e08a; margin:2px 0 6px; cursor:pointer; background:rgba(0,0,0,.04); }
+  .msg.nota .nota-img:hover { opacity:.9; }
   .doc-wrap { background:rgba(0,0,0,.05); border-radius:6px; padding:8px 10px; font-size:13px; display:flex; flex-direction:column; gap:6px; }
   .audio-wrap { gap:4px; }
   /* Botão de download flutuante sobre imagem */
@@ -2425,7 +2428,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v549</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v550</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3261,7 +3264,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v549</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v550</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3335,7 +3338,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 549;
+const APP_VER = 550;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -10061,11 +10064,13 @@ async function loadMessages(phone, scroll = true, opt = null) {
           _prevDir = null;
           parts.push({ key: 'm-' + safeId, html: `<div class="msg outbound nota" style="position:relative;background:#fff6d5;border:1px solid #f2e08a"
             data-key="m-${safeId}" data-msg-id="${safeId}" data-msg-content="${dataCont}" data-msg-dir="outbound" data-msg-type="note">
-            <div style="font-size:11px;color:#a07c00;font-weight:700;margin-bottom:3px"><i class=ic-lock></i> Nota interna — o cliente não vê</div>
+            <div style="font-size:11px;color:#a07c00;font-weight:700;margin-bottom:3px"><i class=ic-lock></i> Nota interna${m.media_id && /^image\//.test(String(m.media_mime_type || '')) ? ' com foto' : ''} — o cliente não vê</div>
             ${m.media_id ? (() => {
               const u = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}${m.media_mime_type ? '?mime=' + encodeURIComponent(m.media_mime_type) : ''}`;
               const mt = String(m.media_mime_type || '');
-              if (mt.startsWith('image/')) return `<img src="${u}" class="msg-image" style="max-width:260px;border-radius:8px;display:block;margin-bottom:5px;cursor:pointer" onclick="verMidia('${u}','img','Anexo da nota')" alt="Anexo da nota">`;
+              // (classe própria: com "msg-image" a bolha perdia a moldura amarela, o título "Nota interna"
+              //  sumia e o horário ficava branco em cima da foto — parecia uma foto comum do chat)
+              if (mt.startsWith('image/')) return `<img src="${u}" class="nota-img" onclick="verMidia('${u}','img','Foto da nota interna')" alt="Foto da nota interna">`;
               if (mt.startsWith('video/')) return `<video src="${u}" controls style="max-width:260px;border-radius:8px;display:block;margin-bottom:5px"></video>`;
               if (mt.startsWith('audio/')) return `<audio src="${u}" controls style="max-width:260px;display:block;margin-bottom:5px"></audio>`;
               return `<a href="${u}" target="_blank" rel="noopener" style="display:inline-block;margin-bottom:5px;color:#a07c00;font-weight:600"><i class=ic-clip></i> Abrir arquivo</a>`;
