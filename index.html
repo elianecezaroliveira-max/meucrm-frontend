@@ -2425,7 +2425,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v548</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v549</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3261,7 +3261,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v548</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v549</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3335,7 +3335,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 548;
+const APP_VER = 549;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -8251,9 +8251,11 @@ async function renderLeadPanel(phone){
       <div id="lp-tags"></div>
     </div>
     <div class="lp-section">
-      <div class="lp-label">Anotações</div>
-      <textarea id="lp-notes" class="lp-textarea" placeholder="Simulação, dados, observações..."></textarea>
+      <div class="lp-label">Anotações <button class="lp-mini" style="float:right" onclick="lpNotaFoto('${phone}')" title="Anexar uma foto às anotações (ou cole com Ctrl+V no campo)">＋ Foto</button></div>
+      <input type="file" id="lp-notes-arq" accept="image/*" multiple style="display:none" onchange="_lpSobeFotosNota('${phone}', this.files); this.value=''">
+      <textarea id="lp-notes" class="lp-textarea" placeholder="Simulação, dados, observações... (cole um print com Ctrl+V)"></textarea>
       <div id="lp-notes-status" style="font-size:11px;color:#00a884;height:14px;margin-top:2px"></div>
+      <div id="lp-notes-fotos" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px"></div>
     </div>
     <div class="lp-section">
       <div class="lp-label">Tarefas <button class="lp-mini" style="float:right" onclick="lpAddTask('${phone}')">＋ Nova</button></div>
@@ -8381,6 +8383,7 @@ async function lpLoadNotas(phone){
   let notas = [];
   try { notas = await (await fetch(SERVER_URL + '/notas/' + encodeURIComponent(phone))).json(); } catch(_) {}
   if (!Array.isArray(notas)) notas = [];
+  try { _lpPintaFotosNotas(notas); } catch (_) {}
   const ass = JSON.stringify([_lpNotasAberto, notas.map(n => [n.id, n.content])]);
   if (el.dataset.ass === ass && el.dataset.phone === phone) return; // nada mudou
   el.dataset.ass = ass; el.dataset.phone = phone;
@@ -8404,6 +8407,40 @@ async function lpLoadNotas(phone){
   + ((escondidas > 0 || _lpNotasAberto)
     ? `<div onclick="lpNotasVerTodas()" style="font-size:12px;color:#00806a;font-weight:600;cursor:pointer;padding:2px 1px">${_lpNotasAberto ? '− Ver menos' : '＋ Ver as outras ' + escondidas + ' nota(s)'}</div>`
     : '');
+}
+// 📷 FOTOS NAS ANOTAÇÕES: a foto colada/anexada vira uma nota interna com imagem (fica no cofre
+// do FILAZ, nunca vai para o lead) e aparece como miniatura embaixo das Anotações
+function _lpPintaFotosNotas(notas) {
+  const faixa = document.getElementById('lp-notes-fotos'); if (!faixa) return;
+  const acct = encodeURIComponent(currentAccountId || '');
+  const fotos = (notas || []).filter(n => n && n.media_id && /^image\//.test(String(n.media_mime_type || '')));
+  faixa.innerHTML = fotos.map(n => {
+    const u = SERVER_URL + '/media-proxy/' + encodeURIComponent(n.media_id) + '?account_id=' + acct + '&mime=' + encodeURIComponent(n.media_mime_type || 'image/jpeg');
+    return '<img src="' + escHtml(u) + '" loading="lazy" title="' + escHtml(fmtTaskCreated(n.timestamp)) + '" onclick="verMidia(\'' + _jsAttr(u) + '\',\'img\',\'Foto da anotação\')" style="width:56px;height:56px;object-fit:cover;border-radius:6px;border:1px solid #f2e08a;cursor:pointer;background:rgba(0,0,0,.05)">';
+  }).join('');
+}
+function lpNotaFoto(phone) { const i = document.getElementById('lp-notes-arq'); if (i) i.click(); }
+async function _lpSobeFotosNota(phone, arquivos) {
+  const lista = Array.from(arquivos || []).filter(f => f && /^image\//.test(f.type || ''));
+  if (!phone || !lista.length) return;
+  const st = document.getElementById('lp-notes-status');
+  if (st) st.textContent = 'Guardando foto…';
+  let ok = 0;
+  for (const f of lista) {
+    try {
+      if (f.size > 16 * 1024 * 1024) { showToast('Foto muito grande (máx. 16 MB).', 'warn'); continue; }
+      const b64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = rej; r.readAsDataURL(f); });
+      const r = await fetch(SERVER_URL + '/notes', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, account_id: currentAccountId || null, content: '', arquivo: b64, mime: f.type || 'image/png', filename: f.name || ('anotacao-' + Date.now() + '.png') }) });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok && !d.error) ok++; else showToast(d.error || 'Não consegui guardar a foto', 'err');
+    } catch (_) { showToast('Erro ao ler a foto', 'err'); }
+  }
+  if (st) { st.textContent = ok ? (ok > 1 ? ok + ' fotos guardadas ✓' : 'Foto guardada ✓') : ''; setTimeout(() => { if (st) st.textContent = ''; }, 1800); }
+  if (ok) {
+    try { const el = document.getElementById('lp-notas'); if (el) el.dataset.ass = ''; await lpLoadNotas(phone); } catch (_) {}
+    try { if (currentPhone === phone) { _lastMsgsSig = ''; loadMessages(phone, false); } } catch (_) {}
+  }
 }
 // Toca na nota do painel → vai até ela na conversa e pisca
 function lpIrNota(id){
@@ -11492,12 +11529,27 @@ function _renderMediaPreview() {
 function _rmPreview(i) { _previewList.splice(i, 1); _renderMediaPreview(); }
 // Colar print (Ctrl+V) direto no chat — o ÚNICO ouvinte de colar foto
 document.addEventListener('paste', e => {
-  if (!currentPhone) return;
   if (e._vetraColou) return; e._vetraColou = true; // a mesma colagem nunca entra duas vezes
+  const _lpAlvo = (e.target && e.target.closest) ? e.target.closest('#lp-notes') : null;
+  if (!currentPhone && !_lpAlvo) return; // (as Anotações do lead valem mesmo sem conversa aberta)
   // 1) Colar em OUTRO campo (busca da prévia, nome do lead, etiqueta, anotação…) NÃO pode
   //    virar foto no chat: o texto vai para o campo onde o cursor está, como em qualquer lugar.
   const alvo = e.target;
   const campo = (alvo && alvo.closest) ? alvo.closest('input, textarea, [contenteditable="true"]') : null;
+  // 📷 Print colado nas ANOTAÇÕES do lead → vira foto da anotação (nota interna com imagem)
+  if (campo && campo.id === 'lp-notes') {
+    let txtA = ''; try { txtA = (e.clipboardData && e.clipboardData.getData('text/plain')) || ''; } catch (_) {}
+    if (!txtA.trim()) {
+      const its = (e.clipboardData && e.clipboardData.items) || [];
+      for (const it of its) {
+        if (it.type && it.type.startsWith('image/')) {
+          const f = it.getAsFile();
+          if (f) { e.preventDefault(); _lpSobeFotosNota(window._lpPhone || currentPhone, [new File([f], 'anotacao-' + Date.now() + '.png', { type: f.type })]); return; }
+        }
+      }
+    }
+    return;
+  }
   const ehDoChat = !campo || campo.id === 'msg-input' || campo.id === 'mp-caption';
   if (!ehDoChat) return;
   // 2) Excel, Word e planilhas põem a seleção na área de transferência DE DOIS JEITOS:
