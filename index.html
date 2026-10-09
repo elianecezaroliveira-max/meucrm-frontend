@@ -2428,7 +2428,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v550</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v551</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3264,7 +3264,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v550</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v551</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3338,7 +3338,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 550;
+const APP_VER = 551;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -8387,6 +8387,7 @@ async function lpLoadNotas(phone){
   try { notas = await (await fetch(SERVER_URL + '/notas/' + encodeURIComponent(phone))).json(); } catch(_) {}
   if (!Array.isArray(notas)) notas = [];
   try { _lpPintaFotosNotas(notas); } catch (_) {}
+  notas = notas.filter(n => !_ehFotoAnotacao(n)); // as fotos das Anotações vivem na faixa acima, não aqui
   const ass = JSON.stringify([_lpNotasAberto, notas.map(n => [n.id, n.content])]);
   if (el.dataset.ass === ass && el.dataset.phone === phone) return; // nada mudou
   el.dataset.ass = ass; el.dataset.phone = phone;
@@ -8413,14 +8414,28 @@ async function lpLoadNotas(phone){
 }
 // 📷 FOTOS NAS ANOTAÇÕES: a foto colada/anexada vira uma nota interna com imagem (fica no cofre
 // do FILAZ, nunca vai para o lead) e aparece como miniatura embaixo das Anotações
+// As fotos das Anotações são notas internas marcadas com este texto: ficam SÓ no painel
+// (não viram bolha no chat nem entram na lista de Notas internas)
+const _LP_FOTO_MARCA = '[Foto das anotações]';
+const _ehFotoAnotacao = (n) => !!(n && n.type !== undefined ? (n.type === 'note' && String(n.content || '').trim() === _LP_FOTO_MARCA) : (String(n && n.content || '').trim() === _LP_FOTO_MARCA));
 function _lpPintaFotosNotas(notas) {
   const faixa = document.getElementById('lp-notes-fotos'); if (!faixa) return;
   const acct = encodeURIComponent(currentAccountId || '');
-  const fotos = (notas || []).filter(n => n && n.media_id && /^image\//.test(String(n.media_mime_type || '')));
+  const fotos = (notas || []).filter(n => n && n.media_id && /^image\//.test(String(n.media_mime_type || '')) && _ehFotoAnotacao(n));
   faixa.innerHTML = fotos.map(n => {
     const u = SERVER_URL + '/media-proxy/' + encodeURIComponent(n.media_id) + '?account_id=' + acct + '&mime=' + encodeURIComponent(n.media_mime_type || 'image/jpeg');
-    return '<img src="' + escHtml(u) + '" loading="lazy" title="' + escHtml(fmtTaskCreated(n.timestamp)) + '" onclick="verMidia(\'' + _jsAttr(u) + '\',\'img\',\'Foto da anotação\')" style="width:56px;height:56px;object-fit:cover;border-radius:6px;border:1px solid #f2e08a;cursor:pointer;background:rgba(0,0,0,.05)">';
+    return '<span class="lp-foto" style="position:relative;display:inline-block">'
+      + '<img src="' + escHtml(u) + '" loading="lazy" title="' + escHtml(fmtTaskCreated(n.timestamp)) + '" onclick="verMidia(\'' + _jsAttr(u) + '\',\'img\',\'Foto das anotações\')" style="width:92px;height:92px;object-fit:cover;border-radius:6px;border:1px solid #e0e4e6;cursor:pointer;background:rgba(0,0,0,.05);display:block">'
+      + '<span onclick="event.stopPropagation();lpApagaFotoNota(\'' + _jsAttr(n.id) + '\')" title="Apagar esta foto" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:#54656f;color:#fff;font-size:11px;line-height:18px;text-align:center;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.4)">✕</span></span>';
   }).join('');
+}
+async function lpApagaFotoNota(id) {
+  if (!await vConfirm({ titulo: 'Apagar foto', texto: 'Esta foto será removida das anotações.', confirmar: 'Apagar', perigo: true })) return;
+  try {
+    await fetch(SERVER_URL + '/messages/id/' + encodeURIComponent(id), { method: 'DELETE' });
+    const el = document.getElementById('lp-notas'); if (el) el.dataset.ass = '';
+    if (window._lpPhone) lpLoadNotas(window._lpPhone);
+  } catch (_) { showToast('Não consegui apagar a foto', 'err'); }
 }
 function lpNotaFoto(phone) { const i = document.getElementById('lp-notes-arq'); if (i) i.click(); }
 async function _lpSobeFotosNota(phone, arquivos) {
@@ -8434,7 +8449,7 @@ async function _lpSobeFotosNota(phone, arquivos) {
       if (f.size > 16 * 1024 * 1024) { showToast('Foto muito grande (máx. 16 MB).', 'warn'); continue; }
       const b64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = rej; r.readAsDataURL(f); });
       const r = await fetch(SERVER_URL + '/notes', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, account_id: currentAccountId || null, content: '', arquivo: b64, mime: f.type || 'image/png', filename: f.name || ('anotacao-' + Date.now() + '.png') }) });
+        body: JSON.stringify({ phone, account_id: currentAccountId || null, content: _LP_FOTO_MARCA, arquivo: b64, mime: f.type || 'image/png', filename: f.name || ('anotacao-' + Date.now() + '.png') }) });
       const d = await r.json().catch(() => ({}));
       if (r.ok && !d.error) ok++; else showToast(d.error || 'Não consegui guardar a foto', 'err');
     } catch (_) { showToast('Erro ao ler a foto', 'err'); }
@@ -8442,7 +8457,6 @@ async function _lpSobeFotosNota(phone, arquivos) {
   if (st) { st.textContent = ok ? (ok > 1 ? ok + ' fotos guardadas ✓' : 'Foto guardada ✓') : ''; setTimeout(() => { if (st) st.textContent = ''; }, 1800); }
   if (ok) {
     try { const el = document.getElementById('lp-notas'); if (el) el.dataset.ass = ''; await lpLoadNotas(phone); } catch (_) {}
-    try { if (currentPhone === phone) { _lastMsgsSig = ''; loadMessages(phone, false); } } catch (_) {}
   }
 }
 // Toca na nota do painel → vai até ela na conversa e pisca
@@ -10060,6 +10074,7 @@ async function loadMessages(phone, scroll = true, opt = null) {
           continue;
         }
         // NOTA INTERNA: bolha amarela, só para você (nunca foi para o lead)
+        if (m.type === 'note' && _ehFotoAnotacao(m)) continue; // foto das Anotações: só no painel do lead
         if (m.type === 'note') {
           _prevDir = null;
           parts.push({ key: 'm-' + safeId, html: `<div class="msg outbound nota" style="position:relative;background:#fff6d5;border:1px solid #f2e08a"
