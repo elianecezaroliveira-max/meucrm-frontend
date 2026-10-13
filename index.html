@@ -2428,7 +2428,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v552</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v553</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3264,7 +3264,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v552</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v553</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3338,7 +3338,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 552;
+const APP_VER = 553;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5349,6 +5349,14 @@ async function iaMemImporta(files) {
     await _iaSugCarregaStatus(); _iaPag = _iaSugStatus; faqRender();
     const o2 = document.getElementById('ia-mem-msg'); if (o2) o2.textContent = 'Memória importada: ' + nomes.join(', ');
   } catch (e) { if (out) out.textContent = 'Não deu para importar: ' + (e.message || e); }
+}
+async function iaIgnoraSalva(btn) {
+  const inp = document.getElementById('ia-ignora-in'); if (!inp) return;
+  const v = String(inp.value || '').trim().slice(0, 600);
+  if (btn) { btn.disabled = true; btn.textContent = 'Salvando…'; }
+  try { await _faqPutSetting('ia_fones_teste', v); if (_iaPag) _iaPag.fones_ignorados = v; showToast('Salvo — a IA deixa essas conversas de lado e apaga o que tinha aprendido nelas.', 'ok'); }
+  catch (e) { showToast('Não consegui salvar: ' + (e.message || e), 'err'); }
+  if (btn) { btn.disabled = false; btn.textContent = 'Salvar'; }
 }
 async function iaBancosSalva(btn) {
   const inp = document.getElementById('ia-bancos-in'); if (!inp) return;
@@ -18098,6 +18106,10 @@ function faqRender(){
       + '<div style="margin-top:12px;border-top:1px solid #e9edef;padding-top:10px"><b style="font-size:13px">🏦 Bancos para onde porto hoje</b>'
       + '<div style="font-size:12px;color:#667781;margin:2px 0 6px">A IA só cita o banco que aparece na própria conversa do cliente e nunca copia o banco dos exemplos antigos. Aqui você diz para onde está portando agora.</div>'
       + '<div style="display:flex;gap:6px"><input id="ia-bancos-in" value="' + escHtml(p.bancos || '') + '" placeholder="ex.: Paraná Banco, Safra e Facta (não porto mais para o BRB)" style="flex:1;background:#f0f2f5;border:1px solid #e0e4e6;border-radius:8px;padding:8px 10px;font-size:13px;color:#131c20"><button class="btn-secondary" onclick="iaBancosSalva(this)">Salvar</button></div></div>'
+      // 🚫 conversas que a IA ignora (suporte do banco, marido…): sem sugestão e sem aprender
+      + '<div style="margin-top:12px;border-top:1px solid #e9edef;padding-top:10px"><b style="font-size:13px">🚫 Números que a IA ignora</b>'
+      + '<div style="font-size:12px;color:#667781;margin:2px 0 6px">Nessas conversas a IA não sugere nada e não aprende com o que é dito (ex.: suporte do banco, família, seu número de teste). Separe por vírgula.</div>'
+      + '<div style="display:flex;gap:6px"><input id="ia-ignora-in" value="' + escHtml(p.fones_ignorados || '') + '" placeholder="ex.: (48) 99951-0343, (11) 95315-7933" style="flex:1;background:#f0f2f5;border:1px solid #e0e4e6;border-radius:8px;padding:8px 10px;font-size:13px;color:#131c20"><button class="btn-secondary" onclick="iaIgnoraSalva(this)">Salvar</button></div></div>'
       // 📌 novidades (informações novas com data) e 🎯 momentos das rápidas/bots — carregam em seguida
       + '<div style="margin-top:12px;border-top:1px solid #e9edef;padding-top:10px"><b style="font-size:13px">📌 Novidades que a IA anotou</b>'
       + '<div style="font-size:12px;color:#667781;margin:2px 0 6px">Informações novas e passageiras (banco fora do ar, prazo que mudou…) que ela tira das suas respostas. Valem por 60 dias e ganham do manual quando batem de frente. Você também pode anotar ou apagar.</div>'
