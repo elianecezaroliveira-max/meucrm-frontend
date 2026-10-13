@@ -2428,7 +2428,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v553</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v555</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3264,7 +3264,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v553</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v555</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3338,7 +3338,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 553;
+const APP_VER = 555;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4706,8 +4706,10 @@ function waPreviewHtml(p){
   const stk = IC('<path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm-3.5 6A1.5 1.5 0 1 1 7 9.5 1.5 1.5 0 0 1 8.5 8zm7 0A1.5 1.5 0 1 1 14 9.5 1.5 1.5 0 0 1 15.5 8zM12 18a6 6 0 0 1-5.2-3h10.4A6 6 0 0 1 12 18z"/>');
   let m;
   if ((m = p.match(/^🎤 Mensagem de voz(?: \((.+)\))?/))) return mic + escHtml(m[1] || 'Áudio');
-  if (/^\[Imagem/.test(p))                                return cam + escHtml(_legendaMidia({ content: p, direction: 'inbound' }) || 'Foto');
-  if (/^\[Vídeo/.test(p))                                 return vid + escHtml(_legendaMidia({ content: p, direction: 'inbound' }) || 'Vídeo');
+  // legenda pode vir CORTADA ("[Imagem: legenda comprida…" sem o ] final): lê do mesmo jeito
+  const _leg = (pref) => { const mm = p.match(new RegExp('^\\[' + pref + '(?::\\s*([\\s\\S]*?))?\\]?(…)?$')); const x = mm ? String(mm[1] || '').trim() + (mm && mm[2] ? '…' : '') : ''; return (!x || /^recebid[ao]$/i.test(x) || /^[\w\-. ]+\.(jpe?g|png|gif|webp|heic|mp4|mov)$/i.test(x)) ? '' : x; };
+  if (/^\[Imagem/.test(p))                                return cam + escHtml(_leg('Imagem') || 'Foto');
+  if (/^\[V[íi]deo/.test(p))                              return vid + escHtml(_leg('V[íi]deo') || 'Vídeo');
   if ((m = p.match(/^\[Documento: (.+)\]/)))              return doc + escHtml(m[1]);
   if (/^\[Documento/.test(p))                             return doc + 'Documento';
   if (/^\[Figurinha\]/.test(p))                           return stk + 'Figurinha';
@@ -4794,7 +4796,7 @@ let _aplicandoFiltros = false;
 // (igual ao número na aba "Conversas" do WhatsApp; some quando não há nenhuma)
 function _pintaBadgeChat() {
   try {
-    const n = (allContacts || []).filter(c => (Number(c.unread_count) || 0) > 0).length;
+    const n = (allContacts || []).filter(c => (Number(c.unread_count) || 0) > 0 && !c.muted).length; // 🔇 silenciada não conta na bolinha do Chat nem na aba (igual WhatsApp)
     document.querySelectorAll('.chat-badge').forEach(e => { e.textContent = n > 99 ? '99+' : String(n); e.style.display = n > 0 ? 'block' : 'none'; });
     _pintaAbaNavegador(n);
   } catch (_) {}
