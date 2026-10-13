@@ -111,6 +111,9 @@
   .contact-info { flex: 1; min-width: 0; }
   .contact-name { font-size: 17px; font-weight: 600; color: #111b21; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .contact-preview { font-size: 14px; color: #667781; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+  /* 👤 responsável pela conversa (passada para alguém da equipe) */
+  .resp-chip { display:inline-block; margin-left:6px; font-size:10.5px; font-weight:700; color:#00806a; background:#e7f7ef; border-radius:9px; padding:1px 7px; vertical-align:middle; }
+  body.dark .resp-chip { background:rgba(0,168,132,.18); color:#7fd1b9; }
   /* BADGE NÃO LIDAS */
   .unread-badge { background: #00a884; color: #fff; border-radius: 50%; min-width: 20px; height: 20px; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; padding: 0 5px; flex-shrink: 0; box-shadow: 0 1px 4px rgba(0,168,132,.4); }
   .contact-item.has-unread { background: #e7f7ef !important; border-left: 4px solid #00a884 !important; }
@@ -2428,7 +2431,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v556</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v557</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2603,6 +2606,8 @@ window.addEventListener('load', initAuth);
         <option value="unread-first">Não lidas primeiro (ordenar)</option>
         <option value="unread">Só não lidas</option>
         <option value="fav">Favoritas</option>
+        <option value="minhas">Minhas (responsável = eu)</option>
+        <option value="sem-resp">Sem responsável</option>
       </select>
       <label>Data (de)</label>
       <input type="date" id="filter-date-from" onchange="applyFilters()">
@@ -2650,6 +2655,8 @@ window.addEventListener('load', initAuth);
   <div class="cm-item" onclick="closeInfoMenu();toggleNotes()"><i class=ic-note></i> Anotações do lead</div>
   <div class="cm-item" onclick="closeInfoMenu();openMediaGallery()"><i class=ic-image></i> Fotos e arquivos</div>
   <div class="cm-item" onclick="closeInfoMenu();openTasks()"><i class=ic-task></i> Tarefas</div>
+  <div class="cm-item" onclick="closeInfoMenu();passarConversa(currentPhone)"><i class=ic-users></i> Passar para…</div>
+  <div class="cm-item" onclick="closeInfoMenu();exportarConversaPdf(currentPhone)"><i class=ic-doc></i> Exportar conversa (PDF)</div>
   <div class="cm-item" data-adm onclick="closeInfoMenu();deleteConversation(currentPhone)" style="color:#ef4444"><i class=ic-trash></i> Apagar conversa</div>
 </div>
 
@@ -2742,6 +2749,11 @@ window.addEventListener('load', initAuth);
         <button class="pf-topbtn" id="btn-sheets-sync" onclick="preverSheets()">Prévia e importar</button>
       </div>
       <div id="cfg-sheets-status" style="font-size:12px;color:#54656f;margin-top:6px;min-height:14px"></div>
+      <div style="margin-top:12px;border-top:1px solid #e9edef;padding-top:10px">
+        <div style="font-size:13px;font-weight:700;color:#131c20">💾 Backup semanal nesta planilha</div>
+        <div style="font-size:12px;color:#667781;margin:2px 0 6px">Toda segunda às 6h o FILAZ grava as abas <b>FILAZ Anotações</b>, <b>FILAZ Etiquetas</b> e <b>FILAZ Tarefas</b> nesta mesma planilha (o robô precisa ser <b>Editor</b> nela). Seguro contra qualquer problema no banco.</div>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><button class="pf-topbtn" id="btn-sheets-bkp" onclick="fazerBackupPlanilha(this)">Fazer backup agora</button><span id="cfg-sheets-bkp" style="font-size:12px;color:#54656f"></span></div>
+      </div>
     </div>
 </div>
 <div class="cfg-pane" data-pane="dup">
@@ -3264,7 +3276,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v556</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v557</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3338,7 +3350,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 556;
+const APP_VER = 557;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3494,7 +3506,7 @@ async function _abaEscondidaConfere() {
 }
 async function _pollTickInner() {
   // Snapshot do que aparece na lista (não lidas, PRÉVIA, horário, tiques) antes de atualizar
-  const _assin = c => `${c.unread_count || 0}|${c.last_message_preview || ''}|${c.last_message_at || ''}|${c.last_message_status || ''}|${c.last_message_direction || ''}`;
+  const _assin = c => `${c.unread_count || 0}|${c.last_message_preview || ''}|${c.last_message_at || ''}|${c.last_message_status || ''}|${c.last_message_direction || ''}|${c.responsavel || ''}`;
   const prev = {};
   allContacts.forEach(c => { prev[c.phone] = _assin(c); });
   const prevCount = allContacts.length;
@@ -4847,7 +4859,10 @@ function renderContacts(contacts) {
   }
   _pintaBadgeChat(); // a bolinha do Chat acompanha a lista (conversas não lidas)
   const list = document.getElementById('contacts-list');
-  if (_listFilter === 'unread' || _listFilter === 'fav') {
+  if (_listFilter === 'minhas' || _listFilter === 'sem-resp') {
+    const eu = String(window._userEmail || '').toLowerCase();
+    contacts = contacts.filter(c => _listFilter === 'minhas' ? String(c.responsavel || '').toLowerCase() === eu : !c.responsavel);
+  } else if (_listFilter === 'unread' || _listFilter === 'fav') {
     contacts = contacts.filter(c => _listFilter === 'unread' ? (c.unread_count || 0) > 0 : !!c.favorite);
   } else if (_listFilter === 'unread-first') {
     // ORDENA: fixadas → não lidas (mais recentes primeiro) → o resto por data
@@ -4907,7 +4922,7 @@ function renderContacts(contacts) {
       <div class="contact-avatar" style="${_avatarCor(c.name||c.phone)}">${escHtml((c.name||'?')[0].toUpperCase())}${c.avatar ? `<img src="${SERVER_URL}/avatar/${encodeURIComponent(String(c.avatar).split('/').pop())}" loading="lazy" alt="" onerror="this.remove()">` : ''}</div>
       <div class="contact-info">
         <div class="contact-row-top">
-          <div class="contact-name">${escHtml(_nomeOuTel(c.name, c.phone))}${c.pinned?'<span style="font-size:11px;margin-left:3px"><i class=ic-pin></i></span>':''}${c.muted?'<span style="font-size:12px;margin-left:3px;opacity:.6"><i class=ic-mute></i></span>':''}${isFav?'<span class="fav-star">★</span>':''}</div>
+          <div class="contact-name">${escHtml(_nomeOuTel(c.name, c.phone))}${c.pinned?'<span style="font-size:11px;margin-left:3px"><i class=ic-pin></i></span>':''}${c.muted?'<span style="font-size:12px;margin-left:3px;opacity:.6"><i class=ic-mute></i></span>':''}${isFav?'<span class="fav-star">★</span>':''}${c.responsavel ? '<span class="resp-chip" title="Responsável: ' + escHtml(c.responsavel) + '">' + escHtml(_nomeAutor(c.responsavel).split(' ')[0]) + '</span>' : ''}</div>
           <div class="contact-time">${timeStr}</div>
         </div>
         <div class="contact-preview-row">
@@ -6632,6 +6647,83 @@ function _reactBarComMenu(id, menu) {
   });
 })();
 
+// ═══ 👤 PASSAR A CONVERSA PARA ALGUÉM DA EQUIPE ═══
+// Marca o responsável (e avisa no celular dele). Filtros "Minhas" e "Sem responsável" na lista.
+async function passarConversa(phone) {
+  if (!phone) return;
+  let eq = { membros: [], dono: '' };
+  try { eq = await (await fetch(SERVER_URL + '/equipe')).json(); } catch (_) {}
+  const eu = String(window._userEmail || '').toLowerCase();
+  const pessoas = [].concat(eq.dono ? [eq.dono] : [], eq.membros || []).map(e => String(e || '').toLowerCase()).filter((e, i, a) => e && a.indexOf(e) === i);
+  const c = allContacts.find(x => x.phone === phone);
+  const atual = String((c && c.responsavel) || '').toLowerCase();
+  const opcoes = pessoas.map(e => ({ v: e, t: _nomeAutor(e) + (e === eu ? ' (eu)' : '') + (e === atual ? ' ✓' : ''), icone: '👤' }));
+  if (atual) opcoes.push({ v: '__tirar__', t: 'Tirar o responsável', cor: 'vermelho' });
+  if (!opcoes.length) { showToast('Sua conta ainda não tem equipe (Configurações ▸ Equipe).', 'warn'); return; }
+  const esc = await vEscolha({ titulo: 'Passar a conversa para', texto: (c && (c.name || c.phone)) || phone, opcoes });
+  if (!esc) return;
+  const email = esc === '__tirar__' ? '' : esc;
+  try {
+    const r = await fetch(SERVER_URL + '/contacts/' + encodeURIComponent(phone) + '/responsavel', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || d.error) throw new Error(d.error || 'falha');
+    if (c) { if (email) c.responsavel = email; else delete c.responsavel; }
+    renderContacts(sortContacts(allContacts));
+    showToast(email ? 'Conversa passada para ' + _nomeAutor(email) + (email !== eu ? ' — ela recebe o aviso no celular.' : '.') : 'Responsável removido.', 'ok');
+  } catch (e) { showToast('Não consegui passar a conversa: ' + (e.message || e), 'err'); }
+}
+// ═══ 📄 EXPORTAR A CONVERSA EM PDF ═══
+// Monta uma página limpa (mensagens, datas, autores, fotos embutidas) e abre a impressão do
+// navegador — ali você escolhe "Salvar como PDF". Serve para anexar numa reclamação ao banco
+// ou guardar prova do aceite. Nada é enviado ao lead.
+async function exportarConversaPdf(phone) {
+  if (!phone) return;
+  const c = allContacts.find(x => x.phone === phone) || {};
+  showToast('Montando o PDF da conversa…');
+  let msgs = [];
+  try { msgs = await (await fetch(SERVER_URL + '/messages/' + encodeURIComponent(phone))).json(); } catch (_) {}
+  if (!Array.isArray(msgs)) msgs = [];
+  msgs = msgs.filter(m => m && m.type !== 'note').sort((a, b) => parseUTC(a.timestamp) - parseUTC(b.timestamp));
+  const acct = encodeURIComponent(c.account_id || currentAccountId || '');
+  // fotos viram data: (a impressão não tem o seu login para buscar no servidor) — até 60 fotos
+  let nFotos = 0;
+  const partes = [];
+  let diaAnt = '';
+  for (const m of msgs) {
+    const dia = new Date(parseUTC(m.timestamp) - _BRT_OFFSET).toISOString().slice(0, 10).split('-').reverse().join('/');
+    if (dia !== diaAnt) { partes.push('<div class="dia">' + escHtml(dia) + '</div>'); diaAnt = dia; }
+    const hora = _brtTime(parseUTC(m.timestamp));
+    const quem = m.direction === 'outbound' ? ('Eu' + (m.sent_by ? ' (' + escHtml(_nomeAutor(m.sent_by)) + ')' : '')) : escHtml(c.name || phone);
+    let corpo = '';
+    if (m.type === 'image' && m.media_id && nFotos < 60) {
+      nFotos++;
+      try {
+        const u = SERVER_URL + '/media-proxy/' + encodeURIComponent(m.media_id) + '?account_id=' + acct + (m.media_mime_type ? '&mime=' + encodeURIComponent(m.media_mime_type) : '');
+        const bl = await (await fetch(u)).blob();
+        const d64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = rej; r.readAsDataURL(bl); });
+        const leg = _legendaMidia(m);
+        corpo = '<img src="' + d64 + '">' + (leg ? '<div>' + escHtml(leg) + '</div>' : '');
+      } catch (_) { corpo = '<i>[foto]</i>'; }
+    } else if (m.type === 'image') corpo = '<i>[foto' + (_legendaMidia(m) ? ': ' + escHtml(_legendaMidia(m)) : '') + ']</i>';
+    else if (m.type === 'document') corpo = '<i>📎 ' + escHtml(String(m.content || '').replace(/^\[Documento: ?/, '').replace(/\]$/, '')) + '</i>';
+    else if (m.type === 'audio') corpo = '<i>🎤 áudio' + (m.transcript ? ': ' + escHtml(m.transcript) : '') + '</i>';
+    else if (m.type === 'video') corpo = '<i>🎥 vídeo' + (_legendaMidia(m) ? ': ' + escHtml(_legendaMidia(m)) : '') + '</i>';
+    else if (m.type === 'sticker') corpo = '<i>[figurinha]</i>';
+    else corpo = escHtml(String(m.content || '')).replace(/\n/g, '<br>');
+    const st = m.direction === 'outbound' ? (m.status === 'read' ? ' · lida' : m.status === 'delivered' ? ' · entregue' : m.status === 'failed' ? ' · NÃO ENTREGUE' : '') : '';
+    partes.push('<div class="m ' + (m.direction === 'outbound' ? 'eu' : 'ele') + '"><div class="q">' + quem + ' <span>' + hora + st + '</span></div><div class="t">' + corpo + '</div></div>');
+  }
+  const titulo = 'Conversa com ' + (c.name || phone) + ' (' + phone + ')';
+  const html = '<!doctype html><html><head><meta charset="utf-8"><title>' + escHtml(titulo) + '</title><style>'
+    + 'body{font-family:Segoe UI,Arial,sans-serif;font-size:12.5px;color:#111;margin:24px;max-width:760px}h1{font-size:17px;margin:0 0 2px}.sub{color:#666;font-size:11.5px;margin-bottom:14px}'
+    + '.dia{text-align:center;color:#666;font-size:11px;margin:14px 0 8px}.m{margin:5px 0;padding:7px 10px;border-radius:8px;max-width:78%;page-break-inside:avoid}.eu{background:#e6f6ef;margin-left:auto}.ele{background:#f1f1f1}'
+    + '.q{font-size:10.5px;color:#555;margin-bottom:2px;font-weight:700}.q span{font-weight:400}.t img{max-width:100%;max-height:340px;display:block;border-radius:6px;margin:3px 0}@media print{body{margin:10mm}}'
+    + '</style></head><body><h1>' + escHtml(titulo) + '</h1><div class="sub">Exportado do FILAZ em ' + escHtml(new Date().toLocaleString('pt-BR')) + ' · ' + msgs.length + ' mensagens</div>' + partes.join('') + '</body></html>';
+  const w = window.open('', '_blank');
+  if (!w) { showToast('O navegador bloqueou a janela — permita pop-ups para o FILAZ e tente de novo.', 'warn'); return; }
+  w.document.open(); w.document.write(html); w.document.close();
+  setTimeout(() => { try { w.focus(); w.print(); } catch (_) {} }, 700);
+}
 // ── Menu "⋯" da conversa (computador) ──
 function openContactMenu(ev, phone) {
   _menuAbertoEm = Date.now(); // o clique que vem do próprio toque longo não vale
@@ -6646,6 +6738,8 @@ function openContactMenu(ev, phone) {
     `<div class="cm-item" onclick="toggleFavorite('${phone}');closeContactMenu()">${c && c.favorite ? '<i class=ic-star></i> Remover dos favoritos' : '<i class=ic-star></i> Favoritar conversa'}</div>` +
     `<div class="cm-item" onclick="togglePin('${phone}');closeContactMenu()">${c && c.pinned ? '<i class=ic-pin></i> Desafixar do topo' : '<i class=ic-pin></i> Fixar no topo'}</div>` +
     `<div class="cm-item" onclick="toggleMute('${phone}');closeContactMenu()">${c && c.muted ? '<i class=ic-bell></i> Reativar notificações' : '<i class=ic-mute></i> Silenciar conversa'}</div>` +
+    `<div class="cm-item" onclick="closeContactMenu();passarConversa('${phone}')"><i class=ic-users></i> Passar para…${c && c.responsavel ? ' <span style="color:#8696a0;font-size:11px">(' + escHtml(_nomeAutor(c.responsavel)) + ')</span>' : ''}</div>` +
+    `<div class="cm-item" onclick="closeContactMenu();exportarConversaPdf('${phone}')"><i class=ic-doc></i> Exportar conversa (PDF)</div>` +
     `<div class="cm-item" onclick="closeContactMenu();_selEntrar('${phone}')"><i class=ic-task></i> Selecionar conversas</div>` +
     `<div class="cm-item" style="color:#ef4444" onclick="closeContactMenu();deleteConversation('${phone}')"><i class=ic-trash></i> Apagar conversa</div>`;
   menu.style.display = 'block';
@@ -12861,7 +12955,25 @@ async function carregarSheetsStatus() {
     document.getElementById('cfg-sheets-auto').checked = !!d.auto;
     document.getElementById('cfg-sheets-upd').checked = !!d.atualizar_etapa;
     if (st) st.textContent = _sheetsLastTxt(d.last);
+    _sheetsBkpTxt(d.backup);
   } catch (_) { robo.textContent = 'Não consegui carregar o status.'; }
+}
+function _sheetsBkpTxt(b) {
+  const el = document.getElementById('cfg-sheets-bkp'); if (!el) return;
+  if (!b) { el.textContent = 'Nenhum backup ainda.'; return; }
+  const q = b.quando ? new Date(b.quando).toLocaleString('pt-BR') : '';
+  el.textContent = b.ok ? `Último backup ${q} (${b.motivo}): ${b.leads} lead(s), ${b.tarefas} tarefa(s).` : `Última tentativa ${q}: ${b.erro}`;
+  el.style.color = b.ok ? '#00806a' : '#c0392b';
+}
+async function fazerBackupPlanilha(btn) {
+  if (btn) { btn.disabled = true; btn.textContent = 'Gravando…'; }
+  try {
+    const r = await fetch(SERVER_URL + '/sheets/backup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    const d = await r.json().catch(() => ({}));
+    _sheetsBkpTxt(d && d.quando ? d : { ok: false, erro: (d && d.error) || 'falha', quando: new Date().toISOString() });
+    showToast(d.ok ? 'Backup gravado na planilha.' : ('Backup não feito: ' + (d.erro || d.error || 'falha')), d.ok ? 'ok' : 'err');
+  } catch (e) { showToast('Backup não feito: ' + (e.message || e), 'err'); }
+  if (btn) { btn.disabled = false; btn.textContent = 'Fazer backup agora'; }
 }
 async function salvarSheetsCfg() {
   const st = document.getElementById('cfg-sheets-status');
