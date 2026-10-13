@@ -2431,7 +2431,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v558</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v559</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3276,7 +3276,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v558</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v559</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3350,7 +3350,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 558;
+const APP_VER = 559;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -13226,7 +13226,7 @@ async function _carregaAcesso() {
     const t = r.headers.get('content-type') || '';
     if (r.ok && t.indexOf('json') >= 0) {
       const d = await r.json();
-      if (d && d.papel) window._acesso = { papel: d.papel, fornecedor: !!d.fornecedor, plano: d.plano || null, dono: d.dono || null, email: d.email || null, liberado: d.liberado !== false, portaria: !!d.portaria, teste_gratis: d.teste_gratis || null, carregado: true };
+      if (d && d.papel) window._acesso = { papel: d.papel, fornecedor: !!d.fornecedor, plano: d.plano || null, dono: d.dono || null, email: d.email || null, liberado: d.liberado !== false, portaria: !!d.portaria, teste_gratis: d.teste_gratis || null, leads: d.leads || null, carregado: true };
     }
   } catch (_) {}
   try { _avisaDonoAoSW(); } catch (_) {} // o carteiro precisa saber o DONO da conta (atendente ≠ dono)
@@ -13337,7 +13337,18 @@ function _avisaPlano() {
   const f = document.getElementById('faixa-plano'); if (!f) return;
   const p = window._acesso && window._acesso.plano;
   const mostra = p && (p.bloqueado || p.vencido || p.teste || (p.dias_restantes !== null && p.dias_restantes !== undefined && p.dias_restantes <= 7));
-  if (!mostra) { f.style.display = 'none'; f.textContent = ''; return; }
+  if (!mostra) {
+    // 📏 perto do limite de leads do plano (90%+): avisa antes de travar o cadastro
+    const L = window._acesso && window._acesso.leads;
+    if (L && L.limite != null && L.perto) {
+      const n = v => Number(v || 0).toLocaleString('pt-BR');
+      f.style.cssText = 'display:block;padding:9px 12px;font-size:12.5px;line-height:1.5;font-weight:600;border-radius:0;'
+        + (L.cheio ? 'background:#fdecea;color:#a93226;border-bottom:1px solid #f5b7b1' : 'background:#fff7e6;color:#8c6d1f;border-bottom:1px solid #ffd591');
+      f.textContent = (L.cheio ? 'Limite de leads atingido: ' : 'Perto do limite de leads: ') + n(L.usados) + ' de ' + n(L.limite) + '. ' + (L.cheio ? 'Apague leads antigos para cadastrar novos (eles ficam 30 dias na lixeira).' : 'Leads apagados deixam de contar.');
+      return;
+    }
+    f.style.display = 'none'; f.textContent = ''; return;
+  }
   const grave = !!(p.bloqueado || p.vencido);
   if (p.teste) {
     // 🎁 teste grátis: aparece desde o primeiro dia, com o botão de assinar
@@ -13524,6 +13535,7 @@ async function carregaFaturamento() {
     html += linha('Validade', escHtml(i.validade_br || 'não definida'));
     if (i.limite_numeros) html += linha('Números incluídos', i.limite_numeros);
     if (i.limite_msgs_mes) html += linha('Mensagens por mês', Number(i.limite_msgs_mes).toLocaleString('pt-BR'));
+    { const L = window._acesso && window._acesso.leads; if (L && L.limite != null) html += linha('Leads ativos', Number(L.usados || 0).toLocaleString('pt-BR') + ' de ' + Number(L.limite).toLocaleString('pt-BR') + (L.cheio ? ' — limite atingido' : '')); }
     if (i.valor) html += linha('Valor', escHtml(i.valor));
     if (i.contato) html += linha('Suporte do seu plano', escHtml(i.contato));
     if (i.link_pagamento) html += `<div style="margin-top:12px"><a href="${escHtml(i.link_pagamento)}" target="_blank" rel="noopener noreferrer" class="btn-save" style="display:inline-block;text-decoration:none">Pagar agora</a>
@@ -14119,6 +14131,7 @@ async function admEditarPlano(dono) {
       { id: 'validade', rotulo: 'Válido até', tipo: 'date', valor: atual.validade || '' },
       { id: 'limite_numeros', rotulo: 'Números incluídos (vazio = sem limite)', tipo: 'number', valor: atual.limite_numeros || '' },
       { id: 'limite_msgs_mes', rotulo: 'Mensagens por mês (vazio = sem limite)', tipo: 'number', valor: atual.limite_msgs_mes || '' },
+      { id: 'limite_leads', rotulo: 'Leads ativos (vazio = 10.000 do plano; 0 = sem limite)', tipo: 'number', valor: atual.limite_leads == null ? '' : atual.limite_leads },
       { id: 'contato', rotulo: 'Contato de suporte mostrado ao cliente', valor: atual.contato || '' },
       { id: 'link_pagamento', rotulo: 'Link de pagamento (vira o botão "Pagar agora" para o cliente)', valor: atual.link_pagamento || '', dica: 'https://...' },
       { id: 'valor', rotulo: 'Valor mostrado ao cliente', valor: atual.valor || '', dica: 'ex.: R$ 149/mês' },
@@ -14130,7 +14143,7 @@ async function admEditarPlano(dono) {
   try {
     await _apiJson(SERVER_URL + '/billing', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ dono, plano: r.plano, validade: r.validade || null, limite_numeros: r.limite_numeros, limite_msgs_mes: r.limite_msgs_mes, contato: r.contato, link_pagamento: r.link_pagamento || null, valor: r.valor, suspenso: r.suspenso === '1' })
+      body: JSON.stringify({ dono, plano: r.plano, validade: r.validade || null, limite_numeros: r.limite_numeros, limite_msgs_mes: r.limite_msgs_mes, limite_leads: r.limite_leads === '' || r.limite_leads == null ? null : Number(r.limite_leads), contato: r.contato, link_pagamento: r.link_pagamento || null, valor: r.valor, suspenso: r.suspenso === '1' })
     });
     showToast('Plano de ' + dono + ' atualizado.');
     carregaPainelDono(true);
