@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FILAZ — CRM de WhatsApp para equipes que vendem pelo WhatsApp</title>
+<meta name="description" content="Todas as conversas do WhatsApp da sua equipe em um só lugar: funil, bots, disparos, relatórios por atendente e backup. Teste grátis por 7 dias, sem cartão.">
+<meta property="og:title" content="FILAZ — CRM de WhatsApp">
+<meta property="og:description" content="Funil, bots, disparos e relatórios em cima do WhatsApp que você já usa. Teste grátis por 7 dias.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://filaz.com.br/">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Cdefs%3E%3ClinearGradient id='f' x1='0' y1='0' x2='0.6' y2='1'%3E%3Cstop offset='0' stop-color='%2322c3e6'/%3E%3Cstop offset='1' stop-color='%235a4fd6'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='192' height='192' rx='40' fill='%23fff'/%3E%3Cpath d='M36 42h72a10 10 0 0 1 0 20H60v22h40a10 10 0 0 1 0 20H60v34a12 12 0 0 1-24 0V54a12 12 0 0 1 12-12z' fill='url(%23f)'/%3E%3Crect x='118' y='112' width='14' height='36' rx='5' fill='%2322c3e6'/%3E%3Crect x='136' y='90' width='14' height='58' rx='5' fill='%235a4fd6'/%3E%3Crect x='154' y='68' width='14' height='80' rx='5' fill='%23ff2f8e'/%3E%3C/svg%3E">
+<style>
+  :root{--ink:#2b2f6b;--ink2:#4a4f7a;--mute:#6b7190;--cy:#22c3e6;--ind:#5a4fd6;--pk:#ff2f8e;--wa:#25d366;--bg:#ffffff;--bg2:#f5f6fb;--line:#e6e8f2;--r:14px}
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;font-family:Inter,"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg);line-height:1.55;-webkit-font-smoothing:antialiased}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+  header{position:sticky;top:0;background:rgba(255,255,255,.92);backdrop-filter:saturate(1.4) blur(10px);border-bottom:1px solid var(--line);z-index:10}
+  .nav{display:flex;align-items:center;justify-content:space-between;height:64px;gap:16px}
+  .logo{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:3px;font-size:19px}
+  .logo svg{width:38px;height:38px}
+  .nav .links{display:flex;gap:22px;font-size:14px;color:var(--ink2);font-weight:600}
+  .nav .links a:hover{color:var(--ind)}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 20px;border-radius:999px;font-weight:700;font-size:15px;border:2px solid transparent;cursor:pointer;transition:transform .12s,box-shadow .12s;white-space:nowrap}
+  .btn:hover{transform:translateY(-1px)}
+  .btn-p{background:linear-gradient(135deg,var(--cy),var(--ind));color:#fff;box-shadow:0 8px 24px rgba(90,79,214,.28)}
+  .btn-o{border-color:var(--line);background:#fff;color:var(--ink)}
+  .btn-wa{background:var(--wa);color:#fff;box-shadow:0 8px 24px rgba(37,211,102,.25)}
+  .btn-sm{padding:9px 16px;font-size:14px}
+  .hero{padding:72px 0 48px;background:radial-gradient(900px 420px at 10% -10%,rgba(34,195,230,.14),transparent 60%),radial-gradient(800px 420px at 95% 0%,rgba(255,47,142,.10),transparent 60%)}
+  .hero .grid{display:grid;grid-template-columns:1.1fr .9fr;gap:40px;align-items:center}
+  .tag{display:inline-block;font-size:12.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--ind);background:rgba(90,79,214,.1);padding:6px 12px;border-radius:999px;margin-bottom:16px}
+  h1{font-size:44px;line-height:1.12;margin:0 0 16px;letter-spacing:-.5px}
+  h1 em{font-style:normal;background:linear-gradient(135deg,var(--cy),var(--ind) 60%,var(--pk));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .lead{font-size:18px;color:var(--ink2);margin:0 0 26px;max-width:560px}
+  .ctas{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+  .mini{font-size:13px;color:var(--mute);margin-top:12px}
+  .mock{background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:0 30px 60px rgba(43,47,107,.12);overflow:hidden}
+  .mock .bar{display:flex;gap:6px;padding:10px 12px;border-bottom:1px solid var(--line);background:var(--bg2)}
+  .mock .bar i{width:10px;height:10px;border-radius:50%;background:#dfe2ee;display:block}
+  .mock .body{display:grid;grid-template-columns:150px 1fr;min-height:300px}
+  .mock .list{border-right:1px solid var(--line);padding:10px}
+  .mock .row{display:flex;gap:8px;align-items:center;padding:8px 6px;border-radius:8px;font-size:11.5px}
+  .mock .row.on{background:rgba(90,79,214,.08)}
+  .mock .av{width:26px;height:26px;border-radius:50%;flex:none;background:linear-gradient(135deg,var(--cy),var(--ind))}
+  .mock .row b{display:block;font-size:11.5px}
+  .mock .row span{color:var(--mute);font-size:10.5px}
+  .mock .chat{padding:14px;background:#f0f2f5;display:flex;flex-direction:column;gap:8px;justify-content:flex-end}
+  .bub{max-width:78%;padding:8px 11px;border-radius:10px;font-size:12px;background:#fff;box-shadow:0 1px 1px rgba(0,0,0,.05)}
+  .bub.me{align-self:flex-end;background:#d9fdd3}
+  .bub small{display:block;color:var(--mute);font-size:9.5px;text-align:right;margin-top:2px}
+  .chip{display:inline-block;font-size:10px;font-weight:700;color:#00806a;background:#e7f7ef;border-radius:8px;padding:1px 6px;margin-left:4px}
+  .chip.pk{color:#b4185c;background:#ffe3ef}
+  section{padding:64px 0}
+  section.alt{background:var(--bg2)}
+  h2{font-size:30px;line-height:1.2;margin:0 0 10px;letter-spacing:-.3px}
+  .sub{color:var(--ink2);font-size:16.5px;margin:0 0 36px;max-width:640px}
+  .feats{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  .f{background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:22px 20px}
+  .f .ic{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;margin-bottom:12px;font-size:20px;background:linear-gradient(135deg,rgba(34,195,230,.18),rgba(90,79,214,.18))}
+  .f h3{margin:0 0 6px;font-size:16.5px}
+  .f p{margin:0;color:var(--ink2);font-size:14px}
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;counter-reset:s}
+  .s{position:relative;background:#fff;border:1px solid var(--line);border-radius:var(--r);padding:26px 20px 22px}
+  .s:before{counter-increment:s;content:counter(s);position:absolute;top:-16px;left:20px;width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--cy),var(--ind));color:#fff;font-weight:800;display:grid;place-items:center;font-size:14px}
+  .s h3{margin:6px 0 6px;font-size:16.5px}.s p{margin:0;color:var(--ink2);font-size:14px}
+  .price{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:center}
+  .card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:30px;box-shadow:0 20px 50px rgba(43,47,107,.08)}
+  .card .v{font-size:46px;font-weight:800;letter-spacing:-1px;line-height:1}
+  .card .v small{font-size:16px;font-weight:600;color:var(--mute);letter-spacing:0}
+  .card ul{list-style:none;padding:0;margin:18px 0 22px}
+  .card li{padding:7px 0;border-bottom:1px solid var(--line);font-size:14.5px;display:flex;gap:10px;align-items:flex-start}
+  .card li:last-child{border:0}
+  .card li:before{content:"✓";color:var(--ind);font-weight:800}
+  .faq details{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 18px;margin-bottom:10px}
+  .faq summary{cursor:pointer;font-weight:700;font-size:15px;list-style:none;display:flex;justify-content:space-between;align-items:center}
+  .faq summary:after{content:"+";color:var(--ind);font-size:20px}
+  .faq details[open] summary:after{content:"–"}
+  .faq p{margin:10px 0 0;color:var(--ink2);font-size:14.5px}
+  .cta-final{text-align:center;background:linear-gradient(135deg,var(--ind),#3b2fb8);color:#fff;border-radius:24px;padding:48px 24px}
+  .cta-final h2{color:#fff}.cta-final p{color:rgba(255,255,255,.85);margin:0 0 22px}
+  .cta-final .btn-p{background:#fff;color:var(--ind);box-shadow:none}
+  footer{padding:30px 0 40px;color:var(--mute);font-size:13px}
+  footer .row{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:center}
+  footer a{color:var(--ink2);margin-right:16px}
+  .wa-float{position:fixed;right:18px;bottom:18px;width:56px;height:56px;border-radius:50%;background:var(--wa);display:grid;place-items:center;box-shadow:0 10px 24px rgba(37,211,102,.4);z-index:20}
+  .wa-float svg{width:30px;height:30px;fill:#fff}
+  @media (max-width:860px){
+    .hero{padding:44px 0 36px}.hero .grid{grid-template-columns:1fr;gap:28px}h1{font-size:33px}.lead{font-size:16.5px}
+    .feats,.steps{grid-template-columns:1fr}.price{grid-template-columns:1fr}
+    .nav .links{display:none}h2{font-size:25px}section{padding:48px 0}
+    .mock .body{grid-template-columns:120px 1fr}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap nav">
+    <a class="logo" href="#">
+      <svg viewBox="0 0 192 192" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="0.6" y2="1"><stop offset="0" stop-color="#22c3e6"/><stop offset="1" stop-color="#5a4fd6"/></linearGradient></defs><path d="M36 42h72a10 10 0 0 1 0 20H60v22h40a10 10 0 0 1 0 20H60v34a12 12 0 0 1-24 0V54a12 12 0 0 1 12-12z" fill="url(#lg)"/><rect x="118" y="112" width="14" height="36" rx="5" fill="#22c3e6"/><rect x="136" y="90" width="14" height="58" rx="5" fill="#5a4fd6"/><rect x="154" y="68" width="14" height="80" rx="5" fill="#ff2f8e"/></svg>
+      FILAZ
+    </a>
+    <nav class="links"><a href="#recursos">Recursos</a><a href="#como">Como funciona</a><a href="#preco">Preço</a><a href="#faq">Dúvidas</a></nav>
+    <div style="display:flex;gap:8px;align-items:center">
+      <a class="btn btn-o btn-sm" href="https://app.filaz.com.br/">Entrar</a>
+      <a class="btn btn-p btn-sm" href="https://app.filaz.com.br/">Testar grátis</a>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap grid">
+    <div>
+      <span class="tag">CRM de WhatsApp · 7 dias grátis</span>
+      <h1>Todas as conversas do WhatsApp da sua equipe <em>em um só lugar</em></h1>
+      <p class="lead">Funil de vendas, bots, disparos com ritmo seguro, equipe com responsável por conversa e relatórios por atendente — em cima do WhatsApp que você já usa. Conecta lendo um QR Code.</p>
+      <div class="ctas">
+        <a class="btn btn-p" href="https://app.filaz.com.br/">Começar o teste grátis</a>
+        <a class="btn btn-wa" href="https://wa.me/5515976008104?text=Oi!%20Quero%20saber%20mais%20sobre%20o%20FILAZ" target="_blank" rel="noopener">Falar no WhatsApp</a>
+      </div>
+      <div class="mini">Sem cartão. Entra com a sua conta Google e já começa. Cancela quando quiser.</div>
+    </div>
+    <div class="mock" aria-hidden="true">
+      <div class="bar"><i></i><i></i><i></i></div>
+      <div class="body">
+        <div class="list">
+          <div class="row on"><span class="av"></span><div><b>Maria Souza <span class="chip">Ana</span></b><span>Você: Segue o contrato ✓✓</span></div></div>
+          <div class="row"><span class="av" style="background:linear-gradient(135deg,#ff2f8e,#5a4fd6)"></span><div><b>João Pedro <span class="chip pk">Novo</span></b><span>Quero portar meu…</span></div></div>
+          <div class="row"><span class="av" style="background:linear-gradient(135deg,#22c3e6,#25d366)"></span><div><b>Carla Lima</b><span>🎤 Áudio</span></div></div>
+          <div class="row"><span class="av" style="background:#c9cde0"></span><div><b>Roberto</b><span>📎 extrato.pdf</span></div></div>
+        </div>
+        <div class="chat">
+          <div class="bub">Bom dia! Vi o anúncio, queria saber da portabilidade.<small>09:12</small></div>
+          <div class="bub me">Bom dia, Maria! Me manda o extrato que eu simulo pra você.<small>09:13 ✓✓</small></div>
+          <div class="bub">Mandei agora 😊<small>09:20</small></div>
+          <div class="bub me">Perfeito. Fechou em 1.200 com 84 parcelas. Segue o contrato.<small>09:34 ✓✓</small></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="recursos">
+  <div class="wrap">
+    <h2>O que o FILAZ faz por você</h2>
+    <p class="sub">Feito por quem vende pelo WhatsApp todos os dias. Cada função nasceu de uma dor real de atendimento.</p>
+    <div class="feats">
+      <div class="f"><div class="ic">📱</div><h3>Vários números, uma tela</h3><p>Conecte quantos WhatsApp precisar — lendo o QR Code ou pela API oficial da Meta — e atenda tudo em uma lista só.</p></div>
+      <div class="f"><div class="ic">🧭</div><h3>Funil de vendas</h3><p>Etapas, etiquetas, favoritos e lembretes. Arraste o lead de "Novo" até "Fechado" e veja quantos estão em cada fase.</p></div>
+      <div class="f"><div class="ic">🤖</div><h3>Bots e respostas automáticas</h3><p>Monte fluxos com perguntas, botões e horários. O bot qualifica e entrega a conversa pronta para a pessoa fechar.</p></div>
+      <div class="f"><div class="ic">📣</div><h3>Disparos com ritmo seguro</h3><p>Campanhas em massa com intervalo, horário comercial e pausa automática — para o número não ser bloqueado.</p></div>
+      <div class="f"><div class="ic">👥</div><h3>Equipe com responsável</h3><p>Passe a conversa para alguém, filtre "Minhas" e "Sem responsável", e saiba quem respondeu o quê.</p></div>
+      <div class="f"><div class="ic">📊</div><h3>Relatórios por atendente</h3><p>Mensagens, conversas sem resposta, tempo até responder e quantas saíram em até 10 minutos — por pessoa.</p></div>
+      <div class="f"><div class="ic">📝</div><h3>Anotações, fotos e PDF</h3><p>Anotações com fotos coladas, tarefas por lead e exportação da conversa em PDF para guardar como prova.</p></div>
+      <div class="f"><div class="ic">📑</div><h3>Planilha do Google</h3><p>Importe leads direto da sua planilha e receba, toda semana, um backup das anotações, etiquetas e tarefas.</p></div>
+      <div class="f"><div class="ic">🔔</div><h3>Avisos no celular</h3><p>Instale como aplicativo no celular e receba notificação de cada mensagem — mesmo com o FILAZ fechado.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="alt" id="como">
+  <div class="wrap">
+    <h2>Começa em 5 minutos</h2>
+    <p class="sub">Nada para instalar no computador. Nada para aprovar com a Meta no primeiro dia.</p>
+    <div class="steps">
+      <div class="s"><h3>Entre com o Google</h3><p>Clique em "Testar grátis", escolha sua conta Google e o FILAZ abre com 7 dias liberados.</p></div>
+      <div class="s"><h3>Conecte o WhatsApp</h3><p>Leia o QR Code com o celular, como no WhatsApp Web. As conversas aparecem na hora.</p></div>
+      <div class="s"><h3>Traga seus leads</h3><p>Importe da planilha do Google ou deixe que entrem sozinhos pelas conversas. Monte o funil e pronto.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="preco">
+  <div class="wrap price">
+    <div>
+      <h2>Um plano só, sem pegadinha</h2>
+      <p class="sub" style="margin-bottom:14px">Números ilimitados, equipe incluída e todas as funções liberadas. Você paga por conta, não por atendente nem por número.</p>
+      <p style="color:var(--ink2);font-size:14.5px;margin:0">Os 7 dias de teste são com tudo liberado. No fim, se gostar, assina; se não, não paga nada — e nada é apagado.</p>
+    </div>
+    <div class="card">
+      <div style="font-weight:700;color:var(--mute);font-size:13px;letter-spacing:.5px;text-transform:uppercase">FILAZ</div>
+      <div class="v">R$ 109,90<small>/mês</small></div>
+      <ul>
+        <li>Números de WhatsApp ilimitados</li>
+        <li>Equipe ilimitada, com responsável por conversa</li>
+        <li>Até 10 mil leads ativos no funil</li>
+        <li>Bots, disparos, funil, relatórios e backup</li>
+        <li>Avisos no celular e suporte pelo WhatsApp</li>
+      </ul>
+      <a class="btn btn-p" style="width:100%" href="https://app.filaz.com.br/">Testar grátis por 7 dias</a>
+      <div class="mini" style="text-align:center">Sem cartão para testar · cancele quando quiser</div>
+    </div>
+  </div>
+</section>
+
+<section class="alt faq" id="faq">
+  <div class="wrap">
+    <h2>Dúvidas comuns</h2>
+    <p class="sub">Se a sua não estiver aqui, chama no WhatsApp.</p>
+    <details><summary>Preciso da API oficial da Meta?</summary><p>Não. O jeito mais simples é ler o QR Code, igual ao WhatsApp Web. Quem já tem a API oficial também pode conectar por ela — o FILAZ aceita os dois.</p></details>
+    <details><summary>Meu número pode ser bloqueado nos disparos?</summary><p>O FILAZ dispara com intervalo entre mensagens, respeita horário comercial e para sozinho quando percebe falhas. Mesmo assim, use mensagens personalizadas e bom senso: nenhuma ferramenta elimina o risco de quem manda spam.</p></details>
+    <details><summary>Minha equipe toda pode usar?</summary><p>Sim. Você libera o e-mail de cada pessoa em Configurações ▸ Equipe. Cada uma entra com o próprio Google, e você vê no relatório quem atendeu o quê.</p></details>
+    <details><summary>O que acontece com meus dados se eu cancelar?</summary><p>Nada é apagado. Suas conversas, leads e configurações ficam guardados; só o envio de mensagens pausa até reativar. Você também pode exportar conversas em PDF e ter o backup semanal na sua planilha do Google.</p></details>
+    <details><summary>Como é o limite de 10 mil leads?</summary><p>É o total de leads ativos no funil. Lead apagado deixa de contar — então dá para limpar o funil e seguir usando.</p></details>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="cta-final">
+      <h2>Pronto para organizar o WhatsApp da sua equipe?</h2>
+      <p>Entra com o Google, lê o QR Code e começa. 7 dias grátis, sem cartão.</p>
+      <a class="btn btn-p" href="https://app.filaz.com.br/">Começar o teste grátis</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap row">
+    <div>© <span id="ano"></span> FILAZ · filaz.com.br</div>
+    <div><a href="https://app.filaz.com.br/terms.html">Termos de uso</a><a href="https://app.filaz.com.br/privacy.html">Privacidade</a><a href="https://wa.me/5515976008104" target="_blank" rel="noopener">WhatsApp (15) 97600-8104</a></div>
+  </div>
+</footer>
+
+<a class="wa-float" href="https://wa.me/5515976008104?text=Oi!%20Quero%20saber%20mais%20sobre%20o%20FILAZ" target="_blank" rel="noopener" aria-label="Falar no WhatsApp">
+  <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3C9.4 3 4 8.3 4 14.9c0 2.3.7 4.6 1.9 6.5L4 29l7.8-2c1.3.6 2.8.9 4.2.9 6.6 0 12-5.3 12-11.9S22.6 3 16 3zm0 21.8c-1.3 0-2.6-.3-3.7-1l-.3-.2-4.6 1.2 1.2-4.4-.2-.3a9.7 9.7 0 0 1-1.6-5.2c0-5.4 4.5-9.8 10-9.8s10 4.4 10 9.8-4.5 9.9-10 9.9zm5.4-7.3c-.3-.1-1.7-.9-2-1-.3-.1-.5-.1-.7.1-.2.3-.8 1-.9 1.2-.2.2-.3.2-.6.1-.3-.1-1.3-.5-2.4-1.5-.9-.8-1.5-1.8-1.7-2.1-.2-.3 0-.5.1-.6l.4-.5.3-.5c.1-.2 0-.4 0-.5l-.9-2.2c-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.5s1.1 2.9 1.2 3.1c.1.2 2.1 3.2 5.1 4.5 2.5 1 3 .8 3.6.8.6-.1 1.7-.7 2-1.4.2-.7.2-1.2.2-1.4-.1-.1-.3-.2-.6-.3z"/></svg>
+</a>
+<script>document.getElementById('ano').textContent = new Date().getFullYear();</script>
+</body>
+</html>
