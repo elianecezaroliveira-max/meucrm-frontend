@@ -2431,7 +2431,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v557</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v558</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3276,7 +3276,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v557</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v558</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3350,7 +3350,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 557;
+const APP_VER = 558;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -13226,7 +13226,7 @@ async function _carregaAcesso() {
     const t = r.headers.get('content-type') || '';
     if (r.ok && t.indexOf('json') >= 0) {
       const d = await r.json();
-      if (d && d.papel) window._acesso = { papel: d.papel, fornecedor: !!d.fornecedor, plano: d.plano || null, dono: d.dono || null, email: d.email || null, liberado: d.liberado !== false, portaria: !!d.portaria, carregado: true };
+      if (d && d.papel) window._acesso = { papel: d.papel, fornecedor: !!d.fornecedor, plano: d.plano || null, dono: d.dono || null, email: d.email || null, liberado: d.liberado !== false, portaria: !!d.portaria, teste_gratis: d.teste_gratis || null, carregado: true };
     }
   } catch (_) {}
   try { _avisaDonoAoSW(); } catch (_) {} // o carteiro precisa saber o DONO da conta (atendente ≠ dono)
@@ -13243,6 +13243,7 @@ async function _carregaAcesso() {
 // Nada de erro técnico: só o aviso e o botão de sair.
 function _telaSemLiberacao() {
   if (document.getElementById('sem-lib')) return;
+  const tg = window._acesso && window._acesso.teste_gratis;
   const d = document.createElement('div');
   d.id = 'sem-lib';
   d.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#f0f2f5;display:flex;align-items:center;justify-content:center;padding:24px';
@@ -13250,7 +13251,12 @@ function _telaSemLiberacao() {
       <div style="font-size:30px;color:#f0b400;margin-bottom:8px"><i class=ic-lock></i></div>
       <div style="font-size:17px;font-weight:700;color:#131c20;margin-bottom:10px">Acesso ainda não liberado</div>
       <p style="font-size:13.5px;color:#54656f;line-height:1.65;margin:0 0 8px">O e-mail <b>${escHtml((window._acesso && window._acesso.email) || '')}</b> entrou, mas ainda não tem permissão para usar o FILAZ.</p>
-      <p style="font-size:13px;color:#667781;line-height:1.65;margin:0 0 16px">Se você quer contratar, deixe os seus dados abaixo — o pedido chega direto a quem libera.</p>
+      ${tg && tg.disponivel ? `<div id="sl-teste" style="background:#e7f7ef;border:1px solid #c8ecd9;border-radius:10px;padding:12px;margin:0 0 14px">
+        <div style="font-size:13.5px;font-weight:700;color:#00806a;margin-bottom:4px">Experimente grátis por ${escHtml(String(tg.dias))} dias</div>
+        <div style="font-size:12.5px;color:#54656f;line-height:1.55;margin-bottom:9px">Sem cartão. Começa agora, com tudo liberado. No fim do prazo você decide se assina.</div>
+        <button class="btn-save" style="width:100%" onclick="comecarTesteGratis(this)">Testar grátis por ${escHtml(String(tg.dias))} dias</button>
+      </div>` : ''}
+      <p style="font-size:13px;color:#667781;line-height:1.65;margin:0 0 16px">${tg && tg.disponivel ? 'Ou, se preferir falar com alguém antes, deixe' : 'Se você quer contratar, deixe'} os seus dados abaixo — o pedido chega direto a quem libera.</p>
       <div id="sl-form" style="display:flex;flex-direction:column;gap:7px;text-align:left;margin-bottom:16px">
         <input id="sl-nome" placeholder="Seu nome" style="background:#fff;border:1px solid #d1d7db;border-radius:8px;padding:10px 12px;font-size:13px;outline:none">
         <input id="sl-empresa" placeholder="Nome da empresa" style="background:#fff;border:1px solid #d1d7db;border-radius:8px;padding:10px 12px;font-size:13px;outline:none">
@@ -13330,9 +13336,28 @@ async function _avisaServidorNoApp() {
 function _avisaPlano() {
   const f = document.getElementById('faixa-plano'); if (!f) return;
   const p = window._acesso && window._acesso.plano;
-  const mostra = p && (p.bloqueado || p.vencido || (p.dias_restantes !== null && p.dias_restantes !== undefined && p.dias_restantes <= 7));
+  const mostra = p && (p.bloqueado || p.vencido || p.teste || (p.dias_restantes !== null && p.dias_restantes !== undefined && p.dias_restantes <= 7));
   if (!mostra) { f.style.display = 'none'; f.textContent = ''; return; }
   const grave = !!(p.bloqueado || p.vencido);
+  if (p.teste) {
+    // 🎁 teste grátis: aparece desde o primeiro dia, com o botão de assinar
+    f.style.display = 'block';
+    f.style.cssText = 'display:block;padding:9px 12px;font-size:12.5px;line-height:1.5;font-weight:600;border-radius:0;'
+      + (grave ? 'background:#fdecea;color:#a93226;border-bottom:1px solid #f5b7b1' : 'background:#e7f7ef;color:#00806a;border-bottom:1px solid #c8ecd9');
+    f.textContent = grave
+      ? 'Seu teste grátis terminou em ' + (p.validade_br || '—') + '. O envio de mensagens está pausado — nada foi perdido: conversas, leads e configurações continuam aqui.'
+      : 'Teste grátis: ' + (p.dias_restantes === 0 ? 'último dia' : 'faltam ' + p.dias_restantes + ' dia(s)') + ' (até ' + (p.validade_br || '—') + ').';
+    if (p.link_pagamento) {
+      const a = document.createElement('a');
+      a.href = p.link_pagamento; a.target = '_blank'; a.rel = 'noopener noreferrer';
+      a.textContent = 'Assinar' + (p.valor ? ' por ' + p.valor : '');
+      a.style.cssText = 'display:inline-block;margin-left:8px;color:inherit;font-weight:700;text-decoration:underline';
+      f.appendChild(a);
+    } else if (!grave) {
+      const s = document.createElement('span'); s.textContent = ' Para assinar, fale com quem fornece o FILAZ.'; s.style.fontWeight = '400'; f.appendChild(s);
+    }
+    return;
+  }
   f.style.display = 'block';
   f.style.cssText = 'display:block;padding:9px 12px;font-size:12.5px;line-height:1.5;font-weight:600;border-radius:0;'
     + (grave ? 'background:#fdecea;color:#a93226;border-bottom:1px solid #f5b7b1' : 'background:#fff7e6;color:#8c6d1f;border-bottom:1px solid #ffd591');
@@ -13761,6 +13786,21 @@ async function restaurarBackupDia(dia) {
 // ═══════════════════════════════════════════════════════════════════
 // 🚪 QUERO CONTRATAR (na tela de quem não foi liberado)
 // ═══════════════════════════════════════════════════════════════════
+// 🎁 Começa o teste grátis na hora: o servidor libera o e-mail por N dias e o app recarrega já dentro
+async function comecarTesteGratis(btn) {
+  const st = document.getElementById('sl-status');
+  const v = id => (document.getElementById(id) || {}).value || '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Liberando…'; }
+  try {
+    const d = await _apiJson(SERVER_URL + '/teste-gratis', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nome: v('sl-nome').trim(), empresa: v('sl-empresa').trim(), whatsapp: v('sl-whats').trim() }) });
+    if (st) { st.style.color = '#00a884'; st.innerHTML = '<b>Pronto!</b> Seu teste vai até ' + escHtml((d.plano && d.plano.validade_br) || '') + '. Abrindo o FILAZ…'; }
+    setTimeout(() => { try { location.reload(); } catch (_) {} }, 900);
+  } catch (e) {
+    if (st) { st.style.color = '#ef4444'; st.textContent = e.message || 'Não consegui liberar o teste.'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Testar grátis'; }
+  }
+}
 async function pedirAcesso(btn) {
   const st = document.getElementById('sl-status');
   const v = id => (document.getElementById(id) || {}).value || '';
@@ -13795,6 +13835,21 @@ async function carregaPagamento() {
       <input id="pag-ciclo" type="number" min="1" max="400" value="${escHtml(String(d.ciclo_dias || 30))}" style="width:80px;background:#fff;border:1px solid #d1d7db;border-radius:8px;padding:7px 9px;font-size:13px;outline:none">
       <span style="font-size:12.5px;color:#667781">dias a cada pagamento</span>
       <button class="pf-topbtn" onclick="salvarCiclo(this)">Salvar</button>
+    </div>
+    <div style="border:1px solid #e9edef;border-radius:10px;padding:10px 12px;margin:6px 0 10px">
+      <div style="font-size:12.5px;font-weight:700;color:#131c20;margin-bottom:6px">🎁 Teste grátis</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
+        <label style="display:flex;gap:6px;align-items:center;font-size:12.5px;color:#131c20;cursor:pointer"><input type="checkbox" id="pag-teste-ligado" ${d.teste_ligado !== false ? 'checked' : ''}> Quem entra sem liberação pode começar sozinho um teste de</label>
+        <input id="pag-teste-dias" type="number" min="1" max="90" value="${escHtml(String(d.teste_dias || 7))}" style="width:60px;background:#fff;border:1px solid #d1d7db;border-radius:8px;padding:6px 8px;font-size:13px;outline:none">
+        <span style="font-size:12.5px;color:#667781">dias</span>
+      </div>
+      <div style="font-size:11.5px;color:#667781;line-height:1.5;margin-bottom:8px">Cada e-mail só ganha o teste uma vez. Você recebe um aviso no celular quando alguém começa. No fim do prazo o envio pausa e a faixa oferece "Assinar" com o link abaixo.</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input id="pag-link-padrao" placeholder="Link de pagamento padrão (https://…)" value="${escHtml(d.link_pagamento_padrao || '')}" style="flex:1;min-width:220px;background:#fff;border:1px solid #d1d7db;border-radius:8px;padding:6px 8px;font-size:12.5px;outline:none">
+        <input id="pag-valor-padrao" placeholder="Valor (ex.: R$ 97/mês)" value="${escHtml(d.valor_padrao || '')}" style="width:150px;background:#fff;border:1px solid #d1d7db;border-radius:8px;padding:6px 8px;font-size:12.5px;outline:none">
+        <button class="pf-topbtn" onclick="salvarTesteCfg(this)">Salvar</button>
+      </div>
+      <div style="font-size:11.5px;color:#667781;line-height:1.5;margin-top:6px">O link padrão vale para todo cliente que não tem um link próprio no plano dele.</div>
     </div>`;
   if (url) {
     html += `<div style="font-size:12.5px;font-weight:700;color:#131c20;margin:10px 0 4px">Endereço para o serviço de pagamento avisar</div>
@@ -13827,6 +13882,15 @@ async function salvarCiclo(btn) {
   const v = parseInt((document.getElementById('pag-ciclo') || {}).value, 10) || 30;
   if (btn) btn.disabled = true;
   try { await _apiJson(SERVER_URL + '/admin/pagamento', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ciclo_dias: v }) }); showToast('Salvo: ' + v + ' dias por pagamento.', 'ok'); }
+  catch (e) { showToast(e.message || 'Não consegui salvar.', 'err'); }
+  finally { if (btn) btn.disabled = false; }
+}
+async function salvarTesteCfg(btn) {
+  const g = id => document.getElementById(id) || {};
+  const corpo = { teste_ligado: !!g('pag-teste-ligado').checked, teste_dias: parseInt(g('pag-teste-dias').value, 10) || 7, link_pagamento_padrao: String(g('pag-link-padrao').value || '').trim(), valor_padrao: String(g('pag-valor-padrao').value || '').trim() };
+  if (corpo.link_pagamento_padrao && !/^https?:\/\//i.test(corpo.link_pagamento_padrao)) { showToast('O link de pagamento precisa começar com https://', 'warn'); return; }
+  if (btn) btn.disabled = true;
+  try { await _apiJson(SERVER_URL + '/admin/pagamento', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) }); showToast(corpo.teste_ligado ? 'Teste grátis de ' + corpo.teste_dias + ' dias ligado.' : 'Teste grátis desligado.', 'ok'); }
   catch (e) { showToast(e.message || 'Não consegui salvar.', 'err'); }
   finally { if (btn) btn.disabled = false; }
 }
@@ -14260,6 +14324,7 @@ function desenhaRelatorios() {
     <div class="rel-tile"><b>${_relN(t.enviadas)}</b><span>Mensagens enviadas</span><small>o quanto vocês responderam</small></div>
     <div class="rel-tile"><b>${t.leads_novos == null ? '—' : _relN(t.leads_novos)}</b><span>Leads novos</span><small>${t.leads_novos == null ? 'seu banco ainda não guarda a data de entrada' : _relN(t.leads_total) + ' no total'}</small></div>
     <div class="rel-tile"><b>${_relDur(d.resposta && d.resposta.mediana_min)}</b><span>Tempo até responder</span><small>${d.resposta && d.resposta.amostras ? 'metade das respostas sai antes disso' : 'ainda sem respostas para medir'}</small></div>
+    <div class="rel-tile"><b>${d.resposta && d.resposta.ate10_pct != null ? d.resposta.ate10_pct + '%' : '—'}</b><span>Respondidas em até 10 min</span><small>${d.sem_resposta && d.sem_resposta.n ? _relN(d.sem_resposta.n) + ' conversa(s) esperando resposta agora' : 'nenhuma conversa esperando resposta'}</small></div>
   </div>`;
 
   if (vazio) {
@@ -14400,16 +14465,30 @@ function _relTabelaAtendentes(d) {
       <div style="margin-top:5px">Depois disso, as mensagens novas já entram com o autor.</div></div>`;
   }
   const a = d.atendentes || [];
-  if (!a.length) return '<div class="rel-vazio">Nenhuma mensagem com autor registrado neste período.<br>Mensagens enviadas por bot ou automação não entram nesta conta.</div>';
-  return `<table class="rel-tab">
-    <thead><tr><th>Pessoa</th><th>Mensagens</th><th>Conversas</th><th>Tempo médio para responder</th></tr></thead>
-    <tbody>${a.map(x => `<tr>
-      <td style="word-break:break-all">${escHtml(x.email)}</td>
+  const auto = d.automacao || { enviadas: 0, conversas: 0 };
+  if (!a.length && !auto.enviadas) return '<div class="rel-vazio">Nenhuma mensagem com autor registrado neste período.</div>';
+  const linha = (x, bot) => `<tr${bot ? ' style="color:var(--rel-tinta3)"' : ''}>
+      <td style="word-break:break-all">${bot ? '🤖 Bot / automação' : '<b>' + escHtml(_nomeAutor(x.email)) + '</b><div style="font-size:10.5px;color:var(--rel-tinta3)">' + escHtml(x.email) + '</div>'}</td>
       <td>${_relN(x.enviadas)}</td>
       <td>${_relN(x.conversas)}</td>
-      <td>${x.respostas ? _relDur(x.resposta_media_min) : '—'}</td>
-    </tr>`).join('')}</tbody></table>
-    <div style="font-size:11.5px;color:var(--rel-tinta3);margin-top:7px">O tempo é medido da mensagem do cliente até a primeira resposta da pessoa.</div>`;
+      <td>${bot ? '—' : (x.sem_resposta ? '<b style="color:#c0392b">' + _relN(x.sem_resposta) + '</b><div style="font-size:10.5px;color:var(--rel-tinta3)">a mais antiga há ' + _relDur(x.sem_resposta_max_min) + '</div>' : '0')}</td>
+      <td title="média ${bot ? '' : _relDur(x.resposta_media_min)}">${bot || !x.respostas ? '—' : _relDur(x.resposta_mediana_min) + '<div style="font-size:10.5px;color:var(--rel-tinta3)">média ' + _relDur(x.resposta_media_min) + '</div>'}</td>
+      <td>${bot || x.ate10_pct == null ? '—' : x.ate10_pct + '%'}</td>
+    </tr>`;
+  const esp = (d.sem_resposta && d.sem_resposta.lista) || [];
+  return `<table class="rel-tab">
+    <thead><tr><th>Pessoa</th><th>Mensagens</th><th>Conversas</th><th>Sem resposta</th><th>Tempo para responder</th><th>Em até 10 min</th></tr></thead>
+    <tbody>${a.map(x => linha(x, false)).join('')}${auto.enviadas ? linha(auto, true) : ''}</tbody></table>
+    <div style="font-size:11.5px;color:var(--rel-tinta3);margin-top:7px">"Sem resposta" = conversas em que a última mensagem é do cliente (de quem é o responsável ou de quem respondeu por último). O tempo é a mediana da mensagem do cliente até a primeira resposta da pessoa; "em até 10 min" é a parte das respostas que saiu nesse prazo.</div>
+    ${esp.length ? `<div style="font-size:12.5px;font-weight:700;color:var(--rel-tinta);margin:12px 0 4px">Esperando resposta agora</div>
+    ${esp.map(x => `<div class="rel-esp" style="display:flex;gap:8px;align-items:baseline;padding:5px 0;border-bottom:1px solid var(--rel-grade);cursor:pointer;flex-wrap:wrap" onclick="relAbrirConversa('${escHtml(x.phone)}','${_jsAttr(x.nome || '')}','${_jsAttr(x.account_id || '')}')">
+      <span style="flex:1;min-width:140px;font-size:12.5px;color:var(--rel-tinta)"><b>${escHtml(x.nome || x.phone)}</b>${x.nome ? ' <span style="color:var(--rel-tinta3);font-size:11px">' + escHtml(x.phone) + '</span>' : ''}</span>
+      <span style="font-size:12px;color:#c0392b;font-weight:700">há ${_relDur(x.minutos)}</span>
+      <span style="font-size:11.5px;color:var(--rel-tinta3)">${x.quem ? escHtml(_nomeAutor(x.quem)) : 'ninguém respondeu ainda'}</span></div>`).join('')}` : ''}`;
+}
+function relAbrirConversa(phone, nome, acct) {
+  try { closeRelatorios(); } catch (_) {}
+  try { selectContact(phone, nome || phone, acct || undefined); } catch (_) {}
 }
 function _relLigaDicas() {
   document.querySelectorAll('#rel-corpo .rel-hit').forEach(r => {
