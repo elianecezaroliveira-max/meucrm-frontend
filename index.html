@@ -2428,7 +2428,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v555</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v556</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3264,7 +3264,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v555</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v556</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3338,7 +3338,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 555;
+const APP_VER = 556;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -12195,8 +12195,21 @@ async function _sendOneFile(file, caption, semRecarga, lote, alvo) {
       uLocal = URL.createObjectURL(file);
       div.innerHTML = `<div class="media-wrap"><video src="${uLocal}" muted playsinline onloadedmetadata="try{const s=_waMediaSize(this.videoWidth,this.videoHeight);this.style.width=s[0]+'px';this.style.height=s[1]+'px';}catch(_){}const a=document.getElementById('messages-area');if(a)a.scrollTop=a.scrollHeight" style="border-radius:6px;display:block;background:#0b141a"></video>${caption ? `<div class="media-caption">${escHtml(caption)}</div>` : ''}</div><div class="time">${horaAgora} <span class="msg-ticks pending">${TICK_CLOCK}</span></div>`;
     } else {
-      const icon = file.type.startsWith('audio/') ? '<i class=ic-music></i>' : '<i class=ic-file></i>';
-      div.innerHTML = `${icon} <em style="font-size:13px;opacity:.8">${escHtml(file.name)}</em><div class="time">${horaAgora}</div>`;
+      // Bolha provisória do ARQUIVO igual à definitiva (selo PDF/DOC + nome + "Enviando…" + ⏳):
+      // antes era o nome em itálico com um clipe, e o "_" do nome ainda virava itálico — parecia
+      // outra coisa por alguns segundos até a mensagem gravada chegar
+      if (file.type.startsWith('audio/')) {
+        div.innerHTML = `<i class=ic-music></i> <span style="font-size:13px;opacity:.8">${escHtml(file.name)}</span><div class="time">${horaAgora} <span class="msg-ticks pending">${TICK_CLOCK}</span></div>`;
+      } else {
+        const _ext = (file.name.includes('.') ? file.name.split('.').pop() : '').toLowerCase();
+        const _extShow = (_ext && _ext.length <= 5) ? _ext.toUpperCase() : 'ARQ';
+        const _extColors = { pdf:'#e5252a', doc:'#2b7cd3', docx:'#2b7cd3', xls:'#1e7145', xlsx:'#1e7145', csv:'#1e7145', ppt:'#d24726', pptx:'#d24726', zip:'#f0a500', rar:'#f0a500', txt:'#607d8b', jpg:'#8e44ad', jpeg:'#8e44ad', png:'#8e44ad' };
+        div.innerHTML = `<div class="media-wrap doc-wrap">
+          <div style="display:flex;align-items:center;gap:10px;min-width:0">
+            <span style="background:${_extColors[_ext] || '#607d8b'};color:#fff;font-size:10px;font-weight:800;border-radius:6px;padding:7px 6px;min-width:34px;text-align:center;letter-spacing:.4px;flex-shrink:0">${escHtml(_extShow)}</span>
+            <span style="min-width:0;flex:1"><span style="word-break:break-all;display:block">${escHtml(file.name)}</span><span style="font-size:11.5px;color:#8696a0;display:block;margin-top:1px">Enviando…</span></span>
+          </div></div><div class="time">${horaAgora} <span class="msg-ticks pending">${TICK_CLOCK}</span></div>`;
+      }
     }
     area.appendChild(div);
     area.scrollTop = area.scrollHeight;
