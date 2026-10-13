@@ -1,5 +1,9 @@
 {
   "git": { "deploymentEnabled": { "main": false } },
+  "rewrites": [
+    { "source": "/", "has": [{ "type": "host", "value": "filaz.com.br" }], "destination": "/site/index.html" },
+    { "source": "/", "has": [{ "type": "host", "value": "www.filaz.com.br" }], "destination": "/site/index.html" }
+  ],
   "headers": [
     {
       "source": "/(.*)",
