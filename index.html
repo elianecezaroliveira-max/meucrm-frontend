@@ -2439,7 +2439,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v561</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v562</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3284,7 +3284,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v561</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v562</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3358,7 +3358,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 561;
+const APP_VER = 562;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -8638,7 +8638,7 @@ async function _lpSobeFotosNota(phone, arquivos) {
       if (f.size > 16 * 1024 * 1024) { showToast('Foto muito grande (máx. 16 MB).', 'warn'); continue; }
       const b64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = rej; r.readAsDataURL(f); });
       const r = await fetch(SERVER_URL + '/notes', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, account_id: currentAccountId || null, content: _LP_FOTO_MARCA, arquivo: b64, mime: f.type || 'image/png', filename: f.name || ('anotacao-' + Date.now() + '.png') }) });
+        body: JSON.stringify({ phone, account_id: null, content: _LP_FOTO_MARCA, /* foto das Anotações não pertence a número nenhum */ arquivo: b64, mime: f.type || 'image/png', filename: f.name || ('anotacao-' + Date.now() + '.png') }) });
       const d = await r.json().catch(() => ({}));
       if (r.ok && !d.error) ok++; else showToast(d.error || 'Não consegui guardar a foto', 'err');
     } catch (_) { showToast('Erro ao ler a foto', 'err'); }
