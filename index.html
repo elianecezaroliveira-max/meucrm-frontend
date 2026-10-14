@@ -291,6 +291,14 @@
   #send-btn svg { width: 20px; height: 20px; fill: white; }
   /* EMOJI PICKER */
   #emoji-btn { background: none; border: none; color: #667781; cursor: pointer; font-size: 22px; padding: 6px; border-radius: 50%; transition: background 0.2s, color 0.2s; flex-shrink: 0; line-height: 1; }
+  /* 🎙️ Ditar por voz (PC): fala e o texto entra no campo, sem teclado */
+  #btn-ditar { background: none; border: none; color: #667781; cursor: pointer; padding: 6px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; gap: 4px; font-family: inherit; font-size: 12px; font-weight: 700; line-height: 1; }
+  #btn-ditar svg { width: 21px; height: 21px; display: block; }
+  #btn-ditar:hover { background: #f0f2f5; color: #00806a; }
+  #btn-ditar.on { color: #fff; background: #ef4444; padding: 6px 10px; border-radius: 14px; animation: ditarPulsa 1.2s ease-in-out infinite; }
+  @keyframes ditarPulsa { 0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,.45); } 50% { box-shadow: 0 0 0 7px rgba(239,68,68,0); } }
+  #msg-input.ditando { box-shadow: inset 0 0 0 2px rgba(239,68,68,.35); }
+  @media (hover: none) { #btn-ditar { display: none !important; } }
   #emoji-btn:hover { background: #e9edef; color: #131c20; }
   #emoji-btn.active { color: #00a884; }
   /* ANEXO */
@@ -2431,7 +2439,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v559</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v560</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3276,7 +3284,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v559</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v560</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3350,7 +3358,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 559;
+const APP_VER = 560;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5427,6 +5435,82 @@ function updateSendMicButtons() {
   if (typeof handleFileSelect === 'function') handleFileSelect = wrap(handleFileSelect);
   if (typeof removeFile === 'function')       removeFile       = wrap(removeFile);
 })();
+// ═══════════════════════════════════════════════════════════════════
+// 🎙️ DITAR POR VOZ (PC): fala e o texto aparece no campo — sem digitar
+// ═══════════════════════════════════════════════════════════════════
+// Usa o reconhecimento de voz do próprio Chrome/Edge (pt-BR). Enquanto você fala, o
+// texto provisório aparece no campo; quando a frase fecha, fica definitivo. Nada é
+// enviado sozinho: continua precisando do botão de enviar. Pontuação falada:
+// "vírgula", "ponto", "interrogação", "exclamação", "nova linha".
+function _ditarDisponivel() {
+  try { return !!(window.SpeechRecognition || window.webkitSpeechRecognition) && !_ehCelular(); } catch (_) { return false; }
+}
+let _ditado = null; // { rec, base, finais, ativo }
+function _ditarPontua(t) {
+  return String(t || '')
+    .replace(/\s*\b(vírgula|virgula)\b/gi, ',').replace(/\s*\bponto final\b/gi, '.').replace(/\s*\bponto\b(?!\s*(de|da|do|com|e\b))/gi, '.')
+    .replace(/\s*\b(interrogação|interrogacao)\b/gi, '?').replace(/\s*\b(exclamação|exclamacao)\b/gi, '!')
+    .replace(/\s*\b(nova linha|quebra de linha|próxima linha|proxima linha)\b\s*/gi, '\n')
+    .replace(/([.!?])\s*([a-záéíóúâêôãõç])/g, (m, p, l) => p + ' ' + l.toUpperCase());
+}
+function _ditarMostra(interino) {
+  const inp = document.getElementById('msg-input'); if (!inp || !_ditado) return;
+  let finais = _ditarPontua(_ditado.finais).trim();
+  if (finais) finais = finais.charAt(0).toUpperCase() + finais.slice(1);
+  const base = _ditado.base;
+  const sep = base && !/\s$/.test(base) ? ' ' : '';
+  inp.value = base + sep + finais + (interino ? (finais ? ' ' : '') + interino : '');
+  try { autoGrowMsgInput(inp); } catch (_) {}
+  try { updateSendMicButtons(); } catch (_) {}
+  try { notifyTypingThrottled(); } catch (_) {}
+}
+function ditarToggle() {
+  if (_ditado && _ditado.ativo) return ditarPara();
+  const inp = document.getElementById('msg-input'); if (!inp) return;
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { showToast('Este navegador não tem ditado por voz. Use o Chrome ou o Edge.', 'warn'); return; }
+  const rec = new SR();
+  rec.lang = 'pt-BR'; rec.continuous = true; rec.interimResults = true; rec.maxAlternatives = 1;
+  _ditado = { rec, base: inp.value, finais: '', ativo: true, placeholder: inp.placeholder };
+  rec.onresult = (ev) => {
+    if (!_ditado || _ditado.rec !== rec) return;
+    let interino = '';
+    for (let i = ev.resultIndex; i < ev.results.length; i++) {
+      const r = ev.results[i]; const txt = (r[0] && r[0].transcript) || '';
+      if (r.isFinal) _ditado.finais += (_ditado.finais && !/\s$/.test(_ditado.finais) ? ' ' : '') + txt.trim();
+      else interino += txt;
+    }
+    _ditarMostra(interino.trim());
+  };
+  rec.onerror = (ev) => {
+    const e = (ev && ev.error) || '';
+    if (e === 'no-speech' || e === 'aborted') return; // silêncio: o onend religa
+    ditarPara();
+    showToast(e === 'not-allowed' || e === 'service-not-allowed' ? 'O Chrome bloqueou o microfone. Clique no cadeado da barra de endereço e permita o microfone.' : e === 'network' ? 'O ditado precisa de internet para reconhecer a voz.' : 'O ditado parou: ' + e, 'warn');
+  };
+  rec.onend = () => { // o Chrome encerra sozinho depois de um silêncio: religa enquanto você não desligar
+    if (_ditado && _ditado.rec === rec && _ditado.ativo) { try { rec.start(); } catch (_) { ditarPara(); } }
+  };
+  try { rec.start(); } catch (e) { _ditado = null; showToast('Não consegui ligar o microfone: ' + (e.message || e), 'err'); return; }
+  const b = document.getElementById('btn-ditar'); if (b) { b.classList.add('on'); b.title = 'Parar o ditado'; const t = document.getElementById('btn-ditar-txt'); if (t) t.textContent = 'Ouvindo… clique para parar'; }
+  inp.classList.add('ditando'); inp.placeholder = 'Ouvindo… fale a mensagem';
+  try { inp.focus(); } catch (_) {}
+}
+function ditarPara() {
+  const d = _ditado; if (!d) return;
+  d.ativo = false; _ditado = null;
+  try { d.rec.onend = null; d.rec.stop(); } catch (_) {}
+  const inp = document.getElementById('msg-input');
+  if (inp) { inp.classList.remove('ditando'); inp.placeholder = d.placeholder || 'Mensagem'; }
+  const b = document.getElementById('btn-ditar'); if (b) { b.classList.remove('on'); b.title = 'Ditar por voz'; const t = document.getElementById('btn-ditar-txt'); if (t) t.textContent = ''; }
+  try { updateSendMicButtons(); } catch (_) {}
+}
+// enviar ou trocar de conversa desliga o ditado (o texto já está no campo)
+(function _hookDitar() {
+  const antes = fn => async function () { try { ditarPara(); } catch (_) {} return fn.apply(this, arguments); };
+  if (typeof sendMessage === 'function')   sendMessage   = antes(sendMessage);
+  if (typeof selectContact === 'function') selectContact = antes(selectContact);
+})();
 async function startVoiceRec() {
   if (_bloqueadoPelaNota('gravar áudio')) return;
   if (!currentPhone) return;
@@ -7367,6 +7451,7 @@ async function selectContact(phone, name, accountId) {
       <button id="btn-agendar" title="Agendar mensagem" onclick="abrirAgendar()" style="background:none;border:none;color:#667781;cursor:pointer;padding:6px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px"><i class=ic-clock></i></button>
       <button id="emoji-btn" onclick="toggleEmojiPicker(event)" title="Emojis"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5a4.4 4.4 0 0 0 7 0"/><circle cx="9" cy="9.6" r="1.1" fill="currentColor" stroke="none"/><circle cx="15" cy="9.6" r="1.1" fill="currentColor" stroke="none"/></svg></button>
       <div id="emoji-picker-wrap"></div>
+      ${_ditarDisponivel() ? '<button id="btn-ditar" onclick="ditarToggle()" title="Ditar por voz: fale e o texto entra no campo (nada é enviado até você clicar em enviar). Diga \'vírgula\', \'ponto\', \'interrogação\' ou \'nova linha\' para pontuar."><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4M8 21h8"/></svg><span id="btn-ditar-txt"></span></button>' : ''}
       <select id="chat-account-select" onchange="currentAccountId=this.value" title="Enviar pelo número"
         style="margin-left:auto;max-width:44%;min-width:0;background:#e7f7ef;border:1px solid #b7e4d3;border-radius:14px;padding:5px 10px 5px 24px;font-size:12.5px;font-weight:600;color:#00806a;font-family:inherit;outline:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2300806a%22 stroke-width=%222.2%22 stroke-linecap=%22round%22><rect x=%227%22 y=%222%22 width=%2210%22 height=%2220%22 rx=%222.2%22/><path d=%22M11 18h2%22/></svg>');background-repeat:no-repeat;background-position:8px center;background-size:13px 13px">
         ${accountOptions}
