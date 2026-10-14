@@ -291,6 +291,19 @@
   #send-btn svg { width: 20px; height: 20px; fill: white; }
   /* EMOJI PICKER */
   #emoji-btn { background: none; border: none; color: #667781; cursor: pointer; font-size: 22px; padding: 6px; border-radius: 50%; transition: background 0.2s, color 0.2s; flex-shrink: 0; line-height: 1; }
+  /* 📄 PDF no visualizador: página = imagem + camada de TEXTO invisível por cima (dá para
+     selecionar e copiar as letras, como num leitor de PDF) */
+  .fv-pg, .dv-pg { position: relative; background: #fff; flex-shrink: 0; }
+  .fv-pg { border-radius: 4px; }
+  .dv-pg { margin: 0 auto 12px; box-shadow: 0 1px 6px rgba(0,0,0,.4); }
+  .dv-pg > canvas { display: block; }
+  .dv-pg .textLayer { inset: auto; left: 0; top: 0; }
+  .fv-pg > img { display: block; width: 100%; height: auto; border-radius: 4px; }
+  .fv-pg .textLayer, .dv-pg .textLayer { position: absolute; inset: 0; overflow: hidden; line-height: 1; text-align: initial; -webkit-text-size-adjust: none; text-size-adjust: none; forced-color-adjust: none; transform-origin: 0 0; z-index: 2; user-select: text; -webkit-user-select: text; }
+  .fv-pg .textLayer span, .fv-pg .textLayer br, .dv-pg .textLayer span, .dv-pg .textLayer br { color: transparent; position: absolute; white-space: pre; cursor: text; transform-origin: 0% 0%; }
+  .fv-pg .textLayer span.markedContent, .dv-pg .textLayer span.markedContent { top: 0; height: 0; }
+  .fv-pg .textLayer ::selection, .dv-pg .textLayer ::selection { background: rgba(0, 120, 255, .35); color: transparent; }
+  .fv-pg .textLayer .endOfContent, .dv-pg .textLayer .endOfContent { display: block; position: absolute; inset: 100% 0 0; z-index: -1; cursor: default; user-select: none; }
   /* 🎙️ Ditar por voz (PC): fala e o texto entra no campo, sem teclado */
   #btn-ditar { background: none; border: none; color: #667781; cursor: pointer; padding: 6px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; gap: 4px; font-family: inherit; font-size: 12px; font-weight: 700; line-height: 1; }
   #btn-ditar svg { width: 21px; height: 21px; display: block; }
@@ -2439,7 +2452,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v562</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v564</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3284,7 +3297,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v562</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v564</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3358,7 +3371,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 562;
+const APP_VER = 564;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5453,13 +5466,24 @@ function _ditarPontua(t) {
     .replace(/\s*\b(nova linha|quebra de linha|próxima linha|proxima linha)\b\s*/gi, '\n')
     .replace(/([.!?])\s*([a-záéíóúâêôãõç])/g, (m, p, l) => p + ' ' + l.toUpperCase());
 }
+// Maiúscula SÓ no começo de frase: campo vazio ou depois de . ! ? / nova linha. No meio da
+// frase o ditado continua minúsculo — o Chrome às vezes manda "Solicitamos…" com S maiúsculo
+// ao recomeçar a ouvir, e isso ia parar no meio da frase. Sigla (CEP, INSS) não é mexida.
+function _ditarInicioFrase(antes) { const a = String(antes || ''); return !a.trim() || /[.!?…]\s*$/.test(a) || /\n\s*$/.test(a); }
+function _ditarCaixa(txt, inicio) {
+  const t = String(txt || ''); if (!t) return t;
+  if (inicio) return t.charAt(0).toUpperCase() + t.slice(1);
+  return /^[A-ZÁÉÍÓÚÂÊÔÃÕÇÀ][a-záéíóúâêôãõçà]/.test(t) ? t.charAt(0).toLowerCase() + t.slice(1) : t;
+}
 function _ditarMostra(interino) {
   const inp = document.getElementById('msg-input'); if (!inp || !_ditado) return;
-  let finais = _ditarPontua(_ditado.finais).trim();
-  if (finais) finais = finais.charAt(0).toUpperCase() + finais.slice(1);
   const base = _ditado.base;
+  let finais = _ditarPontua(_ditado.finais).trim();
+  if (finais) finais = _ditarCaixa(finais, _ditarInicioFrase(base));
   const sep = base && !/\s$/.test(base) ? ' ' : '';
-  inp.value = base + sep + finais + (interino ? (finais ? ' ' : '') + interino : '');
+  const jaVai = base + sep + finais;
+  const prov = interino ? _ditarCaixa(interino, _ditarInicioFrase(jaVai)) : '';
+  inp.value = jaVai + (prov ? (finais ? ' ' : '') + prov : '');
   try { autoGrowMsgInput(inp); } catch (_) {}
   try { updateSendMicButtons(); } catch (_) {}
   try { notifyTypingThrottled(); } catch (_) {}
@@ -5477,7 +5501,12 @@ function ditarToggle() {
     let interino = '';
     for (let i = ev.resultIndex; i < ev.results.length; i++) {
       const r = ev.results[i]; const txt = (r[0] && r[0].transcript) || '';
-      if (r.isFinal) _ditado.finais += (_ditado.finais && !/\s$/.test(_ditado.finais) ? ' ' : '') + txt.trim();
+      if (r.isFinal) {
+        // cada trecho que o Chrome fecha: maiúscula só se começa frase nova
+        const antes = _ditado.base + ' ' + _ditarPontua(_ditado.finais);
+        const seg = _ditado.finais ? _ditarCaixa(txt.trim(), _ditarInicioFrase(antes)) : txt.trim();
+        _ditado.finais += (_ditado.finais && !/\s$/.test(_ditado.finais) ? ' ' : '') + seg;
+      }
       else interino += txt;
     }
     _ditarMostra(interino.trim());
@@ -7675,6 +7704,7 @@ function abrirArquivo(url, tipo, nome) {
           <button id="fv-zoom-pct" onclick="event.stopPropagation();fvZoom(0)" title="Voltar a 100%" style="background:#202c33;color:#e9edef;border:none;border-radius:8px;min-width:54px;height:28px;font-size:12.5px;cursor:pointer">100%</button>
           <button onclick="event.stopPropagation();fvZoom(1)" title="Aumentar (Ctrl +)" style="background:#202c33;color:#e9edef;border:none;border-radius:8px;width:30px;height:28px;font-size:16px;cursor:pointer">+</button>
         </span>
+        <button id="fv-copiar" onclick="event.stopPropagation();fvCopiarTextoPdf(this)" title="Copiar todo o texto do PDF (ou selecione um trecho com o mouse e Ctrl+C)" style="display:none;background:#202c33;color:#e9edef;border:none;border-radius:8px;height:28px;padding:0 10px;font-size:12.5px;cursor:pointer;font-family:inherit;margin-right:6px">Copiar texto</button>
         <span id="fv-share" style="display:none"></span>
         <span id="fv-baixar" style="display:none"></span>
       </div>
@@ -7686,7 +7716,8 @@ function abrirArquivo(url, tipo, nome) {
     // Clique no PRETO em volta fecha (igual a qualquer visualizador de fotos).
     // Não fecha no zoom: ali o arraste é para mover a imagem.
     ov.addEventListener('click', (ev) => {
-      const dentro = ev.target.closest && ev.target.closest('#fv-top, img, video, canvas');
+      const dentro = ev.target.closest && ev.target.closest('#fv-top, img, video, canvas, .fv-pg');
+      if (!dentro) { try { const sel = window.getSelection(); if (sel && String(sel).trim()) return; } catch (_) {} } // terminou de selecionar texto
       if (dentro) return;
       if (typeof _fvS !== 'undefined' && _fvS > 1.05) return; // com zoom, o clique é para mover
       fecharArquivo();
@@ -7705,6 +7736,7 @@ function abrirArquivo(url, tipo, nome) {
   const body = document.getElementById('fv-zoom');
   body.innerHTML = '<span style="color:#8696a0;font-size:13px;margin-top:36px">Abrindo…</span>';
   if (tipo !== 'img') { _fvFotos = []; _fvIdx = -1; } // navegação ‹ › é só para fotos
+  { const cp = document.getElementById('fv-copiar'); if (cp) cp.style.display = tipo === 'pdf' ? '' : 'none'; }
   if (tipo === 'img') {
     // Lista das fotos DESTA conversa para navegar com ‹ › (e setas do teclado)
     const semR = u => String(u).split('&_r=')[0];
@@ -7748,8 +7780,15 @@ function abrirArquivo(url, tipo, nome) {
         const im = new Image();
         im.src = cv.toDataURL('image/jpeg', 0.88);
         im.dataset.pg = i; im.dataset.res = String(cssScale * dpr); // para o re-render do zoom
-        im.style.cssText = `width:${Math.round(vp.width / dpr)}px;max-width:100%;background:#fff;border-radius:4px`;
-        body.appendChild(im);
+        const _w = Math.round(vp.width / dpr), _h = Math.round(vp.height / dpr);
+        im.style.cssText = `width:${_w}px;background:#fff;border-radius:4px`;
+        // 📄 camada de TEXTO por cima da imagem: dá para selecionar e copiar as letras
+        const wrap = document.createElement('div');
+        wrap.className = 'fv-pg'; wrap.dataset.pg = i;
+        wrap.style.cssText = `width:${_w}px;height:${_h}px`;
+        wrap.appendChild(im);
+        body.appendChild(wrap);
+        await _pdfCamadaTexto(pg, wrap, cssScale);
       }
       cv.width = cv.height = 0; // libera a memória do canvas temporário
       if (doc.numPages > n) body.insertAdjacentHTML('beforeend', `<span style="color:#8696a0;font-size:12px;padding:8px">Mostrando ${n} de ${doc.numPages} páginas — use para o arquivo completo</span>`);
@@ -7969,6 +8008,7 @@ function _fvGestos() {
   b.addEventListener('touchend', () => { ultimoToque = Date.now(); }, { passive: true });
   b.addEventListener('dblclick', e => {
     if (Date.now() - ultimoToque < 800) return;
+    if (e.target && e.target.closest && e.target.closest('.textLayer span')) return; // seleciona a palavra do PDF
     e.preventDefault();
     const r = b.getBoundingClientRect();
     _fvAplicaZoom(_fvS > 1.2 ? 1 : 2.2, e.clientX - r.left, e.clientY - r.top);
@@ -7977,6 +8017,7 @@ function _fvGestos() {
   let arr = null;
   b.addEventListener('mousedown', e => {
     if (_fvS <= 1.05 || e.button !== 0) return;
+    if (e.target && e.target.closest && e.target.closest('.textLayer span')) return; // em cima das letras do PDF: é para selecionar
     arr = { x: e.clientX, y: e.clientY, sl: b.scrollLeft, st: b.scrollTop };
     b.style.cursor = 'grabbing'; e.preventDefault();
   });
@@ -7986,6 +8027,30 @@ function _fvGestos() {
     b.scrollTop = arr.st - (e.clientY - arr.y);
   });
   window.addEventListener('mouseup', () => { if (arr) { arr = null; b.style.cursor = _fvS > 1.05 ? 'grab' : ''; } });
+}
+// 📄 Camada de TEXTO invisível por cima da página do PDF (as letras ficam selecionáveis e
+// copiáveis, como num leitor de PDF). Guarda também o texto da página para "Copiar texto".
+async function _pdfCamadaTexto(pg, wrap, escala) {
+  try {
+    const tl = document.createElement('div');
+    tl.className = 'textLayer';
+    tl.style.setProperty('--scale-factor', String(escala));
+    wrap.appendChild(tl);
+    const tc = await pg.getTextContent();
+    wrap._texto = (tc.items || []).map(it => (it.str || '') + (it.hasEOL ? '\n' : '')).join('');
+    if (window.pdfjsLib && window.pdfjsLib.renderTextLayer) await window.pdfjsLib.renderTextLayer({ textContentSource: tc, container: tl, viewport: pg.getViewport({ scale: escala }), textDivs: [] }).promise;
+    return tl;
+  } catch (e) { console.warn('camada de texto do PDF:', e && e.message); return null; }
+}
+// 📄 Copia TODO o texto do PDF aberto (páginas na ordem). PDF escaneado (só imagem) não tem texto.
+async function fvCopiarTextoPdf(btn, onde) {
+  const pgs = Array.from(document.querySelectorAll(onde || '#fv-zoom .fv-pg'));
+  const txt = pgs.map(p => String(p._texto || '').trim()).filter(Boolean).join('\n\n').trim();
+  if (!txt) { showToast('Este PDF não tem texto para copiar (é uma imagem escaneada).', 'warn'); return; }
+  try { await navigator.clipboard.writeText(txt); }
+  catch (_) { const ta = document.createElement('textarea'); ta.value = txt; ta.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch (__) {} ta.remove(); }
+  if (btn) { const t = btn.textContent; btn.textContent = 'Copiado ✓'; setTimeout(() => { btn.textContent = t; }, 1600); }
+  showToast('Texto do PDF copiado (' + pgs.length + ' página' + (pgs.length > 1 ? 's' : '') + ').', 'ok');
 }
 function fecharArquivo() {
   const o = document.getElementById('file-viewer'); if (o) o.style.display = 'none';
@@ -8227,6 +8292,7 @@ async function verArquivo(url, nome, mime) {
           <button id="dv-zoom-pct" onclick="dvZoom(0)" title="Voltar a 100%" style="background:#202c33;color:#e9edef;border:none;border-radius:8px;min-width:54px;height:28px;font-size:12.5px;cursor:pointer">100%</button>
           <button onclick="dvZoom(1)" title="Aumentar (Ctrl +)" style="background:#202c33;color:#e9edef;border:none;border-radius:8px;width:30px;height:28px;font-size:16px;cursor:pointer">+</button>
         </span>
+        <button id="dv-copiar" onclick="fvCopiarTextoPdf(this, '#dv-corpo .dv-pg')" title="Copiar todo o texto do PDF (ou selecione um trecho com o mouse e Ctrl+C)" style="display:none;background:#202c33;color:#e9edef;border:none;border-radius:16px;padding:6px 12px;font-size:13px;cursor:pointer;font-family:inherit">Copiar texto</button>
         <button id="dv-salvar" style="background:#00a884;color:#fff;border:none;border-radius:16px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer">Salvar como...</button>
       </div>
       <div id="dv-corpo" style="flex:1;overflow:auto;background:#fff;color:#131c20;padding:24px;font-size:14px;line-height:1.5"></div>
@@ -8243,6 +8309,7 @@ async function verArquivo(url, nome, mime) {
   }
   document.getElementById('dv-nome').textContent = nome || 'Arquivo';
   _dvZoomFator = 1; const _zb = document.getElementById('dv-zoom'); if (_zb) _zb.style.display = 'none';
+  { const _cp = document.getElementById('dv-copiar'); if (_cp) _cp.style.display = 'none'; }
   document.getElementById('dv-salvar').onclick = (e) => salvarArquivoComo(dl, nome, e.currentTarget);
   const corpo = document.getElementById('dv-corpo');
   ov.style.display = 'flex';
@@ -8265,10 +8332,16 @@ async function verArquivo(url, nome, mime) {
         const pg = await pdf.getPage(i);
         const v1 = pg.getViewport({ scale: 1 }); const esc = larg / v1.width; const vp = pg.getViewport({ scale: esc * _res });
         const c = document.createElement('canvas'); c.width = vp.width; c.height = vp.height; c.className = 'dv-pagina';
-        c.style.cssText = 'display:block;width:' + larg + 'px;margin:0 auto 12px;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.4)';
-        corpo.appendChild(c);
+        c.style.cssText = 'display:block;width:' + larg + 'px;background:#fff';
+        // 📄 página = desenho + camada de TEXTO por cima (selecionar e copiar as letras)
+        const wrap = document.createElement('div'); wrap.className = 'dv-pg'; wrap.dataset.pg = i;
+        wrap.style.width = larg + 'px';
+        wrap.appendChild(c); corpo.appendChild(wrap);
         await pg.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
+        const tl = await _pdfCamadaTexto(pg, wrap, esc);
+        if (tl) { tl.style.width = larg + 'px'; tl.style.height = Math.round(v1.height * esc) + 'px'; }
       }
+      { const _cp = document.getElementById('dv-copiar'); if (_cp) _cp.style.display = ''; }
       corpo.classList.add('dv-pdf'); corpo.dataset.paginas = String(pdf.numPages);
       // 🔍 zoom (só no PC: no celular o dedo já faz)
       if (!window.matchMedia('(hover: none)').matches) { const zb = document.getElementById('dv-zoom'); if (zb) zb.style.display = 'inline-flex'; }
@@ -8321,7 +8394,14 @@ function dvZoom(dir){
 function _dvZoomAplica(){
   const corpo = document.getElementById('dv-corpo'); if (!corpo) return;
   const base = Number(corpo.dataset.largBase) || 800, w = Math.round(base * _dvZoomFator);
-  corpo.querySelectorAll('canvas.dv-pagina').forEach(c => { c.style.width = w + 'px'; c.style.margin = w > corpo.clientWidth - 16 ? '0 0 12px' : '0 auto 12px'; });
+  corpo.querySelectorAll('canvas.dv-pagina').forEach(c => {
+    c.style.width = w + 'px';
+    const wrap = c.parentElement && c.parentElement.classList.contains('dv-pg') ? c.parentElement : null;
+    if (wrap) {
+      wrap.style.width = w + 'px'; wrap.style.margin = w > corpo.clientWidth - 16 ? '0 0 12px' : '0 auto 12px';
+      const tl = wrap.querySelector('.textLayer'); if (tl) { tl.style.transformOrigin = '0 0'; tl.style.transform = _dvZoomFator === 1 ? '' : 'scale(' + _dvZoomFator + ')'; }
+    } else c.style.margin = w > corpo.clientWidth - 16 ? '0 0 12px' : '0 auto 12px';
+  });
   const p = document.getElementById('dv-zoom-pct'); if (p) p.textContent = Math.round(_dvZoomFator * 100) + '%';
 }
 async function salvarArquivoComo(url, nome, el) {
