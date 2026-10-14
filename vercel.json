@@ -1,15 +1,9 @@
 {
   "git": { "deploymentEnabled": { "main": false } },
-  "rewrites": [
-    { "source": "/", "has": [{ "type": "host", "value": "filaz.com.br" }], "destination": "/site/index.html" },
-    { "source": "/", "has": [{ "type": "host", "value": "www.filaz.com.br" }], "destination": "/site/index.html" }
-  ],
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate" }
-      ]
-    }
+  "routes": [
+    { "src": "/", "has": [{ "type": "host", "value": "filaz.com.br" }], "dest": "/site/index.html", "headers": { "Cache-Control": "no-store, no-cache, must-revalidate" } },
+    { "src": "/", "has": [{ "type": "host", "value": "www.filaz.com.br" }], "dest": "/site/index.html", "headers": { "Cache-Control": "no-store, no-cache, must-revalidate" } },
+    { "src": "/(.*)", "headers": { "Cache-Control": "no-store, no-cache, must-revalidate" }, "continue": true },
+    { "handle": "filesystem" }
   ]
 }
