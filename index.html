@@ -154,6 +154,18 @@
   .contact-swipe-wrap > .contact-item.is-fav { background: #fdf6e3; }
   .contact-swipe-wrap > .contact-item.is-fav:hover { background: #f8eed2; }
   .fav-star { color: #f0b400; font-size: 13px; margin-left: 5px; flex-shrink: 0; }
+  /* ⭐ Estrela no canto da prévia (pedido dela, como no exemplo): favoritada fica
+     sempre amarela; com o mouse em cima da conversa aparece a vazia ☆ para favoritar
+     num clique. No celular é só o aviso (não clica) — o gesto de deslizar já favorita. */
+  .fav-btn { display: none; flex-shrink: 0; margin-left: auto; background: none; border: 0; padding: 0 2px;
+    font-size: 16px; line-height: 1; color: #8696a0; cursor: pointer; pointer-events: none; font-family: inherit; }
+  .fav-btn.on { display: inline-block; color: #f0b400; }
+  body.sel-mode .fav-btn:not(.on) { display: none !important; }
+  @media (hover: hover) and (pointer: fine) {
+    .fav-btn { pointer-events: auto; }
+    .contact-item:hover .fav-btn { display: inline-block; }
+    .fav-btn:hover { color: #f0b400; transform: scale(1.15); }
+  }
   /* Menu "⋯" do item da conversa (aparece ao passar o mouse — computador) */
   .contact-menu-btn { display: none; position: absolute; right: 8px; top: 8px; z-index: 2;
     background: #ffffff; border: 1px solid #e9edef; border-radius: 6px; color: #667781;
@@ -2472,7 +2484,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v566</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v567</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3328,7 +3340,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v566</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v567</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3402,7 +3414,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 566;
+const APP_VER = 567;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5036,12 +5048,13 @@ function renderContacts(contacts) {
       <div class="contact-avatar" style="${_avatarCor(c.name||c.phone)}">${escHtml((c.name||'?')[0].toUpperCase())}${c.avatar ? `<img src="${SERVER_URL}/avatar/${encodeURIComponent(String(c.avatar).split('/').pop())}" loading="lazy" alt="" onerror="this.remove()">` : ''}</div>
       <div class="contact-info">
         <div class="contact-row-top">
-          <div class="contact-name">${escHtml(_nomeOuTel(c.name, c.phone))}${c.pinned?'<span style="font-size:11px;margin-left:3px"><i class=ic-pin></i></span>':''}${c.muted?'<span style="font-size:12px;margin-left:3px;opacity:.6"><i class=ic-mute></i></span>':''}${isFav?'<span class="fav-star">★</span>':''}${c.responsavel ? '<span class="resp-chip" title="Responsável: ' + escHtml(c.responsavel) + '">' + escHtml(_nomeAutor(c.responsavel).split(' ')[0]) + '</span>' : ''}${c.blocked ? '<span class="resp-chip" style="background:#fdecea;color:#a93226" title="Contato bloqueado">bloqueado</span>' : ''}</div>
+          <div class="contact-name">${escHtml(_nomeOuTel(c.name, c.phone))}${c.pinned?'<span style="font-size:11px;margin-left:3px"><i class=ic-pin></i></span>':''}${c.muted?'<span style="font-size:12px;margin-left:3px;opacity:.6"><i class=ic-mute></i></span>':''}${c.responsavel ? '<span class="resp-chip" title="Responsável: ' + escHtml(c.responsavel) + '">' + escHtml(_nomeAutor(c.responsavel).split(' ')[0]) + '</span>' : ''}${c.blocked ? '<span class="resp-chip" style="background:#fdecea;color:#a93226" title="Contato bloqueado">bloqueado</span>' : ''}</div>
           <div class="contact-time">${timeStr}</div>
         </div>
         <div class="contact-preview-row">
           <div class="contact-preview-text">${previewHtml}</div>
           ${badge}
+          <button class="fav-btn${isFav?' on':''}" title="${isFav?'Remover dos favoritos':'Favoritar conversa'}" onclick="event.stopPropagation();toggleFavorite('${_jsAttr(c.phone)}')">${isFav?'★':'☆'}</button>
         </div>
         ${tagsHtml}
       </div>
@@ -7075,10 +7088,8 @@ function _pintaLinhaContato(phone) {
     const b = item.querySelector('.unread-badge');
     if ((c.unread_count || 0) > 0) { if (b) b.textContent = c.unread_count > 99 ? '99+' : c.unread_count; }
     else if (b) b.remove();
-    const est = item.querySelector('.fav-star');
-    if (c.favorite && !est) { const n = document.createElement('span'); n.className = 'fav-star'; n.textContent = '★';
-      const nome = item.querySelector('.contact-name'); if (nome) nome.appendChild(n); }
-    if (!c.favorite && est) est.remove();
+    const est = item.querySelector('.fav-btn');
+    if (est) { est.classList.toggle('on', !!c.favorite); est.textContent = c.favorite ? '★' : '☆'; est.title = c.favorite ? 'Remover dos favoritos' : 'Favoritar conversa'; }
   } catch (_) {}
 }
 // O redesenho completo (que reordena a lista) fica para depois do gesto
