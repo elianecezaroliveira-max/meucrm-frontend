@@ -336,6 +336,7 @@
   .fv-pg .textLayer span.markedContent, .dv-pg .textLayer span.markedContent { top: 0; height: 0; }
   .fv-pg .textLayer ::selection, .dv-pg .textLayer ::selection { background: rgba(0, 120, 255, .35); color: transparent; }
   .fv-pg .textLayer .endOfContent, .dv-pg .textLayer .endOfContent { display: block; position: absolute; inset: 100% 0 0; z-index: -1; cursor: default; user-select: none; }
+  .fv-pg .textLayer .endOfContent.active, .dv-pg .textLayer .endOfContent.active { top: 0; }
   /* Página deitada (/Rotate 90, o extrato de consignações): o pdf.js monta as letras no espaço SEM
      rotação e marca data-main-rotation — a camada inteira é que gira (regras do próprio pdf.js).
      Sem isso cada palavra virava uma barrinha em pé fora do lugar. */
@@ -2490,7 +2491,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v575</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v576</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3352,7 +3353,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v575</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v576</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3426,7 +3427,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 575;
+const APP_VER = 576;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -8213,8 +8214,56 @@ async function _pdfCamadaTexto(pg, wrap, escala) {
     const tc = await pg.getTextContent();
     wrap._texto = (tc.items || []).map(it => (it.str || '') + (it.hasEOL ? '\n' : '')).join('');
     if (window.pdfjsLib && window.pdfjsLib.renderTextLayer) await window.pdfjsLib.renderTextLayer({ textContentSource: tc, container: tl, viewport: pg.getViewport({ scale: escala }), textDivs: [] }).promise;
+    // 🖱️ "Às vezes eu estou selecionando só uma parte mas acaba selecionando tudo": arrastando o mouse
+    // para um espaço em branco, o navegador pulava para o FIM da camada e marcava o PDF inteiro.
+    // Truque do próprio leitor do pdf.js: um bloco invisível (endOfContent) cobre a página enquanto
+    // o botão está apertado — a seleção para onde o mouse está, não no fim.
+    // No Chrome o truque sozinho não basta: enquanto você arrasta por um espaço em branco, o FILAZ
+    // leva o fim da seleção para a palavra mais perto NA MESMA LINHA (ou na linha de cima), como o Acrobat.
+    const fim = document.createElement('div'); fim.className = 'endOfContent'; tl.appendChild(fim);
+    let arrastando = false, caixas = null, mouse = null;
+    // o navegador mexe na seleção DEPOIS dos ouvintes do mousemove: a correção entra no selectionchange
+    const corrige = () => { if (arrastando && mouse) _pdfAjustaSelecao(tl, mouse.x, mouse.y, caixas || (caixas = _pdfCaixasTexto(tl))); };
+    const solta = () => { arrastando = false; caixas = null; mouse = null; fim.classList.remove('active'); fim.style.top = ''; window.removeEventListener('mouseup', solta, true); document.removeEventListener('selectionchange', corrige); };
+    tl.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return;
+      try { const r = tl.getBoundingClientRect(); fim.style.top = Math.max(0, Math.min(100, 100 * (e.clientY - r.top) / r.height)).toFixed(2) + '%'; } catch (_) {}
+      fim.classList.add('active'); arrastando = true; caixas = null; mouse = null; window.addEventListener('mouseup', solta, true); document.addEventListener('selectionchange', corrige);
+    });
+    tl.addEventListener('mousemove', (e) => {
+      if (!arrastando || !(e.buttons & 1)) return;
+      const sp = e.target && e.target.closest && e.target.closest('.textLayer span');
+      if (sp && sp.closest('.textLayer') === tl) { mouse = null; return; } // em cima de uma palavra: o navegador acerta sozinho
+      mouse = { x: e.clientX, y: e.clientY }; corrige();
+    });
     return tl;
   } catch (e) { console.warn('camada de texto do PDF:', e && e.message); return null; }
+}
+// Caixas das palavras da camada (medidas uma vez por arraste)
+function _pdfCaixasTexto(tl) {
+  return Array.from(tl.querySelectorAll('span')).filter(sp => sp.firstChild && sp.firstChild.nodeType === 3 && sp.textContent.trim()).map(sp => { const r = sp.getBoundingClientRect(); return { sp, l: r.left, r: r.right, t: r.top, b: r.bottom, y: (r.top + r.bottom) / 2 }; }).filter(c => c.r > c.l && c.b > c.t);
+}
+// Mouse num espaço em branco: o fim da seleção vai para a palavra mais perto na mesma linha
+// (à esquerda do mouse → fim dela; só palavras à direita → começo da primeira) ou, sem palavra na
+// linha, para o fim da última palavra da linha de cima. Nunca "pula" para o fim do PDF.
+function _pdfAjustaSelecao(tl, x, y, caixas) {
+  try {
+    const sel = window.getSelection(); if (!sel || !sel.anchorNode || !tl.contains(sel.anchorNode)) return;
+    if (!caixas || !caixas.length) return;
+    let linha = caixas.filter(c => y >= c.t && y <= c.b);
+    let alvo = null, noFim = true;
+    if (linha.length) {
+      const esq = linha.filter(c => c.l <= x).sort((a, b) => b.r - a.r)[0];
+      if (esq) alvo = esq; else { alvo = linha.sort((a, b) => a.l - b.l)[0]; noFim = false; }
+    } else {
+      const acima = caixas.filter(c => c.b < y).sort((a, b) => (b.b - a.b) || (b.r - a.r))[0];
+      if (acima) alvo = acima; else { alvo = caixas.slice().sort((a, b) => (a.t - b.t) || (a.l - b.l))[0]; noFim = false; }
+    }
+    if (!alvo) return;
+    const no = alvo.sp.firstChild; const pos = noFim ? no.textContent.length : 0;
+    if (sel.focusNode === no && sel.focusOffset === pos) return;
+    sel.extend(no, pos);
+  } catch (_) {}
 }
 // 📄 Copia TODO o texto do PDF aberto (páginas na ordem). PDF escaneado (só imagem) não tem texto.
 async function fvCopiarTextoPdf(btn, onde) {
