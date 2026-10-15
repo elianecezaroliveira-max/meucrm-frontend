@@ -336,6 +336,12 @@
   .fv-pg .textLayer span.markedContent, .dv-pg .textLayer span.markedContent { top: 0; height: 0; }
   .fv-pg .textLayer ::selection, .dv-pg .textLayer ::selection { background: rgba(0, 120, 255, .35); color: transparent; }
   .fv-pg .textLayer .endOfContent, .dv-pg .textLayer .endOfContent { display: block; position: absolute; inset: 100% 0 0; z-index: -1; cursor: default; user-select: none; }
+  /* Página deitada (/Rotate 90, o extrato de consignações): o pdf.js monta as letras no espaço SEM
+     rotação e marca data-main-rotation — a camada inteira é que gira (regras do próprio pdf.js).
+     Sem isso cada palavra virava uma barrinha em pé fora do lugar. */
+  .fv-pg .textLayer[data-main-rotation="90"], .dv-pg .textLayer[data-main-rotation="90"] { transform: rotate(90deg) translateY(-100%); }
+  .fv-pg .textLayer[data-main-rotation="180"], .dv-pg .textLayer[data-main-rotation="180"] { transform: rotate(180deg) translate(-100%, -100%); }
+  .fv-pg .textLayer[data-main-rotation="270"], .dv-pg .textLayer[data-main-rotation="270"] { transform: rotate(270deg) translateX(-100%); }
   /* 🎙️ Ditar por voz (PC): fala e o texto entra no campo, sem teclado */
   #btn-ditar { background: none; border: none; color: #667781; cursor: pointer; padding: 6px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; gap: 4px; font-family: inherit; font-size: 12px; font-weight: 700; line-height: 1; }
   #btn-ditar svg { width: 21px; height: 21px; display: block; }
@@ -2484,7 +2490,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v572</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v573</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3346,7 +3352,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v572</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v573</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3420,7 +3426,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 572;
+const APP_VER = 573;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -8488,8 +8494,7 @@ async function verArquivo(url, nome, mime) {
         wrap.style.width = larg + 'px';
         wrap.appendChild(c); corpo.appendChild(wrap);
         await pg.render({ canvasContext: c.getContext('2d'), viewport: vp }).promise;
-        const tl = await _pdfCamadaTexto(pg, wrap, esc);
-        if (tl) { tl.style.width = larg + 'px'; tl.style.height = Math.round(v1.height * esc) + 'px'; }
+        await _pdfCamadaTexto(pg, wrap, esc); // (o tamanho da camada é do pdf.js: calc(--scale-factor × página) — não sobrescrever)
       }
       { const _cp = document.getElementById('dv-copiar'); if (_cp) _cp.style.display = ''; }
       corpo.classList.add('dv-pdf'); corpo.dataset.paginas = String(pdf.numPages);
@@ -8549,7 +8554,7 @@ function _dvZoomAplica(){
     const wrap = c.parentElement && c.parentElement.classList.contains('dv-pg') ? c.parentElement : null;
     if (wrap) {
       wrap.style.width = w + 'px'; wrap.style.margin = w > corpo.clientWidth - 16 ? '0 0 12px' : '0 auto 12px';
-      const tl = wrap.querySelector('.textLayer'); if (tl) { tl.style.transformOrigin = '0 0'; tl.style.transform = _dvZoomFator === 1 ? '' : 'scale(' + _dvZoomFator + ')'; }
+      const tl = wrap.querySelector('.textLayer'); if (tl) { if (!tl.dataset.escBase) tl.dataset.escBase = tl.style.getPropertyValue('--scale-factor') || '1'; tl.style.setProperty('--scale-factor', String(Number(tl.dataset.escBase) * _dvZoomFator)); } // o zoom muda a escala do pdf.js (tamanho e letras seguem; a rotação da página fica)
     } else c.style.margin = w > corpo.clientWidth - 16 ? '0 0 12px' : '0 auto 12px';
   });
   const p = document.getElementById('dv-zoom-pct'); if (p) p.textContent = Math.round(_dvZoomFator * 100) + '%';
