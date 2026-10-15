@@ -2484,7 +2484,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v569</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v572</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2798,26 +2798,32 @@ window.addEventListener('load', initAuth);
     </div>
 </div>
 <div class="cfg-pane" data-pane="sheets">
+    <!-- 📋 Dia a dia: só o botão Importar. Link, aba, robô e backup ficam dobrados em "Configurar" (ela achou a tela confusa). -->
     <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
       <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">Planilha do Google → Pipeline</div>
-      <p style="font-size:12px;color:#667781;margin:0 0 8px">Lê a planilha de disparo (colunas <b>Lead Titulo</b>, <b>Celular</b>, <b>ID</b> da etapa) e cria os leads no pipeline — o mesmo que o n8n fazia, sem sair do FILAZ.</p>
-      <div id="cfg-sheets-robo" style="font-size:12px;color:#54656f;margin-bottom:8px">Carregando…</div>
-      <div style="display:flex;flex-direction:column;gap:6px">
-        <input id="cfg-sheets-url" placeholder="Cole o link da planilha (https://docs.google.com/spreadsheets/d/…)" style="background:#f0f2f5;border:1px solid #e9edef;border-radius:6px;padding:8px 10px;font-size:12px;color:#131c20;min-width:0">
-        <input id="cfg-sheets-aba" placeholder="Nome da aba (ex.: DISPARO)" style="background:#f0f2f5;border:1px solid #e9edef;border-radius:6px;padding:8px 10px;font-size:12px;color:#131c20;min-width:0">
-        <label style="font-size:12px;color:#131c20;display:flex;gap:6px;align-items:center"><input type="checkbox" id="cfg-sheets-auto"> Sincronizar sozinho a cada hora</label>
-        <label style="font-size:12px;color:#131c20;display:flex;gap:6px;align-items:center"><input type="checkbox" id="cfg-sheets-upd"> Atualizar a etapa de leads que já existem <span style="color:#667781">(desligado = só entra lead novo; quem já está no pipeline não volta de etapa)</span></label>
+      <div id="cfg-sheets-resumo" style="font-size:12.5px;color:#54656f;margin-bottom:10px">Carregando…</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="btn-save" id="btn-sheets-sync" onclick="preverSheets()" style="padding:10px 22px;font-size:14px">Importar</button>
+        <button class="pf-topbtn" id="btn-sheets-bkp" onclick="fazerBackupPlanilha(this)">Fazer backup agora</button>
       </div>
-      <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
-        <button class="pf-topbtn" onclick="salvarSheetsCfg()">Salvar</button>
-        <button class="pf-topbtn" id="btn-sheets-sync" onclick="preverSheets()">Prévia e importar</button>
-      </div>
-      <div id="cfg-sheets-status" style="font-size:12px;color:#54656f;margin-top:6px;min-height:14px"></div>
-      <div style="margin-top:12px;border-top:1px solid #e9edef;padding-top:10px">
-        <div style="font-size:13px;font-weight:700;color:#131c20">💾 Backup semanal nesta planilha</div>
-        <div style="font-size:12px;color:#667781;margin:2px 0 6px">Toda segunda às 6h o FILAZ grava as abas <b>FILAZ Anotações</b>, <b>FILAZ Etiquetas</b> e <b>FILAZ Tarefas</b> nesta mesma planilha (o robô precisa ser <b>Editor</b> nela). Seguro contra qualquer problema no banco.</div>
-        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"><button class="pf-topbtn" id="btn-sheets-bkp" onclick="fazerBackupPlanilha(this)">Fazer backup agora</button><span id="cfg-sheets-bkp" style="font-size:12px;color:#54656f"></span></div>
-      </div>
+      <div id="cfg-sheets-status" style="font-size:12px;color:#54656f;margin-top:8px;min-height:14px"></div>
+      <details id="cfg-sheets-det" style="margin-top:12px;border-top:1px solid #e9edef;padding-top:8px">
+        <summary style="cursor:pointer;font-size:12.5px;color:#00a884;font-weight:600;user-select:none">⚙️ Configurar (link da planilha, aba, robô e backup)</summary>
+        <p style="font-size:12px;color:#667781;margin:8px 0">Lê a planilha de disparo (colunas <b>Lead Titulo</b>, <b>Celular</b>, <b>ID</b> da etapa) e cria os leads no pipeline.</p>
+        <div id="cfg-sheets-robo" style="font-size:12px;color:#54656f;margin-bottom:8px">Carregando…</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <input id="cfg-sheets-url" placeholder="Cole o link da planilha (https://docs.google.com/spreadsheets/d/…)" style="background:#f0f2f5;border:1px solid #e9edef;border-radius:6px;padding:8px 10px;font-size:12px;color:#131c20;min-width:0">
+          <input id="cfg-sheets-aba" placeholder="Nome da aba (ex.: DISPARO)" style="background:#f0f2f5;border:1px solid #e9edef;border-radius:6px;padding:8px 10px;font-size:12px;color:#131c20;min-width:0">
+          <label style="font-size:12px;color:#131c20;display:flex;gap:6px;align-items:center"><input type="checkbox" id="cfg-sheets-auto"> Sincronizar sozinho a cada hora</label>
+          <label style="font-size:12px;color:#131c20;display:flex;gap:6px;align-items:center"><input type="checkbox" id="cfg-sheets-upd"> Atualizar a etapa de leads que já existem <span style="color:#667781">(desligado = só entra lead novo)</span></label>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><button class="pf-topbtn" onclick="salvarSheetsCfg()">Salvar</button></div>
+        <div style="margin-top:12px;border-top:1px solid #e9edef;padding-top:10px">
+          <div style="font-size:13px;font-weight:700;color:#131c20">💾 Backup semanal nesta planilha</div>
+          <div style="font-size:12px;color:#667781;margin:2px 0 6px">Toda segunda às 6h o FILAZ grava as abas <b>FILAZ Anotações</b>, <b>FILAZ Etiquetas</b> e <b>FILAZ Tarefas</b> nesta mesma planilha (o robô precisa ser <b>Editor</b> nela).</div>
+          <span id="cfg-sheets-bkp" style="font-size:12px;color:#54656f"></span>
+        </div>
+      </details>
     </div>
 </div>
 <div class="cfg-pane" data-pane="dup">
@@ -3340,7 +3346,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v569</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v572</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3414,7 +3420,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 569;
+const APP_VER = 572;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5572,6 +5578,10 @@ function _ditarDisponivel() {
 let _ditado = null; // { rec, base, finais, ativo }
 function _ditarPontua(t) {
   return String(t || '')
+    // Os nomes compostos vêm ANTES do "ponto" sozinho: "ponto de interrogação" virava "ponto de?"
+    // (o "ponto" era poupado por vir antes de "de", e só o "interrogação" virava sinal)
+    .replace(/\s*\bponto\s+de\s+(interrogação|interrogacao)\b/gi, '?').replace(/\s*\bponto\s+de\s+(exclamação|exclamacao)\b/gi, '!')
+    .replace(/\s*\bponto\s+e\s+(vírgula|virgula)\b/gi, ';').replace(/\s*\bdois\s+pontos\b/gi, ':').replace(/\s*\b(reticências|reticencias)\b/gi, '...')
     .replace(/\s*\b(vírgula|virgula)\b/gi, ',').replace(/\s*\bponto final\b/gi, '.').replace(/\s*\bponto\b(?!\s*(de|da|do|com|e\b))/gi, '.')
     .replace(/\s*\b(interrogação|interrogacao)\b/gi, '?').replace(/\s*\b(exclamação|exclamacao)\b/gi, '!')
     .replace(/\s*\b(nova linha|quebra de linha|próxima linha|proxima linha)\b\s*/gi, '\n')
@@ -5586,15 +5596,22 @@ function _ditarCaixa(txt, inicio) {
   if (inicio) return t.charAt(0).toUpperCase() + t.slice(1);
   return /^[A-ZÁÉÍÓÚÂÊÔÃÕÇÀ][a-záéíóúâêôãõçà]/.test(t) ? t.charAt(0).toLowerCase() + t.slice(1) : t;
 }
+// O ditado escreve ONDE ESTÁ O CURSOR (e substitui o que estiver selecionado), como quem digita:
+// o campo é "antes" + o que foi falado neste trecho + "depois". Ela selecionou "vanos" e falou
+// "vamos" — antes o ditado só colava no FIM do texto e a seleção ficava lá.
 function _ditarMostra(interino) {
   const inp = document.getElementById('msg-input'); if (!inp || !_ditado) return;
-  const base = _ditado.base;
+  const base = _ditado.base, depois = _ditado.depois || '';
   let finais = _ditarPontua(_ditado.finais).trim();
   if (finais) finais = _ditarCaixa(finais, _ditarInicioFrase(base));
   const sep = base && !/\s$/.test(base) ? ' ' : '';
   const jaVai = base + sep + finais;
   const prov = interino ? _ditarCaixa(interino, _ditarInicioFrase(jaVai)) : '';
-  inp.value = jaVai + (prov ? (finais ? ' ' : '') + prov : '');
+  const meio = jaVai + (prov ? (finais ? ' ' : '') + prov : '');
+  const sep2 = depois && (finais || prov) && !/^[\s.,;:!?)]/.test(depois) ? ' ' : '';
+  inp.value = meio + sep2 + depois;
+  _ditado.escrito = inp.value; _ditado.prov = prov; _ditado.provIni = prov ? meio.length - prov.length : -1; _ditado.caret = meio.length; // o que o ditado pôs — para notar quando VOCÊ mexe no campo
+  try { if (document.activeElement === inp) inp.setSelectionRange(meio.length, meio.length); } catch (_) {}
   try { autoGrowMsgInput(inp); } catch (_) {}
   try { updateSendMicButtons(); } catch (_) {}
   try { notifyTypingThrottled(); } catch (_) {}
@@ -5606,7 +5623,23 @@ function ditarToggle() {
   if (!SR) { showToast('Este navegador não tem ditado por voz. Use o Chrome ou o Edge.', 'warn'); return; }
   const rec = new SR();
   rec.lang = 'pt-BR'; rec.continuous = true; rec.interimResults = true; rec.maxAlternatives = 1;
-  _ditado = { rec, base: inp.value, finais: '', ativo: true, placeholder: inp.placeholder };
+  const _ini = inp.selectionStart != null ? inp.selectionStart : inp.value.length, _fim = inp.selectionEnd != null ? inp.selectionEnd : _ini;
+  _ditado = { rec, base: inp.value.slice(0, _ini), depois: inp.value.slice(_fim), finais: '', ativo: true, placeholder: inp.placeholder, escrito: inp.value, prov: '', provIni: -1, caret: _ini };
+  // Você apagou/corrigiu algo à mão, clicou em outro lugar ou selecionou uma palavra no meio do
+  // ditado: o campo é rearrumado — "antes" = até o cursor, "depois" = do fim da seleção em diante —
+  // e a próxima fala entra ALI (substituindo a seleção). Antes o ditado remontava "base + tudo que
+  // foi falado" no fim: o que você tinha apagado voltava e a palavra selecionada ficava.
+  if (!inp._ditarEdicao) { inp._ditarEdicao = true; const rearruma = () => {
+    if (!_ditado || !_ditado.ativo) return;
+    let v = inp.value, a = inp.selectionStart != null ? inp.selectionStart : v.length, b = inp.selectionEnd != null ? inp.selectionEnd : a;
+    if (v === _ditado.escrito && a === _ditado.caret && b === _ditado.caret) return; // foi o próprio ditado que pôs
+    const pv = _ditado.prov || '', pi = _ditado.provIni;
+    if (pv && pi >= 0 && v.slice(pi, pi + pv.length) === pv) { // o provisório ainda não é seu: sai da base (volta quando o Chrome fechar o trecho)
+      v = v.slice(0, pi) + v.slice(pi + pv.length);
+      const aj = x => x > pi + pv.length ? x - pv.length : x > pi ? pi : x; a = aj(a); b = aj(b);
+    }
+    _ditado.base = v.slice(0, a); _ditado.depois = v.slice(b); _ditado.finais = ''; _ditado.escrito = inp.value; _ditado.caret = a === b ? a : -1; _ditado.prov = ''; _ditado.provIni = -1;
+  }; ['input', 'mouseup', 'keyup', 'select'].forEach(ev => inp.addEventListener(ev, rearruma)); }
   rec.onresult = (ev) => {
     if (!_ditado || _ditado.rec !== rec) return;
     let interino = '';
@@ -13269,7 +13302,13 @@ async function carregarSheetsStatus() {
     document.getElementById('cfg-sheets-upd').checked = !!d.atualizar_etapa;
     if (st) st.textContent = _sheetsLastTxt(d.last);
     _sheetsBkpTxt(d.backup);
-  } catch (_) { robo.textContent = 'Não consegui carregar o status.'; }
+    // Resumo de uma linha para o dia a dia; sem planilha configurada, abre o "Configurar" sozinho
+    const res = document.getElementById('cfg-sheets-resumo'), det = document.getElementById('cfg-sheets-det');
+    if (res) res.innerHTML = d.spreadsheet_id
+      ? `Planilha: <a href="https://docs.google.com/spreadsheets/d/${escHtml(d.spreadsheet_id)}/edit" target="_blank" rel="noopener" style="color:#00a884;font-weight:600">${escHtml(d.sheet_name || 'DISPARO')}</a>${d.auto ? ' · sincroniza sozinha a cada hora' : ''}`
+      : 'Nenhuma planilha configurada ainda — abra "Configurar" abaixo e cole o link.';
+    if (det && !d.spreadsheet_id) det.open = true;
+  } catch (_) { robo.textContent = 'Não consegui carregar o status.'; const res = document.getElementById('cfg-sheets-resumo'); if (res) res.textContent = 'Não consegui carregar o status.'; }
 }
 function _sheetsBkpTxt(b) {
   const el = document.getElementById('cfg-sheets-bkp'); if (!el) return;
@@ -13342,7 +13381,7 @@ async function preverSheets() {
       </div></div>`);
     if (st) st.textContent = '';
   } catch (e) { if (st) st.textContent = (e.message || e); }
-  finally { if (b) { b.disabled = false; b.textContent = 'Prévia e importar'; } }
+  finally { if (b) { b.disabled = false; b.textContent = 'Importar'; } }
 }
 // Importação com barra de progresso: o servidor roda em segundo plano e o
 // app acompanha (a prévia vira a tela de progresso)
@@ -13415,7 +13454,7 @@ async function sincronizarSheets(confirmado) {
       setTimeout(() => { const o = document.getElementById('sheets-prev-overlay'); if (o) o.remove(); }, 2500);
     } else if (res) { if (st) st.textContent = (res.erro || 'falha'); }
   } catch (e) { if (st) st.textContent = (e.message || e); const bc2 = document.getElementById('btn-sheets-confirm'); if (bc2) { bc2.disabled = false; bc2.textContent = 'Confirmar e importar'; } }
-  finally { if (b) { b.disabled = false; b.textContent = 'Prévia e importar'; } }
+  finally { if (b) { b.disabled = false; b.textContent = 'Importar'; } }
 }
 
 // ── EQUIPE: quem pode entrar na MINHA conta ──
