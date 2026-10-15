@@ -2472,7 +2472,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v565</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v566</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2737,6 +2737,15 @@ window.addEventListener('load', initAuth);
       </div>
       <div id="equipe-status" style="font-size:12px;color:#00a884;min-height:16px;margin-top:6px"></div>
       <div id="equipe-lista" style="margin-top:8px"></div>
+    </div>
+    <div id="ass-bloco" style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
+      <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">✍️ Assinatura nas mensagens</div>
+      <p style="font-size:12px;color:#667781;margin:0 0 10px;line-height:1.5">Coloca o nome de quem enviou no começo de cada mensagem, em negrito — o lead vê assim no WhatsApp:</p>
+      <div style="background:#efeae2;border-radius:8px;padding:10px;margin-bottom:10px"><div style="background:#d9fdd3;border-radius:8px;padding:6px 10px;display:inline-block;font-size:13.5px;color:#111b21;box-shadow:0 1px .5px rgba(0,0,0,.13)"><b id="ass-exemplo-nome">Hillary Araujo</b>:<br>pode sim</div></div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13.5px;color:#131c20;cursor:pointer;margin-bottom:8px"><input type="checkbox" id="ass-ligado" onchange="_assPinta()"> Assinar as mensagens desta conta</label>
+      <div id="ass-nomes" style="display:none"></div>
+      <div style="font-size:11.5px;color:#8696a0;line-height:1.5;margin:8px 0">Vale para o que vocês escrevem no chat (texto e legenda de foto/arquivo). Bot, modelo da Meta, disparo e resposta automática saem sem assinatura.</div>
+      <button class="btn-save" id="ass-salvar" onclick="assinaturaSalvar(this)">Salvar assinatura</button>
     </div>
 </div>
 <div class="cfg-pane on" data-pane="integ">
@@ -3319,7 +3328,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v565</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v566</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3393,7 +3402,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 565;
+const APP_VER = 566;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -7634,6 +7643,7 @@ async function selectContact(phone, name, accountId) {
   `;
   try { _chatEtapaPinta(); } catch (_) {}
   try { setTimeout(_pintaBloqueio, 0); } catch (_) {}
+  try { setTimeout(_assinaturaHint, 0); } catch (_) {}
 
   // Tags
   const _tagContact = allContacts.find(c => c.phone === phone);
@@ -11271,7 +11281,7 @@ function _pendDaConversa(phone, msgs) {
   // A pendente some quando a definitiva DELA chega: mesmo texto E enviada depois
   // dela (uma mensagem antiga igual — outro "ok" de horas atrás — não conta)
   return _pendentes.filter(p => p.phone === phone &&
-    !(msgs || []).some(m => m.direction === 'outbound' && String(m.content || '').trim() === p.texto && (!m.timestamp || parseUTC(m.timestamp) >= p.ts - 120000)));
+    !(msgs || []).some(m => m.direction === 'outbound' && (String(m.content || '').trim() === p.texto || String(m.content || '').replace(/^\*[^*\n]{1,60}\*:[ \t]*\n/, '').trim() === p.texto) && (!m.timestamp || parseUTC(m.timestamp) >= p.ts - 120000))); // (✍️ a definitiva pode voltar com a assinatura na frente)
 }
 // A citação (mensagem que você está respondendo) já nasce junto com o balão —
 // antes ela só aparecia quando a mensagem definitiva voltava do servidor.
@@ -13403,6 +13413,54 @@ function _acessoTexto(iso) {
   if (dia === hoje - 1) return 'ontem às ' + hora;
   return p(d.getUTCDate()) + '/' + p(d.getUTCMonth() + 1) + '/' + d.getUTCFullYear() + ' às ' + hora;
 }
+// ✍️ Assinatura (Configurações ▸ Equipe): liga/desliga e o nome de cada pessoa
+let _assCfg = { ligado: false, nomes: {} }, _assPessoas = [];
+async function assinaturaCarregar(pessoas) {
+  try {
+    const d = await (await fetch(SERVER_URL + '/settings/assinatura')).json();
+    let v = {}; try { v = JSON.parse((d && d.value) || '{}') || {}; } catch (_) {}
+    _assCfg = { ligado: !!v.ligado, nomes: v.nomes || {} };
+  } catch (_) {}
+  _assPessoas = (pessoas || []).map(e => String(e || '').toLowerCase()).filter((e, i, a) => e && a.indexOf(e) === i);
+  const ck = document.getElementById('ass-ligado'); if (ck) ck.checked = _assCfg.ligado;
+  _assPinta();
+}
+function _assNomePadrao(email) { return String(email || '').split('@')[0].replace(/[._+-]+/g, ' ').replace(/\d+/g, ' ').trim().replace(/\s+/g, ' ').replace(/\b\w/g, c => c.toUpperCase()); }
+function _assPinta() {
+  const ck = document.getElementById('ass-ligado'), box = document.getElementById('ass-nomes'); if (!ck || !box) return;
+  box.style.display = ck.checked ? '' : 'none';
+  box.innerHTML = '<div style="font-size:12.5px;font-weight:600;color:#131c20;margin-bottom:6px">Nome que aparece de cada pessoa</div>' + _assPessoas.map(e => {
+    const v = _assCfg.nomes[e] || _assNomePadrao(e);
+    return `<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap"><span style="font-size:12px;color:#667781;min-width:180px;word-break:break-all">${escHtml(e)}</span><input class="ass-nome" data-email="${escHtml(e)}" value="${escHtml(v)}" maxlength="60" oninput="_assExemplo(this.value)" style="flex:1;min-width:160px;background:#fff;border:1px solid #d1d7db;border-radius:8px;padding:7px 10px;font-size:13px;outline:none"></div>`;
+  }).join('');
+  const eu = String(window._userEmail || '').toLowerCase();
+  _assExemplo(_assCfg.nomes[eu] || _assNomePadrao(eu) || 'Hillary Araujo');
+}
+function _assExemplo(n) { const el = document.getElementById('ass-exemplo-nome'); if (el) el.textContent = String(n || '').trim() || 'Seu nome'; }
+async function assinaturaSalvar(btn) {
+  const ligado = !!(document.getElementById('ass-ligado') || {}).checked;
+  const nomes = Object.assign({}, _assCfg.nomes);
+  document.querySelectorAll('#ass-nomes .ass-nome').forEach(i => { const n = String(i.value || '').replace(/[*\n]/g, '').trim(); if (n) nomes[i.dataset.email] = n; else delete nomes[i.dataset.email]; });
+  if (btn) btn.disabled = true;
+  try {
+    const r = await fetch(SERVER_URL + '/settings/assinatura', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ value: JSON.stringify({ ligado, nomes }) }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || d.error) throw new Error(d.error || 'falha');
+    _assCfg = { ligado, nomes };
+    window._assinaturaInfo = null; _assinaturaHint();
+    showToast(ligado ? 'Assinatura ligada: as próximas mensagens saem com o nome.' : 'Assinatura desligada.', 'ok');
+  } catch (e) { showToast('Não consegui salvar a assinatura: ' + (e.message || e), 'err'); }
+  if (btn) btn.disabled = false;
+}
+// No chat: o campo de digitar avisa "assinando como …" quando a assinatura está ligada
+async function _assinaturaHint() {
+  try {
+    if (!window._assinaturaInfo) window._assinaturaInfo = await (await fetch(SERVER_URL + '/assinatura')).json();
+    const a = window._assinaturaInfo || {};
+    const inp = document.getElementById('msg-input');
+    if (inp && !inp.classList.contains('ditando') && !(typeof _notaModo !== 'undefined' && _notaModo)) inp.placeholder = a.ligado && a.meu_nome ? 'Mensagem (assinada como ' + a.meu_nome + ')' : 'Digite uma mensagem';
+  } catch (_) {}
+}
 async function equipeCarregar() {
   const el = document.getElementById('equipe-lista'); if (!el) return;
   el.innerHTML = '<div style="font-size:12px;color:#8696a0">Carregando…</div>';
@@ -13410,6 +13468,7 @@ async function equipeCarregar() {
     const r = await fetch(SERVER_URL + '/equipe');
     const j = await r.json();
     if (j.error) { el.innerHTML = '<div style="font-size:12px;color:#ef4444">' + escHtml(j.error) + '</div>'; return; }
+    assinaturaCarregar([j.dono].concat(j.membros || [])); // ✍️
     const meu = `<div style="display:flex;align-items:center;gap:8px;padding:9px 11px;background:#e7f7ef;border:1px solid #c8ecd9;border-radius:8px;margin-bottom:6px">
       <span><i class=ic-crown></i></span><span style="flex:1;font-size:13px;color:#131c20"><b>${escHtml(j.dono || '')}</b> — dona da conta</span></div>`;
     const ac = j.acessos || {};
@@ -22567,7 +22626,7 @@ function _aplicaNotaVisual() {
   const av = document.getElementById('nota-aviso');
   if (av) av.style.display = _notaModo ? 'flex' : 'none';
   if (inp) {
-    inp.placeholder = _notaModo ? 'Nota interna — só você vê' : 'Digite uma mensagem';
+    inp.placeholder = _notaModo ? 'Nota interna — só você vê' : ((window._assinaturaInfo && window._assinaturaInfo.ligado && window._assinaturaInfo.meu_nome) ? 'Mensagem (assinada como ' + window._assinaturaInfo.meu_nome + ')' : 'Digite uma mensagem');
     inp.style.background = ''; // o amarelo é do quadro (classe nota-on), nunca do campo
     inp.focus();
   }
