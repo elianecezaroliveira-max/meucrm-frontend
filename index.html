@@ -291,6 +291,26 @@
   #send-btn svg { width: 20px; height: 20px; fill: white; }
   /* EMOJI PICKER */
   #emoji-btn { background: none; border: none; color: #667781; cursor: pointer; font-size: 22px; padding: 6px; border-radius: 50%; transition: background 0.2s, color 0.2s; flex-shrink: 0; line-height: 1; }
+  /* 🚫 mensagem apagada no WhatsApp (o FILAZ guarda o texto, apagadinho) */
+  .msg-apagada { opacity: .5; text-decoration: line-through; text-decoration-color: rgba(0,0,0,.35); }
+  .apagada-selo { font-size: 11.5px; color: #c0392b; font-style: italic; margin-top: 3px; }
+  body.dark .apagada-selo { color: #ff8a80; }
+  /* 📞 ligação */
+  .lig-bolha { display: flex; align-items: center; gap: 10px; min-width: 210px; }
+  .lig-ic { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-size: 17px; background: rgba(0,0,0,.06); flex-shrink: 0; }
+  .lig-bolha.perdida .lig-ic { background: #fdecea; color: #c0392b; }
+  .lig-tit { font-weight: 600; font-size: 14px; }
+  .lig-bolha.perdida .lig-tit { color: #c0392b; }
+  .lig-sub { font-size: 12px; color: #667781; }
+  /* 🗂️ linha "Arquivadas" no topo da lista */
+  #arq-row { display: flex; align-items: center; gap: 14px; padding: 12px 18px; cursor: pointer; border-bottom: 1px solid #f0f2f5; color: #00806a; font-weight: 600; font-size: 14.5px; }
+  #arq-row:hover { background: #f5f6f6; }
+  #arq-row .arq-n { margin-left: auto; font-size: 12.5px; color: #00a884; font-weight: 700; }
+  body.dark #arq-row { border-bottom-color: #222d34; }
+  body.dark #arq-row:hover { background: #202c33; }
+  /* ⛔ contato bloqueado */
+  #bloq-aviso { display: none; align-items: center; gap: 8px; background: #fdecea; border: 1px solid #f5b7b1; border-radius: 8px; padding: 8px 10px; font-size: 13px; color: #a93226; }
+  #bloq-aviso button { margin-left: auto; background: #fff; border: 1px solid #f5b7b1; border-radius: 7px; padding: 4px 10px; font-size: 12.5px; font-weight: 600; color: #a93226; cursor: pointer; font-family: inherit; }
   /* 📄 PDF no visualizador: página = imagem + camada de TEXTO invisível por cima (dá para
      selecionar e copiar as letras, como num leitor de PDF) */
   .fv-pg, .dv-pg { position: relative; background: #fff; flex-shrink: 0; }
@@ -2452,7 +2472,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v564</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v565</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2678,6 +2698,8 @@ window.addEventListener('load', initAuth);
   <div class="cm-item" onclick="closeInfoMenu();openTasks()"><i class=ic-task></i> Tarefas</div>
   <div class="cm-item" onclick="closeInfoMenu();passarConversa(currentPhone)"><i class=ic-users></i> Passar para…</div>
   <div class="cm-item" onclick="closeInfoMenu();exportarConversaPdf(currentPhone)"><i class=ic-doc></i> Exportar conversa (PDF)</div>
+  <div class="cm-item" id="info-menu-arq" onclick="closeInfoMenu();toggleArquivar(currentPhone)"><i class=ic-folder></i> Arquivar conversa</div>
+  <div class="cm-item" id="info-menu-bloq" onclick="closeInfoMenu();toggleBloqueio(currentPhone)" style="color:#c0392b"><i class=ic-lock></i> Bloquear contato</div>
   <div class="cm-item" data-adm onclick="closeInfoMenu();deleteConversation(currentPhone)" style="color:#ef4444"><i class=ic-trash></i> Apagar conversa</div>
 </div>
 
@@ -3297,7 +3319,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v564</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v565</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3371,7 +3393,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 564;
+const APP_VER = 565;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4864,6 +4886,63 @@ function _pintaAbaNavegador(n) {
     desenha();
   } catch (_) {}
 }
+// 🗂️ Linha "Arquivadas (N)" no topo da lista (ou "‹ Voltar" quando você está vendo as arquivadas)
+function _pintaLinhaArquivadas(list) {
+  try {
+    list = list || document.getElementById('contacts-list'); if (!list) return;
+    const n = (allContacts || []).filter(c => c.archived).length;
+    let row = document.getElementById('arq-row');
+    if (!n && !window._verArquivadas) { if (row) row.remove(); return; }
+    if (!row) { row = document.createElement('div'); row.id = 'arq-row'; row.className = 'busca-extra'; row.onclick = () => verArquivadas(!window._verArquivadas); }
+    row.innerHTML = window._verArquivadas
+      ? '<span style="font-size:18px">‹</span><span>Arquivadas</span><span class="arq-n" style="color:#667781;font-weight:500">toque para voltar</span>'
+      : '<span style="font-size:17px">🗂️</span><span>Arquivadas</span><span class="arq-n">' + n + '</span>';
+    if (list.firstChild !== row) list.insertBefore(row, list.firstChild);
+  } catch (_) {}
+}
+function verArquivadas(sim) {
+  window._verArquivadas = !!sim;
+  const l = document.getElementById('contacts-list'); if (l) l.scrollTop = 0;
+  renderContacts(sortContacts(allContacts));
+}
+async function toggleArquivar(phone) {
+  const c = allContacts.find(x => x.phone === phone); if (!c) return;
+  const nv = !c.archived;
+  c.archived = nv;
+  if (nv && currentPhone === phone && typeof closeChat === 'function' && window.matchMedia('(max-width: 768px)').matches) { try { closeChat(); } catch (_) {} }
+  if (!nv && window._verArquivadas && !(allContacts || []).some(x => x.archived)) window._verArquivadas = false;
+  renderContacts(sortContacts(allContacts));
+  try {
+    const r = await fetch(SERVER_URL + '/contacts/' + encodeURIComponent(phone) + '/archive', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ archived: nv }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || d.error) { c.archived = !nv; renderContacts(sortContacts(allContacts)); showToast(d.error || 'Não consegui arquivar.', 'err'); return; }
+    showToast(nv ? 'Conversa arquivada. Ela volta sozinha se o lead mandar mensagem.' : 'Conversa desarquivada.', 'ok', 3500, nv ? { label: 'Desfazer', fn: () => toggleArquivar(phone) } : undefined);
+  } catch (e) { c.archived = !nv; renderContacts(sortContacts(allContacts)); showToast('Não consegui arquivar: ' + (e.message || e), 'err'); }
+}
+async function toggleBloqueio(phone) {
+  const c = allContacts.find(x => x.phone === phone); if (!c) return;
+  const nv = !c.blocked;
+  if (nv) {
+    const ok = await vConfirm({ titulo: 'Bloquear ' + (c.name || phone) + '?', texto: 'Ele não vai conseguir te mandar mensagem nem ligar (no número de QR Code o bloqueio vale no próprio WhatsApp). O FILAZ não envia nada para ele — nem bot nem disparo. A conversa e as anotações continuam aqui.', confirmar: 'Bloquear' });
+    if (!ok) return;
+  }
+  try {
+    const r = await fetch(SERVER_URL + '/contacts/' + encodeURIComponent(phone) + '/block', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ blocked: nv, account_id: c.account_id || currentAccountId || null }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || d.error) { showToast(d.error || 'Não consegui ' + (nv ? 'bloquear.' : 'desbloquear.'), 'err'); return; }
+    c.blocked = nv;
+    _pintaBloqueio();
+    renderContacts(sortContacts(allContacts));
+    showToast(d.aviso || (nv ? 'Contato bloqueado.' : 'Contato desbloqueado.'), d.aviso ? 'warn' : 'ok', d.aviso ? 7000 : undefined);
+  } catch (e) { showToast('Não consegui: ' + (e.message || e), 'err'); }
+}
+function _pintaBloqueio() {
+  try {
+    const c = allContacts.find(x => x.phone === currentPhone);
+    const av = document.getElementById('bloq-aviso');
+    if (av) av.style.display = (c && c.blocked) ? 'flex' : 'none';
+  } catch (_) {}
+}
 function renderContacts(contacts) {
   try { setTimeout(_chatEtapaPinta, 0); } catch (_) {}
   // Dedo arrastando uma conversa? O redesenho espera — remontar a lista agora
@@ -4880,6 +4959,11 @@ function renderContacts(contacts) {
   }
   _pintaBadgeChat(); // a bolinha do Chat acompanha a lista (conversas não lidas)
   const list = document.getElementById('contacts-list');
+  // 🗂️ ARQUIVADAS: saem da lista (a busca acha também, igual ao WhatsApp); a linha "Arquivadas"
+  // no topo abre só elas
+  const _buscando = !!(document.getElementById('search-input')?.value || '').trim();
+  if (window._verArquivadas) contacts = (contacts || []).filter(c => c.archived);
+  else if (!_buscando) contacts = (contacts || []).filter(c => !c.archived);
   if (_listFilter === 'minhas' || _listFilter === 'sem-resp') {
     const eu = String(window._userEmail || '').toLowerCase();
     contacts = contacts.filter(c => _listFilter === 'minhas' ? String(c.responsavel || '').toLowerCase() === eu : !c.responsavel);
@@ -4943,7 +5027,7 @@ function renderContacts(contacts) {
       <div class="contact-avatar" style="${_avatarCor(c.name||c.phone)}">${escHtml((c.name||'?')[0].toUpperCase())}${c.avatar ? `<img src="${SERVER_URL}/avatar/${encodeURIComponent(String(c.avatar).split('/').pop())}" loading="lazy" alt="" onerror="this.remove()">` : ''}</div>
       <div class="contact-info">
         <div class="contact-row-top">
-          <div class="contact-name">${escHtml(_nomeOuTel(c.name, c.phone))}${c.pinned?'<span style="font-size:11px;margin-left:3px"><i class=ic-pin></i></span>':''}${c.muted?'<span style="font-size:12px;margin-left:3px;opacity:.6"><i class=ic-mute></i></span>':''}${isFav?'<span class="fav-star">★</span>':''}${c.responsavel ? '<span class="resp-chip" title="Responsável: ' + escHtml(c.responsavel) + '">' + escHtml(_nomeAutor(c.responsavel).split(' ')[0]) + '</span>' : ''}</div>
+          <div class="contact-name">${escHtml(_nomeOuTel(c.name, c.phone))}${c.pinned?'<span style="font-size:11px;margin-left:3px"><i class=ic-pin></i></span>':''}${c.muted?'<span style="font-size:12px;margin-left:3px;opacity:.6"><i class=ic-mute></i></span>':''}${isFav?'<span class="fav-star">★</span>':''}${c.responsavel ? '<span class="resp-chip" title="Responsável: ' + escHtml(c.responsavel) + '">' + escHtml(_nomeAutor(c.responsavel).split(' ')[0]) + '</span>' : ''}${c.blocked ? '<span class="resp-chip" style="background:#fdecea;color:#a93226" title="Contato bloqueado">bloqueado</span>' : ''}</div>
           <div class="contact-time">${timeStr}</div>
         </div>
         <div class="contact-preview-row">
@@ -4957,6 +5041,7 @@ function renderContacts(contacts) {
     </div>`;
   });
   _pintaLista(list, contacts, _htmlLinhas);
+  _pintaLinhaArquivadas(list);
   if (window._selChats) _selPinta(); // re-render da lista mantém as seleções visíveis
   updateAppBadge(); // mantém o número no ícone do app em dia
   _instalaToqueLongoLista(); // celular: segurar o dedo abre o menu da conversa
@@ -5079,6 +5164,10 @@ function openInfoMenu(ev) {
     if (fi) fi.innerHTML = (c && c.favorite) ? '<i class=ic-star></i> Remover dos favoritos' : '<i class=ic-star></i> Favoritar conversa';
     const mu = document.getElementById('info-menu-mute');
     if (mu) mu.innerHTML = (c && c.muted) ? '<i class=ic-bell></i> Reativar notificações' : '<i class=ic-mute></i> Silenciar conversa';
+    const ar = document.getElementById('info-menu-arq');
+    if (ar) ar.innerHTML = (c && c.archived) ? '<i class=ic-folder></i> Desarquivar conversa' : '<i class=ic-folder></i> Arquivar conversa';
+    const bq = document.getElementById('info-menu-bloq');
+    if (bq) { bq.innerHTML = (c && c.blocked) ? '<i class=ic-lock></i> Desbloquear contato' : '<i class=ic-lock></i> Bloquear contato'; bq.style.color = (c && c.blocked) ? '#00806a' : '#c0392b'; }
   } catch (_) {}
   const r = ev.currentTarget.getBoundingClientRect();
   menu.style.display = 'block';
@@ -6853,6 +6942,8 @@ function openContactMenu(ev, phone) {
     `<div class="cm-item" onclick="toggleMute('${phone}');closeContactMenu()">${c && c.muted ? '<i class=ic-bell></i> Reativar notificações' : '<i class=ic-mute></i> Silenciar conversa'}</div>` +
     `<div class="cm-item" onclick="closeContactMenu();passarConversa('${phone}')"><i class=ic-users></i> Passar para…${c && c.responsavel ? ' <span style="color:#8696a0;font-size:11px">(' + escHtml(_nomeAutor(c.responsavel)) + ')</span>' : ''}</div>` +
     `<div class="cm-item" onclick="closeContactMenu();exportarConversaPdf('${phone}')"><i class=ic-doc></i> Exportar conversa (PDF)</div>` +
+    `<div class="cm-item" onclick="closeContactMenu();toggleArquivar('${phone}')"><i class=ic-folder></i> ${c && c.archived ? 'Desarquivar conversa' : 'Arquivar conversa'}</div>` +
+    `<div class="cm-item" style="color:${c && c.blocked ? '#00806a' : '#c0392b'}" onclick="closeContactMenu();toggleBloqueio('${phone}')"><i class=ic-lock></i> ${c && c.blocked ? 'Desbloquear contato' : 'Bloquear contato'}</div>` +
     `<div class="cm-item" onclick="closeContactMenu();_selEntrar('${phone}')"><i class=ic-task></i> Selecionar conversas</div>` +
     `<div class="cm-item" style="color:#ef4444" onclick="closeContactMenu();deleteConversation('${phone}')"><i class=ic-trash></i> Apagar conversa</div>`;
   menu.style.display = 'block';
@@ -6860,13 +6951,16 @@ function openContactMenu(ev, phone) {
   const mw = menu.offsetWidth || 210, mh = menu.offsetHeight || 240;
   // Veio do botão "⋯"? O menu desce ABAIXO do botão, como uma listinha — antes ele nascia
   // exatamente sob o ponteiro e a 1ª opção ("Marcar como não lida") ficava debaixo do clique.
-  let x = ev.clientX, y = ev.clientY;
+  let x = ev.clientX, y = ev.clientY, acima = ev.clientY - mh - 8;
   try {
     const bt = ev.currentTarget && ev.currentTarget.getBoundingClientRect ? ev.currentTarget : null;
     if (bt && bt.classList && bt.classList.contains('contact-menu-btn')) {
-      const r = bt.getBoundingClientRect(); x = r.right - mw; y = r.bottom + 6;
+      const r = bt.getBoundingClientRect(); x = r.right - mw; y = r.bottom + 6; acima = r.top - mh - 6;
     } else { y = y + 8; } // clique com o botão direito / toque longo: nasce um pouco abaixo do ponteiro
   } catch (_) {}
+  // Não cabe embaixo? ABRE PARA CIMA (inteiro acima do ponteiro) — empurrar para cima até caber
+  // punha a 1ª opção ("Marcar como não lida") de novo debaixo do clique
+  if (y + mh > window.innerHeight - 8 && acima >= 8) y = acima;
   menu.style.left = Math.max(8, Math.min(x, window.innerWidth  - mw - 8)) + 'px';
   menu.style.top  = Math.max(8, Math.min(y, window.innerHeight - mh - 8)) + 'px';
 }
@@ -7443,6 +7537,7 @@ async function selectContact(phone, name, accountId) {
       <button onclick="stopActiveBotRun()" style="margin-left:auto;background:none;border:1px solid #6b7280;color:#667781;padding:2px 8px;border-radius:4px;cursor:pointer;font-size:11px">■ Parar</button>
     </div>
     <div id="input-area">
+      <div id="bloq-aviso"><span>⛔ Você bloqueou este contato. Ele não consegue te mandar mensagem e nada é enviado para ele.</span><button onclick="toggleBloqueio(currentPhone)">Desbloquear</button></div>
       <!-- Enquanto a nota interna estiver ligada, esta faixa fica na frente dos
            olhos: era comum alguém ligar sem querer e achar que estava falando
            com o cliente (ou o contrário). O botão do lado desliga na hora. -->
@@ -7538,6 +7633,7 @@ async function selectContact(phone, name, accountId) {
     </div>
   `;
   try { _chatEtapaPinta(); } catch (_) {}
+  try { setTimeout(_pintaBloqueio, 0); } catch (_) {}
 
   // Tags
   const _tagContact = allContacts.find(c => c.phone === phone);
@@ -9640,7 +9736,23 @@ const _msgData = {};
 function _midiaJa(id) {
   try { return !!(window._midiaPrio && window._midiaPrio.has(String(id))); } catch (_) { return false; }
 }
+// Bolha: ligação (📞) e mensagem apagada no WhatsApp (🚫 o texto continua, apagadinho)
 function renderMessageContent(m) {
+  if (m && m.type === 'call') {
+    const perdida = /perdida/i.test(String(m.content || ''));
+    const video = /vídeo/i.test(String(m.content || ''));
+    const dur = (String(m.content || '').match(/·\s*([\d:]+)/) || [])[1];
+    try { _msgData[m.id] = { content: String(m.content || ''), direction: m.direction, type: 'call', media_id: null, mime: '', account_id: m.account_id || null }; } catch (_) {}
+    return `<div class="lig-bolha${perdida ? ' perdida' : ''}"><div class="lig-ic">${video ? '🎥' : '📞'}</div><div><div class="lig-tit">${perdida ? (video ? 'Chamada de vídeo perdida' : 'Chamada de voz perdida') : (video ? 'Chamada de vídeo' : 'Chamada de voz')}</div><div class="lig-sub">${perdida ? 'O lead ligou pelo WhatsApp e ninguém atendeu' : (dur ? 'Duração ' + escHtml(dur) : 'Atendida')}</div></div></div>`;
+  }
+  const h = _renderMessageContentBase(m);
+  if (m && m.apagada_em) {
+    const quem = m.direction === 'outbound' ? 'Você apagou esta mensagem para todos' : 'O lead apagou esta mensagem';
+    return `<div class="msg-apagada">${h}</div><div class="apagada-selo">🚫 ${quem} · ${escHtml(_brtTime(parseUTC(m.apagada_em)))} <span style="font-style:normal;color:#8696a0">(o FILAZ guardou o que estava escrito)</span></div>`;
+  }
+  return h;
+}
+function _renderMessageContentBase(m) {
   // Guarda conteúdo para uso no reply.
   // .replace no final: mensagens com BOTÕES vêm com quebras de linha sobrando,
   // que viravam a faixa branca vazia no rodapé da bolha — cortadas aqui.
@@ -11383,6 +11495,7 @@ function _mpCaptionGrow(ta) {
   try { _mpAjustaTela(); } catch (_) {} // legenda maior → foto um pouco menor
 }
 async function sendMessage() {
+  try { const _cb = allContacts.find(x => x.phone === currentPhone); if (_cb && _cb.blocked) { showToast('Você bloqueou este contato. Desbloqueie para enviar.', 'warn'); return; } } catch (_) {}
   _saiDivisoria(); // a divisória sai encolhendo junto com o balão que nasce
   // Fotos na bandeja (computador)? ENVIAR manda as fotos com o texto de legenda
   if (_trayAtiva && _previewList.length) { await confirmMediaSend(); return; }
