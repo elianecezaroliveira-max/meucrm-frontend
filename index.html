@@ -2491,7 +2491,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v576</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v577</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3019,6 +3019,14 @@ window.addEventListener('load', initAuth);
         <select id="cfg-toque" onchange="toqueEscolhe(this.value)" style="padding:8px 10px;border:1px solid #d1d7db;border-radius:8px;font-family:inherit;font-size:13px;background:#fff;color:#131c20"></select>
         <button class="pf-topbtn" onclick="tocaToque(document.getElementById('cfg-toque').value)">Ouvir</button>
       </div>
+      <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">🎙️ Ditado por voz — correções</div>
+      <p style="font-size:12px;color:#667781;margin:0 0 8px;line-height:1.5">O Chrome entende uma palavra errada sempre igual (você fala <b>cortar</b>, sai <b>portar</b>)? Cadastre aqui: toda vez que ouvir a da esquerda, o FILAZ escreve a da direita. Vale a palavra inteira, sem diferença de maiúscula.</p>
+      <div id="ditar-corr-lista" style="margin-bottom:8px"></div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:16px">
+        <input id="ditar-corr-de" placeholder="quando ouvir…" maxlength="40" style="width:150px;padding:8px 10px;border:1px solid #d1d7db;border-radius:8px;font-family:inherit;font-size:13px;background:#fff;color:#131c20"> <span style="color:#667781">→</span>
+        <input id="ditar-corr-para" placeholder="escrever…" maxlength="40" onkeydown="if(event.key==='Enter')ditarCorrAdiciona()" style="width:150px;padding:8px 10px;border:1px solid #d1d7db;border-radius:8px;font-family:inherit;font-size:13px;background:#fff;color:#131c20">
+        <button class="pf-topbtn" onclick="ditarCorrAdiciona()">Adicionar</button>
+      </div>
       <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">Suporte</div>
       <div style="font-size:13px;color:#667781">Em breve.</div>
     </div>
@@ -3353,7 +3361,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v576</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v577</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3427,7 +3435,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 576;
+const APP_VER = 577;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5583,6 +5591,53 @@ function _ditarDisponivel() {
   try { return !!(window.SpeechRecognition || window.webkitSpeechRecognition) && !_ehCelular(); } catch (_) { return false; }
 }
 let _ditado = null; // { rec, base, finais, ativo }
+// 📝 Correções do ditado (Configurações ▸ Aparência): "quando ouvir X, escrever Y", palavra inteira.
+// Ela: "Várias vezes eu falo cortar e escreve portar". Guardado por pessoa (e-mail) no servidor e no aparelho.
+const _DITAR_CORR_PADRAO = [{ de: 'portar', para: 'cortar' }];
+let _ditarCorr = null;
+function _ditarCorrChave() { return 'filaz_ditar_corr::' + String(window._userEmail || '').toLowerCase(); }
+function _ditarCorrLista() {
+  if (_ditarCorr) return _ditarCorr;
+  try { const v = JSON.parse(localStorage.getItem(_ditarCorrChave()) || 'null'); if (Array.isArray(v)) return (_ditarCorr = v); } catch (_) {}
+  return (_ditarCorr = _DITAR_CORR_PADRAO.slice());
+}
+async function ditarCorrCarregar() {
+  try {
+    const d = await (await fetch(SERVER_URL + '/settings/ditado_correcoes')).json();
+    const todos = JSON.parse((d && d.value) || '{}') || {};
+    const meu = todos[String(window._userEmail || '').toLowerCase()];
+    if (Array.isArray(meu)) { _ditarCorr = meu; try { localStorage.setItem(_ditarCorrChave(), JSON.stringify(meu)); } catch (_) {} }
+  } catch (_) {}
+  _ditarCorrPinta();
+}
+async function _ditarCorrSalva() {
+  try { localStorage.setItem(_ditarCorrChave(), JSON.stringify(_ditarCorrLista())); } catch (_) {}
+  try {
+    const d = await (await fetch(SERVER_URL + '/settings/ditado_correcoes')).json();
+    let todos = {}; try { todos = JSON.parse((d && d.value) || '{}') || {}; } catch (_) {}
+    todos[String(window._userEmail || '').toLowerCase()] = _ditarCorrLista();
+    await fetch(SERVER_URL + '/settings/ditado_correcoes', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ value: JSON.stringify(todos) }) });
+  } catch (_) {}
+}
+function _ditarCorrPinta() {
+  const el = document.getElementById('ditar-corr-lista'); if (!el) return;
+  const l = _ditarCorrLista();
+  el.innerHTML = l.length ? l.map((c, i) => `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #f0f2f5;font-size:13px;color:#131c20"><span style="min-width:150px">${escHtml(c.de)}</span><span style="color:#667781">→</span><span style="flex:1"><b>${escHtml(c.para)}</b></span><button class="qr-manage-btn del" title="Tirar" onclick="ditarCorrTira(${i})"><i class=ic-trash></i></button></div>`).join('')
+    : '<div style="font-size:12.5px;color:#8696a0">Nenhuma correção ainda.</div>';
+}
+function ditarCorrAdiciona() {
+  const de = String((document.getElementById('ditar-corr-de') || {}).value || '').trim().toLowerCase(), para = String((document.getElementById('ditar-corr-para') || {}).value || '').trim();
+  if (!de || !para) { showToast('Preencha a palavra ouvida e a palavra certa.', 'warn'); return; }
+  const l = _ditarCorrLista().filter(c => c.de !== de); l.push({ de, para }); _ditarCorr = l;
+  document.getElementById('ditar-corr-de').value = ''; document.getElementById('ditar-corr-para').value = '';
+  _ditarCorrPinta(); _ditarCorrSalva(); showToast('Pronto: "' + de + '" vai sair como "' + para + '".', 'ok');
+}
+function ditarCorrTira(i) { const l = _ditarCorrLista().slice(); l.splice(i, 1); _ditarCorr = l; _ditarCorrPinta(); _ditarCorrSalva(); }
+function _ditarCorrige(t) {
+  let x = String(t || ''); const l = _ditarCorrLista(); if (!l.length) return x;
+  for (const c of l) { if (!c || !c.de) continue; const re = new RegExp('(^|[^\\p{L}\\p{N}])' + c.de.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![\\p{L}\\p{N}])', 'giu'); x = x.replace(re, (m, a) => a + c.para); }
+  return x;
+}
 // 💰 Dinheiro falado vira R$1.532,22: o Chrome manda "r$ 1532,22", "R$1532", "1532,22 reais",
 // "1532 reais e 22 centavos" — tudo vira o jeito que ela escreve (R$ + milhar com ponto + vírgula)
 function _ditarDinheiro(t) {
@@ -5593,7 +5648,7 @@ function _ditarDinheiro(t) {
     .replace(/\b[rR]\$\s*(\d[\d.]*)(?:,(\d{1,2}))?/g, (m, i, c) => fmt(i, c) || m);
 }
 function _ditarPontua(t) {
-  return _ditarDinheiro(String(t || ''))
+  return _ditarDinheiro(_ditarCorrige(String(t || '')))
     // Os nomes compostos vêm ANTES do "ponto" sozinho: "ponto de interrogação" virava "ponto de?"
     // (o "ponto" era poupado por vir antes de "de", e só o "interrogação" virava sinal)
     .replace(/\s*\bponto\s+de\s+(interrogação|interrogacao)\b/gi, '?').replace(/\s*\bponto\s+de\s+(exclamação|exclamacao)\b/gi, '!')
@@ -5644,6 +5699,7 @@ function _ditarMostra(interino) {
 function ditarToggle() {
   if (_ditado && _ditado.ativo) return ditarPara();
   const inp = document.getElementById('msg-input'); if (!inp) return;
+  if (!window._ditarCorrSync) { window._ditarCorrSync = true; ditarCorrCarregar(); } // 📝 correções salvas no servidor (outro PC)
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) { showToast('Este navegador não tem ditado por voz. Use o Chrome ou o Edge.', 'warn'); return; }
   const rec = new SR();
@@ -15045,6 +15101,7 @@ function cfgTab(k) {
   if (k === 'ids') { const w = document.getElementById('cfg-stage-ids-wrap'); if (w) w.style.display = 'block'; const a = document.getElementById('cfg-stage-ids-arrow'); if (a) a.textContent = '▾'; }
   if (k === 'pipe') carregarLixeiraColunas();
   if (k === 'equipe') equipeCarregar();
+  if (k === 'apar') ditarCorrCarregar(); // 🎙️ correções do ditado
   if (k === 'bill') {
     carregaFaturamento();
     carregaResumoExport();
