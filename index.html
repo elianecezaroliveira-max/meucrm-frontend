@@ -2490,7 +2490,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v573</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v575</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3352,7 +3352,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v573</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v575</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3426,7 +3426,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 573;
+const APP_VER = 575;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5582,8 +5582,17 @@ function _ditarDisponivel() {
   try { return !!(window.SpeechRecognition || window.webkitSpeechRecognition) && !_ehCelular(); } catch (_) { return false; }
 }
 let _ditado = null; // { rec, base, finais, ativo }
-function _ditarPontua(t) {
+// 💰 Dinheiro falado vira R$1.532,22: o Chrome manda "r$ 1532,22", "R$1532", "1532,22 reais",
+// "1532 reais e 22 centavos" — tudo vira o jeito que ela escreve (R$ + milhar com ponto + vírgula)
+function _ditarDinheiro(t) {
+  // "5 centavos" = ,05; "1532,5" (depois da vírgula) = ,50
+  const fmt = (inteiro, cent, falado) => { const n = String(inteiro || '').replace(/\D/g, ''); if (!n) return null; const c = String(cent || '00'); return 'R$' + n.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',' + (falado ? c.padStart(2, '0') : c.padEnd(2, '0')).slice(-2); };
   return String(t || '')
+    .replace(/(\d[\d.]*)(?:,(\d{1,2}))?\s+reais?(?:\s+e\s+(\d{1,2})\s+centavos?)?/gi, (m, i, c, c2) => fmt(i, c2 || c, !!c2) || m)
+    .replace(/\b[rR]\$\s*(\d[\d.]*)(?:,(\d{1,2}))?/g, (m, i, c) => fmt(i, c) || m);
+}
+function _ditarPontua(t) {
+  return _ditarDinheiro(String(t || ''))
     // Os nomes compostos vêm ANTES do "ponto" sozinho: "ponto de interrogação" virava "ponto de?"
     // (o "ponto" era poupado por vir antes de "de", e só o "interrogação" virava sinal)
     .replace(/\s*\bponto\s+de\s+(interrogação|interrogacao)\b/gi, '?').replace(/\s*\bponto\s+de\s+(exclamação|exclamacao)\b/gi, '!')
@@ -5597,8 +5606,17 @@ function _ditarPontua(t) {
 // frase o ditado continua minúsculo — o Chrome às vezes manda "Solicitamos…" com S maiúsculo
 // ao recomeçar a ouvir, e isso ia parar no meio da frase. Sigla (CEP, INSS) não é mexida.
 function _ditarInicioFrase(antes) { const a = String(antes || ''); return !a.trim() || /[.!?…]\s*$/.test(a) || /\n\s*$/.test(a); }
+// Nomes que o ditado pode manter com maiúscula no meio da frase: bancos e o nome do lead aberto.
+// O Chrome põe maiúscula em qualquer palavra que acha que é "nome" ("margem Livre") — só essas ficam.
+const _DITAR_NOMES = new Set(['caixa','bradesco','itaú','itau','santander','banrisul','pan','brb','daycoval','safra','c6','inter','nubank','sicoob','sicredi','banco','brasil','mercantil','facta','olé','ole','crefisa','bmg','agibank','paraná','parana','pará','para','bahia','minas','goiás','goias','ceará','ceara']);
 function _ditarCaixa(txt, inicio) {
-  const t = String(txt || ''); if (!t) return t;
+  let t = String(txt || ''); if (!t) return t;
+  const nomeLead = String((allContacts || []).find(c => c.phone === currentPhone)?.name || '').toLowerCase().split(/\s+/).filter(Boolean);
+  const fica = w => _DITAR_NOMES.has(w) || nomeLead.includes(w);
+  const E = /^[A-ZÁÉÍÓÚÂÊÔÃÕÇÀ][a-záéíóúâêôãõçà]+$/; // "Livre" (não CEP, não iPhone)
+  // Do segundo em diante: "Xxxx" vira minúsculo, a não ser que seja banco/nome do lead
+  const ps = t.split(' ');
+  t = ps.map((w, i) => (i > 0 && E.test(w) && !fica(w.toLowerCase()) && !/[.!?…]$/.test(ps[i - 1])) ? w.toLowerCase() : w).join(' '); // (depois de . ! ? a maiúscula é certa)
   if (inicio) return t.charAt(0).toUpperCase() + t.slice(1);
   return /^[A-ZÁÉÍÓÚÂÊÔÃÕÇÀ][a-záéíóúâêôãõçà]/.test(t) ? t.charAt(0).toLowerCase() + t.slice(1) : t;
 }
@@ -5654,7 +5672,7 @@ function ditarToggle() {
       if (r.isFinal) {
         // cada trecho que o Chrome fecha: maiúscula só se começa frase nova
         const antes = _ditado.base + ' ' + _ditarPontua(_ditado.finais);
-        const seg = _ditado.finais ? _ditarCaixa(txt.trim(), _ditarInicioFrase(antes)) : txt.trim();
+        const seg = _ditarCaixa(txt.trim(), _ditarInicioFrase(_ditado.finais ? antes : _ditado.base));
         _ditado.finais += (_ditado.finais && !/\s$/.test(_ditado.finais) ? ' ' : '') + seg;
       }
       else interino += txt;
