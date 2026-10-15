@@ -2484,7 +2484,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v567</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v568</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3340,7 +3340,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v567</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v568</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3414,7 +3414,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 567;
+const APP_VER = 568;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -12766,7 +12766,7 @@ function renderQRManager() {
     <div class="qr-manage-item">
       <div class="qr-manage-info">
         <div class="qr-manage-name">${r.pinned ? '<i class=ic-pin></i> ' : ''}/${escHtml(r.title)}</div>
-        <div class="qr-manage-text" title="${escHtml(String(r.message || '').slice(0, 600))}">${escHtml(String(r.message || '').replace(/\s*\n+\s*/g, ' · ').replace(/\s+/g, ' ').trim())}</div>
+        <div class="qr-manage-text" title="${escHtml(String(r.message || '').slice(0, 600))}">${String(r.message || '').trim() ? escHtml(String(r.message || '').replace(/\s*\n+\s*/g, ' · ').replace(/\s+/g, ' ').trim()) : '<i style="color:#8696a0">Só o anexo, sem legenda</i>'}</div>
         ${r.media_url ? `<div style="font-size:11.5px;color:#00806a;margin-top:3px"><i class=ic-clip></i> ${escHtml(r.media_name || 'arquivo anexado')}</div>` : ''}
       </div>
       <div class="qr-manage-btns">
@@ -12793,16 +12793,17 @@ function showQRForm(index) {
     <div id="qr-form">
       <div>
         <label>Atalho (o que você vai digitar após /)</label>
-        <input id="qr-title" placeholder="ex: ola, preco, horario..." value="${r.title}" maxlength="30">
+        <input id="qr-title" placeholder="ex: ola, preco, horario..." value="${r.title || ''}" maxlength="30">
       </div>
       <div>
         <label style="display:flex;align-items:center;gap:8px">Mensagem <button type="button" id="qr-emoji-btn" onclick="abrirEmojiPara('qr-message', this, event)" title="Inserir emoji" style="margin-left:auto;background:#fff;border:1px solid #e9edef;border-radius:8px;padding:3px 9px;font-size:14px;cursor:pointer;line-height:1">😊 Emoji</button></label>
-        <textarea id="qr-message" placeholder="Olá, {nome}! Como posso ajudar?">${r.message}</textarea>
+        <textarea id="qr-message" placeholder="Olá, {nome}! Como posso ajudar?">${r.message || ''}</textarea>
         <div id="qr-var-hint">Use <span onclick="insertQRVar('{nome}')"><b>{nome}</b></span>, <span onclick="insertQRVar('{telefone}')"><b>{telefone}</b></span>, <span onclick="insertQRVar('{notas}')"><b>{notas}</b></span> ou <span onclick="insertQRData()"><b>{data}</b></span> — o FILAZ troca pelos dados do lead; em {data} você escolhe os dias (ex.: {daqui a 7 dias} → 24/09)</div>
       </div>
       <div>
         <label>Foto ou arquivo (opcional)</label>
         <div id="qr-anexo-box"></div>
+        <div style="font-size:11.5px;color:#8696a0;margin-top:5px;line-height:1.45">Com foto, a mensagem vira a legenda. Quer mandar <b>só a foto</b>? Deixe a mensagem em branco.</div>
       </div>
       <div style="display:flex;gap:10px">
         <button class="btn-primary" onclick="saveQRForm()">Salvar</button>
@@ -12882,7 +12883,8 @@ function saveQRForm() {
   const title = (document.getElementById('qr-title')?.value || '').trim().replace(/\s+/g, '_').toLowerCase();
   const message = (document.getElementById('qr-message')?.value || '').trim();
   if (!title) { alert('Digite um atalho para a resposta.'); return; }
-  if (!message) { alert('Digite o texto da mensagem.'); return; }
+  // 📷 Com foto/arquivo a mensagem é opcional: a resposta sai só com o anexo, sem legenda
+  if (!message && !_qrAnexoAtual) { showToast('Digite a mensagem ou anexe uma foto/arquivo.', 'err'); return; }
   // Atalho repetido deixa o menu do "/" ambíguo
   const repetido = quickReplies.some((x, i) => i !== qrEditIndex && String(x.title).toLowerCase() === title);
   if (repetido) { showToast('Já existe uma resposta com o atalho /' + title, 'err'); return; }
@@ -12969,11 +12971,12 @@ function showQRPopup(filter, fromSearch) {
   }
   const contactName = allContacts.find(c => c.phone === currentPhone)?.name || '';
   list.innerHTML = filtered.map((r, i) => {
-    const preview = r.message.replace(/\{nome\}/gi, contactName || '{nome}');
+    const preview = String(r.message || '').replace(/\{nome\}/gi, contactName || '{nome}');
     const short   = preview.length > 90 ? preview.substring(0, 90) + '…' : preview;
+    const curto   = short.trim() ? escHtml(short) : '<i>' + escHtml(r.media_name || 'anexo') + ' — sem legenda</i>';
     return `<div class="qr-item" onclick="insertQRReply(${quickReplies.indexOf(r)})">
       <div class="qr-item-title">${r.pinned ? '<i class=ic-pin></i> ' : ''}/${escHtml(r.title)}${r.media_url ? ' <i class=ic-clip title="Vai com anexo"></i>' : ''}</div>
-      <div class="qr-item-preview">${escHtml(short)}</div>
+      <div class="qr-item-preview">${curto}</div>
     </div>`;
   }).join('');
   positionQRPopup();
@@ -13061,10 +13064,15 @@ function insertQRReply(index) {
   if (!r) return;
   const input = document.getElementById('msg-input');
   if (!input) return;
-  const texto = _qrVars(r.message);
+  const texto = _qrVars(r.message || '');
   hideQRPopup();
-  // Resposta COM anexo: abre a prévia do arquivo com o texto já como legenda
-  if (r.media_url) { _qrEnviaComAnexo(r, texto); return; }
+  // Resposta COM anexo: abre a prévia do arquivo com o texto já como legenda.
+  // O "/atalho" digitado sai do campo antes: no PC o campo de mensagem VIRA a
+  // legenda das fotos (bandeja) e o "/foto" ia junto para o lead.
+  if (r.media_url) {
+    try { const v = input.value, m2 = v.match(/(^|\s)(\/[^\s/]*)$/); if (m2) { input.value = v.slice(0, v.length - m2[2].length).replace(/\s+$/, ''); if (currentPhone) { if (input.value) _drafts[currentPhone] = input.value; else delete _drafts[currentPhone]; _saveDrafts(); } } } catch (_) {}
+    _qrEnviaComAnexo(r, texto); return;
+  }
   // Insere no lugar do cursor, sem apagar o que você já escreveu.
   // Se você chamou pelo "/", o /atalho digitado é substituído.
   const val = input.value;
@@ -13094,8 +13102,10 @@ async function _qrEnviaComAnexo(r, texto) {
     // Foto/vídeo abrem a prévia com legenda; arquivo usa o campo de mensagem
     setTimeout(() => {
       const cap = document.getElementById('mp-caption');
-      if (cap) { cap.value = texto; cap.focus(); }
-      else {
+      // No PC (bandeja de miniaturas) a legenda é o próprio campo de mensagem; no celular, o da prévia.
+      // Sem texto na resposta, nada é posto: a foto vai sozinha, sem legenda.
+      if (!_trayAtiva && cap && document.getElementById('media-preview-overlay') && getComputedStyle(document.getElementById('media-preview-overlay')).display !== 'none') { cap.value = texto; cap.focus(); }
+      else if (texto) {
         const inp = document.getElementById('msg-input');
         if (inp) { inp.value = texto; try { updateSendMicButtons(); autoGrowMsgInput(inp); } catch (_) {} }
       }
