@@ -2491,7 +2491,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v577</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v578</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3361,7 +3361,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v577</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v578</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3435,7 +3435,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 577;
+const APP_VER = 578;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4233,6 +4233,7 @@ function _listaDoCache() {
     if (Date.now() - (g.ts || 0) > 7 * 86400000) return false; // uma semana sem abrir: melhor esperar a rede
     allContacts = sortContacts(_ecoAplica(g.lista));
     window._listaDoCacheTs = g.ts;
+    _cabecalhoNome();
     renderContacts(allContacts);
     window.hideSplash && window.hideSplash();
     return true;
@@ -4314,6 +4315,7 @@ async function loadContacts(render = true, buscaJaIniciada = null) {
     _avisaChegou(lista); // 🔔 chegou mensagem de lead? toca (regras do WhatsApp)
     allContacts = sortContacts(_ecoAplica(lista));
     window._contactsLoaded = true;
+    _cabecalhoNome(); // 📱 a conversa abriu antes da lista: troca o número pelo nome
     if (!window._iaStatusPedido) { window._iaStatusPedido = true; _iaSugCarregaStatus(); } // ✨ sugestões ligadas?
     _listaGuarda(lista);
     if (render) { renderContacts(allContacts); populateFilterOptions(); }
@@ -7605,6 +7607,9 @@ async function selectContact(phone, name, accountId) {
   _lastMsgsSig = '';
   try { hideNewMsgPill(); } catch (_) {} // aviso da conversa anterior não vem junto
   currentPhone = phone;
+  // 📱 Aberta pela notificação do celular (?phone=…) ANTES da lista carregar, o nome vinha vazio e o
+  // cabeçalho mostrava o número. Procura o nome na lista; se ela ainda não chegou, _cabecalhoNome() corrige depois.
+  if (!name || String(name).replace(/\D/g, '') === String(phone).replace(/\D/g, '')) { const _c = (allContacts || []).find(x => x.phone === phone); name = (_c && _c.name) ? _c.name : ''; } // (sem nome: o cabeçalho mostra o número formatado)
   currentName = name || phone;
   currentAccountId = accountId || document.getElementById('account-select').value || '';
   applyFilters(); // preserva a busca/filtros ativos ao abrir a conversa
@@ -11383,7 +11388,7 @@ function _pendRestaura() {
       if (_pendentes.some(p => cid ? (p.corpo && p.corpo.client_id === cid) : (p.phone === x.phone && p.texto === x.texto))) return;
       const p = { texto: x.texto, phone: x.phone, ts: x.ts || Date.now(), reply: x.reply || null, corpo: x.corpo, falhou: x.falhou || 'Não enviada', definitiva: !!x.definitiva };
       _pendentes.push(p);
-      if (!p.definitiva) _agendaReenvio(p, 0); // voltou a abrir o app: tenta de novo sozinho
+      // (voltou a abrir o app: fica com o ⚠ — você decide se reenvia)
     });
   } catch (_) {}
 }
@@ -11409,11 +11414,10 @@ function _envioFalhou(p, motivoFixo) {
   _pintaPendFalha(p); _pendGuardaFalhas();
   if (!p.definitiva) _agendaReenvio(p, 0);
 }
-function _agendaReenvio(p, tent) {
-  if (tent >= _REENVIO_ESPERAS.length) return; // esgotou: fica com o ⚠ esperando o seu toque (ou a internet voltar)
-  clearTimeout(p._tReenvio);
-  p._tReenvio = setTimeout(() => _reenviaPend(p, tent), _REENVIO_ESPERAS[tent]);
-}
+// 🙅 Ela: "Não reenvie mensagem com erro automaticamente, deixe que eu escolho se quero que reenvie ou não".
+// A mensagem que falhou fica com o ⚠ na conversa; só o seu toque ("Tentar de novo") reenvia.
+// (antes: 2 s, 5 s, 10 s, 20 s, ao reabrir o app e quando a internet voltava — tudo sozinho)
+function _agendaReenvio(p, tent) { clearTimeout(p && p._tReenvio); }
 async function _reenviaPend(p, tent) {
   if (!p || !p.corpo || !_pendentes.includes(p)) return;
   if (p._reenviando) return; p._reenviando = true;
@@ -11425,7 +11429,7 @@ async function _reenviaPend(p, tent) {
   p._reenviando = false;
   if (res && res.ok) { await _envioDeuCerto(p); return; }
   if (res && res.status < 500) { p.falhou = data.error || 'Recusado pelo servidor'; p.definitiva = true; _pintaPendFalha(p); _pendGuardaFalhas(); return; }
-  _agendaReenvio(p, (tent || 0) + 1);
+  p.falhou = 'Sem conexão com o servidor'; _pintaPendFalha(p); _pendGuardaFalhas(); // falhou de novo: ⚠ de volta, sem insistir sozinho
 }
 async function _envioDeuCerto(p) {
   p.falhou = null; p.definitiva = false; clearTimeout(p._tReenvio);
@@ -11445,8 +11449,8 @@ async function _pendFalhaClique(chave) {
     try { const el = document.querySelector('#messages-area [data-key="' + chave + '"]'); if (el) el.remove(); } catch (_) {}
   }
 }
-// A internet voltou: tudo o que ficou com ⚠ (sem recusa) tenta de novo na hora
-window.addEventListener('online', () => { try { _pendRestaura(); _pendentes.filter(p => p.falhou && !p.definitiva && p.corpo).forEach(p => { clearTimeout(p._tReenvio); _reenviaPend(p, _REENVIO_ESPERAS.length - 1); }); } catch (_) {} });
+// A internet voltou: as não enviadas só voltam para a tela (reenviar é escolha sua)
+window.addEventListener('online', () => { try { _pendRestaura(); } catch (_) {} }); // (a internet voltou: nada é reenviado sozinho — você escolhe no ⚠)
 // As pendentes DESTA conversa que ainda não vieram do servidor
 function _pendDaConversa(phone, msgs) {
   _pendRestaura(); _pendLimpa();
@@ -16882,6 +16886,18 @@ async function loadApprovedTemplates() {
   } catch(e) { el.innerHTML = '<p style="color:#ef4444;font-size:13px">Erro ao carregar modelos.</p>'; }
 }
 
+// Cabeçalho da conversa aberta mostrando o NÚMERO (abriu antes da lista chegar): põe o nome
+function _cabecalhoNome() {
+  try {
+    if (!currentPhone) return;
+    const c = (allContacts || []).find(x => x.phone === currentPhone); if (!c || !c.name) return;
+    const el = document.getElementById('chat-name-text'); if (!el) return;
+    const atual = String(el.textContent || '').trim();
+    if (/\p{L}/u.test(atual)) return; // já é um nome (número formatado não tem letra)
+    el.textContent = c.name; currentName = c.name;
+    const lpn = document.querySelector('#lead-panel .lp-name'); if (lpn) { lpn.textContent = c.name; lpn.title = c.name; }
+  } catch (_) {}
+}
 // Nome do lead da conversa ABERTA (lê do cabeçalho, garantindo que é o lead certo)
 function getCurrentLeadName() {
   const el = document.getElementById('chat-name-text');
