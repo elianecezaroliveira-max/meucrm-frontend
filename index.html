@@ -835,6 +835,19 @@
   .ia-sug-item { background:#fff; border:1px solid #d9ebe3; border-radius:9px; padding:6px 10px; font-size:13px; line-height:1.35; color:#131c20; cursor:pointer; white-space:pre-wrap; word-break:break-word; }
   .ia-sug-item:hover { background:#e7f7ef; }
   .ia-sug-item.usada { opacity:.45; text-decoration:line-through; }
+  /* 🎓 Treinar a IA: conversa de mentira dentro da tela IA */
+  #ia-treino-chat { background:#efeae2; border-radius:10px; padding:10px; max-height:380px; overflow:auto; display:flex; flex-direction:column; gap:6px; }
+  .iat-b { max-width:78%; padding:7px 10px; border-radius:9px; font-size:13.5px; line-height:1.35; white-space:pre-wrap; word-break:break-word; box-shadow:0 1px .5px rgba(0,0,0,.13); }
+  .iat-b.lead { align-self:flex-start; background:#fff; }
+  .iat-b.eu { align-self:flex-end; background:#d9fdd3; }
+  .iat-b.ia { align-self:flex-end; background:#fff8e1; border:1px dashed #e0b400; max-width:88%; }
+  .iat-b.ia small { display:block; color:#8a6d00; font-size:11px; margin-bottom:3px; }
+  .iat-b.ia .iat-acoes { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
+  .iat-b.ia .iat-acoes button { font-size:12px; padding:4px 9px; border-radius:7px; border:1px solid #d1d7db; background:#fff; cursor:pointer; font-family:inherit; }
+  .iat-b .iat-motivo { font-size:11.5px; color:#667781; margin-top:4px; }
+  .iat-tab { padding:5px 11px; border-radius:7px; border:1px solid #d1d7db; background:#fff; cursor:pointer; font-size:12.5px; font-family:inherit; }
+  .iat-tab.on { background:#00a884; color:#fff; border-color:#00a884; }
+  body.dark #ia-treino-chat { background:#0b141a; } body.dark .iat-b.lead { background:#202c33; color:#e9edef; } body.dark .iat-b.eu { background:#005c4b; color:#e9edef; } body.dark .iat-b.ia { background:#2a2a1e; color:#e9edef; }
   .ia-sug-item.no-campo { border-color:#00a884; box-shadow:0 0 0 1px #00a884 inset; }
   .ia-sug-audio { font-size:12px; color:#54656f; font-style:italic; padding:2px 4px; white-space:pre-wrap; word-break:break-word; } /* transcrição do áudio do lead */
   .ia-sug-rapida, .ia-sug-bot { background:#f7fbf9; }
@@ -2491,7 +2504,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v585</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v586</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3361,7 +3374,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v585</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v586</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3435,7 +3448,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 585;
+const APP_VER = 586;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -18860,6 +18873,105 @@ async function iaMemLimpa(btn) {
   finally { if (btn) btn.disabled = false; }
 }
 let _iaQuandoDados = null;
+// ═════════ 🎓 TREINAR A IA — conversa de mentira (Cliente 1/2/3) ═════════
+// Cada cliente tem a sua conversa guardada neste aparelho. "Enviar como cliente" pede a sugestão ao
+// servidor com a conversa de mentira; "Usar assim" aceita; "Corrigir" abre a sua resposta + o porquê
+// e grava o exemplo ENSINADO (origem 'treino', com motivo) na memória da IA.
+let _iaTreino = null;
+function _iaTreinoChave() { return 'filaz_ia_treino::' + String(window._userEmail || '').toLowerCase(); }
+function _iaTreinoEstado() {
+  if (_iaTreino) return _iaTreino;
+  try { const v = JSON.parse(localStorage.getItem(_iaTreinoChave()) || 'null'); if (v && v.conversas) return (_iaTreino = v); } catch (_) {}
+  return (_iaTreino = { cliente: 'c1', conversas: { c1: [], c2: [], c3: [] } });
+}
+function _iaTreinoGuarda() { try { localStorage.setItem(_iaTreinoChave(), JSON.stringify(_iaTreinoEstado())); } catch (_) {} }
+function _iaTreinoConv() { const e = _iaTreinoEstado(); return (e.conversas[e.cliente] = e.conversas[e.cliente] || []); }
+function iaTreinoCliente_(c) { _iaTreinoEstado().cliente = c; _iaTreinoGuarda(); iaTreinoCorrFecha(); iaTreinoPinta(); }
+function iaTreinoPinta() {
+  const tabs = document.getElementById('ia-treino-tabs'), chat = document.getElementById('ia-treino-chat'); if (!tabs || !chat) return;
+  const e = _iaTreinoEstado();
+  tabs.innerHTML = ['c1', 'c2', 'c3'].map(c => '<button class="iat-tab' + (e.cliente === c ? ' on' : '') + '" onclick="iaTreinoCliente_(\'' + c + '\')">Cliente ' + c.slice(1) + (e.conversas[c] && e.conversas[c].length ? ' · ' + e.conversas[c].length : '') + '</button>').join('');
+  const conv = _iaTreinoConv();
+  chat.innerHTML = conv.length ? conv.map((m, i) => {
+    if (m.quem === 'ia') {
+      const txt = (m.itens || []).map(it => it.tipo === 'rapida' ? '⚡ /' + it.atalho + ' — ' + (it.previa || '') : it.tipo === 'bot' ? '🤖 ' + it.nome : it.texto).join('\n');
+      const pend = i === conv.length - 1;
+      return '<div class="iat-b ia"><small>✨ A IA responderia' + (m.motivo ? '' : '') + ':</small>' + (txt ? escHtml(txt) : '<i>sem sugestão — ' + escHtml(m.motivo || 'a IA não teve o que dizer') + '</i>')
+        + (m.porque ? '<div class="iat-motivo">Porquê dela: ' + escHtml(m.porque) + '</div>' : '')
+        + (pend ? '<div class="iat-acoes">' + (txt ? '<button onclick="iaTreinoUsar()">Usar assim ✓</button><button onclick="iaTreinoCorrigir()">Corrigir e explicar</button>' : '<button onclick="iaTreinoCorrigir()">Responder eu e explicar</button>') + (m.explicacao ? '<button onclick="iaTreinoPorque()">Por quê?</button>' : '') + '</div>' : '') + '</div>';
+    }
+    return '<div class="iat-b ' + (m.quem === 'eu' ? 'eu' : 'lead') + '">' + escHtml(m.texto) + (m.motivo ? '<div class="iat-motivo">🎓 ' + escHtml(m.motivo) + '</div>' : '') + '</div>';
+  }).join('') : '<div style="font-size:12.5px;color:#8696a0;padding:8px">Escreva embaixo o que o cliente diria e clique em "Enviar como cliente".</div>';
+  chat.scrollTop = chat.scrollHeight;
+}
+function _iaTreinoMsg(t, cor) { const el = document.getElementById('ia-treino-msg'); if (el) { el.textContent = t || ''; el.style.color = cor || '#667781'; } }
+async function iaTreinoCliente() {
+  const inp = document.getElementById('ia-treino-in'); const t = String((inp && inp.value) || '').trim(); if (!t) return;
+  const conv = _iaTreinoConv();
+  if (conv.length && conv[conv.length - 1].quem === 'ia') conv.pop(); // a sugestão pendente perde o sentido: o cliente falou de novo
+  conv.push({ quem: 'lead', texto: t }); inp.value = ''; _iaTreinoGuarda(); iaTreinoPinta();
+  _iaTreinoMsg('A IA está pensando…');
+  let d = null;
+  try {
+    const r = await fetch(SERVER_URL + '/ia/treino/sugerir', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cliente: _iaTreinoEstado().cliente, nome: 'Cliente ' + _iaTreinoEstado().cliente.slice(1), conversa: _iaTreinoConv().filter(m => m.quem !== 'ia').map(m => ({ quem: m.quem, texto: m.texto })) }) });
+    d = r.ok ? await r.json() : null;
+  } catch (_) { d = null; }
+  const itens = (d && Array.isArray(d.itens) && d.itens.length) ? d.itens : (d && Array.isArray(d.mensagens) ? d.mensagens.map(x => ({ tipo: 'texto', texto: x })) : []);
+  const c2 = _iaTreinoConv(); if (c2[c2.length - 1] && c2[c2.length - 1].quem === 'lead' && c2[c2.length - 1].texto === t) {
+    c2.push({ quem: 'ia', itens, motivo: d ? (d.motivo || '') : 'o servidor não respondeu', porque: (d && d.explicacao && d.explicacao.porque) || '', explicacao: (d && d.explicacao) || null, sugerido: itens.map(it => it.tipo === 'rapida' ? '[rapida: /' + it.atalho + ']' : it.tipo === 'bot' ? '[bot: ' + it.nome + ']' : it.texto) });
+  }
+  _iaTreinoGuarda(); iaTreinoPinta(); _iaTreinoMsg('');
+}
+function _iaTreinoPendente() { const c = _iaTreinoConv(); const u = c[c.length - 1]; return (u && u.quem === 'ia') ? u : null; }
+function _iaTreinoLeadECtx() {
+  const c = _iaTreinoConv().filter(m => m.quem !== 'ia');
+  const lead = []; let i = c.length - 1;
+  for (; i >= 0 && c[i].quem === 'lead'; i--) lead.unshift(c[i].texto);
+  const ctx = c.slice(Math.max(0, i - 3), i + 1).map(m => (m.quem === 'eu' ? 'Eu: ' : 'Lead: ') + m.texto);
+  return { lead, ctx };
+}
+function iaTreinoPorque() { const p = _iaTreinoPendente(); if (!p || !p.explicacao) return; const antes = _iaSug; _iaSug = { explicacao: p.explicacao }; try { _iaSugPorque(); } finally { _iaSug = antes; } }
+async function iaTreinoUsar() {
+  const p = _iaTreinoPendente(); if (!p || !(p.sugerido || []).length) return;
+  const { lead, ctx } = _iaTreinoLeadECtx();
+  await _iaTreinoGrava(lead, ctx, p.sugerido, p.sugerido, '', 'A IA acertou: resposta confirmada.');
+}
+function iaTreinoResponderEu() { const { lead } = _iaTreinoLeadECtx(); if (!lead.length) { _iaTreinoMsg('Primeiro escreva o que o cliente diria.', '#c0392b'); return; } iaTreinoCorrigir(); }
+function iaTreinoCorrigir() {
+  const p = _iaTreinoPendente();
+  const box = document.getElementById('ia-treino-corr'), ta = document.getElementById('ia-treino-resp'), mo = document.getElementById('ia-treino-motivo'); if (!box) return;
+  box.style.display = ''; ta.value = p ? (p.itens || []).filter(it => it.tipo === 'texto').map(it => it.texto).join('\n') : ''; mo.value = ''; ta.focus();
+}
+function iaTreinoCorrFecha() { const box = document.getElementById('ia-treino-corr'); if (box) box.style.display = 'none'; }
+async function iaTreinoEnsina() {
+  const ta = document.getElementById('ia-treino-resp'), mo = document.getElementById('ia-treino-motivo');
+  const resposta = String((ta && ta.value) || '').split('\n').map(x => x.trim()).filter(Boolean).slice(0, 6);
+  const motivo = String((mo && mo.value) || '').trim();
+  if (!resposta.length) { _iaTreinoMsg('Escreva como você responderia.', '#c0392b'); return; }
+  if (!motivo) { _iaTreinoMsg('Diga o porquê — é isso que a IA aprende.', '#c0392b'); mo && mo.focus(); return; }
+  const p = _iaTreinoPendente(); const { lead, ctx } = _iaTreinoLeadECtx();
+  if (!lead.length) { _iaTreinoMsg('Primeiro escreva o que o cliente diria.', '#c0392b'); return; }
+  await _iaTreinoGrava(lead, ctx, resposta, (p && p.sugerido) || [], motivo, 'Ensinado ✓ — entrou na memória com o motivo.');
+  iaTreinoCorrFecha();
+}
+async function _iaTreinoGrava(lead, ctx, resposta, sugerido, motivo, aviso) {
+  _iaTreinoMsg('Guardando…');
+  let ok = false, erro = '';
+  try {
+    const r = await fetch(SERVER_URL + '/ia/treino/ensinar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cliente: _iaTreinoEstado().cliente, lead, contexto: ctx, resposta, sugerido, motivo }) });
+    const d = await r.json().catch(() => ({})); ok = r.ok && !d.error; erro = d.error || d.motivo || '';
+    if (ok && d.guardado === false) { ok = false; erro = d.motivo || 'não guardado'; }
+  } catch (e) { erro = e.message; }
+  const c = _iaTreinoConv(); if (c[c.length - 1] && c[c.length - 1].quem === 'ia') c.pop();
+  c.push({ quem: 'eu', texto: resposta.join('\n'), motivo: motivo || '' });
+  _iaTreinoGuarda(); iaTreinoPinta();
+  _iaTreinoMsg(ok ? aviso : 'Não consegui guardar na memória: ' + erro, ok ? '#00806a' : '#c0392b');
+  if (ok) { try { _iaSugCarregaStatus(); } catch (_) {} }
+}
+async function iaTreinoLimpa() {
+  if (!await vConfirm({ titulo: 'Limpar a conversa de mentira', texto: 'Só a conversa deste cliente sai da tela. O que você já ensinou continua na memória da IA.', confirmar: 'Limpar' })) return;
+  _iaTreinoEstado().conversas[_iaTreinoEstado().cliente] = []; _iaTreinoGuarda(); iaTreinoCorrFecha(); iaTreinoPinta();
+}
 async function iaExtrasCarrega() {
   const nv = document.getElementById('ia-novidades'), qd = document.getElementById('ia-quando');
   if (!nv || !qd) return;
@@ -18949,8 +19061,22 @@ function faqRender(){
       + '<div style="font-size:12px;color:#667781;margin:2px 0 6px">Texto pronto só entra na sugestão no momento que você descrever aqui (ex.: "quando o lead confirma que fez o aceite da solicitação de saldo"). Em branco = a IA nunca sugere esse texto.</div>'
       + '<div id="ia-quando" style="font-size:13px;color:#54656f">Carregando…</div>'
       + '<div style="margin-top:6px"><button class="btn-secondary" onclick="iaQuandoSalva(this)">Salvar momentos</button> <span id="ia-quando-msg" style="font-size:12px;color:#667781"></span></div></div>'
+      // 🎓 treinar a IA numa conversa de mentira (ela escreve como o cliente; a IA responde; ela corrige e explica)
+      + '<div id="ia-treino" style="margin-top:12px;border-top:1px solid #e9edef;padding-top:10px"><b style="font-size:13px">🎓 Treinar a IA</b>'
+      + '<div style="font-size:12px;color:#667781;margin:2px 0 8px">Uma conversa de mentira: você escreve o que o cliente diria, a IA responde como responderia de verdade, e você corrige a resposta e diz <b>o porquê</b>. O que você ensina aqui entra na memória com o motivo. Nada vai para o WhatsApp.</div>'
+      + '<div id="ia-treino-tabs" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"></div>'
+      + '<div id="ia-treino-chat"></div>'
+      + '<div id="ia-treino-corr" style="display:none;margin-top:8px;background:#fff;border:1px solid #e0b400;border-radius:9px;padding:10px">'
+      + '<div style="font-size:12.5px;font-weight:600;color:#131c20;margin-bottom:4px">Como você responderia (uma mensagem por linha)</div>'
+      + '<textarea id="ia-treino-resp" rows="3" style="width:100%;box-sizing:border-box;background:#f0f2f5;border:1px solid #e0e4e6;border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;resize:vertical"></textarea>'
+      + '<div style="font-size:12.5px;font-weight:600;color:#131c20;margin:8px 0 4px">Por quê? (a regra que a IA deve aprender)</div>'
+      + '<input id="ia-treino-motivo" maxlength="300" placeholder="ex.: quando chega o extrato eu respondo com a simulação, nunca com a lista de documentos" style="width:100%;box-sizing:border-box;background:#f0f2f5;border:1px solid #e0e4e6;border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit">'
+      + '<div style="display:flex;gap:6px;margin-top:8px"><button class="btn-save" onclick="iaTreinoEnsina()">Ensinar e responder</button><button class="btn-secondary" onclick="iaTreinoCorrFecha()">Cancelar</button></div></div>'
+      + '<div style="display:flex;gap:6px;margin-top:8px"><input id="ia-treino-in" placeholder="Escreva o que o cliente diria…" onkeydown="if(event.key===\'Enter\'){event.preventDefault();iaTreinoCliente()}" style="flex:1;background:#f0f2f5;border:1px solid #e0e4e6;border-radius:8px;padding:9px 11px;font-size:13px;font-family:inherit">'
+      + '<button class="btn-save" onclick="iaTreinoCliente()">Enviar como cliente</button><button class="btn-secondary" onclick="iaTreinoResponderEu()" title="Responder você mesma, sem esperar a IA">Responder eu</button><button class="btn-secondary" onclick="iaTreinoLimpa()" title="Apaga a conversa de mentira deste cliente (o que já foi ensinado fica na memória)">Limpar</button></div>'
+      + '<div id="ia-treino-msg" style="font-size:12px;color:#667781;margin-top:6px"></div></div>'
       + '</div>';
-    setTimeout(iaExtrasCarrega, 0);
+    setTimeout(iaExtrasCarrega, 0); setTimeout(iaTreinoPinta, 0);
   }
   // interruptor geral
   html += '<div class="faq-master">'
