@@ -2491,7 +2491,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v584</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v585</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3361,7 +3361,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v584</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v585</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3435,7 +3435,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 584;
+const APP_VER = 585;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5398,6 +5398,8 @@ function _iaSugAvalia(phone, msgs) {
   _iaSugTimer = setTimeout(() => _iaSugPede(phone, chave, false), 1500);
 }
 async function _iaSugPede(phone, chave, forcar) {
+  // o lead falou DE NOVO: a sugestão da fala anterior já não serve (e o aprendizado dela já fechou)
+  if (_iaSug && _iaSug.phone === phone && _iaSug.chave !== chave) _iaSug = null;
   if (forcar) { const b = document.getElementById('ia-sug-bar'); if (b) { b.style.display = 'flex'; b.innerHTML = '<div class="ia-sug-cab"><span>✨ Sugestão</span><small>pensando…</small></div>'; } }
   let d = null;
   try {
@@ -5408,15 +5410,20 @@ async function _iaSugPede(phone, chave, forcar) {
     // Falhou (sem resposta, servidor fora, erro da IA)? A fala do lead volta a ficar "não pedida":
     // o próximo desenho da conversa pede de novo (antes ficava marcada como feita e a sugestão
     // nunca vinha — era o que acontecia quando o lead respondia durante o DEPLOY do servidor)
-    if (!d || d.motivo) { _iaSugFeitas.delete(chave); _iaSugFalhas[chave] = Date.now(); setTimeout(() => { try { if (currentPhone === phone) _iaSugAvalia(phone, currentMessages); } catch (_) {} }, 21000); }
-    if (forcar) showToast(d && d.motivo ? 'Sem sugestão: ' + d.motivo : 'Sem sugestão agora', 'erro');
-    // Antes, quando a IA voltava vazia, a tela ficava MUDA — ela não sabia se a IA tinha
-    // pensado e nem tinha como pedir de novo. Agora o cartão diz o que houve e tem o ↻.
-    // Limite de uso do Groq (tokens por minuto) acabou: NADA de cartão — ela pediu (o texto da
-    // Groq é enorme e não tem o que ela fazer; o app tenta de novo sozinho em 20 s)
+    // 🔍 Em CADA caso sem sugestão ela quer saber o motivo (antes o limite da Groq ficava mudo e
+    // "umas conversas têm, outras não"). Casos definitivos (número de teste, IA sem o que dizer,
+    // tudo filtrado) não são repetidos; os passageiros (limite, servidor fora) repetem em 20 s.
     const _mot = String((d && d.motivo) || '');
-    if (/rate limit|too large|tokens per minute|\(TPM\)|\(RPM\)|requests per minute|console\.groq\.com/i.test(_mot)) { _iaSugVazia = null; _iaSugPinta(); return; }
-    if (currentPhone === phone && !(d && d.motivo === 'desligada')) _iaSugVazia = { phone, chave, motivo: (_mot ? _mot.slice(0, 110) + (_mot.length > 110 ? '…' : '') : (d ? 'a IA não teve o que sugerir para esta fala' : 'o servidor não respondeu')) };
+    const _limite = /rate limit|too large|tokens per minute|\(TPM\)|\(RPM\)|requests per minute|console\.groq\.com/i.test(_mot);
+    const _definitivo = !!(d && d.definitivo);
+    if (!d || (d.motivo && !_definitivo)) { _iaSugFeitas.delete(chave); _iaSugFalhas[chave] = Date.now(); setTimeout(() => { try { if (currentPhone === phone) _iaSugAvalia(phone, currentMessages); } catch (_) {} }, 21000); }
+    if (forcar) showToast(d && d.motivo ? 'Sem sugestão: ' + (_limite ? 'IA ocupada (limite de uso por minuto)' : d.motivo.slice(0, 160)) : 'Sem sugestão agora', 'erro');
+    let _txt;
+    if (!d) _txt = 'o servidor não respondeu — tento de novo em 20 s';
+    else if (_limite) _txt = 'IA ocupada (limite de uso por minuto da Groq) — tento de novo em 20 s';
+    else if (_mot) _txt = _mot.slice(0, 150) + (_mot.length > 150 ? '…' : '') + (_definitivo ? '' : ' — tento de novo em 20 s');
+    else _txt = 'a IA não teve o que sugerir para esta fala';
+    if (currentPhone === phone && !(d && d.motivo === 'desligada')) _iaSugVazia = { phone, chave, motivo: _txt };
     _iaSugPinta(); return;
   }
   delete _iaSugFalhas[chave]; _iaSugVazia = null;
