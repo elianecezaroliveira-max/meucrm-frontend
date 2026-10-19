@@ -2504,7 +2504,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v588</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v589</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3374,7 +3374,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v588</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v589</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3448,7 +3448,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 588;
+const APP_VER = 589;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -18918,7 +18918,8 @@ async function iaTreinoCliente() {
   } catch (_) { d = null; }
   const itens = (d && Array.isArray(d.itens) && d.itens.length) ? d.itens : (d && Array.isArray(d.mensagens) ? d.mensagens.map(x => ({ tipo: 'texto', texto: x })) : []);
   const c2 = _iaTreinoConv(); if (c2[c2.length - 1] && c2[c2.length - 1].quem === 'lead' && c2[c2.length - 1].texto === t) {
-    c2.push({ quem: 'ia', itens, motivo: d ? (d.motivo || '') : 'o servidor não respondeu', porque: (d && d.explicacao && d.explicacao.porque) || '', explicacao: (d && d.explicacao) || null, sugerido: itens.map(it => it.tipo === 'rapida' ? '[rapida: /' + it.atalho + ']' : it.tipo === 'bot' ? '[bot: ' + it.nome + ']' : it.texto) });
+    const _motT = String((d && d.motivo) || ''); const _limT = /rate limit|too large|tokens per minute|\(TPM\)|\(RPM\)|requests per minute|console\.groq\.com|quota|RESOURCE_EXHAUSTED|status code 429/i.test(_motT);
+    c2.push({ quem: 'ia', itens, motivo: d ? (_limT ? 'IA ocupada (limite de uso do provedor ' + (/groq/i.test(_motT) ? 'Groq' : '') + ') — tente de novo em instantes. Se for sempre o Groq, a chave do Gemini ainda não está valendo no Railway.' : (_motT.slice(0, 200))) : 'o servidor não respondeu', porque: (d && d.explicacao && d.explicacao.porque) || '', explicacao: (d && d.explicacao) || null, sugerido: itens.map(it => it.tipo === 'rapida' ? '[rapida: /' + it.atalho + ']' : it.tipo === 'bot' ? '[bot: ' + it.nome + ']' : it.texto) });
   }
   _iaTreinoGuarda(); iaTreinoPinta(); _iaTreinoMsg('');
 }
