@@ -2504,7 +2504,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v587</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v588</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3374,7 +3374,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v587</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v588</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3448,7 +3448,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 587;
+const APP_VER = 588;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -18940,7 +18940,21 @@ function iaTreinoResponderEu() { const { lead } = _iaTreinoLeadECtx(); if (!lead
 function iaTreinoCorrigir() {
   const p = _iaTreinoPendente();
   const box = document.getElementById('ia-treino-corr'), ta = document.getElementById('ia-treino-resp'), mo = document.getElementById('ia-treino-motivo'); if (!box) return;
-  box.style.display = ''; ta.value = p ? (p.itens || []).filter(it => it.tipo === 'texto').map(it => it.texto).join('\n') : ''; mo.value = ''; ta.focus();
+  // a sugestão entra no campo do jeito que a memória registra ([bot: Nome] / [rapida: /atalho] / texto)
+  box.style.display = ''; ta.value = p ? (p.sugerido || []).join('\n') : ''; mo.value = ''; ta.focus();
+  iaTreinoOpcoes();
+}
+// Listas de bots e rápidas para inserir na resposta do treino (o que a IA lê como marcador)
+async function iaTreinoOpcoes() {
+  const sb = document.getElementById('ia-treino-sel-bot'), sr = document.getElementById('ia-treino-sel-rapida');
+  if (sr) { try { await _syncQuickReplies(); } catch (_) {} sr.innerHTML = '<option value="">⚡ Inserir resposta rápida…</option>' + (quickReplies || []).map(r => '<option value="[rapida: /' + escHtml(String(r.title || '').toLowerCase()) + ']">/' + escHtml(r.title || '') + '</option>').join(''); }
+  if (sb) { let bots = window._iaTreinoBots; if (!bots) { try { const b = await (await fetch(SERVER_URL + '/bots')).json(); bots = (Array.isArray(b) ? b : (b && b.bots) || []).filter(x => x && x.name && x.active !== false); } catch (_) { bots = []; } if (bots.length) window._iaTreinoBots = bots; } // (lista vazia não fica guardada: tenta de novo da próxima vez)
+    sb.innerHTML = '<option value="">🤖 Inserir bot…</option>' + bots.map(b => '<option value="[bot: ' + escHtml(b.name) + ']">' + escHtml(b.name) + '</option>').join(''); }
+}
+function iaTreinoInsere(sel) {
+  const v = sel && sel.value; if (!v) return; sel.value = '';
+  const ta = document.getElementById('ia-treino-resp'); if (!ta) return;
+  ta.value = (ta.value.trim() ? ta.value.replace(/\s+$/, '') + '\n' : '') + v; ta.focus();
 }
 function iaTreinoCorrFecha() { const box = document.getElementById('ia-treino-corr'); if (box) box.style.display = 'none'; }
 async function iaTreinoEnsina() {
@@ -19068,7 +19082,9 @@ function faqRender(){
       + '<div id="ia-treino-chat"></div>'
       + '<div id="ia-treino-corr" style="display:none;margin-top:8px;background:#fff;border:1px solid #e0b400;border-radius:9px;padding:10px">'
       + '<div style="font-size:12.5px;font-weight:600;color:#131c20;margin-bottom:4px">Como você responderia (uma mensagem por linha)</div>'
-      + '<textarea id="ia-treino-resp" rows="3" style="width:100%;box-sizing:border-box;background:#f0f2f5;border:1px solid #e0e4e6;border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;resize:vertical"></textarea>'
+      + '<textarea id="ia-treino-resp" rows="3" placeholder="Texto normal, uma mensagem por linha. Para disparar um bot: [bot: Nome do bot]. Para uma resposta rápida: [rapida: /atalho]. Ou use os botões abaixo." style="width:100%;box-sizing:border-box;background:#f0f2f5;border:1px solid #e0e4e6;border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;resize:vertical"></textarea>'
+      + '<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap"><select id="ia-treino-sel-bot" onchange="iaTreinoInsere(this)" style="padding:6px 8px;border:1px solid #d1d7db;border-radius:8px;font-family:inherit;font-size:12.5px;background:#fff;color:#131c20"><option value="">🤖 Inserir bot…</option></select>'
+      + '<select id="ia-treino-sel-rapida" onchange="iaTreinoInsere(this)" style="padding:6px 8px;border:1px solid #d1d7db;border-radius:8px;font-family:inherit;font-size:12.5px;background:#fff;color:#131c20"><option value="">⚡ Inserir resposta rápida…</option></select></div>'
       + '<div style="font-size:12.5px;font-weight:600;color:#131c20;margin:8px 0 4px">Por quê? (a regra que a IA deve aprender)</div>'
       + '<input id="ia-treino-motivo" maxlength="300" placeholder="ex.: quando chega o extrato eu respondo com a simulação, nunca com a lista de documentos" style="width:100%;box-sizing:border-box;background:#f0f2f5;border:1px solid #e0e4e6;border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit">'
       + '<div style="display:flex;gap:6px;margin-top:8px"><button class="btn-save" onclick="iaTreinoEnsina()">Ensinar e responder</button><button class="btn-secondary" onclick="iaTreinoCorrFecha()">Cancelar</button></div></div>'
