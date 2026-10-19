@@ -2491,7 +2491,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v580</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v583</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3361,7 +3361,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v580</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v583</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3435,7 +3435,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 580;
+const APP_VER = 583;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5597,8 +5597,8 @@ let _ditado = null; // { rec, base, finais, ativo }
 // Ela: "Várias vezes eu falo cortar e escreve portar". Guardado por pessoa (e-mail) no servidor e no aparelho.
 // Padrões (ela: "falo cortar e escreve portar"; "falo portada, ele entende cortada"). _DITAR_CORR_V sobe
 // quando entra padrão novo: ele é acrescentado à lista de quem já tinha a sua, sem apagar nada.
-const _DITAR_CORR_PADRAO = [{ de: 'portar', para: 'cortar' }, { de: 'cortada', para: 'portada' }, { de: 'cortado', para: 'portado' }];
-const _DITAR_CORR_V = 2;
+const _DITAR_CORR_PADRAO = [{ de: 'portar', para: 'cortar' }, { de: 'cortada', para: 'portada' }, { de: 'cortado', para: 'portado' }, { de: 'sou gov', para: 'Sou Gov' }, { de: 'sougov', para: 'Sou Gov' }];
+const _DITAR_CORR_V = 3;
 let _ditarCorr = null;
 function _ditarCorrChave() { return 'filaz_ditar_corr::' + String(window._userEmail || '').toLowerCase(); }
 function _ditarCorrLista() {
@@ -5646,9 +5646,21 @@ function ditarCorrAdiciona() {
   _ditarCorrPinta(); _ditarCorrSalva(); showToast('Pronto: "' + de + '" vai sair como "' + para + '".', 'ok');
 }
 function ditarCorrTira(i) { const l = _ditarCorrLista().slice(); l.splice(i, 1); _ditarCorr = l; _ditarCorrPinta(); _ditarCorrSalva(); }
+// "assim que recebemos" → "assim que recebermos": o Chrome engole o "r" do futuro ("recebermos",
+// "enviarmos", "assinarmos"). Depois de assim que / quando / logo que / depois de / antes de / após /
+// ao / até / caso / se / para / sem / de, uma forma "…amos/…emos/…imos" ganha o "r" de volta.
+// Verbos irregulares (podemos, fazemos, temos…) ficam como estão — neles o futuro é outra palavra.
+const _DITAR_IRREG = new Set(['temos','somos','vamos','estamos','podemos','fazemos','sabemos','queremos','vemos','damos','dizemos','trazemos','pomos','cabemos','valemos','lemos','cremos','rimos','vimos','houvemos','fomos','demos','tivemos','fizemos','pudemos','soubemos','quisemos','dissemos','trouxemos','pusemos','ficamos','chegamos','ligamos','falamos']);
+function _ditarFuturoNos(t) {
+  return String(t || '').replace(/\b(assim que|logo que|depois que|depois de|antes de|após|quando|ao|até|caso|se|para|sem|de)(\s+nós)?\s+([a-záéíóúâêôãõç]{3,})([aei])mos\b/gi, (m, g, nos, raiz, v) => {
+    const w = (raiz + v + 'mos').toLowerCase();
+    if (_DITAR_IRREG.has(w) || /r$/.test(raiz)) return m; // irregular, ou já "…rmos"
+    return g + (nos || '') + ' ' + raiz + v + 'rmos';
+  });
+}
 function _ditarCorrige(t) {
-  let x = String(t || ''); const l = _ditarCorrLista(); if (!l.length) return x;
-  for (const c of l) { if (!c || !c.de) continue; const re = new RegExp('(^|[^\\p{L}\\p{N}])' + c.de.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![\\p{L}\\p{N}])', 'giu'); x = x.replace(re, (m, a) => a + c.para); }
+  let x = _ditarFuturoNos(String(t || '')); const l = _ditarCorrLista(); if (!l.length) return x;
+  for (const c of l) { if (!c || !c.de) continue; const re = new RegExp('(^|[^\\p{L}\\p{N}])' + c.de.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+') + '(?![\\p{L}\\p{N}])', 'giu'); x = x.replace(re, (m, a) => a + c.para); }
   return x;
 }
 // 💰 Dinheiro falado vira R$1.532,22: o Chrome manda "r$ 1532,22", "R$1532", "1532,22 reais",
@@ -5681,7 +5693,8 @@ const _DITAR_NOMES = new Set(['caixa','bradesco','itaú','itau','santander','ban
 function _ditarCaixa(txt, inicio) {
   let t = String(txt || ''); if (!t) return t;
   const nomeLead = String((allContacts || []).find(c => c.phone === currentPhone)?.name || '').toLowerCase().split(/\s+/).filter(Boolean);
-  const fica = w => _DITAR_NOMES.has(w) || nomeLead.includes(w);
+  let daLista = []; try { daLista = _ditarCorrLista().flatMap(c => String(c.para || '').split(/\s+/)).filter(w => /^[A-ZÁÉÍÓÚÂÊÔÃÕÇ]/.test(w)).map(w => w.toLowerCase()); } catch (_) {}
+  const fica = w => _DITAR_NOMES.has(w) || nomeLead.includes(w) || daLista.includes(w); // (maiúscula vinda da lista de correções fica: "Sou Gov")
   const E = /^[A-ZÁÉÍÓÚÂÊÔÃÕÇÀ][a-záéíóúâêôãõçà]+$/; // "Livre" (não CEP, não iPhone)
   // Do segundo em diante: "Xxxx" vira minúsculo, a não ser que seja banco/nome do lead
   const ps = t.split(' ');
@@ -10528,7 +10541,11 @@ async function loadMessages(phone, scroll = true, opt = null) {
         // (o horário marcado pode estar "atrasado" quando a mensagem mais antiga foi gravada depois)
         let _porConta = false;
         if (_um.count > 0) {
-          const _inb = []; msgs.forEach((m, i) => { if (m && m.direction === 'inbound') _inb.push(i); });
+          // Só o que chegou DEPOIS da sua última resposta conta: o que veio antes dela você já leu.
+          // (Ela: o lead reagiu com um emoji à resposta dela e a faixa "2 não lidas" caía em cima
+          // dos 2 arquivos que ela já tinha lido — a reação conta como não lida, mas não é mensagem.)
+          let _ultSua = -1; msgs.forEach((m, i) => { if (m && m.direction === 'outbound' && m.type !== 'note' && !m._pendente) _ultSua = i; });
+          const _inb = []; msgs.forEach((m, i) => { if (m && m.direction === 'inbound' && i > _ultSua) _inb.push(i); });
           // mensagens que CHEGARAM depois de abrir (mais novas que a mais nova de então)
           // não entram na conta — senão a faixa desceria e esconderia uma não lida
           if (_um.tsMax == null) _um.tsMax = _inb.reduce((mx, i) => Math.max(mx, parseUTC(msgs[i].timestamp) || 0), 0);
