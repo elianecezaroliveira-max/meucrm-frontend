@@ -2491,7 +2491,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v583</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v584</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3361,7 +3361,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v583</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v584</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3435,7 +3435,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 583;
+const APP_VER = 584;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5372,7 +5372,9 @@ async function _iaSugCarregaStatus() {
   if (!_iaSugAtiva()) _iaSug = null;
   try { _iaSugPinta(); } catch (_) {}
 }
-function _iaSugAtiva() { return !!(_iaSugStatus && _iaSugStatus.ligada && _iaSugStatus.chave); }
+// 📵 Sugestão da IA só no PC: no celular ela pediu para tirar (não pede ao servidor nem mostra o cartão)
+function _iaSugNoCelular() { try { return window.matchMedia('(max-width: 768px)').matches; } catch (_) { return window.innerWidth <= 768; } }
+function _iaSugAtiva() { return !!(_iaSugStatus && _iaSugStatus.ligada && _iaSugStatus.chave) && !_iaSugNoCelular(); }
 function _iaSugSobrou() { return !!(_iaSug && _iaSug.msgs.some((_, i) => !_iaSug.usadas.has(i))); }
 function _iaSugAvalia(phone, msgs) {
   if (!phone || !Array.isArray(msgs)) return;
@@ -5425,7 +5427,7 @@ async function _iaSugPede(phone, chave, forcar) {
   itens = itens.map(it => { if (it.tipo !== 'texto') return it; const o = _iaSugTorto(it.texto); if (!o) return it; if (o.rapida) { const r = (quickReplies || []).find(q => String(q.title || '').toLowerCase().replace(/^\//, '') === o.rapida); return r ? { tipo: 'rapida', atalho: String(r.title).toLowerCase(), texto: r.message || '', previa: String(r.message || '').replace(/\s+/g, ' ').slice(0, 90), anexo: !!r.media_url } : null; } return null; }).filter(Boolean);
   if (!itens.length) { _iaSugPinta(); return; }
   const rotulo = it => it.tipo === 'rapida' ? '[rapida: /' + it.atalho + ']' : it.tipo === 'bot' ? '[bot: ' + it.nome + ']' : it.texto; // como a memória registra
-  _iaSug = { phone, chave, itens, msgs: itens.map(rotulo), usadas: new Set(), noCampo: null, enviadas: [], lead: d.lead || [], contexto: d.contexto || [], transcricoes: Array.isArray(d.transcricoes) ? d.transcricoes : [] };
+  _iaSug = { phone, chave, itens, msgs: itens.map(rotulo), usadas: new Set(), noCampo: null, enviadas: [], lead: d.lead || [], contexto: d.contexto || [], transcricoes: Array.isArray(d.transcricoes) ? d.transcricoes : [], explicacao: d.explicacao || null };
   _iaSugPinta();
 }
 function _iaSugTorto(s) {
@@ -5448,6 +5450,7 @@ function _iaSugPinta() {
     bar.style.display = 'none'; bar.innerHTML = ''; return;
   }
   bar.innerHTML = '<div class="ia-sug-cab"><span>✨ Sugestão</span><small>toque para pôr no campo — só vai quando você enviar</small>'
+    + (_iaSug.explicacao ? '<button onclick="_iaSugPorque()" title="Por que essa sugestão? O que a IA viu e em que se baseou" style="font-size:12px;padding:0 7px">Por quê?</button>' : '')
     + '<button onclick="_iaSugDeNovo()" title="Outra sugestão">↻</button><button onclick="_iaSugFecha()" title="Fechar">✕</button></div>'
     + (_iaSug.transcricoes || []).map(t => '<div class="ia-sug-audio" title="O que o lead disse no áudio">🎤 ' + escHtml(t) + '</div>').join('')
     + _iaSug.itens.map((it, i) => {
@@ -5458,6 +5461,26 @@ function _iaSugPinta() {
         return '<div class="' + cls + '" onclick="_iaSugUsar(' + i + ')">' + corpo + '</div>';
       }).join('');
   bar.style.display = 'flex';
+}
+// 🔍 "Por quê?": mostra o que a IA viu (fala do lead, contexto, fase), em que se baseou (exemplos
+// parecidos, correções, novidades, momento de rápida/bot) e o motivo que ela mesma deu
+function _iaSugPorque() {
+  const x = _iaSug && _iaSug.explicacao; if (!x) return;
+  const h = [];
+  const bloco = (t, corpo) => { if (corpo) h.push('<div style="margin:8px 0 2px;font-size:11px;font-weight:700;color:#54656f;text-transform:uppercase;letter-spacing:.3px">' + t + '</div>' + corpo); };
+  const linhas = arr => (arr || []).map(l => '<div style="font-size:12.5px;color:#131c20;margin:2px 0">' + escHtml(l) + '</div>').join('');
+  if (x.porque) h.push('<div style="font-size:13.5px;color:#131c20;background:#e7f7ef;border-radius:8px;padding:8px 10px">' + (x.assunto ? '<b>' + escHtml(x.assunto) + '</b> — ' : '') + escHtml(x.porque) + '</div>');
+  bloco('O que ela leu como a fala do lead', x.fala_do_lead ? '<div style="font-size:12.5px;color:#131c20">' + escHtml(x.fala_do_lead) + '</div>' : '');
+  bloco('O que veio antes (contexto)', linhas(x.contexto));
+  const f = x.fase || {};
+  bloco('Fase da operação', linhas([(f.etapa ? 'Etapa: ' + f.etapa : 'Sem etapa no pipeline'), (f.dias_uteis_desde_inicio != null ? 'Conversa começou há ' + f.dias_uteis_desde_inicio + ' dia(s) útil(eis)' : ''), (f.dias_uteis_desde_minha != null ? 'Sua última mensagem: há ' + f.dias_uteis_desde_minha + ' dia(s) útil(eis)' : ''), 'Leu ' + (f.mensagens_lidas || 0) + ' mensagens' + (f.resumo_antigo ? ' (as antigas resumidas)' : '')].filter(Boolean)));
+  const ex = (lista, rot) => (lista || []).map(e => '<div style="border-left:3px solid #d1d7db;padding:4px 8px;margin:4px 0;font-size:12px;color:#131c20"><div style="color:#8696a0">' + escHtml(rot + (e.em ? ' · ' + e.em : '') + (e.origem ? ' · ' + e.origem : '')) + '</div>' + (e.contexto || []).map(c => '<div style="color:#667781">…' + escHtml(c) + '</div>').join('') + (e.lead || []).map(l => '<div>Lead: ' + escHtml(l) + '</div>').join('') + (e.resposta || []).map(r => '<div><b>Você:</b> ' + escHtml(r) + '</div>').join('') + '</div>').join('');
+  bloco('Exemplos parecidos que ela usou' + (x.so_estilo ? ' (+ ' + x.so_estilo + ' só de estilo)' : ''), (x.exemplos && x.exemplos.length) ? ex(x.exemplos, 'Exemplo') : '<div style="font-size:12.5px;color:#8696a0">Nenhum exemplo com o mesmo assunto — ela foi só pelo manual e pelo estilo.</div>');
+  bloco('Correções suas que ela considerou', ex(x.correcoes, 'Correção'));
+  bloco('Momento da resposta rápida / bot', linhas((x.momentos || []).map(m => m.nome + ': ' + (m.momento || 'sem momento cadastrado'))));
+  bloco('Novidades recentes que ela sabia', linhas(x.novidades));
+  if (x.modelo) h.push('<div style="margin-top:8px;font-size:11px;color:#8696a0">Modelo: ' + escHtml(x.modelo) + '</div>');
+  vEscolha({ titulo: 'Por que essa sugestão?', texto: '<div style="max-height:60vh;overflow:auto">' + h.join('') + '</div>', opcoes: [{ v: 'ok', t: 'Entendi' }], semCancelar: true });
 }
 function _iaSugUsar(i) {
   if (!_iaSug || _iaSug.usadas.has(i)) return;
