@@ -2504,7 +2504,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v586</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v587</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3374,7 +3374,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v586</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v587</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3448,7 +3448,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 586;
+const APP_VER = 587;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5427,13 +5427,13 @@ async function _iaSugPede(phone, chave, forcar) {
     // "umas conversas têm, outras não"). Casos definitivos (número de teste, IA sem o que dizer,
     // tudo filtrado) não são repetidos; os passageiros (limite, servidor fora) repetem em 20 s.
     const _mot = String((d && d.motivo) || '');
-    const _limite = /rate limit|too large|tokens per minute|\(TPM\)|\(RPM\)|requests per minute|console\.groq\.com/i.test(_mot);
+    const _limite = /rate limit|too large|tokens per minute|\(TPM\)|\(RPM\)|requests per minute|console\.groq\.com|quota|RESOURCE_EXHAUSTED|status code 429/i.test(_mot);
     const _definitivo = !!(d && d.definitivo);
     if (!d || (d.motivo && !_definitivo)) { _iaSugFeitas.delete(chave); _iaSugFalhas[chave] = Date.now(); setTimeout(() => { try { if (currentPhone === phone) _iaSugAvalia(phone, currentMessages); } catch (_) {} }, 21000); }
     if (forcar) showToast(d && d.motivo ? 'Sem sugestão: ' + (_limite ? 'IA ocupada (limite de uso por minuto)' : d.motivo.slice(0, 160)) : 'Sem sugestão agora', 'erro');
     let _txt;
     if (!d) _txt = 'o servidor não respondeu — tento de novo em 20 s';
-    else if (_limite) _txt = 'IA ocupada (limite de uso por minuto da Groq) — tento de novo em 20 s';
+    else if (_limite) _txt = 'IA ocupada (limite de uso do provedor) — tento de novo em 20 s';
     else if (_mot) _txt = _mot.slice(0, 150) + (_mot.length > 150 ? '…' : '') + (_definitivo ? '' : ' — tento de novo em 20 s');
     else _txt = 'a IA não teve o que sugerir para esta fala';
     if (currentPhone === phone && !(d && d.motivo === 'desligada')) _iaSugVazia = { phone, chave, motivo: _txt };
@@ -19036,7 +19036,7 @@ function faqRender(){
       + '<label class="faq-switch"><input type="checkbox" ' + (p.ligada ? 'checked' : '') + ' onchange="iaSugSetOn(this.checked)"><span class="faq-slider"></span></label>'
       + '</div>'
       + '<div style="margin-top:8px;font-size:12px;color:#667781">Memória: estilo ' + (m.estilo ? '✓' : '—') + ' · fluxo ' + (m.fluxo ? '✓' : '—') + ' · ' + (m.exemplos || 0) + ' exemplos (' + (m.aprendidos || 0) + ' aprendidos no uso)' + (m.novidades ? ' · ' + m.novidades + ' novidade(s)' : '')
-      + (p.chave === false && _souDev() ? ' · <span style="color:#c0392b">falta GROQ_API_KEY no servidor</span>' : '') + '</div>'
+      + (p.chave === false && _souDev() ? ' · <span style="color:#c0392b">falta a chave da IA no servidor (GEMINI_API_KEY, OPENAI_API_KEY ou GROQ_API_KEY)</span>' : '') + '</div>'
       + _iaPlacarHtml(p.placar)
       + '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'
       + '<input type="file" id="ia-mem-arq" multiple accept=".md,.jsonl,.txt" style="display:none" onchange="iaMemImporta(this.files);this.value=\'\'">'
