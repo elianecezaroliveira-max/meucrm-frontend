@@ -2491,7 +2491,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v578</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v580</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3361,7 +3361,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v578</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v580</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3435,7 +3435,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 578;
+const APP_VER = 580;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5595,20 +5595,31 @@ function _ditarDisponivel() {
 let _ditado = null; // { rec, base, finais, ativo }
 // 📝 Correções do ditado (Configurações ▸ Aparência): "quando ouvir X, escrever Y", palavra inteira.
 // Ela: "Várias vezes eu falo cortar e escreve portar". Guardado por pessoa (e-mail) no servidor e no aparelho.
-const _DITAR_CORR_PADRAO = [{ de: 'portar', para: 'cortar' }];
+// Padrões (ela: "falo cortar e escreve portar"; "falo portada, ele entende cortada"). _DITAR_CORR_V sobe
+// quando entra padrão novo: ele é acrescentado à lista de quem já tinha a sua, sem apagar nada.
+const _DITAR_CORR_PADRAO = [{ de: 'portar', para: 'cortar' }, { de: 'cortada', para: 'portada' }, { de: 'cortado', para: 'portado' }];
+const _DITAR_CORR_V = 2;
 let _ditarCorr = null;
 function _ditarCorrChave() { return 'filaz_ditar_corr::' + String(window._userEmail || '').toLowerCase(); }
 function _ditarCorrLista() {
   if (_ditarCorr) return _ditarCorr;
-  try { const v = JSON.parse(localStorage.getItem(_ditarCorrChave()) || 'null'); if (Array.isArray(v)) return (_ditarCorr = v); } catch (_) {}
-  return (_ditarCorr = _DITAR_CORR_PADRAO.slice());
+  try { const v = JSON.parse(localStorage.getItem(_ditarCorrChave()) || 'null'); if (Array.isArray(v)) _ditarCorr = v; } catch (_) {}
+  if (!_ditarCorr) _ditarCorr = _DITAR_CORR_PADRAO.slice();
+  return _ditarCorrPadroesNovos(_ditarCorr);
+}
+function _ditarCorrPadroesNovos(l) {
+  try {
+    const k = _ditarCorrChave() + '::v'; const v = Number(localStorage.getItem(k) || 0);
+    if (v < _DITAR_CORR_V) { let mudou = false; for (const p of _DITAR_CORR_PADRAO) if (!l.some(c => c.de === p.de)) { l.push({ de: p.de, para: p.para }); mudou = true; } localStorage.setItem(k, String(_DITAR_CORR_V)); if (mudou) _ditarCorrSalva(); }
+  } catch (_) {}
+  return l;
 }
 async function ditarCorrCarregar() {
   try {
     const d = await (await fetch(SERVER_URL + '/settings/ditado_correcoes')).json();
     const todos = JSON.parse((d && d.value) || '{}') || {};
     const meu = todos[String(window._userEmail || '').toLowerCase()];
-    if (Array.isArray(meu)) { _ditarCorr = meu; try { localStorage.setItem(_ditarCorrChave(), JSON.stringify(meu)); } catch (_) {} }
+    if (Array.isArray(meu)) { _ditarCorr = meu; try { localStorage.setItem(_ditarCorrChave(), JSON.stringify(meu)); } catch (_) {} _ditarCorrPadroesNovos(_ditarCorr); }
   } catch (_) {}
   _ditarCorrPinta();
 }
@@ -5741,8 +5752,15 @@ function ditarToggle() {
   rec.onerror = (ev) => {
     const e = (ev && ev.error) || '';
     if (e === 'no-speech' || e === 'aborted') return; // silêncio: o onend religa
+    // "network": o serviço de voz do Chrome cai por um instante toda hora (a internet está normal).
+    // Antes isso desligava o microfone e mostrava o aviso a cada vez. Agora o onend religa sozinho,
+    // em silêncio; só desliga e avisa se cair 4 vezes num minuto ou se o PC estiver mesmo sem internet.
+    if (e === 'network') {
+      const agora = Date.now(); _ditado.quedas = (_ditado.quedas || []).filter(t => agora - t < 60000); _ditado.quedas.push(agora);
+      if (navigator.onLine !== false && _ditado.quedas.length < 4) return;
+    }
     ditarPara();
-    showToast(e === 'not-allowed' || e === 'service-not-allowed' ? 'O Chrome bloqueou o microfone. Clique no cadeado da barra de endereço e permita o microfone.' : e === 'network' ? 'O ditado precisa de internet para reconhecer a voz.' : 'O ditado parou: ' + e, 'warn');
+    showToast(e === 'not-allowed' || e === 'service-not-allowed' ? 'O Chrome bloqueou o microfone. Clique no cadeado da barra de endereço e permita o microfone.' : e === 'network' ? 'O serviço de voz do Chrome caiu várias vezes seguidas — confira a internet e clique no microfone de novo.' : 'O ditado parou: ' + e, 'warn');
   };
   rec.onend = () => { // o Chrome encerra sozinho depois de um silêncio: religa enquanto você não desligar
     if (_ditado && _ditado.rec === rec && _ditado.ativo) { try { rec.start(); } catch (_) { ditarPara(); } }
