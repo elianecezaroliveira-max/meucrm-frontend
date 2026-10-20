@@ -2504,7 +2504,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v595</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v596</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3374,7 +3374,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v595</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v596</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3448,7 +3448,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 595;
+const APP_VER = 596;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5500,7 +5500,7 @@ function _iaSugPorque() {
   bloco('Momento da resposta rápida / bot', linhas((x.momentos || []).map(m => m.nome + ': ' + (m.momento || 'sem momento cadastrado'))));
   bloco('Novidades recentes que ela sabia', linhas(x.novidades));
   if (x.modelo) h.push('<div style="margin-top:8px;font-size:11px;color:#8696a0">Modelo: ' + escHtml(x.modelo) + (x.tempo_ms ? ' · levou ' + (x.tempo_ms / 1000).toFixed(1).replace('.', ',') + ' s' : '') + '</div>');
-  vEscolha({ titulo: 'Por que essa sugestão?', texto: '<div style="max-height:60vh;overflow:auto">' + h.join('') + '</div>', opcoes: [{ v: 'ok', t: 'Entendi' }], semCancelar: true });
+  vEscolha({ titulo: 'Por que essa sugestão?', textoHtml: '<div style="max-height:60vh;overflow:auto;text-align:left">' + h.join('') + '</div>', opcoes: [{ v: 'ok', t: 'Entendi' }], semCancelar: true });
 }
 function _iaSugUsar(i) {
   if (!_iaSug || _iaSug.usadas.has(i)) return;
@@ -12676,7 +12676,7 @@ function vEscolha(o) {
     `<button type="button" class="vdlg-op${x.cor === 'verde' ? ' vdlg-op-verde' : x.cor === 'vermelho' ? ' vdlg-op-vermelho' : ''}" onclick="_vdlgFecha(window._vdlgOpcoes[${i}])">${x.icone ? escHtml(x.icone) + ' ' : ''}<span style="flex:1">${escHtml(x.t)}</span></button>`).join('')}</div>`;
   // semCancelar: só as opções da lista (fechar pelo Esc ou clicando fora)
   const btns = o.semCancelar ? '' : `<button class="btn-cancel" onclick="_vdlgFecha(null)">Cancelar</button>`;
-  return _vdlgAbre({ titulo: escHtml(o.titulo || 'Escolha'), texto: o.texto || '', campos: lista, botoes: btns });
+  return _vdlgAbre({ titulo: escHtml(o.titulo || 'Escolha'), texto: o.texto || '', textoHtml: o.textoHtml, campos: lista, botoes: btns }); // textoHtml: montado pelo app (o "Por quê?" da IA), nunca texto de alguém
 }
 // Confirmação FORTE: só libera quando você digita a palavra pedida
 function vConfirmDigite(o) {
