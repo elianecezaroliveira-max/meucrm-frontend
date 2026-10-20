@@ -2504,7 +2504,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v589</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v590</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3374,7 +3374,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v589</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v590</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3448,7 +3448,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 589;
+const APP_VER = 590;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -18916,7 +18916,8 @@ async function iaTreinoCliente() {
     const r = await fetch(SERVER_URL + '/ia/treino/sugerir', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cliente: _iaTreinoEstado().cliente, nome: 'Cliente ' + _iaTreinoEstado().cliente.slice(1), conversa: _iaTreinoConv().filter(m => m.quem !== 'ia').map(m => ({ quem: m.quem, texto: m.texto })) }) });
     d = r.ok ? await r.json() : null;
   } catch (_) { d = null; }
-  const itens = (d && Array.isArray(d.itens) && d.itens.length) ? d.itens : (d && Array.isArray(d.mensagens) ? d.mensagens.map(x => ({ tipo: 'texto', texto: x })) : []);
+  let itens = (d && Array.isArray(d.itens) && d.itens.length) ? d.itens : (d && Array.isArray(d.mensagens) ? d.mensagens.map(x => ({ tipo: 'texto', texto: x })) : []);
+  itens = itens.filter(it => !(it.tipo === 'texto' && /^\s*\{/.test(it.texto || ''))); // JSON cru não é sugestão
   const c2 = _iaTreinoConv(); if (c2[c2.length - 1] && c2[c2.length - 1].quem === 'lead' && c2[c2.length - 1].texto === t) {
     const _motT = String((d && d.motivo) || ''); const _limT = /rate limit|too large|tokens per minute|\(TPM\)|\(RPM\)|requests per minute|console\.groq\.com|quota|RESOURCE_EXHAUSTED|status code 429/i.test(_motT);
     c2.push({ quem: 'ia', itens, motivo: d ? (_limT ? 'IA ocupada (limite de uso do provedor ' + (/groq/i.test(_motT) ? 'Groq' : '') + ') — tente de novo em instantes. Se for sempre o Groq, a chave do Gemini ainda não está valendo no Railway.' : (_motT.slice(0, 200))) : 'o servidor não respondeu', porque: (d && d.explicacao && d.explicacao.porque) || '', explicacao: (d && d.explicacao) || null, sugerido: itens.map(it => it.tipo === 'rapida' ? '[rapida: /' + it.atalho + ']' : it.tipo === 'bot' ? '[bot: ' + it.nome + ']' : it.texto) });
@@ -18924,12 +18925,17 @@ async function iaTreinoCliente() {
   _iaTreinoGuarda(); iaTreinoPinta(); _iaTreinoMsg('');
 }
 function _iaTreinoPendente() { const c = _iaTreinoConv(); const u = c[c.length - 1]; return (u && u.quem === 'ia') ? u : null; }
+// A fala do cliente e o contexto do exemplo. Sem fala nova do cliente (ela quer mandar MAIS uma
+// mensagem depois da dela — ex.: a simulação depois do bot), o exemplo é o mesmo da fala anterior,
+// com a resposta dela crescendo: "[bot: SIMULAÇÃO]" + "[rapida: /simulacao]".
 function _iaTreinoLeadECtx() {
   const c = _iaTreinoConv().filter(m => m.quem !== 'ia');
-  const lead = []; let i = c.length - 1;
+  let i = c.length - 1; const minhas = [];
+  while (i >= 0 && c[i].quem === 'eu') { minhas.unshift(c[i].texto); i--; } // minhas mensagens depois da última fala do cliente
+  const lead = [];
   for (; i >= 0 && c[i].quem === 'lead'; i--) lead.unshift(c[i].texto);
   const ctx = c.slice(Math.max(0, i - 3), i + 1).map(m => (m.quem === 'eu' ? 'Eu: ' : 'Lead: ') + m.texto);
-  return { lead, ctx };
+  return { lead, ctx, antes: minhas.join('\n').split('\n').filter(Boolean) };
 }
 function iaTreinoPorque() { const p = _iaTreinoPendente(); if (!p || !p.explicacao) return; const antes = _iaSug; _iaSug = { explicacao: p.explicacao }; try { _iaSugPorque(); } finally { _iaSug = antes; } }
 async function iaTreinoUsar() {
@@ -18937,12 +18943,12 @@ async function iaTreinoUsar() {
   const { lead, ctx } = _iaTreinoLeadECtx();
   await _iaTreinoGrava(lead, ctx, p.sugerido, p.sugerido, '', 'A IA acertou: resposta confirmada.');
 }
-function iaTreinoResponderEu() { const { lead } = _iaTreinoLeadECtx(); if (!lead.length) { _iaTreinoMsg('Primeiro escreva o que o cliente diria.', '#c0392b'); return; } iaTreinoCorrigir(); }
-function iaTreinoCorrigir() {
+function iaTreinoResponderEu() { const { lead } = _iaTreinoLeadECtx(); if (!lead.length) { _iaTreinoMsg('Primeiro escreva o que o cliente diria.', '#c0392b'); return; } iaTreinoCorrigir(true); }
+function iaTreinoCorrigir(euMesma) {
   const p = _iaTreinoPendente();
   const box = document.getElementById('ia-treino-corr'), ta = document.getElementById('ia-treino-resp'), mo = document.getElementById('ia-treino-motivo'); if (!box) return;
   // a sugestão entra no campo do jeito que a memória registra ([bot: Nome] / [rapida: /atalho] / texto)
-  box.style.display = ''; ta.value = p ? (p.sugerido || []).join('\n') : ''; mo.value = ''; ta.focus();
+  box.style.display = ''; ta.value = (p && !euMesma) ? (p.sugerido || []).join('\n') : ''; mo.value = ''; ta.focus();
   iaTreinoOpcoes();
 }
 // Listas de bots e rápidas para inserir na resposta do treino (o que a IA lê como marcador)
@@ -18964,12 +18970,13 @@ async function iaTreinoEnsina() {
   const motivo = String((mo && mo.value) || '').trim();
   if (!resposta.length) { _iaTreinoMsg('Escreva como você responderia.', '#c0392b'); return; }
   if (!motivo) { _iaTreinoMsg('Diga o porquê — é isso que a IA aprende.', '#c0392b'); mo && mo.focus(); return; }
-  const p = _iaTreinoPendente(); const { lead, ctx } = _iaTreinoLeadECtx();
+  const p = _iaTreinoPendente(); const { lead, ctx, antes } = _iaTreinoLeadECtx();
   if (!lead.length) { _iaTreinoMsg('Primeiro escreva o que o cliente diria.', '#c0392b'); return; }
-  await _iaTreinoGrava(lead, ctx, resposta, (p && p.sugerido) || [], motivo, 'Ensinado ✓ — entrou na memória com o motivo.');
+  // mais uma mensagem depois da sua: o exemplo da fala anterior cresce (resposta = o que já foi + esta)
+  await _iaTreinoGrava(lead, ctx, (antes || []).concat(resposta), (p && p.sugerido) || [], motivo, 'Ensinado ✓ — entrou na memória com o motivo.', resposta);
   iaTreinoCorrFecha();
 }
-async function _iaTreinoGrava(lead, ctx, resposta, sugerido, motivo, aviso) {
+async function _iaTreinoGrava(lead, ctx, resposta, sugerido, motivo, aviso, soEsta) {
   _iaTreinoMsg('Guardando…');
   let ok = false, erro = '';
   try {
@@ -18978,7 +18985,7 @@ async function _iaTreinoGrava(lead, ctx, resposta, sugerido, motivo, aviso) {
     if (ok && d.guardado === false) { ok = false; erro = d.motivo || 'não guardado'; }
   } catch (e) { erro = e.message; }
   const c = _iaTreinoConv(); if (c[c.length - 1] && c[c.length - 1].quem === 'ia') c.pop();
-  c.push({ quem: 'eu', texto: resposta.join('\n'), motivo: motivo || '' });
+  c.push({ quem: 'eu', texto: (soEsta || resposta).join('\n'), motivo: motivo || '' });
   _iaTreinoGuarda(); iaTreinoPinta();
   _iaTreinoMsg(ok ? aviso : 'Não consegui guardar na memória: ' + erro, ok ? '#00806a' : '#c0392b');
   if (ok) { try { _iaSugCarregaStatus(); } catch (_) {} }
