@@ -2504,7 +2504,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v593</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v594</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3374,7 +3374,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v593</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v594</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3448,7 +3448,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 593;
+const APP_VER = 594;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -18943,12 +18943,14 @@ function _iaTreinoPendente() { const c = _iaTreinoConv(); const u = c[c.length -
 // com a resposta dela crescendo: "[bot: SIMULAÇÃO]" + "[rapida: /simulacao]".
 function _iaTreinoLeadECtx() {
   const c = _iaTreinoConv().filter(m => m.quem !== 'ia');
-  let i = c.length - 1; const minhas = [];
-  while (i >= 0 && c[i].quem === 'eu') { minhas.unshift(c[i].texto); i--; } // minhas mensagens depois da última fala do cliente
+  let i = c.length - 1; const balões = [];
+  while (i >= 0 && c[i].quem === 'eu') { balões.unshift(c[i].texto); i--; } // minhas mensagens depois da última fala do cliente
   const lead = [];
   for (; i >= 0 && c[i].quem === 'lead'; i--) lead.unshift(c[i].texto);
   const ctx = c.slice(Math.max(0, i - 3), i + 1).map(m => (m.quem === 'eu' ? 'Eu: ' : 'Lead: ') + m.texto);
-  return { lead, ctx, antes: minhas.join('\n').split('\n').filter(Boolean) };
+  // o 1º balão é a resposta de agora; cada balão seguinte foi um passo mandado "horas depois" (⏳ depois:)
+  const antes = []; balões.forEach((b, k) => String(b).split('\n').filter(Boolean).forEach(l => antes.push(k === 0 || /^⏳/.test(l) ? l : '⏳ depois: ' + l)));
+  return { lead, ctx, antes };
 }
 function iaTreinoPorque() { const p = _iaTreinoPendente(); if (!p || !p.explicacao) return; const antes = _iaSug; _iaSug = { explicacao: p.explicacao }; try { _iaSugPorque(); } finally { _iaSug = antes; } }
 async function iaTreinoUsar() {
@@ -18985,8 +18987,10 @@ async function iaTreinoEnsina() {
   if (!motivo) { _iaTreinoMsg('Diga o porquê — é isso que a IA aprende.', '#c0392b'); mo && mo.focus(); return; }
   const p = _iaTreinoPendente(); const { lead, ctx, antes } = _iaTreinoLeadECtx();
   if (!lead.length) { _iaTreinoMsg('Primeiro escreva o que o cliente diria.', '#c0392b'); return; }
-  // mais uma mensagem depois da sua: o exemplo da fala anterior cresce (resposta = o que já foi + esta)
-  await _iaTreinoGrava(lead, ctx, (antes || []).concat(resposta), (p && p.sugerido) || [], motivo, 'Ensinado ✓ — entrou na memória com o motivo.', resposta);
+  // mais uma mensagem depois da sua (horas depois, no dia a dia): o exemplo da fala anterior cresce,
+  // e o passo novo fica marcado como "⏳ depois:" — a IA não o sugere junto com o primeiro
+  const comDepois = (antes && antes.length) ? antes.concat(resposta.map(l => (/^⏳/.test(l) ? l : '⏳ depois: ' + l))) : resposta;
+  await _iaTreinoGrava(lead, ctx, comDepois, (p && p.sugerido) || [], motivo, 'Ensinado ✓ — entrou na memória com o motivo.', resposta);
   iaTreinoCorrFecha();
 }
 async function _iaTreinoGrava(lead, ctx, resposta, sugerido, motivo, aviso, soEsta) {
