@@ -2504,7 +2504,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v591</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v592</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3374,7 +3374,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v591</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v592</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3448,7 +3448,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 591;
+const APP_VER = 592;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -18924,6 +18924,14 @@ async function iaTreinoCliente() {
   }
   _iaTreinoGuarda(); iaTreinoPinta(); _iaTreinoMsg('');
 }
+// 📎 O cliente manda foto/arquivo/áudio: entra na conversa como marcador, e o servidor trata como
+// o mesmo tipo de mensagem da conversa real ("(documento: …)", "(áudio: o que ele falou)")
+async function iaTreinoMidia(tipo) {
+  let texto = '[Imagem recebida]';
+  if (tipo === 'doc') { const n = await vPrompt({ titulo: 'Documento do cliente', rotulo: 'Nome do arquivo (ex.: extrato-consignacao.pdf)', valor: 'extrato-consignacao.pdf' }); if (n === null) return; texto = '[Documento: ' + String(n).trim() + ']'; }
+  if (tipo === 'audio') { const n = await vPrompt({ titulo: 'Áudio do cliente', rotulo: 'O que ele falou no áudio', valor: '', multilinha: true }); if (n === null || !String(n).trim()) return; texto = '[Áudio: ' + String(n).trim() + ']'; }
+  const inp = document.getElementById('ia-treino-in'); if (inp) { inp.value = texto; } await iaTreinoCliente();
+}
 function _iaTreinoPendente() { const c = _iaTreinoConv(); const u = c[c.length - 1]; return (u && u.quem === 'ia') ? u : null; }
 // A fala do cliente e o contexto do exemplo. Sem fala nova do cliente (ela quer mandar MAIS uma
 // mensagem depois da dela — ex.: a simulação depois do bot), o exemplo é o mesmo da fala anterior,
@@ -19098,6 +19106,8 @@ function faqRender(){
       + '<div style="display:flex;gap:6px;margin-top:8px"><button class="btn-save" onclick="iaTreinoEnsina()">Ensinar e responder</button><button class="btn-secondary" onclick="iaTreinoCorrFecha()">Cancelar</button></div></div>'
       + '<div style="display:flex;gap:6px;margin-top:8px"><input id="ia-treino-in" placeholder="Escreva o que o cliente diria…" onkeydown="if(event.key===\'Enter\'){event.preventDefault();iaTreinoCliente()}" style="flex:1;background:#f0f2f5;border:1px solid #e0e4e6;border-radius:8px;padding:9px 11px;font-size:13px;font-family:inherit">'
       + '<button class="btn-save" onclick="iaTreinoCliente()">Enviar como cliente</button><button class="btn-secondary" onclick="iaTreinoResponderEu()" title="Responder você mesma, sem esperar a IA">Responder eu</button><button class="btn-secondary" onclick="iaTreinoLimpa()" title="Apaga a conversa de mentira deste cliente (o que já foi ensinado fica na memória)">Limpar</button></div>'
+      + '<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;align-items:center"><span style="font-size:11.5px;color:#8696a0">O cliente manda:</span>'
+      + '<button class="iat-tab" onclick="iaTreinoMidia(\'foto\')" title="O cliente mandou uma foto">📷 Foto</button><button class="iat-tab" onclick="iaTreinoMidia(\'doc\')" title="O cliente mandou um arquivo (PDF…)">📄 Documento</button><button class="iat-tab" onclick="iaTreinoMidia(\'audio\')" title="O cliente mandou um áudio (você escreve o que ele falou)">🎤 Áudio</button></div>'
       + '<div id="ia-treino-msg" style="font-size:12px;color:#667781;margin-top:6px"></div></div>'
       + '</div>';
     setTimeout(iaExtrasCarrega, 0); setTimeout(iaTreinoPinta, 0);
