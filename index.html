@@ -2504,7 +2504,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v592</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v593</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3374,7 +3374,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v592</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v593</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3448,7 +3448,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 592;
+const APP_VER = 593;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -18893,6 +18893,7 @@ function iaTreinoPinta() {
   tabs.innerHTML = ['c1', 'c2', 'c3'].map(c => '<button class="iat-tab' + (e.cliente === c ? ' on' : '') + '" onclick="iaTreinoCliente_(\'' + c + '\')">Cliente ' + c.slice(1) + (e.conversas[c] && e.conversas[c].length ? ' · ' + e.conversas[c].length : '') + '</button>').join('');
   const conv = _iaTreinoConv();
   chat.innerHTML = conv.length ? conv.map((m, i) => {
+    if (m.quem === 'ia' && m.pensando) return '<div class="iat-b ia"><small>✨ A IA está pensando…</small></div>';
     if (m.quem === 'ia') {
       const txt = (m.itens || []).map(it => it.tipo === 'rapida' ? '⚡ /' + it.atalho + ' — ' + (it.previa || '') : it.tipo === 'bot' ? '🤖 ' + it.nome : it.texto).join('\n');
       const pend = i === conv.length - 1;
@@ -18907,18 +18908,22 @@ function iaTreinoPinta() {
 function _iaTreinoMsg(t, cor) { const el = document.getElementById('ia-treino-msg'); if (el) { el.textContent = t || ''; el.style.color = cor || '#667781'; } }
 async function iaTreinoCliente() {
   const inp = document.getElementById('ia-treino-in'); const t = String((inp && inp.value) || '').trim(); if (!t) return;
-  const conv = _iaTreinoConv();
+  // o CLIENTE desta fala fica marcado: se você trocar de aba enquanto a IA pensa, a resposta vai
+  // para a conversa certa (antes ela se perdia — "por que não mostrou a sugestão?")
+  const est = _iaTreinoEstado(), cli = est.cliente; const conv = (est.conversas[cli] = est.conversas[cli] || []);
   if (conv.length && conv[conv.length - 1].quem === 'ia') conv.pop(); // a sugestão pendente perde o sentido: o cliente falou de novo
-  conv.push({ quem: 'lead', texto: t }); inp.value = ''; _iaTreinoGuarda(); iaTreinoPinta();
+  conv.push({ quem: 'lead', texto: t }); conv.push({ quem: 'ia', pensando: true, itens: [] }); inp.value = ''; _iaTreinoGuarda(); iaTreinoPinta();
   _iaTreinoMsg('A IA está pensando…');
   let d = null;
   try {
-    const r = await fetch(SERVER_URL + '/ia/treino/sugerir', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cliente: _iaTreinoEstado().cliente, nome: 'Cliente ' + _iaTreinoEstado().cliente.slice(1), conversa: _iaTreinoConv().filter(m => m.quem !== 'ia').map(m => ({ quem: m.quem, texto: m.texto })) }) });
+    const r = await fetch(SERVER_URL + '/ia/treino/sugerir', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ cliente: cli, nome: 'Cliente ' + cli.slice(1), conversa: conv.filter(m => m.quem !== 'ia').map(m => ({ quem: m.quem, texto: m.texto })) }) });
     d = r.ok ? await r.json() : null;
   } catch (_) { d = null; }
   let itens = (d && Array.isArray(d.itens) && d.itens.length) ? d.itens : (d && Array.isArray(d.mensagens) ? d.mensagens.map(x => ({ tipo: 'texto', texto: x })) : []);
   itens = itens.filter(it => !(it.tipo === 'texto' && /^\s*\{/.test(it.texto || ''))); // JSON cru não é sugestão
-  const c2 = _iaTreinoConv(); if (c2[c2.length - 1] && c2[c2.length - 1].quem === 'lead' && c2[c2.length - 1].texto === t) {
+  const c2 = (_iaTreinoEstado().conversas[cli] || []);
+  { const i = c2.findIndex(m => m.quem === 'ia' && m.pensando); if (i >= 0) c2.splice(i, 1); } // tira o "pensando…"
+  if (c2[c2.length - 1] && c2[c2.length - 1].quem === 'lead' && c2[c2.length - 1].texto === t) {
     const _motT = String((d && d.motivo) || ''); const _limT = /rate limit|too large|tokens per minute|\(TPM\)|\(RPM\)|requests per minute|console\.groq\.com|quota|RESOURCE_EXHAUSTED|status code 429/i.test(_motT);
     c2.push({ quem: 'ia', itens, motivo: d ? (_limT ? 'IA ocupada (limite de uso do provedor ' + (/groq/i.test(_motT) ? 'Groq' : '') + ') — tente de novo em instantes. Se for sempre o Groq, a chave do Gemini ainda não está valendo no Railway.' : (_motT.slice(0, 200))) : 'o servidor não respondeu', porque: (d && d.explicacao && d.explicacao.porque) || '', explicacao: (d && d.explicacao) || null, sugerido: itens.map(it => it.tipo === 'rapida' ? '[rapida: /' + it.atalho + ']' : it.tipo === 'bot' ? '[bot: ' + it.nome + ']' : it.texto) });
   }
