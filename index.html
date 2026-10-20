@@ -2504,7 +2504,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v596</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v598</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3374,7 +3374,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v596</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v598</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3448,7 +3448,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 596;
+const APP_VER = 598;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5759,7 +5759,7 @@ function _ditarMostra(interino) {
   const meio = jaVai + (prov ? (finais ? ' ' : '') + prov : '');
   const sep2 = depois && (finais || prov) && !/^[\s.,;:!?)]/.test(depois) ? ' ' : '';
   inp.value = meio + sep2 + depois;
-  _ditado.escrito = inp.value; _ditado.prov = prov; _ditado.provIni = prov ? meio.length - prov.length : -1; _ditado.caret = meio.length; // o que o ditado pôs — para notar quando VOCÊ mexe no campo
+  _ditado.escrito = inp.value; _ditado.prov = prov; _ditado.provCru = interino || ''; _ditado.provIni = prov ? meio.length - prov.length : -1; _ditado.caret = meio.length; // o que o ditado pôs — para notar quando VOCÊ mexe no campo
   try { if (document.activeElement === inp) inp.setSelectionRange(meio.length, meio.length); } catch (_) {}
   try { autoGrowMsgInput(inp); } catch (_) {}
   try { updateSendMicButtons(); } catch (_) {}
@@ -5788,10 +5788,17 @@ function ditarToggle() {
       v = v.slice(0, pi) + v.slice(pi + pv.length);
       const aj = x => x > pi + pv.length ? x - pv.length : x > pi ? pi : x; a = aj(a); b = aj(b);
     }
-    _ditado.base = v.slice(0, a); _ditado.depois = v.slice(b); _ditado.finais = ''; _ditado.escrito = inp.value; _ditado.caret = a === b ? a : -1; _ditado.prov = ''; _ditado.provIni = -1;
+    _ditado.base = v.slice(0, a); _ditado.depois = v.slice(b); _ditado.finais = ''; _ditado.escrito = inp.value; _ditado.caret = a === b ? a : -1; _ditado.prov = ''; _ditado.provCru = ''; _ditado.provIni = -1; _ditado.fechado = null;
   }; ['input', 'mouseup', 'keyup', 'select'].forEach(ev => inp.addEventListener(ev, rearruma)); }
   rec.onresult = (ev) => {
     if (!_ditado || _ditado.rec !== rec) return;
+    const fe = _ditado.fechado, r0 = ev.results && ev.results[0];
+    if (fe && r0) { // sessão nova: o 1º resultado é a MESMA fala que fechamos ao religar? então substitui
+      const mesma = _ditarMesmaFala(fe.cru, (r0[0] && r0[0].transcript) || '');
+      if (mesma && !fe.removido) { _ditado.finais = fe.antes; fe.removido = true; }
+      else if (!mesma && fe.removido) { _ditado.finais = fe.depois; fe.removido = false; }
+      if (r0.isFinal) _ditado.fechado = null; // decidido
+    }
     let interino = '';
     for (let i = ev.resultIndex; i < ev.results.length; i++) {
       const r = ev.results[i]; const txt = (r[0] && r[0].transcript) || '';
@@ -5819,12 +5826,36 @@ function ditarToggle() {
     showToast(e === 'not-allowed' || e === 'service-not-allowed' ? 'O Chrome bloqueou o microfone. Clique no cadeado da barra de endereço e permita o microfone.' : e === 'network' ? 'O serviço de voz do Chrome caiu várias vezes seguidas — confira a internet e clique no microfone de novo.' : 'O ditado parou: ' + e, 'warn');
   };
   rec.onend = () => { // o Chrome encerra sozinho depois de um silêncio: religa enquanto você não desligar
-    if (_ditado && _ditado.rec === rec && _ditado.ativo) { try { rec.start(); } catch (_) { ditarPara(); } }
+    if (_ditado && _ditado.rec === rec && _ditado.ativo) { _ditarFechaProv(); try { rec.start(); } catch (_) { ditarPara(); } }
   };
   try { rec.start(); } catch (e) { _ditado = null; showToast('Não consegui ligar o microfone: ' + (e.message || e), 'err'); return; }
   const b = document.getElementById('btn-ditar'); if (b) { b.classList.add('on'); b.title = 'Parar o ditado'; const t = document.getElementById('btn-ditar-txt'); if (t) t.textContent = 'Ouvindo… clique para parar'; }
   inp.classList.add('ditando'); inp.placeholder = 'Ouvindo… fale a mensagem';
   try { inp.focus(); } catch (_) {}
+}
+// 🎙 O Chrome encerrou (silêncio, queda do serviço de voz) com um trecho ainda PROVISÓRIO na tela:
+// ele nunca vai fechar esse trecho — ao religar, a próxima fala remontava "base + definitivos" e o
+// que você acabara de falar SUMIA do campo ("Eu falo no microfone e está apagando o que eu falo").
+// O provisório vira definitivo antes de religar.
+function _ditarFechaProv() {
+  if (!_ditado || !_ditado.provCru) return;
+  const antes = _ditado.base + ' ' + _ditarPontua(_ditado.finais);
+  const seg = _ditarCaixa(String(_ditado.provCru).trim(), _ditarInicioFrase(_ditado.finais ? antes : _ditado.base));
+  const semEle = _ditado.finais;
+  _ditado.finais += (_ditado.finais && !/\s$/.test(_ditado.finais) ? ' ' : '') + seg;
+  // 🔁 Ao religar, o Chrome às vezes reconhece DE NOVO a mesma fala desde o começo ("…em sistema pois" e
+  // depois "…em sistema pois o banco"): se o primeiro resultado da sessão nova começa igual ao trecho
+  // que fechamos, ele SUBSTITUI o trecho (senão duplicava: "Duplicando o que eu falo")
+  _ditado.fechado = { cru: _ditado.provCru, antes: semEle, depois: _ditado.finais, removido: false };
+  _ditado.provCru = '';
+  _ditarMostra('');
+}
+const _ditarPalavras = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean);
+function _ditarMesmaFala(fechado, novo) {
+  const a = _ditarPalavras(fechado), b = _ditarPalavras(novo); const k = Math.min(a.length, b.length); if (!k) return false;
+  if (k < 3) { for (let i = 0; i < k; i++) if (a[i] !== b[i]) return false; return true; } // curtinho: tem de ser igual
+  let ig = 0; for (let i = 0; i < k; i++) if (a[i] === b[i]) ig++;
+  return a[0] === b[0] && a[1] === b[1] && ig >= Math.ceil(k * 0.75); // ("pois" vira "poiso": uma palavra diferente não desfaz)
 }
 function ditarPara() {
   const d = _ditado; if (!d) return;
