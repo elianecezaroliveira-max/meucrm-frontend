@@ -2504,7 +2504,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v594</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v595</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3374,7 +3374,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v594</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v595</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3448,7 +3448,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 594;
+const APP_VER = 595;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -18984,13 +18984,13 @@ async function iaTreinoEnsina() {
   const resposta = String((ta && ta.value) || '').split('\n').map(x => x.trim()).filter(Boolean).slice(0, 6);
   const motivo = String((mo && mo.value) || '').trim();
   if (!resposta.length) { _iaTreinoMsg('Escreva como você responderia.', '#c0392b'); return; }
-  if (!motivo) { _iaTreinoMsg('Diga o porquê — é isso que a IA aprende.', '#c0392b'); mo && mo.focus(); return; }
+  // (o porquê é opcional: quando a resposta já se explica, a IA aprende o par "ele disse / eu respondi" mesmo sem regra)
   const p = _iaTreinoPendente(); const { lead, ctx, antes } = _iaTreinoLeadECtx();
   if (!lead.length) { _iaTreinoMsg('Primeiro escreva o que o cliente diria.', '#c0392b'); return; }
   // mais uma mensagem depois da sua (horas depois, no dia a dia): o exemplo da fala anterior cresce,
   // e o passo novo fica marcado como "⏳ depois:" — a IA não o sugere junto com o primeiro
   const comDepois = (antes && antes.length) ? antes.concat(resposta.map(l => (/^⏳/.test(l) ? l : '⏳ depois: ' + l))) : resposta;
-  await _iaTreinoGrava(lead, ctx, comDepois, (p && p.sugerido) || [], motivo, 'Ensinado ✓ — entrou na memória com o motivo.', resposta);
+  await _iaTreinoGrava(lead, ctx, comDepois, (p && p.sugerido) || [], motivo, motivo ? 'Ensinado ✓ — entrou na memória com o motivo.' : 'Ensinado ✓ — entrou na memória (sem regra: a IA aprende a resposta como está).', resposta);
   iaTreinoCorrFecha();
 }
 async function _iaTreinoGrava(lead, ctx, resposta, sugerido, motivo, aviso, soEsta) {
@@ -19110,7 +19110,7 @@ function faqRender(){
       + '<textarea id="ia-treino-resp" rows="3" placeholder="Texto normal, uma mensagem por linha. Para disparar um bot: [bot: Nome do bot]. Para uma resposta rápida: [rapida: /atalho]. Ou use os botões abaixo." style="width:100%;box-sizing:border-box;background:#f0f2f5;border:1px solid #e0e4e6;border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;resize:vertical"></textarea>'
       + '<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap"><select id="ia-treino-sel-bot" onchange="iaTreinoInsere(this)" style="padding:6px 8px;border:1px solid #d1d7db;border-radius:8px;font-family:inherit;font-size:12.5px;background:#fff;color:#131c20"><option value="">🤖 Inserir bot…</option></select>'
       + '<select id="ia-treino-sel-rapida" onchange="iaTreinoInsere(this)" style="padding:6px 8px;border:1px solid #d1d7db;border-radius:8px;font-family:inherit;font-size:12.5px;background:#fff;color:#131c20"><option value="">⚡ Inserir resposta rápida…</option></select></div>'
-      + '<div style="font-size:12.5px;font-weight:600;color:#131c20;margin:8px 0 4px">Por quê? (a regra que a IA deve aprender)</div>'
+      + '<div style="font-size:12.5px;font-weight:600;color:#131c20;margin:8px 0 4px">Por quê? (opcional — a regra que a IA deve aprender; se a resposta já se explica, deixe em branco)</div>'
       + '<input id="ia-treino-motivo" maxlength="300" placeholder="ex.: quando chega o extrato eu respondo com a simulação, nunca com a lista de documentos" style="width:100%;box-sizing:border-box;background:#f0f2f5;border:1px solid #e0e4e6;border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit">'
       + '<div style="display:flex;gap:6px;margin-top:8px"><button class="btn-save" onclick="iaTreinoEnsina()">Ensinar e responder</button><button class="btn-secondary" onclick="iaTreinoCorrFecha()">Cancelar</button></div></div>'
       + '<div style="display:flex;gap:6px;margin-top:8px"><input id="ia-treino-in" placeholder="Escreva o que o cliente diria…" onkeydown="if(event.key===\'Enter\'){event.preventDefault();iaTreinoCliente()}" style="flex:1;background:#f0f2f5;border:1px solid #e0e4e6;border-radius:8px;padding:9px 11px;font-size:13px;font-family:inherit">'
