@@ -1,4 +1,4 @@
-// FILAZ Service Worker v29 — SÓ NOTIFICAÇÕES PUSH.
+// FILAZ Service Worker v30 — SÓ NOTIFICAÇÕES PUSH.
 // SEM cache de página e SEM interceptar requisições: o navegador busca o site
 // direto do servidor em todo carregamento — a versão nova SEMPRE aparece.
 
@@ -53,6 +53,9 @@ self.addEventListener('push', (event) => {
     // notificação daquela conversa da bandeja e acerta o número do ícone — sem mostrar
     // nada novo. (O servidor não manda este aviso para iPhone: o iOS exige notificação.)
     if (data.tipo === 'badge') return _acertaContador(data);
+    // 🍎 iPhone: "Fulano · ✓ lida no computador" — fecha a notificação da mensagem (mesma tag),
+    // mostra este aviso no lugar e acerta o número do ícone (o iOS exige notificação visível)
+    if (data.tipo === 'lida') { await _acertaContador(data); return _mostraPush(data); }
     return _mostraPush(data);
   })());
 });
@@ -74,6 +77,7 @@ function _mostraPush(data) {
       icon: '/icons/icon-192.png',
       badge: '/icons/icon-192.png',
       tag: data.tag || 'vetra',
+      silent: !!data.silent, // aviso de "lida": sem som nem vibração
       data: { phone: data.phone || null },
     })
   ];
