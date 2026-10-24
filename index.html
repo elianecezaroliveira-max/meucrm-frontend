@@ -2504,7 +2504,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v604</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v605</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3040,6 +3040,9 @@ window.addEventListener('load', initAuth);
         <input id="ditar-corr-para" placeholder="escrever…" maxlength="40" onkeydown="if(event.key==='Enter')ditarCorrAdiciona()" style="width:150px;padding:8px 10px;border:1px solid #d1d7db;border-radius:8px;font-family:inherit;font-size:13px;background:#fff;color:#131c20">
         <button class="pf-topbtn" onclick="ditarCorrAdiciona()">Adicionar</button>
       </div>
+      <div style="font-size:14px;font-weight:700;color:#131c20;margin:16px 0 4px">Assistente do WhatsApp (Windows / WhatsApp Web)</div>
+      <p style="font-size:12px;color:#667781;margin:0 0 8px;line-height:1.5">O assistente (pasta <b>assistente</b> do projeto) e a extensão do Chrome usam o seu login do FILAZ. Para o assistente do Windows, copie a chave e cole nele uma vez. A chave é a sua sessão: não compartilhe.</p>
+      <button class="pf-topbtn" style="margin-bottom:16px" onclick="filazCopiaChaveAssistente(this)">Copiar chave de acesso do assistente</button>
       <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">Suporte</div>
       <div style="font-size:13px;color:#667781">Em breve.</div>
     </div>
@@ -3374,7 +3377,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v604</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v605</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3448,7 +3451,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 604;
+const APP_VER = 605;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -11994,6 +11997,15 @@ try {
   });
 } catch (_) {}
 
+// 🔑 Chave do assistente do Windows: a sessão do Supabase que o FILAZ já guarda (access + refresh);
+// o assistente renova sozinho, igual ao app. Só sai para a área de transferência dela.
+function filazCopiaChaveAssistente(btn) {
+  let o = null; try { const k = Object.keys(localStorage).find(k => /^sb-.*-auth-token$/.test(k)); o = k ? JSON.parse(localStorage.getItem(k) || 'null') : null; } catch (_) {}
+  if (!o || !o.access_token) { showToast('Não achei a sessão — saia e entre de novo no FILAZ.', 'erro'); return; }
+  const chave = JSON.stringify({ access_token: o.access_token, refresh_token: o.refresh_token || null, expires_at: o.expires_at || 0, email: (o.user && o.user.email) || window._userEmail || '' });
+  const ok = () => { if (btn) { btn.textContent = 'Copiada ✓ — cole no assistente'; setTimeout(() => { btn.textContent = 'Copiar chave de acesso do assistente'; }, 4000); } };
+  try { navigator.clipboard.writeText(chave).then(ok, () => { window.prompt('Copie a chave:', chave); }); } catch (_) { window.prompt('Copie a chave:', chave); }
+}
 // ── EMOJI PICKER ──
 let emojiPickerInstance = null;
 
