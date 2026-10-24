@@ -2504,7 +2504,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v600</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v601</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3374,7 +3374,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v600</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v601</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3448,7 +3448,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 600;
+const APP_VER = 601;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -13120,7 +13120,7 @@ function showQRForm(index) {
       <div>
         <label style="display:flex;align-items:center;gap:8px">Mensagem <button type="button" id="qr-emoji-btn" onclick="abrirEmojiPara('qr-message', this, event)" title="Inserir emoji" style="margin-left:auto;background:#fff;border:1px solid #e9edef;border-radius:8px;padding:3px 9px;font-size:14px;cursor:pointer;line-height:1">😊 Emoji</button></label>
         <textarea id="qr-message" placeholder="Olá, {nome}! Como posso ajudar?">${r.message || ''}</textarea>
-        <div id="qr-var-hint">Use <span onclick="insertQRVar('{nome}')"><b>{nome}</b></span>, <span onclick="insertQRVar('{telefone}')"><b>{telefone}</b></span>, <span onclick="insertQRVar('{notas}')"><b>{notas}</b></span> ou <span onclick="insertQRData()"><b>{data}</b></span> — o FILAZ troca pelos dados do lead; em {data} você escolhe os dias (ex.: {daqui a 7 dias} → 24/09)</div>
+        <div id="qr-var-hint">Use <span onclick="insertQRVar('{nome}')"><b>{nome}</b></span>, <span onclick="insertQRVar('{saudacao}')"><b>{saudacao}</b></span> (Bom dia/Boa tarde/Boa noite), <span onclick="insertQRVar('{telefone}')"><b>{telefone}</b></span>, <span onclick="insertQRVar('{notas}')"><b>{notas}</b></span> ou <span onclick="insertQRData()"><b>{data}</b></span> — o FILAZ troca pelos dados do lead; em {data} você escolhe os dias (ex.: {daqui a 7 dias} → 24/09)</div>
       </div>
       <div>
         <label>Foto ou arquivo (opcional)</label>
@@ -13365,7 +13365,9 @@ function _qrVars(txt) {
   const nome = ehNome(c.name) ? c.name : (ehNome(currentName) ? currentName : ''); // lista → cabeçalho da conversa → nada
   let notas = '';
   try { if (window._lpPhone === currentPhone) notas = document.getElementById('notes-textarea')?.value || ''; } catch (_) {}
+  const hBr = new Date(Date.now() - _BRT_OFFSET).getUTCHours(); const saud = hBr >= 5 && hBr < 12 ? 'Bom dia' : hBr >= 12 && hBr < 18 ? 'Boa tarde' : 'Boa noite';
   return String(txt || '')
+    .replace(/\{sauda[cç][aã]o\}/gi, () => saud)
     .replace(/\{nome\}/gi, () => nome)
     .replace(/\{telefone\}/gi, () => (typeof fmtPhoneBR === 'function' ? fmtPhoneBR(currentPhone) : (currentPhone || '')))
     .replace(/\{notas?\}/gi, () => notas)
@@ -21876,6 +21878,7 @@ function getNodePreview(node) {
     return s ? s.name : '(selecione o status)';
   }
   if (node.type==='condition') {
+    if (cfg.campo==='mesmo_dia') return cfg.negar ? 'Respondeu em OUTRO dia (não no mesmo dia da mensagem anterior)' : 'Respondeu no MESMO DIA da mensagem anterior';
     if (cfg.campo==='etapa') {
       const st=_botStages.find(x=>x.id===cfg.stage_id);
       return (cfg.negar?'NÃO está em: ':'Está em: ') + (st? st.name : '(selecione a etapa)');
@@ -22642,8 +22645,10 @@ function renderConfigPanel(node) {
       <select class="bot-cfg-select" id="cfg-cond-campo">
         <option value="tag" ${campo==='tag'?'selected':''}>Etiqueta do lead</option>
         <option value="etapa" ${campo==='etapa'?'selected':''}>Etapa do funil</option>
+        <option value="mesmo_dia" ${campo==='mesmo_dia'?'selected':''}>Respondeu no MESMO DIA da mensagem anterior</option>
       </select>
-      <div id="cfg-cond-tag" style="display:${campo==='etapa'?'none':'block'}">
+      <div id="cfg-cond-mesmo" style="display:${campo==='mesmo_dia'?'block':'none'};font-size:12.5px;color:#667781;margin-top:10px;line-height:1.5"><b>Sim</b> = a resposta do lead é do mesmo dia (Brasília) da última mensagem enviada antes dela. <b>Não</b> = ele respondeu no dia seguinte (ou depois) — bom para mandar antes um "{saudacao}, {nome}! Tudo bem?".</div>
+      <div id="cfg-cond-tag" style="display:${campo==='tag'?'block':'none'}">
         <label class="bot-cfg-label" style="margin-top:12px">Etiqueta</label>
         <select class="bot-cfg-select" id="cfg-cond-tagsel">
           <option value="">(escolha a etiqueta)</option>
@@ -22663,8 +22668,9 @@ function renderConfigPanel(node) {
       </label>`;
     document.getElementById('cfg-cond-campo').addEventListener('change', function(){
       updateNodeConfig(node.id, { campo: this.value });
-      document.getElementById('cfg-cond-tag').style.display   = this.value==='etapa' ? 'none' : 'block';
+      document.getElementById('cfg-cond-tag').style.display   = this.value==='tag' ? 'block' : 'none';
       document.getElementById('cfg-cond-etapa').style.display = this.value==='etapa' ? 'block' : 'none';
+      document.getElementById('cfg-cond-mesmo').style.display = this.value==='mesmo_dia' ? 'block' : 'none';
     });
     document.getElementById('cfg-cond-tagsel')?.addEventListener('change', function(){ updateNodeConfig(node.id,{tag:this.value}); });
     document.getElementById('cfg-cond-etapasel')?.addEventListener('change', function(){ updateNodeConfig(node.id,{stage_id:this.value}); });
@@ -22696,6 +22702,7 @@ function renderConfigPanel(node) {
         <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">
           <button type="button" onclick="insertMsgVar('{nome}')" style="background:#e7f7ef;border:1px solid #00a884;color:#00a884;border-radius:6px;padding:3px 10px;font-size:12px;cursor:pointer">+ {nome}</button>
           <button type="button" onclick="insertMsgVar('{telefone}')" style="background:#e7f7ef;border:1px solid #00a884;color:#00a884;border-radius:6px;padding:3px 10px;font-size:12px;cursor:pointer">+ {telefone}</button>
+          <button type="button" onclick="insertMsgVar('{saudacao}')" title="Vira Bom dia / Boa tarde / Boa noite conforme a hora do envio" style="background:#e7f7ef;border:1px solid #00a884;color:#00a884;border-radius:6px;padding:3px 10px;font-size:12px;cursor:pointer">+ {saudacao}</button>
           <button type="button" onclick="insertMsgVar('{notas}')" title="Entra o texto das Anotações do lead — e as fotos coladas nas Anotações vão junto, logo depois da mensagem" style="background:#e7f7ef;border:1px solid #00a884;color:#00a884;border-radius:6px;padding:3px 10px;font-size:12px;cursor:pointer">+ {notas} 📷</button>
           <button type="button" id="cfg-msg-emoji-btn" onclick="abrirEmojiPara('cfg-msg-text', this, event)" title="Inserir emoji" style="background:#fff;border:1px solid #e9edef;color:#131c20;border-radius:6px;padding:3px 10px;font-size:12px;cursor:pointer">😊 Emoji</button>
         </div>
