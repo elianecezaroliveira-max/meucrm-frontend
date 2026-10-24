@@ -2504,7 +2504,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v599</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v600</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3374,7 +3374,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v599</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v600</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3448,7 +3448,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 599;
+const APP_VER = 600;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5871,6 +5871,8 @@ function ditarPara() {
   const antes = fn => async function () { try { ditarPara(); } catch (_) {} return fn.apply(this, arguments); };
   if (typeof sendMessage === 'function')   sendMessage   = antes(sendMessage);
   if (typeof selectContact === 'function') selectContact = antes(selectContact);
+  // a janelinha da foto das anotações é do lead aberto: trocar de conversa fecha
+  if (typeof selectContact === 'function') { const sc = selectContact; selectContact = async function () { try { lpFotoNotaFecha(); } catch (_) {} return sc.apply(this, arguments); }; }
 })();
 async function startVoiceRec() {
   if (_bloqueadoPelaNota('gravar áudio')) return;
@@ -8040,6 +8042,7 @@ function abrirArquivo(url, tipo, nome) {
       <div id="fv-top" style="display:flex;align-items:center;gap:10px;padding:calc(8px + env(safe-area-inset-top)) 14px 8px;background:#111b21;color:#e9edef;flex-shrink:0">
         <span onclick="fecharArquivo()" title="Fechar (Esc)" style="cursor:pointer;font-size:24px;padding:2px 10px;line-height:1">‹</span>
         <span id="fv-nome" style="flex:1;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+        <button id="fv-roda" onclick="event.stopPropagation();fvRodaTroca()" style="display:none;background:#202c33;color:#e9edef;border:none;border-radius:8px;height:28px;padding:0 8px;font-size:12px;cursor:pointer;margin-right:8px">🖱 roda: zoom</button>
         <span id="fv-zoomctl" style="display:none;align-items:center;gap:2px;margin-right:6px">
           <button onclick="event.stopPropagation();fvZoom(-1)" title="Diminuir (Ctrl −)" style="background:#202c33;color:#e9edef;border:none;border-radius:8px;width:30px;height:28px;font-size:16px;cursor:pointer">−</button>
           <button id="fv-zoom-pct" onclick="event.stopPropagation();fvZoom(0)" title="Voltar a 100%" style="background:#202c33;color:#e9edef;border:none;border-radius:8px;min-width:54px;height:28px;font-size:12.5px;cursor:pointer">100%</button>
@@ -8068,7 +8071,7 @@ function abrirArquivo(url, tipo, nome) {
   ov.style.display = 'flex';
   _fvZoomReset();
   // PC (mouse): botões − 100% + no topo. No celular o zoom é a pinça.
-  try { const zc = document.getElementById('fv-zoomctl'); if (zc) zc.style.display = window.matchMedia('(hover: none)').matches ? 'none' : 'inline-flex'; } catch (_) {}
+  try { const zc = document.getElementById('fv-zoomctl'); if (zc) zc.style.display = window.matchMedia('(hover: none)').matches ? 'none' : 'inline-flex'; const rb = document.getElementById('fv-roda'); if (rb) rb.style.display = zc && zc.style.display === 'none' ? 'none' : ''; _fvRodaPinta(); } catch (_) {}
   document.getElementById('fv-nome').textContent = nome || 'Arquivo';
   const fvBx = document.getElementById('fv-baixar');
   if (fvBx) fvBx.onclick = () => baixarMidia(url.includes('download=1') ? url : url + '&download=1&filename=' + encodeURIComponent(nome || 'arquivo'), nome || 'arquivo');
@@ -8230,6 +8233,15 @@ function _fvZoomReset() {
   const b = document.getElementById('fv-body'); if (b) { b.scrollTop = 0; b.scrollLeft = 0; b.style.cursor = ''; }
   _fvZoomPinta();
 }
+// 🖱 O que a roda do mouse faz no visualizador: 'zoom' (padrão) ou 'rolar'
+function _fvRoda() { try { return localStorage.getItem('filaz_fv_roda') === 'rolar' ? 'rolar' : 'zoom'; } catch (_) { return 'zoom'; } }
+function fvRodaTroca() { try { localStorage.setItem('filaz_fv_roda', _fvRoda() === 'zoom' ? 'rolar' : 'zoom'); } catch (_) {} _fvRodaPinta(); }
+function _fvRodaPinta() {
+  const bt = document.getElementById('fv-roda'); if (!bt) return;
+  const z = _fvRoda() === 'zoom';
+  bt.textContent = z ? '🖱 roda: zoom' : '🖱 roda: rolar';
+  bt.title = z ? 'A roda do mouse dá zoom (Shift + roda rola as páginas). Clique para a roda rolar e o zoom ficar no Ctrl + roda.' : 'A roda do mouse rola as páginas (Ctrl + roda dá zoom). Clique para a roda dar zoom.';
+}
 function _fvZoomPinta() {
   const p = document.getElementById('fv-zoom-pct'); if (p) p.textContent = Math.round(_fvS * 100) + '%';
   const b = document.getElementById('fv-body'); if (b) b.style.cursor = _fvS > 1.05 ? 'grab' : '';
@@ -8337,9 +8349,13 @@ function _fvGestos() {
   ['gesturestart', 'gesturechange', 'gestureend'].forEach(ev =>
     b.addEventListener(ev, e => e.preventDefault()));
   // ── PC (mouse) ──
-  // Ctrl + roda do mouse: zoom no ponto do cursor (sem dar zoom na página toda)
+  // Roda do mouse = zoom no ponto do cursor, SEM precisar do Ctrl (ela: "queria rodando o mouse sem
+  // precisar clicar em Ctrl"). Shift + roda rola as páginas. O botão 🖱 no topo troca para o jeito
+  // antigo (roda rola, Ctrl+roda dá zoom) e a escolha fica guardada neste aparelho.
   b.addEventListener('wheel', e => {
-    if (!(e.ctrlKey || e.metaKey)) return;
+    const comCtrl = e.ctrlKey || e.metaKey;
+    if (e.shiftKey && !comCtrl) { e.preventDefault(); b.scrollTop += e.deltaY || e.deltaX; return; } // Shift: rola
+    if (!comCtrl && _fvRoda() !== 'zoom') return; // modo "rolar": a roda rola, só Ctrl+roda dá zoom
     e.preventDefault();
     const r = b.getBoundingClientRect();
     _fvAplicaZoom(_fvS * (e.deltaY < 0 ? 1.15 : 1 / 1.15), e.clientX - r.left, e.clientY - r.top);
@@ -9075,6 +9091,36 @@ async function lpLoadNotas(phone){
 // (não viram bolha no chat nem entram na lista de Notas internas)
 const _LP_FOTO_MARCA = '[Foto das anotações]';
 const _ehFotoAnotacao = (n) => !!(n && n.type !== undefined ? (n.type === 'note' && String(n.content || '').trim() === _LP_FOTO_MARCA) : (String(n && n.content || '').trim() === _LP_FOTO_MARCA));
+// 🖼️ No PC a foto das anotações abre numa JANELINHA flutuante (arrastável, redimensionável) em cima
+// do painel — o chat continua à vista e dá para digitar (ela: "queria ver a foto da anotação e, ao
+// mesmo tempo, o chat"). Clique na foto = visualizador grande; no celular vai direto ao grande.
+function lpFotoNotaVer(url) {
+  if (window.matchMedia('(hover: none)').matches) return verMidia(url, 'img', 'Foto das anotações');
+  let j = document.getElementById('lp-foto-flut');
+  if (!j) {
+    document.body.insertAdjacentHTML('beforeend', '<div id="lp-foto-flut" style="position:fixed;z-index:1500;background:#111b21;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.45);display:none;flex-direction:column;overflow:hidden;resize:both;min-width:220px;min-height:160px">'
+      + '<div id="lp-foto-flut-top" style="display:flex;align-items:center;gap:8px;padding:6px 8px 6px 12px;background:#202c33;color:#e9edef;font-size:12.5px;cursor:move;user-select:none"><span style="flex:1">Foto das anotações — arraste para mover, puxe o canto para redimensionar</span>'
+      + '<button onclick="verMidia(document.getElementById(\'lp-foto-flut-img\').src,\'img\',\'Foto das anotações\')" title="Abrir grande" style="background:#2a3942;color:#e9edef;border:none;border-radius:8px;height:26px;padding:0 10px;cursor:pointer">⤢ Grande</button>'
+      + '<button onclick="lpFotoNotaFecha()" title="Fechar (Esc)" style="background:#2a3942;color:#e9edef;border:none;border-radius:8px;width:26px;height:26px;cursor:pointer">✕</button></div>'
+      + '<div style="flex:1;overflow:auto;background:#0b141a;display:flex;align-items:flex-start;justify-content:center"><img id="lp-foto-flut-img" title="Clique para abrir grande" style="max-width:100%;height:auto;display:block;cursor:zoom-in" onclick="verMidia(this.src,\'img\',\'Foto das anotações\')"></div></div>');
+    j = document.getElementById('lp-foto-flut');
+    // arrastar pelo topo
+    const top = document.getElementById('lp-foto-flut-top'); let arr = null;
+    top.addEventListener('mousedown', e => { if (e.target.tagName === 'BUTTON') return; arr = { x: e.clientX - j.offsetLeft, y: e.clientY - j.offsetTop }; e.preventDefault(); });
+    window.addEventListener('mousemove', e => { if (!arr) return; j.style.left = Math.max(0, Math.min(window.innerWidth - 80, e.clientX - arr.x)) + 'px'; j.style.top = Math.max(0, Math.min(window.innerHeight - 40, e.clientY - arr.y)) + 'px'; j.style.right = 'auto'; });
+    window.addEventListener('mouseup', () => { if (arr) { arr = null; _lpFotoFlutGuarda(); } });
+    j.addEventListener('mouseup', _lpFotoFlutGuarda); // (redimensionou pelo canto)
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && j.style.display !== 'none' && !(document.getElementById('file-viewer') || {}).offsetHeight) lpFotoNotaFecha(); });
+    // posição/tamanho guardados neste aparelho; padrão: canto direito, em cima do painel do lead
+    let g = null; try { g = JSON.parse(localStorage.getItem('filaz_lp_foto_flut') || 'null'); } catch (_) {}
+    if (g && g.w) { j.style.left = g.l + 'px'; j.style.top = g.t + 'px'; j.style.width = g.w + 'px'; j.style.height = g.h + 'px'; }
+    else { j.style.right = '16px'; j.style.top = '72px'; j.style.width = '440px'; j.style.height = Math.round(window.innerHeight * 0.6) + 'px'; }
+  }
+  document.getElementById('lp-foto-flut-img').src = url;
+  j.style.display = 'flex';
+}
+function _lpFotoFlutGuarda() { const j = document.getElementById('lp-foto-flut'); if (!j || j.style.display === 'none') return; try { localStorage.setItem('filaz_lp_foto_flut', JSON.stringify({ l: j.offsetLeft, t: j.offsetTop, w: j.offsetWidth, h: j.offsetHeight })); } catch (_) {} }
+function lpFotoNotaFecha() { const j = document.getElementById('lp-foto-flut'); if (j) j.style.display = 'none'; }
 function _lpPintaFotosNotas(notas) {
   const faixa = document.getElementById('lp-notes-fotos'); if (!faixa) return;
   const acct = encodeURIComponent(currentAccountId || '');
@@ -9082,7 +9128,7 @@ function _lpPintaFotosNotas(notas) {
   faixa.innerHTML = fotos.map(n => {
     const u = SERVER_URL + '/media-proxy/' + encodeURIComponent(n.media_id) + '?account_id=' + acct + '&mime=' + encodeURIComponent(n.media_mime_type || 'image/jpeg');
     return '<span class="lp-foto" style="position:relative;display:inline-block">'
-      + '<img src="' + escHtml(u) + '" loading="lazy" title="' + escHtml(fmtTaskCreated(n.timestamp)) + '" onclick="verMidia(\'' + _jsAttr(u) + '\',\'img\',\'Foto das anotações\')" style="width:92px;height:92px;object-fit:cover;border-radius:6px;border:1px solid #e0e4e6;cursor:pointer;background:rgba(0,0,0,.05);display:block">'
+      + '<img src="' + escHtml(u) + '" loading="lazy" title="' + escHtml(fmtTaskCreated(n.timestamp)) + '" onclick="lpFotoNotaVer(\'' + _jsAttr(u) + '\')" style="width:92px;height:92px;object-fit:cover;border-radius:6px;border:1px solid #e0e4e6;cursor:pointer;background:rgba(0,0,0,.05);display:block">'
       + '<span onclick="event.stopPropagation();lpApagaFotoNota(\'' + _jsAttr(n.id) + '\')" title="Apagar esta foto" style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:#54656f;color:#fff;font-size:11px;line-height:18px;text-align:center;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.4)">✕</span></span>';
   }).join('');
 }
