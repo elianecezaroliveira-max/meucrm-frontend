@@ -2504,7 +2504,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v603</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v604</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3374,7 +3374,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v603</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v604</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3448,7 +3448,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 603;
+const APP_VER = 604;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -12131,7 +12131,7 @@ function abrirEmojiPara(taId, btn, ev) {
     let top = r.bottom + 6; if (top + h > window.innerHeight - 8) top = Math.max(8, r.top - h - 6);
     mini.style.top = top + 'px'; mini.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 316)) + 'px';
   } catch (_) {}
-  setTimeout(() => document.addEventListener('click', function fecha(e) { const m = document.getElementById('emoji-mini'); if (!m) return document.removeEventListener('click', fecha); if (!m.contains(e.target) && e.target !== btn && !(btn && btn.contains(e.target))) { m.remove(); document.removeEventListener('click', fecha); } }), 0);
+  setTimeout(() => document.addEventListener('click', function fecha(e) { const m = document.getElementById('emoji-mini'); if (!m) return document.removeEventListener('click', fecha); if (e.target && !e.target.isConnected) return; /* (emoji clicado: a lista foi redesenhada — não é clique fora) */ if (!m.contains(e.target) && e.target !== btn && !(btn && btn.contains(e.target))) { m.remove(); document.removeEventListener('click', fecha); } }), 0);
 }
 // Linha "Recentes" em baixo do seletor: os últimos emojis que você usou
 function _pintaEmojiRecentes() {
@@ -12145,6 +12145,10 @@ document.addEventListener('click', (e) => {
   const wrap = document.getElementById('emoji-picker-wrap');
   const btn  = document.getElementById('emoji-btn');
   if (!wrap || !wrap.classList.contains('open')) return;
+  // Clicou num emoji da linha "Recentes": a linha é redesenhada na hora e o botão clicado some da
+  // tela antes deste clique chegar aqui — parecia "clique fora" e o seletor fechava a cada emoji.
+  // Alvo que já não está na página = foi dentro do seletor: fica aberto (ela fecha clicando fora).
+  if (e.target && !e.target.isConnected) return;
   if (!wrap.contains(e.target) && e.target !== btn && !btn?.contains(e.target)) {
     wrap.classList.remove('open');
     if (btn) btn.classList.remove('active');
