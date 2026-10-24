@@ -2504,7 +2504,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v602</span></h1>
+  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v603</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3374,7 +3374,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v602</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v603</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3448,7 +3448,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 602;
+const APP_VER = 603;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -21878,7 +21878,7 @@ function getNodePreview(node) {
     return s ? s.name : '(selecione o status)';
   }
   if (node.type==='condition') {
-    if (cfg.campo==='mesmo_dia') return cfg.negar ? 'Respondeu em OUTRO dia (não no mesmo dia da mensagem anterior)' : 'Respondeu no MESMO DIA da mensagem anterior';
+    if (cfg.campo==='mesmo_dia') return (cfg.negar ? 'Respondeu em OUTRO dia (não no mesmo dia da mensagem anterior)' : 'Respondeu no MESMO DIA da mensagem anterior') + (cfg.expediente ? ' e em horário comercial (' + (cfg.start||'08:00') + '–' + (cfg.end||'18:00') + ')' : '');
     if (cfg.campo==='etapa') {
       const st=_botStages.find(x=>x.id===cfg.stage_id);
       return (cfg.negar?'NÃO está em: ':'Está em: ') + (st? st.name : '(selecione a etapa)');
@@ -22647,7 +22647,13 @@ function renderConfigPanel(node) {
         <option value="etapa" ${campo==='etapa'?'selected':''}>Etapa do funil</option>
         <option value="mesmo_dia" ${campo==='mesmo_dia'?'selected':''}>Respondeu no MESMO DIA da mensagem anterior</option>
       </select>
-      <div id="cfg-cond-mesmo" style="display:${campo==='mesmo_dia'?'block':'none'};font-size:12.5px;color:#667781;margin-top:10px;line-height:1.5"><b>Sim</b> = a resposta do lead é do mesmo dia (Brasília) da última mensagem enviada antes dela. <b>Não</b> = ele respondeu no dia seguinte (ou depois) — bom para mandar antes um "{saudacao}, {nome}! Tudo bem?".</div>
+      <div id="cfg-cond-mesmo" style="display:${campo==='mesmo_dia'?'block':'none'};font-size:12.5px;color:#667781;margin-top:10px;line-height:1.5"><b>Sim</b> = a resposta do lead é do mesmo dia (Brasília) da última mensagem enviada antes dela. <b>Não</b> = ele respondeu no dia seguinte (ou depois) — bom para mandar antes um "{saudacao}, {nome}! Tudo bem?".
+        <label style="display:flex;gap:9px;align-items:center;cursor:pointer;margin-top:10px;color:#131c20;font-size:13px"><input type="checkbox" id="cfg-cond-exp" ${node.config.expediente?'checked':''} style="width:16px;height:16px;accent-color:#00a884;cursor:pointer"><span><b>e em horário comercial</b> — o Sim só vale se AGORA está dentro dos dias/horas abaixo</span></label>
+        <div id="cfg-cond-exp-campos" style="display:${node.config.expediente?'block':'none'};margin-top:8px">
+          <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">${['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map((n,i)=>`<label style="display:flex;align-items:center;gap:4px;background:#e9edef;border-radius:6px;padding:5px 9px;font-size:12px;color:#131c20;cursor:pointer"><input type="checkbox" ${(node.config.days||[1,2,3,4,5]).includes(i)?'checked':''} onchange="toggleBizDay('${node.id}',${i},this.checked)"/> ${n}</label>`).join('')}</div>
+          <div style="display:flex;gap:8px"><div style="flex:1"><label class="bot-cfg-label">Abre às</label><input class="bot-cfg-input" type="time" value="${node.config.start||'08:00'}" onchange="updateNodeConfig('${node.id}',{start:this.value})"/></div><div style="flex:1"><label class="bot-cfg-label">Fecha às</label><input class="bot-cfg-input" type="time" value="${node.config.end||'18:00'}" onchange="updateNodeConfig('${node.id}',{end:this.value})"/></div></div>
+        </div>
+      </div>
       <div id="cfg-cond-tag" style="display:${campo==='tag'?'block':'none'}">
         <label class="bot-cfg-label" style="margin-top:12px">Etiqueta</label>
         <select class="bot-cfg-select" id="cfg-cond-tagsel">
@@ -22675,6 +22681,7 @@ function renderConfigPanel(node) {
     document.getElementById('cfg-cond-tagsel')?.addEventListener('change', function(){ updateNodeConfig(node.id,{tag:this.value}); });
     document.getElementById('cfg-cond-etapasel')?.addEventListener('change', function(){ updateNodeConfig(node.id,{stage_id:this.value}); });
     document.getElementById('cfg-cond-negar').addEventListener('change', function(){ updateNodeConfig(node.id,{negar:this.checked}); });
+    document.getElementById('cfg-cond-exp')?.addEventListener('change', function(){ updateNodeConfig(node.id,{expediente:this.checked}); document.getElementById('cfg-cond-exp-campos').style.display = this.checked ? 'block' : 'none'; });
     return;
   }
 
