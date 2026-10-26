@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
 <title>FILAZ</title>
 
 <!-- Supabase Auth (login com Google) -->
@@ -1376,6 +1376,13 @@ body.dark .tt-grade { background:#111b21 }
   /* Rolagem vertical fica com o navegador; arrasto HORIZONTAL chega ao código
      (sem isso o iOS "engole" o gesto de voltar arrastando para a direita) */
   #messages-area { touch-action: pan-y; }
+  /* 📵 Celular: a página NÃO dá zoom de pinça nem de toque duplo (a tela ficava "cortada", com a lista e
+     a conversa aparecendo pela metade, depois de um beliscão sem querer). O visualizador de foto/PDF
+     tem o zoom dele próprio. E o número da versão some do cabeçalho (ela: "retira aquele número"). */
+  @media (max-width: 768px) {
+    html, body { touch-action: pan-x pan-y; }
+    #app-ver-badge { display: none !important; }
+  }
 
   /* Celular: a conversa aberta NÃO fica sombreada na lista (igual WhatsApp do celular)
      e o "passar o dedo" (hover que o iOS deixa grudado) também não pinta de cinza */
@@ -2504,7 +2511,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v605</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v607</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3377,7 +3384,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v605</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v607</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3451,7 +3458,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 605;
+const APP_VER = 607;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4130,6 +4137,10 @@ async function addAccount() {
   const waba_id = (document.getElementById('acc-waba')?.value || '').trim();
   if (!name || !phone_number_id) return alert('Preencha o nome e o ID do número.');
   if (!token && !usar_token_de) return alert('Cole o token, ou escolha uma conta que já tem token guardado.');
+  // ⏳ O servidor confere o token na Meta, registra o número e inscreve o webhook (uns segundos):
+  // a tela avisa na hora, em vez de parecer travada ("demora para a tela responder")
+  const _btn = document.querySelector('button[onclick="addAccount()"]'); const _rot = _btn ? _btn.innerHTML : '';
+  if (_btn) { _btn.disabled = true; _btn.style.opacity = '.7'; _btn.innerHTML = '⏳ Adicionando… conferindo o token na Meta (uns segundos)'; }
   try {
     const res = await fetch(SERVER_URL + '/accounts', {
       method: 'POST',
@@ -4146,6 +4157,7 @@ async function addAccount() {
     await loadAccounts();
     alert('Conta adicionada com sucesso!' + (data.aviso ? '\n\n' + data.aviso : ''));
   } catch(e) { alert('Erro ao conectar ao servidor.'); }
+  finally { const b = document.querySelector('button[onclick="addAccount()"]'); if (b) { b.disabled = false; b.style.opacity = ''; b.innerHTML = _rot || '➕ Adicionar conta'; } }
 }
 
 async function deleteAccount(id) {
@@ -12006,6 +12018,13 @@ function filazCopiaChaveAssistente(btn) {
   const ok = () => { if (btn) { btn.textContent = 'Copiada ✓ — cole no assistente'; setTimeout(() => { btn.textContent = 'Copiar chave de acesso do assistente'; }, 4000); } };
   try { navigator.clipboard.writeText(chave).then(ok, () => { window.prompt('Copie a chave:', chave); }); } catch (_) { window.prompt('Copie a chave:', chave); }
 }
+// 📵 iOS ignora o user-scalable=no: bloqueia o beliscão fora do visualizador de arquivos
+(function () {
+  const foraDoVisor = e => !(e.target && e.target.closest && e.target.closest('#file-viewer, #doc-viewer, #lp-foto-flut'));
+  ['gesturestart', 'gesturechange'].forEach(ev => document.addEventListener(ev, e => { if (foraDoVisor(e)) e.preventDefault(); }, { passive: false }));
+  document.addEventListener('touchmove', e => { if (e.touches && e.touches.length > 1 && foraDoVisor(e)) e.preventDefault(); }, { passive: false });
+  // (o toque duplo fica por conta do touch-action: pan-x pan-y no CSS — sem segurar cliques)
+})();
 // ── EMOJI PICKER ──
 let emojiPickerInstance = null;
 
