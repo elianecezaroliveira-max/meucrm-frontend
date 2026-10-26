@@ -101,7 +101,7 @@
   body.dark .x-busca { color:#8696a0; } body.dark .x-busca:hover { background:#2a3942; color:#e9edef; }
   body.dark #search-x { color:#8696a0; } body.dark #search-x:hover { background:#2a3942; color:#e9edef; }
   #contacts-list { flex: 1; overflow-y: auto; }
-  .contact-item { display: flex; align-items: center; gap: 15px; padding: 11px 15px 11px 13px; cursor: pointer; border-bottom: 1px solid #f0f2f5; transition: background 0.15s; }
+  .contact-item { display: flex; align-items: center; gap: 15px; padding: 11px 15px 11px 13px; cursor: pointer; border-bottom: 1px solid #dfe3e6; transition: background 0.15s; } /* (linha entre os leads um pouco mais escura — era #f0f2f5, quase invisível no celular) */
   .contact-item:hover { background: #f5f6f6; }
   /* Conversa ABERTA fica sombreada (igual WhatsApp Web) — vale também para favoritos */
   .contact-item.active, .contact-swipe-wrap > .contact-item.active, .contact-swipe-wrap > .contact-item.is-fav.active { background: #e9edef !important; }
@@ -2511,7 +2511,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v607</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v608</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3384,7 +3384,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v607</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v608</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3458,7 +3458,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 607;
+const APP_VER = 608;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
