@@ -439,6 +439,9 @@
   .vdlg-lista { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
   .vdlg-op { display: flex; align-items: center; gap: 10px; text-align: left; background: #f7f8fa; border: 1px solid #e9edef; border-radius: 10px; padding: 11px 13px; font-size: 14px; font-family: inherit; color: #131c20; cursor: pointer; }
   .vdlg-op:hover { background: #eef7f4; border-color: #00a884; }
+  .vdlg-op-estrela { border: 0; background: none; font-size: 18px; /* span (botão dentro de botão o navegador desmonta) */ line-height: 1; color: #b9c2c8; cursor: pointer; padding: 0 2px; font-family: inherit; }
+  .vdlg-op-estrela.on { color: #f5b301; }
+  .vdlg-op-estrela:hover { color: #f5b301; }
   /* Opções coloridas (Salvar = verde claro, Sair sem salvar = vermelho claro) */
   .vdlg-op.vdlg-op-verde { background: #dcfce7; border-color: #86efac; color: #14532d; }
   .vdlg-op.vdlg-op-verde:hover { background: #bbf7d0; border-color: #22c55e; }
@@ -2511,7 +2514,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v610</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v611</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3384,7 +3387,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v610</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v611</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3458,7 +3461,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 610;
+const APP_VER = 611;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -12814,7 +12817,8 @@ function vCampos(o) {
 function vEscolha(o) {
   window._vdlgOpcoes = (o.opcoes || []).map(x => x.v);
   const lista = `<div class="vdlg-lista">${(o.opcoes || []).map((x, i) =>
-    `<button type="button" class="vdlg-op${x.cor === 'verde' ? ' vdlg-op-verde' : x.cor === 'vermelho' ? ' vdlg-op-vermelho' : ''}" onclick="_vdlgFecha(window._vdlgOpcoes[${i}])">${x.icone ? escHtml(x.icone) + ' ' : ''}<span style="flex:1">${escHtml(x.t)}</span></button>`).join('')}</div>`;
+    `<button type="button" class="vdlg-op${x.cor === 'verde' ? ' vdlg-op-verde' : x.cor === 'vermelho' ? ' vdlg-op-vermelho' : ''}" onclick="_vdlgFecha(window._vdlgOpcoes[${i}])">${x.icone ? escHtml(x.icone) + ' ' : ''}<span style="flex:1">${escHtml(x.t)}</span>${x.estrela ? `<span role="button" class="vdlg-op-estrela${x.estrela.on ? ' on' : ''}" title="${x.estrela.on ? 'Tirar dos favoritos' : 'Favoritar'}" onclick="event.stopPropagation();${x.estrela.ao}">${x.estrela.on ? '★' : '☆'}</span>` : ''}</button>`).join('')}</div>`;
+  // x.estrela = { on, ao }: estrela de favorito ao lado da opção (ao = código montado pelo app)
   // semCancelar: só as opções da lista (fechar pelo Esc ou clicando fora)
   const btns = o.semCancelar ? '' : `<button class="btn-cancel" onclick="_vdlgFecha(null)">Cancelar</button>`;
   return _vdlgAbre({ titulo: escHtml(o.titulo || 'Escolha'), texto: o.texto || '', textoHtml: o.textoHtml, campos: lista, botoes: btns }); // textoHtml: montado pelo app (o "Por quê?" da IA), nunca texto de alguém
@@ -18893,6 +18897,38 @@ async function toggleBotFav(id, ev) {
   showToast(_botsFav.has(k) ? 'Favoritado — este bot aparece no topo' : 'Tirado dos favoritos', 'ok', 2000);
   openBotsList();
 }
+// ⭐ Favoritos da tela de TAREFAS — separados dos favoritos do chat (ela: "esse favorito do bot é do
+// chat, eu quero fazer os favoritos do TAREFAS"). Ficam na conta, na chave bots_fav_tarefas.
+let _botsFavTar = null;
+async function _carregaBotsFavTar(recarregar) {
+  if (_botsFavTar && !recarregar) return _botsFavTar;
+  const novo = new Set();
+  try {
+    const j = await (await fetch(SERVER_URL + '/settings/bots_fav_tarefas')).json();
+    const arr = j && j.value ? JSON.parse(j.value) : [];
+    if (Array.isArray(arr)) arr.forEach(x => novo.add(String(x)));
+  } catch (_) {}
+  _botsFavTar = novo;
+  return _botsFavTar;
+}
+function _botEhFavTar(id) { return !!(_botsFavTar && _botsFavTar.has(String(id))); }
+function _ordenaBotsTar(lista) {
+  return [...(lista || [])].sort((x, y) => {
+    const fx = _botEhFavTar(x.id) ? 0 : 1, fy = _botEhFavTar(y.id) ? 0 : 1;
+    if (fx !== fy) return fx - fy;
+    return String(x.name || '').localeCompare(String(y.name || ''), 'pt-BR');
+  });
+}
+async function toggleBotFavTar(id) {
+  await _carregaBotsFavTar();
+  const k = String(id);
+  if (_botsFavTar.has(k)) _botsFavTar.delete(k); else _botsFavTar.add(k);
+  try {
+    await fetch(SERVER_URL + '/settings/bots_fav_tarefas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ value: JSON.stringify([..._botsFavTar]) }) });
+  } catch (_) { showToast('Não consegui salvar o favorito', 'err'); }
+  showToast(_botsFavTar.has(k) ? 'Favoritado nas Tarefas — este bot aparece no topo' : 'Tirado dos favoritos das Tarefas', 'ok', 2000);
+  _vdlgFecha('__fav'); // reabre a lista já reordenada
+}
 async function openBotsList() {
   _closeAllScreens();
   _telaAtual('bots');
@@ -19894,8 +19930,8 @@ async function openBulkBotMenu(ev){
   if(!phones.length){ alert('Tique ao menos uma tarefa com lead (ou use "Selecionar todos") antes de disparar.'); return; }
   let bots=[];
   try{ bots=((await (await fetch(SERVER_URL+'/bots')).json())||[]); }catch(_){}
-  try{ await _carregaBotsFav(); }catch(_){}
-  const ativos = _ordenaBots(bots.filter(b=>b.active)); // favoritos no topo
+  try{ await _carregaBotsFavTar(); }catch(_){}
+  let ativos = _ordenaBotsTar(bots.filter(b=>b.active)); // favoritos DAS TAREFAS no topo (não os do chat)
   if(!bots.length){ alert('Você ainda não tem nenhum bot criado. Crie um na tela de Bots.'); return; }
   if(!ativos.length){ alert('Nenhum bot está ATIVO. Abra a tela de Bots e ligue o bot que quer disparar.'); return; }
   // ESCOLHA o bot na hora (antes só disparava um bot com nome fixo — se ele
@@ -19903,8 +19939,13 @@ async function openBulkBotMenu(ev){
   let bot;
   if (ativos.length === 1) bot = ativos[0];
   else {
-    const escolhido = await vEscolha({ titulo: 'Escolha o bot', texto: `Para ${phones.length} lead(s) selecionado(s):`,
-      opcoes: ativos.map(b => ({ v: b.id, t: (_botEhFav(b.id) ? '★ ' : '') + b.name })) });
+    let escolhido;
+    for (;;) { // a estrela ao lado de cada bot liga/desliga o favorito das Tarefas e reabre a lista reordenada
+      escolhido = await vEscolha({ titulo: 'Escolha o bot', texto: `Para ${phones.length} lead(s) selecionado(s):`,
+        opcoes: ativos.map(b => ({ v: b.id, t: b.name, estrela: { on: _botEhFavTar(b.id), ao: "toggleBotFavTar('" + _jsAttr(String(b.id)) + "')" } })) });
+      if (escolhido !== '__fav') break;
+      ativos = _ordenaBotsTar(ativos);
+    }
     if (!escolhido) return;
     bot = ativos.find(b => b.id === escolhido);
     if (!bot) return;
