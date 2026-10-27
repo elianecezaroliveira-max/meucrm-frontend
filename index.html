@@ -2511,7 +2511,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v608</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v609</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3384,7 +3384,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v608</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v609</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3458,7 +3458,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 608;
+const APP_VER = 609;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5799,11 +5799,17 @@ function ditarToggle() {
     let v = inp.value, a = inp.selectionStart != null ? inp.selectionStart : v.length, b = inp.selectionEnd != null ? inp.selectionEnd : a;
     if (v === _ditado.escrito && a === _ditado.caret && b === _ditado.caret) return; // foi o próprio ditado que pôs
     const pv = _ditado.prov || '', pi = _ditado.provIni;
+    let provEditado = null;
     if (pv && pi >= 0 && v.slice(pi, pi + pv.length) === pv) { // o provisório ainda não é seu: sai da base (volta quando o Chrome fechar o trecho)
       v = v.slice(0, pi) + v.slice(pi + pv.length);
       const aj = x => x > pi + pv.length ? x - pv.length : x > pi ? pi : x; a = aj(a); b = aj(b);
+    } else if (pv && pi >= 0) {
+      // ✏️ Você mexeu DENTRO do provisório (corrigiu uma palavra antes de o Chrome fechar o trecho): o que
+      // está no campo passa a ser seu; quando o trecho fechar, só o que vier DEPOIS dele entra — antes o
+      // trecho inteiro voltava e duplicava ("Certo vírgula vamos… certo, vamos aguardar o envio do saldo")
+      provEditado = { cru: _ditado.provCru || pv, n: _ditarPalavras(_ditado.provCru || pv).length };
     }
-    _ditado.base = v.slice(0, a); _ditado.depois = v.slice(b); _ditado.finais = ''; _ditado.escrito = inp.value; _ditado.caret = a === b ? a : -1; _ditado.prov = ''; _ditado.provCru = ''; _ditado.provIni = -1; _ditado.fechado = null;
+    _ditado.base = v.slice(0, a); _ditado.depois = v.slice(b); _ditado.finais = ''; _ditado.escrito = inp.value; _ditado.caret = a === b ? a : -1; _ditado.prov = ''; _ditado.provCru = ''; _ditado.provIni = -1; _ditado.fechado = null; _ditado.provEditado = provEditado;
   }; ['input', 'mouseup', 'keyup', 'select'].forEach(ev => inp.addEventListener(ev, rearruma)); }
   rec.onresult = (ev) => {
     if (!_ditado || _ditado.rec !== rec) return;
@@ -5814,9 +5820,17 @@ function ditarToggle() {
       else if (!mesma && fe.removido) { _ditado.finais = fe.depois; fe.removido = false; }
       if (r0.isFinal) _ditado.fechado = null; // decidido
     }
-    let interino = '';
+    let interino = '', houve = false;
     for (let i = ev.resultIndex; i < ev.results.length; i++) {
-      const r = ev.results[i]; const txt = (r[0] && r[0].transcript) || '';
+      const r = ev.results[i]; let txt = (r[0] && r[0].transcript) || '';
+      // trecho que você editou à mão enquanto era provisório: dele só entra o que veio depois
+      const pe = _ditado.provEditado;
+      if (pe) {
+        if (_ditarMesmaFala(pe.cru, txt)) { txt = _ditarPalavras(txt).length > pe.n ? txt.trim().split(/\s+/).slice(pe.n).join(' ') : ''; if (r.isFinal) _ditado.provEditado = null; }
+        else if (r.isFinal) _ditado.provEditado = null;
+        if (!txt) continue;
+      }
+      houve = true;
       if (r.isFinal) {
         // cada trecho que o Chrome fecha: maiúscula só se começa frase nova
         const antes = _ditado.base + ' ' + _ditarPontua(_ditado.finais);
@@ -5825,6 +5839,7 @@ function ditarToggle() {
       }
       else interino += txt;
     }
+    if (!houve) return; // (nada novo a mostrar: não mexe no campo nem no cursor enquanto você edita)
     _ditarMostra(interino.trim());
   };
   rec.onerror = (ev) => {
