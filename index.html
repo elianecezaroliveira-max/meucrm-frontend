@@ -439,6 +439,9 @@
   .vdlg-lista { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
   .vdlg-op { display: flex; align-items: center; gap: 10px; text-align: left; background: #f7f8fa; border: 1px solid #e9edef; border-radius: 10px; padding: 11px 13px; font-size: 14px; font-family: inherit; color: #131c20; cursor: pointer; }
   .vdlg-op:hover { background: #eef7f4; border-color: #00a884; }
+  .saude-sec { padding: 8px 0; border-bottom: 1px solid #f0f2f5; line-height: 1.5; }
+  .saude-sec:last-child { border-bottom: 0; }
+  body.dark .saude-sec { border-color: #2a3942; }
   .vdlg-op-estrela { border: 0; background: none; font-size: 18px; /* span (botão dentro de botão o navegador desmonta) */ line-height: 1; color: #b9c2c8; cursor: pointer; padding: 0 2px; font-family: inherit; }
   .vdlg-op-estrela.on { color: #f5b301; }
   .vdlg-op-estrela:hover { color: #f5b301; }
@@ -2422,7 +2425,8 @@ window.addEventListener('load', initAuth);
 <div id="send-tmpl-overlay">
   <div id="send-tmpl-modal">
     <h3>Enviar Modelo</h3>
-    <p style="font-size:13px;color:#667781;margin-bottom:14px">Selecione um modelo aprovado para enviar:</p>
+    <p style="font-size:13px;color:#667781;margin-bottom:8px">Selecione um modelo aprovado para enviar:</p>
+    <input id="tmpl-send-busca" placeholder="Buscar pelo nome ou pelo texto do modelo…" oninput="_tmplSendFiltra()" style="width:100%;box-sizing:border-box;border:1px solid #d1d7db;border-radius:8px;padding:8px 10px;font-size:13px;margin-bottom:8px;font-family:inherit">
     <div id="tmpl-select-list"></div>
     <div id="tmpl-vars-area" style="display:none"></div>
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;flex-shrink:0">
@@ -2514,7 +2518,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v611</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v612</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2959,6 +2963,12 @@ window.addEventListener('load', initAuth);
     </div>
 </div>
 <div class="cfg-pane" data-pane="diag">
+    <!-- 🩺 SAÚDE: gasto do banco, cada número (token/falhas), cada regra do gotejamento e o servidor (v611) -->
+    <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><div style="font-size:14px;font-weight:700;color:#131c20;flex:1">Saúde do FILAZ</div><button class="pf-topbtn" onclick="carregaSaude()">Atualizar</button></div>
+      <p style="font-size:12px;color:#667781;margin:0 0 10px;line-height:1.5">Num lugar só: quanto do banco já foi gasto neste ciclo, se o token de cada número está vivo, quantas falhas de envio nas últimas 24 h, e o ritmo real de cada gotejamento comparado ao configurado.</p>
+      <div id="saude-quadro" style="font-size:13px;color:#54656f">Conferindo…</div>
+    </div>
     <div style="border:1px solid #e9edef;border-radius:10px;padding:14px;margin-bottom:12px">
       <div style="font-size:14px;font-weight:700;color:#131c20;margin-bottom:4px">Diagnóstico da publicação</div>
       <p style="font-size:12px;color:#667781;margin:0 0 10px;line-height:1.5">O FILAZ são duas partes: o <b>app</b> (a tela) e o <b>servidor</b> (o motor). Se uma sobe e a outra não, algumas telas param de funcionar. Aqui você vê as duas.</p>
@@ -3101,6 +3111,7 @@ window.addEventListener('load', initAuth);
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <b style="font-size:13px;color:#131c20">Gotejamento</b>
         <span style="font-size:12px;color:#667781;flex:1">Move os leads de uma etapa para outra <b>um por vez</b>, com intervalo aleatório — os bots da etapa de destino disparam espaçados.</span>
+        <button class="pf-topbtn" onclick="dripHistorico()" title="Os últimos 200 leads movidos: hora, lead, regra e o ritmo real medido">📜 Histórico</button>
         <button class="pf-topbtn" onclick="dripNovaRegra()">＋ Nova regra</button>
       </div>
       <div id="auto-drip-list" style="margin-top:8px"></div>
@@ -3334,6 +3345,7 @@ window.addEventListener('load', initAuth);
   <div id="bots-page-topbar">
     <button class="btn-secondary" onclick="closeBotsList()">← Voltar</button>
     <h2>Bots de Automação</h2>
+    <input id="bots-busca" placeholder="Buscar pelo nome ou pelo que o bot diz…" oninput="renderBotsList(_botsLista || [])" style="flex:1;max-width:340px;border:1px solid #d1d7db;border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;margin:0 10px">
     <button class="btn-primary" onclick="createNewBot()">+ Novo Bot</button>
   </div>
   <div id="bots-list-area">
@@ -3387,7 +3399,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v611</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v612</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3461,7 +3473,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 611;
+const APP_VER = 612;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -12814,14 +12826,20 @@ function vCampos(o) {
   return _vdlgAbre({ titulo: escHtml(o.titulo || ''), texto: o.texto || '', campos: html, botoes: btns, foco: 'vd-' + (ids[0] || '') });
 }
 // Escolher um item de uma lista (devolve o valor escolhido ou null)
+function _vdlgFiltra(q) {
+  q = String(q || '').toLowerCase().trim();
+  document.querySelectorAll('#vdlg-campos .vdlg-op').forEach(b => { b.style.display = (!q || String(b.dataset.busca || b.textContent || '').toLowerCase().includes(q)) ? '' : 'none'; });
+}
 function vEscolha(o) {
   window._vdlgOpcoes = (o.opcoes || []).map(x => x.v);
-  const lista = `<div class="vdlg-lista">${(o.opcoes || []).map((x, i) =>
-    `<button type="button" class="vdlg-op${x.cor === 'verde' ? ' vdlg-op-verde' : x.cor === 'vermelho' ? ' vdlg-op-vermelho' : ''}" onclick="_vdlgFecha(window._vdlgOpcoes[${i}])">${x.icone ? escHtml(x.icone) + ' ' : ''}<span style="flex:1">${escHtml(x.t)}</span>${x.estrela ? `<span role="button" class="vdlg-op-estrela${x.estrela.on ? ' on' : ''}" title="${x.estrela.on ? 'Tirar dos favoritos' : 'Favoritar'}" onclick="event.stopPropagation();${x.estrela.ao}">${x.estrela.on ? '★' : '☆'}</span>` : ''}</button>`).join('')}</div>`;
+  // lista longa (8+ opções, ex.: "Escolha o bot" com muitos bots): caixa de busca em cima (v611)
+  const busca = ((o.opcoes || []).length >= 8 || o.busca) ? `<input id="vdlg-busca" placeholder="${escHtml(o.buscaRotulo || 'Buscar…')}" oninput="_vdlgFiltra(this.value)" autocomplete="off" style="width:100%;box-sizing:border-box;border:1px solid #d1d7db;border-radius:8px;padding:8px 10px;font-size:13px;margin-bottom:8px;font-family:inherit">` : '';
+  const lista = busca + `<div class="vdlg-lista">${(o.opcoes || []).map((x, i) =>
+    `<button type="button" class="vdlg-op${x.cor === 'verde' ? ' vdlg-op-verde' : x.cor === 'vermelho' ? ' vdlg-op-vermelho' : ''}"${x.busca ? ' data-busca="' + escHtml(String(x.t || '') + ' ' + x.busca) + '"' : ''} onclick="_vdlgFecha(window._vdlgOpcoes[${i}])">${x.icone ? escHtml(x.icone) + ' ' : ''}<span style="flex:1">${escHtml(x.t)}</span>${x.estrela ? `<span role="button" class="vdlg-op-estrela${x.estrela.on ? ' on' : ''}" title="${x.estrela.on ? 'Tirar dos favoritos' : 'Favoritar'}" onclick="event.stopPropagation();${x.estrela.ao}">${x.estrela.on ? '★' : '☆'}</span>` : ''}</button>`).join('')}</div>`;
   // x.estrela = { on, ao }: estrela de favorito ao lado da opção (ao = código montado pelo app)
   // semCancelar: só as opções da lista (fechar pelo Esc ou clicando fora)
   const btns = o.semCancelar ? '' : `<button class="btn-cancel" onclick="_vdlgFecha(null)">Cancelar</button>`;
-  return _vdlgAbre({ titulo: escHtml(o.titulo || 'Escolha'), texto: o.texto || '', textoHtml: o.textoHtml, campos: lista, botoes: btns }); // textoHtml: montado pelo app (o "Por quê?" da IA), nunca texto de alguém
+  return _vdlgAbre({ titulo: escHtml(o.titulo || 'Escolha'), texto: o.texto || '', textoHtml: o.textoHtml, campos: lista, botoes: btns, foco: (busca && !window.matchMedia('(max-width: 768px)').matches) ? 'vdlg-busca' : undefined }); // (no celular não foca: abriria o teclado) // textoHtml: montado pelo app (o "Por quê?" da IA), nunca texto de alguém
 }
 // Confirmação FORTE: só libera quando você digita a palavra pedida
 function vConfirmDigite(o) {
@@ -13342,8 +13360,12 @@ function showQRPopup(filter, fromSearch) {
   if (si && !fromSearch) si.value = filter || '';
   // Fixadas () sempre primeiro — as que você mais usa ficam no topo
   const ordered = [...quickReplies].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
-  // Busca SÓ pelo atalho (título): pelo texto da resposta aparecia coisa demais
-  const filtered = ordered.filter(r => !filter || r.title.toLowerCase().includes(filter.toLowerCase()));
+  // Busca pelo atalho (título) PRIMEIRO; com 3+ letras, quem bate só no TEXTO da resposta entra
+  // em seguida (v611: "busca por conteúdo" — com muitas respostas, lembrar o atalho vira adivinhação)
+  const fq = String(filter || '').toLowerCase().trim();
+  const porTitulo = ordered.filter(r => !fq || String(r.title || '').toLowerCase().includes(fq));
+  const porTexto = (fq.length >= 3) ? ordered.filter(r => !porTitulo.includes(r) && String(r.message || '').toLowerCase().includes(fq)) : [];
+  const filtered = porTitulo.concat(porTexto);
   if (!filtered.length) {
     if (fromSearch) { // digitou algo sem resultado: mantém aberto para corrigir
       list.innerHTML = '<div style="padding:12px 14px;font-size:13px;color:#667781">Nenhum atalho com esse nome.</div>';
@@ -13363,7 +13385,7 @@ function showQRPopup(filter, fromSearch) {
     const short   = preview.length > 90 ? preview.substring(0, 90) + '…' : preview;
     const curto   = short.trim() ? escHtml(short) : '<i>' + escHtml(r.media_name || 'anexo') + ' — sem legenda</i>';
     return `<div class="qr-item" onclick="insertQRReply(${quickReplies.indexOf(r)})">
-      <div class="qr-item-title">${r.pinned ? '<i class=ic-pin></i> ' : ''}/${escHtml(r.title)}${r.media_url ? ' <i class=ic-clip title="Vai com anexo"></i>' : ''}</div>
+      <div class="qr-item-title">${r.pinned ? '<i class=ic-pin></i> ' : ''}/${escHtml(r.title)}${r.media_url ? ' <i class=ic-clip title="Vai com anexo"></i>' : ''}${porTexto.includes(r) ? ' <span style="font-size:10.5px;color:#8696a0;font-weight:400">(pelo texto)</span>' : ''}</div>
       <div class="qr-item-preview">${curto}</div>
     </div>`;
   }).join('');
@@ -15163,6 +15185,13 @@ function desenhaRelatorios() {
     ${_relTabelaAtendentes(d)}
   </div>`;
 
+  // ── 📱 por número (v611) ──
+  html += `<div class="rel-card">
+    <h3>Por número</h3>
+    <div class="rel-sub">O que cada número enviou, quanto chegou, quantos leads responderam e as falhas — muitas falhas ou poucas respostas são o primeiro sinal de qualidade caindo na Meta.</div>
+    ${_relTabelaNumeros(d)}
+  </div>`;
+
   el.innerHTML = html;
   _relLigaDicas();
   carregaCustos();   // o cartão da conta da Meta tem o mês dele, carrega em separado
@@ -15257,6 +15286,23 @@ function _relTabelaAtendentes(d) {
       <span style="font-size:12px;color:#c0392b;font-weight:700">há ${_relDur(x.minutos)}</span>
       <span style="font-size:11.5px;color:var(--rel-tinta3)">${x.quem ? escHtml(_nomeAutor(x.quem)) : 'ninguém respondeu ainda'}</span></div>`).join('')}` : ''}`;
 }
+function _relTabelaNumeros(d) {
+  const ns = d.numeros || [];
+  if (!ns.length) return '<div class="rel-vazio">Nenhuma mensagem enviada neste período.</div>';
+  const cor = (pct, bom, ruim, invert) => { if (pct == null) return ''; const ok = invert ? pct <= bom : pct >= bom; const mal = invert ? pct >= ruim : pct <= ruim; return ok ? '#00806a' : mal ? '#c0392b' : '#b45309'; };
+  return `<table class="rel-tab">
+    <thead><tr><th>Número</th><th>Enviadas</th><th>Entregues</th><th>Lidas</th><th>Conversas</th><th>Responderam</th><th>Falhas</th></tr></thead>
+    <tbody>${ns.map(x => `<tr>
+      <td><b>${escHtml(x.nome || '—')}</b>${x.numero ? '<div style="font-size:10.5px;color:var(--rel-tinta3)">' + escHtml(x.numero) + (x.tipo === 'qr' ? ' · QR' : '') + '</div>' : ''}</td>
+      <td>${_relN(x.enviadas)}</td>
+      <td>${_relN(x.entregues)}${x.enviadas ? '<div style="font-size:10.5px;color:var(--rel-tinta3)">' + Math.round(x.entregues / x.enviadas * 100) + '%</div>' : ''}</td>
+      <td>${_relN(x.lidas)}</td>
+      <td>${_relN(x.conversas)}</td>
+      <td><b style="color:${cor(x.resposta_pct, 30, 10)}">${x.resposta_pct == null ? '—' : x.resposta_pct + '%'}</b><div style="font-size:10.5px;color:var(--rel-tinta3)">${_relN(x.responderam)} lead(s)</div></td>
+      <td><b style="color:${x.falhas ? cor(x.falha_pct, 2, 10, true) : ''}">${_relN(x.falhas)}</b>${x.falhas ? '<div style="font-size:10.5px;color:var(--rel-tinta3)">' + x.falha_pct + '%</div>' : ''}</td>
+    </tr>`).join('')}</tbody></table>
+    <div style="font-size:11.5px;color:var(--rel-tinta3);margin-top:7px">"Responderam" = conversas em que o lead mandou algo depois de uma mensagem daquele número, dentro do período. Verde: 30% ou mais responderam / até 2% de falhas.</div>`;
+}
 function relAbrirConversa(phone, nome, acct) {
   try { closeRelatorios(); } catch (_) {}
   try { selectContact(phone, nome || phone, acct || undefined); } catch (_) {}
@@ -15324,9 +15370,47 @@ async function carregaDiagGasto() {
       + (d.medido_desde ? '<div style="font-size:11px;color:#8696a0;margin-top:6px">Medindo desde ' + escHtml(new Date(d.medido_desde).toLocaleString('pt-BR')) + '. O painel do Supabase (Usage) é a conta oficial; este medidor é a estimativa do servidor.</div>' : '');
   } catch (e) { el.textContent = 'Não deu para medir agora: ' + (e.message || e); }
 }
+// 🩺 Saúde do FILAZ (Config ▸ Diagnóstico): gasto, números, gotejamento e servidor num quadro só
+async function carregaSaude() {
+  const el = document.getElementById('saude-quadro'); if (!el) return;
+  el.textContent = 'Conferindo…';
+  let j = null;
+  try { const r = await fetch(SERVER_URL + '/saude'); j = await r.json(); if (!r.ok) throw new Error(j && j.error || r.status); } catch (e) { el.innerHTML = '<span style="color:#b45309">Não consegui conferir agora (' + escHtml(String(e && e.message || e)) + '). Tente de novo em instantes.</span>'; return; }
+  const ok = (t) => `<span style="color:#00806a;font-weight:700">● ${t}</span>`, ruim = (t) => `<span style="color:#c0392b;font-weight:700">● ${t}</span>`, aten = (t) => `<span style="color:#b45309;font-weight:700">● ${t}</span>`;
+  const fmtS = v => v >= 120 ? (Math.round(v / 6) / 10) + ' min' : v + ' s';
+  const hh = d => { if (!d) return '—'; const x = new Date(d); return x.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' + x.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); };
+  let h = '';
+  // banco
+  const g = j.gasto || {};
+  const pct = g.cota_gb ? Math.round((g.gasto_real_gb || 0) / g.cota_gb * 100) : 0;
+  const gEst = g.nivel === 'ok' ? ok('Banco: tranquilo') : g.nivel === 'atencao' ? aten('Banco: atenção') : ruim('Banco: economizando');
+  h += `<div class="saude-sec"><b>Banco (Supabase)</b> · ${gEst}<div style="margin-top:4px">${(g.gasto_real_gb || 0).toFixed(2)} GB de ${g.cota_gb || '?'} GB neste ciclo (${pct}%) · dia ${g.dia_do_ciclo || '?'} de ${g.dias_no_ciclo || '?'} · projeção <b style="color:${g.projecao_real_gb > g.cota_gb ? '#c0392b' : '#00806a'}">${(g.projecao_real_gb || 0).toFixed(2)} GB</b> até ${g.ciclo_fim ? g.ciclo_fim.split('-').reverse().slice(0, 2).join('/') : '?'}</div><div style="height:8px;background:#e9edef;border-radius:6px;overflow:hidden;margin-top:6px;max-width:420px"><div style="height:100%;width:${Math.min(100, pct)}%;background:${pct > 90 ? '#c0392b' : pct > 70 ? '#f59e0b' : '#00a884'}"></div></div>${g.conversas_poupadas ? `<div style="font-size:11.5px;color:#8696a0;margin-top:4px">${g.conversas_poupadas} leitura(s) de conversa poupadas desde que o servidor subiu</div>` : ''}</div>`;
+  // números
+  const ns = j.numeros || [];
+  h += `<div class="saude-sec"><b>Números</b>${ns.length ? '' : ' · nenhum'}` + ns.map(n => {
+    const t = n.token || {};
+    const est = t.estado === 'ok' ? ok('token ok' + (t.qualidade ? ' · qualidade ' + ({ GREEN: 'verde', YELLOW: 'amarela', RED: 'vermelha' }[t.qualidade] || t.qualidade) : '')) : t.estado === 'vencido' ? ruim('TOKEN VENCIDO — gere outro na Meta e cole em Contas') : t.estado === 'desconectado' ? ruim('QR desconectado') : t.estado === 'sem_token' ? aten('sem token') : aten('não consegui conferir' + (t.detalhe ? ': ' + escHtml(t.detalhe) : ''));
+    const falhas = n.falhas_24h == null ? '' : (n.falhas_24h > 0 ? ` · <span style="color:#c0392b">${n.falhas_24h} falha(s) de envio em 24 h</span>` : ' · sem falhas em 24 h');
+    return `<div style="margin-top:4px">${escHtml(n.nome)}${n.numero ? ' <span style="color:#8696a0">' + escHtml(n.numero) + '</span>' : ''} · ${est}${falhas}${n.enviadas_24h != null ? ' · ' + n.enviadas_24h + ' enviada(s)' : ''}</div>`;
+  }).join('') + '</div>';
+  // gotejamento
+  const gs = j.gotejamento || [];
+  h += `<div class="saude-sec"><b>Gotejamento</b>${gs.length ? '' : ' · nenhuma regra'}` + gs.map(r => {
+    const est = r.modo === 'manual' ? ok('rodando (manual)') : r.modo === 'automatico' ? (r.na_janela ? ok('automático · no horário') : aten('automático · fora do horário')) : '<span style="color:#8696a0">○ parada</span>';
+    const l = r.last || {};
+    const ult = l.phone ? `último: ${escHtml(l.name || l.phone)} às ${hh(l.quando)}` : (l.vazio ? 'fila esvaziou às ' + hh(l.quando) : 'nenhum lead movido ainda');
+    const c = r.cfg || {}; let ritmo = `configurado ${fmtS(c.min_seg)}–${fmtS(c.max_seg)}${c.numeros > 1 ? ' (' + c.numeros + ' números)' : ''}`;
+    if (r.real) { const fora = r.real.mediana_seg < c.min_seg * 0.9 || r.real.mediana_seg > c.max_seg * 1.15; ritmo += ` · medido <b style="color:${fora ? '#b45309' : '#00806a'}">${fmtS(r.real.mediana_seg)}</b>${fora ? ' ⚠' : ' ✓'} (${r.real.n} intervalos)`; }
+    return `<div style="margin-top:4px">${escHtml(r.nome || 'Regra')} · ${est} · ${ult} · ${ritmo}</div>`;
+  }).join('') + '</div>';
+  const sv = j.servidor || {};
+  h += `<div class="saude-sec"><b>Servidor</b> · v${sv.versao || '?'} · ${sv.maestro ? ok('cuidando dos trabalhos de fundo') : aten('de reserva (outro servidor cuida dos trabalhos de fundo)')} · no ar desde ${hh(sv.no_ar_desde)} · ${sv.memoria_mb || '?'} MB</div>`;
+  el.innerHTML = h;
+}
 function cfgTab(k) {
   document.querySelectorAll('#cfg-nav .cfg-tab').forEach(b => b.classList.toggle('on', b.dataset.pane === k));
   document.querySelectorAll('#cfg-panes .cfg-pane').forEach(p => p.classList.toggle('on', p.dataset.pane === k));
+  if (k === 'diag') carregaSaude(); // 🩺
   if (k === 'ids') { const w = document.getElementById('cfg-stage-ids-wrap'); if (w) w.style.display = 'block'; const a = document.getElementById('cfg-stage-ids-arrow'); if (a) a.textContent = '▾'; }
   if (k === 'pipe') carregarLixeiraColunas();
   if (k === 'equipe') equipeCarregar();
@@ -17081,11 +17165,21 @@ function openSendTemplate() {
   _desligaNota('enviar o modelo');
   if (!currentPhone || !currentAccountId) return alert('Selecione uma conversa primeiro.');
   document.getElementById('send-tmpl-overlay').classList.add('open');
+  try { const b = document.getElementById('tmpl-send-busca'); if (b) b.value = ''; } catch (_) {}
   loadApprovedTemplates();
 }
 function closeSendTemplate() {
   document.getElementById('send-tmpl-overlay').classList.remove('open');
   selectedTemplate = null;
+}
+// Busca no "Enviar modelo": pelo nome (apelido ou nome da Meta) e pelo TEXTO do modelo
+function _tmplSendFiltra() {
+  const q = String(document.getElementById('tmpl-send-busca')?.value || '').toLowerCase().trim();
+  let n = 0;
+  document.querySelectorAll('#tmpl-select-list .tmpl-select-item').forEach(el => { const ok = !q || String(el.dataset.busca || '').includes(q); el.style.display = ok ? '' : 'none'; if (ok) n++; });
+  let vazio = document.getElementById('tmpl-send-vazio');
+  if (!n && q) { if (!vazio) { vazio = document.createElement('p'); vazio.id = 'tmpl-send-vazio'; vazio.style.cssText = 'color:#667781;font-size:13px'; document.getElementById('tmpl-select-list').appendChild(vazio); } vazio.textContent = 'Nenhum modelo com "' + q + '" no nome ou no texto.'; }
+  else if (vazio) vazio.remove();
 }
 
 async function loadApprovedTemplates() {
@@ -17102,7 +17196,8 @@ async function loadApprovedTemplates() {
     }
     el.innerHTML = approved.map(t => {
       const body = t.components?.find(c => c.type === 'BODY');
-      return `<div class="tmpl-select-item" onclick="selectTemplate(this,'${t.id}','${t.name}','${t.language}',${JSON.stringify(t.components).replace(/"/g,'&quot;')})">
+      const chave = (tmplNome(t) + ' ' + t.name + ' ' + (body ? body.text : '')).toLowerCase(); // (busca por nome e texto)
+      return `<div class="tmpl-select-item" data-busca="${escHtml(chave)}" onclick="selectTemplate(this,'${t.id}','${t.name}','${t.language}',${JSON.stringify(t.components).replace(/"/g,'&quot;')})">
         <div class="tmpl-select-name">${escHtml(tmplNome(t))}</div>
         <div class="tmpl-select-lang">${_tmplAlias[t.id] ? escHtml(t.name) + ' · ' : ''}${t.language} · ${t.category}</div>
         ${body ? `<div class="tmpl-select-preview">${body.text}</div>` : ''}
@@ -17386,6 +17481,23 @@ function dripRender() {
       </div>
     </div>`;
   }).join('');
+}
+// 📜 Histórico do gotejamento: os últimos 200 leads movidos + ritmo real por regra (v611)
+async function dripHistorico() {
+  let j = null;
+  try { j = await (await fetch(SERVER_URL + '/drip/historico')).json(); } catch (_) {}
+  if (!j || !Array.isArray(j.itens)) { showToast('Não consegui buscar o histórico', 'err'); return; }
+  const hh = d => { const x = new Date(d); return x.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' + x.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }); };
+  const fmt = s => s >= 120 ? (Math.round(s / 6) / 10) + ' min' : s + ' s';
+  const ritmo = (_dripRegras || []).map(r => {
+    const m = j.ritmo && j.ritmo[r.id]; if (!m) return '';
+    const n = r.numeros || 1, cfgMin = Math.round(r.min_seg / n), cfgMax = Math.round(r.max_seg / n);
+    const fora = m.mediana_seg < cfgMin * 0.9 || m.mediana_seg > cfgMax * 1.15;
+    return `<div style="font-size:12px;margin:2px 0"><b>${escHtml(r.nome || 'Regra')}</b>: configurado ${fmt(cfgMin)}–${fmt(cfgMax)} · medido <b style="color:${fora ? '#b45309' : '#00806a'}">${fmt(m.mediana_seg)}</b> (mediana de ${m.n}; de ${fmt(m.min_seg)} a ${fmt(m.max_seg)})</div>`;
+  }).join('');
+  const linhas = j.itens.slice(0, 200).map(h => `<tr><td style="padding:3px 6px;white-space:nowrap;color:#54656f">${hh(h.t)}</td><td style="padding:3px 6px">${escHtml(h.name || h.phone || '')}</td><td style="padding:3px 6px;color:#54656f">${escHtml(h.nome || '')}</td><td style="padding:3px 6px;color:#8696a0">${h.motivo === 'manual' ? 'manual' : 'auto'}</td></tr>`).join('');
+  const html = `<div style="max-height:60vh;overflow:auto;text-align:left">${ritmo ? `<div style="margin-bottom:8px">${ritmo}</div>` : ''}${linhas ? `<table style="border-collapse:collapse;font-size:12.5px;width:100%"><tr style="color:#8696a0;font-size:11px"><th style="text-align:left;padding:3px 6px">Quando</th><th style="text-align:left;padding:3px 6px">Lead</th><th style="text-align:left;padding:3px 6px">Regra</th><th></th></tr>${linhas}</table>` : '<div style="color:#8696a0;font-size:12.5px">Nenhum lead movido ainda (o histórico começa a contar a partir do servidor v401).</div>'}</div>`;
+  await vAviso({ titulo: 'Histórico do gotejamento', textoHtml: html, ok: 'Fechar' }); // textoHtml: montado pelo app (nomes passam pelo escHtml)
 }
 // Atualiza a lista sozinha enquanto o painel de automação estiver aberto
 // (a cada 2 s se alguma regra estiver rodando, senão a cada 10 s — assim o contador anda de 1 em 1)
@@ -18941,11 +19053,13 @@ async function openBotsList() {
     const bots = await res.json();
     try { const ss = sr ? await sr.json() : null; if (Array.isArray(ss)) pipelineStages = ss; } catch (_) {}
     await _carregaBotsFav();
+    _botsLista = bots;
     renderBotsList(_ordenaBots(bots));
   } catch(e) {
     area.innerHTML = '<div style="color:#ef4444;padding:20px">Erro ao carregar bots</div>';
   }
 }
+let _botsLista = null; // última lista recebida (a busca filtra sem pedir de novo)
 async function toggleBotAtivo(id, on, el) {
   try {
     const r = await fetch(SERVER_URL + '/bots/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ active: !!on }) });
@@ -20610,6 +20724,12 @@ function renderBotsList(bots) {
   }
   bots = _ordenaBots(bots); // favoritos no topo, sempre
   const stName = {}; (pipelineStages || []).forEach(s => stName[s.id] = s.name);
+  // 🔎 busca pelo nome, pela etapa do gatilho e pelo que o bot DIZ (resumo dos passos "Enviar mensagem")
+  const qb = String(document.getElementById('bots-busca')?.value || '').toLowerCase().trim();
+  if (qb) {
+    bots = bots.filter(b => (String(b.name || '') + ' ' + String(stName[b.trigger_stage_id] || '') + ' ' + String(b._resumo || '')).toLowerCase().includes(qb));
+    if (!bots.length) { area.innerHTML = `<div style="color:#667781;font-size:13px;padding:30px;text-align:center">Nenhum bot com "${escHtml(qb)}" no nome ou no texto.</div>`; return; }
+  }
   const trig = b => b.trigger_type === 'stage_enter'
     ? `<i class=ic-target></i> Ao entrar em <b>${escHtml(stName[b.trigger_stage_id] || 'etapa')}</b>`
     : '<i class=ic-cursor></i> Disparo manual';
