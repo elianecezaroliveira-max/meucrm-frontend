@@ -2511,7 +2511,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v609</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v610</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3384,7 +3384,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v609</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v610</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3458,7 +3458,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 609;
+const APP_VER = 610;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5809,6 +5809,12 @@ function ditarToggle() {
       // trecho inteiro voltava e duplicava ("Certo vírgula vamos… certo, vamos aguardar o envio do saldo")
       provEditado = { cru: _ditado.provCru || pv, n: _ditarPalavras(_ditado.provCru || pv).length };
     }
+    // 🔁 Trecho que foi fechado por nós quando o Chrome religou (v597) e ainda pode vir repetido na sessão
+    // nova: um clique ou tecla no campo apagava essa lembrança e a repetição entrava inteira de novo
+    // ("Novo teste para confirmar novo teste para confirmar"). A lembrança continua valendo.
+    const fe = _ditado.fechado;
+    if (!provEditado && fe && !fe.removido && fe.cru) provEditado = { cru: fe.cru, n: _ditarPalavras(fe.cru).length };
+    if (!provEditado && _ditado.provEditado) provEditado = _ditado.provEditado;
     _ditado.base = v.slice(0, a); _ditado.depois = v.slice(b); _ditado.finais = ''; _ditado.escrito = inp.value; _ditado.caret = a === b ? a : -1; _ditado.prov = ''; _ditado.provCru = ''; _ditado.provIni = -1; _ditado.fechado = null; _ditado.provEditado = provEditado;
   }; ['input', 'mouseup', 'keyup', 'select'].forEach(ev => inp.addEventListener(ev, rearruma)); }
   rec.onresult = (ev) => {
@@ -5832,6 +5838,12 @@ function ditarToggle() {
       }
       houve = true;
       if (r.isFinal) {
+        // 🛡️ Guarda geral contra repetição: o trecho fechado (3+ palavras) é exatamente o FIM do que já está
+        // no campo? Então o Chrome repetiu a fala por algum caminho que não previmos — não entra de novo.
+        try {
+          const pal = _ditarPalavras(txt); const jaTem = _ditarPalavras(_ditado.base + ' ' + _ditarPontua(_ditado.finais));
+          if (pal.length >= 3 && jaTem.length >= pal.length && jaTem.slice(-pal.length).join(' ') === pal.join(' ')) continue;
+        } catch (_) {}
         // cada trecho que o Chrome fecha: maiúscula só se começa frase nova
         const antes = _ditado.base + ' ' + _ditarPontua(_ditado.finais);
         const seg = _ditarCaixa(txt.trim(), _ditarInicioFrase(_ditado.finais ? antes : _ditado.base));
