@@ -2518,7 +2518,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v613</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v614</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3400,7 +3400,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v613</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v614</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3474,7 +3474,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 613;
+const APP_VER = 614;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3996,6 +3996,19 @@ function _silencioTxt(c) {
   if (Array.isArray(c.dias) && c.dias.length) partes.push(c.dias.map(d => dias[d]).join('/'));
   return partes.join(' · ') || 'ligado';
 }
+// 🔎 WABA de verdade (v614): o número pode ter mudado de WABA na Meta e o cadastro ficar com o antigo (o 101 em 28/10)
+async function wabaConferir(accId, btn) {
+  if (btn) { btn.disabled = true; btn.textContent = 'conferindo…'; }
+  try {
+    const r = await fetch(SERVER_URL + '/accounts/' + encodeURIComponent(accId) + '/waba-conferir', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    const d = await r.json();
+    if (d.error) showToast('Não consegui conferir: ' + d.error, 'err');
+    else if (d.mudou) { showToast('WABA corrigido: era ' + d.antes + ', na Meta o número está em ' + d.agora + '.', 'ok', 5000); loadAccounts(); }
+    else if (!d.agora) showToast('A Meta não disse em qual WABA o número está (o token precisa de acesso ao portfólio).', 'warn', 5000);
+    else showToast('WABA confere: ' + d.agora, 'ok');
+  } catch (_) { showToast('Não consegui conferir agora', 'err'); }
+  if (btn) { btn.disabled = false; btn.textContent = 'conferir na Meta'; }
+}
 async function silencioEditar(accId) {
   const acc = (window._accountsById || {})[accId] || {};
   const c = Object.assign({ on: false, ini: '20:00', fim: '08:00', dias: [0] }, _silencioMapa[accId] || {});
@@ -4078,7 +4091,7 @@ function renderAccountsModal(accounts) {
     if (!isEvo && acc.waba_id)         ids.push(['WABA ID', acc.waba_id]);
     const linhaIds = ids.length ? `<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:5px">${ids.map(([rot, val]) =>
       `<span style="font-size:11px;color:#8696a0">${rot}: <code style="color:#54656f">${escHtml(val)}</code>
-        <button onclick="event.stopPropagation();copiarTexto('${escHtml(val)}',this)" style="background:none;border:none;color:#00806a;cursor:pointer;font-size:11px;font-weight:600;font-family:inherit">copiar</button></span>`).join('')}</div>` : '';
+        <button onclick="event.stopPropagation();copiarTexto('${escHtml(val)}',this)" style="background:none;border:none;color:#00806a;cursor:pointer;font-size:11px;font-weight:600;font-family:inherit">copiar</button>${rot === 'WABA ID' ? `<button onclick="event.stopPropagation();wabaConferir('${acc.id}',this)" title="Pergunta à Meta em qual WABA este número está hoje e corrige o cadastro se mudou" style="background:none;border:none;color:#00806a;cursor:pointer;font-size:11px;font-weight:600;font-family:inherit">conferir na Meta</button>` : ''}</span>`).join('')}</div>` : '';
     return `
     <div class="account-row">
       <div class="acc-info">
