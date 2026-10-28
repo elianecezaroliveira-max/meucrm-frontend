@@ -2518,7 +2518,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v614</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v615</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3400,7 +3400,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v614</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v615</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3474,7 +3474,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 614;
+const APP_VER = 615;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -13429,7 +13429,7 @@ function showQRPopup(filter, fromSearch) {
   const ordered = [...quickReplies].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
   // Busca SÓ pelo atalho (título): pelo texto da resposta aparecia coisa demais — ela (v612): "Não é
   // para pesquisar pelo texto, somente pelo nome". (A busca por texto fica nas telas de Respostas e Modelos.)
-  const filtered = ordered.filter(r => !filter || r.title.toLowerCase().includes(filter.toLowerCase()));
+  const filtered = _comecaPrimeiro(ordered.filter(r => !filter || _buscaSemAcento(r.title).includes(_buscaSemAcento(filter))), filter, r => r.title);
   if (!filtered.length) {
     if (fromSearch) { // digitou algo sem resultado: mantém aberto para corrigir
       list.innerHTML = '<div style="padding:12px 14px;font-size:13px;color:#667781">Nenhum atalho com esse nome.</div>';
@@ -13467,6 +13467,16 @@ function hideQRPopup() {
 function _qrPopupCabecalho(titulo) {
   try { const h = document.querySelector('#qr-popup-header span'); if (h) h.textContent = titulo; } catch (_) {}
 }
+// 🔝 Quem COMEÇA com o que foi digitado vem primeiro (ela: "#simu" deve mostrar SIMULAÇÃO no topo, não
+// SEGUE SIMULAÇÃO); depois os que só contêm. Sem acento e sem caixa. A ordem original (fixados/favoritos)
+// fica dentro de cada grupo. Vale para "/" (respostas rápidas) e "#" (bots). (v615)
+function _comecaPrimeiro(lista, digitado, nomeDe) {
+  const f = _buscaSemAcento(String(digitado || '').trim());
+  if (!f) return lista;
+  const comeca = [], contem = [];
+  for (const x of lista) (_buscaSemAcento(String(nomeDe(x) || '')).startsWith(f) ? comeca : contem).push(x);
+  return comeca.concat(contem);
+}
 // ── ATALHO "#" = BOTS (igual ao "/" das respostas rápidas): digita # e o nome do bot ──
 let _botsAtalho = { lista: null, ts: 0 };
 async function _botsParaAtalho() {
@@ -13488,7 +13498,7 @@ async function showBotPopup(filter) {
   const bots = await _botsParaAtalho();
   const ta = document.getElementById('msg-input');
   if (!ta || !ta.value.startsWith('#')) return; // fechou/mudou enquanto carregava
-  const filtrados = bots.filter(b => !f || String(b.name || '').toLowerCase().includes(f));
+  const filtrados = _comecaPrimeiro(bots.filter(b => !f || _buscaSemAcento(String(b.name || '')).includes(_buscaSemAcento(f))), f, b => b.name);
   if (!bots.length) list.innerHTML = '<div style="padding:12px 14px;font-size:13px;color:#667781">Nenhum bot ativo.</div>';
   else if (!filtrados.length) list.innerHTML = '<div style="padding:12px 14px;font-size:13px;color:#667781">Nenhum bot com esse nome.</div>';
   else list.innerHTML = filtrados.map(b => `<div class="qr-item" onclick="_escolheBotAtalho('${_jsAttr(String(b.id))}','${_jsAttr(b.name || 'Bot')}')">
