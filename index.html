@@ -2518,7 +2518,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v615</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v616</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3400,7 +3400,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v615</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v616</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3474,7 +3474,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 615;
+const APP_VER = 616;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5882,13 +5882,12 @@ function ditarToggle() {
     if (v === _ditado.escrito && a === _ditado.caret && b === _ditado.caret) return; // foi o próprio ditado que pôs
     const pv = _ditado.prov || '', pi = _ditado.provIni;
     let provEditado = null;
-    if (pv && pi >= 0 && v.slice(pi, pi + pv.length) === pv) { // o provisório ainda não é seu: sai da base (volta quando o Chrome fechar o trecho)
-      v = v.slice(0, pi) + v.slice(pi + pv.length);
-      const aj = x => x > pi + pv.length ? x - pv.length : x > pi ? pi : x; a = aj(a); b = aj(b);
-    } else if (pv && pi >= 0) {
-      // ✏️ Você mexeu DENTRO do provisório (corrigiu uma palavra antes de o Chrome fechar o trecho): o que
-      // está no campo passa a ser seu; quando o trecho fechar, só o que vier DEPOIS dele entra — antes o
-      // trecho inteiro voltava e duplicava ("Certo vírgula vamos… certo, vamos aguardar o envio do saldo")
+    if (pv && pi >= 0) {
+      // ✏️ Você mexeu no campo enquanto havia um trecho PROVISÓRIO (dentro dele, antes ou depois — ex.: digitou
+      // " d" logo após ele): o que está no campo passa a ser seu; quando o Chrome fechar o trecho, só o que
+      // vier DEPOIS dele entra. (v616) Antes, com o provisório intacto, ele era tirado da base "para voltar
+      // quando fechasse" — mas um segundo evento (keyup) relia o campo inteiro como base e o trecho fechado
+      // entrava de novo: "…autorização d será necessário também mais uma autorização".
       provEditado = { cru: _ditado.provCru || pv, n: _ditarPalavras(_ditado.provCru || pv).length };
     }
     // 🔁 Trecho que foi fechado por nós quando o Chrome religou (v597) e ainda pode vir repetido na sessão
@@ -5914,7 +5913,8 @@ function ditarToggle() {
       // trecho que você editou à mão enquanto era provisório: dele só entra o que veio depois
       const pe = _ditado.provEditado;
       if (pe) {
-        if (_ditarMesmaFala(pe.cru, txt)) { txt = _ditarPalavras(txt).length > pe.n ? txt.trim().split(/\s+/).slice(pe.n).join(' ') : ''; if (r.isFinal) _ditado.provEditado = null; }
+        // (a lembrança só sai quando chega uma fala DIFERENTE fechada: ao religar, o Chrome pode repetir a mesma)
+        if (_ditarMesmaFala(pe.cru, txt)) { txt = _ditarPalavras(txt).length > pe.n ? txt.trim().split(/\s+/).slice(pe.n).join(' ') : ''; }
         else if (r.isFinal) _ditado.provEditado = null;
         if (!txt) continue;
       }
@@ -5924,7 +5924,9 @@ function ditarToggle() {
         // no campo? Então o Chrome repetiu a fala por algum caminho que não previmos — não entra de novo.
         try {
           const pal = _ditarPalavras(txt); const jaTem = _ditarPalavras(_ditado.base + ' ' + _ditarPontua(_ditado.finais));
-          if (pal.length >= 3 && jaTem.length >= pal.length && jaTem.slice(-pal.length).join(' ') === pal.join(' ')) continue;
+          let repetido = false; // (tolera até 3 palavras digitadas à mão depois do trecho: "…autorização d")
+          for (let k = 0; k <= 3 && !repetido && pal.length >= 3; k++) { const fim = jaTem.length - k; if (fim >= pal.length && jaTem.slice(fim - pal.length, fim).join(' ') === pal.join(' ')) repetido = true; }
+          if (repetido) continue;
         } catch (_) {}
         // cada trecho que o Chrome fecha: maiúscula só se começa frase nova
         const antes = _ditado.base + ' ' + _ditarPontua(_ditado.finais);
