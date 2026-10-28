@@ -2518,7 +2518,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v612</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v613</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2853,8 +2853,8 @@ window.addEventListener('load', initAuth);
         </div>
         <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><button class="pf-topbtn" onclick="salvarSheetsCfg()">Salvar</button></div>
         <div style="margin-top:12px;border-top:1px solid #e9edef;padding-top:10px">
-          <div style="font-size:13px;font-weight:700;color:#131c20">💾 Backup semanal nesta planilha</div>
-          <div style="font-size:12px;color:#667781;margin:2px 0 6px">Toda segunda às 6h o FILAZ grava as abas <b>FILAZ Anotações</b>, <b>FILAZ Etiquetas</b> e <b>FILAZ Tarefas</b> nesta mesma planilha (o robô precisa ser <b>Editor</b> nela).</div>
+          <div style="font-size:13px;font-weight:700;color:#131c20">💾 Backup diário nesta planilha</div>
+          <div style="font-size:12px;color:#667781;margin:2px 0 6px">Todo dia às 6h o FILAZ grava as abas <b>FILAZ Anotações</b>, <b>FILAZ Etiquetas</b>, <b>FILAZ Tarefas</b>, <b>FILAZ Bots</b> e <b>FILAZ Configurações</b> (bots, respostas rápidas, etiquetas, automações, gotejamento, etapas e FAQs) nesta mesma planilha — fora do Supabase. O robô precisa ser <b>Editor</b> nela.</div>
           <span id="cfg-sheets-bkp" style="font-size:12px;color:#54656f"></span>
         </div>
       </details>
@@ -2902,6 +2902,7 @@ window.addEventListener('load', initAuth);
           <input type="file" accept="application/json,.json" style="display:none" onchange="restaurarBackup(this)">
         </label>
         <button class="pf-topbtn" onclick="abrirHistoricoConfig()" title="Voltar uma configuração para como ela estava antes">Versões anteriores</button>
+        <button class="pf-topbtn" onclick="restaurarDaPlanilha()" title="Usa o backup diário gravado na aba &quot;FILAZ Configurações&quot; da sua planilha do Google (fora do Supabase)">Restaurar da planilha</button>
       </div>
       <div id="cfg-backup-status" style="font-size:12px;color:#54656f;margin-top:6px;min-height:14px"></div>
       <div style="margin-top:14px;border-top:1px solid #f0f2f5;padding-top:12px">
@@ -3399,7 +3400,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v612</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v613</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3473,7 +3474,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 612;
+const APP_VER = 613;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3690,6 +3691,16 @@ let _pollMsAtual = 0;
   const f = window.fetch.bind(window);
   window.fetch = async function (i, init) {
     const r = await f(i, init);
+    // 🌙 número em "não perturbe": o servidor responde 409 {silencio:true}; pergunta e reenvia com ?forcar=1
+    try {
+      if (r && r.status === 409 && typeof i === 'string' && /\/send(-[a-z]+)?(\?|$)/.test(i.replace(SERVER_URL, ''))) {
+        const j = await r.clone().json().catch(() => null);
+        if (j && j.silencio) {
+          const ok = await vConfirm({ titulo: '🌙 Número em "não perturbe"', texto: (j.error || 'Este número está em "não perturbe".') + '\n\nEnviar mesmo assim?', confirmar: 'Enviar mesmo assim' });
+          if (ok) return f(i + (i.includes('?') ? '&' : '?') + 'forcar=1', init);
+        }
+      }
+    } catch (_) {}
     try {
       const rit = r && r.headers && r.headers.get('X-Vetra-Poll');
       if (rit) { const n = parseInt(rit, 10); if (n >= 3 && n <= 120) window._pollRitmoSeg = n; else if (n > 0) window._pollRitmoSeg = 3; }
@@ -3967,6 +3978,8 @@ async function loadAccounts() {
     });
     renderAccountsModal(accounts);
     try { _accPreencheTokenDe(accounts); } catch (_) {}
+    // 🌙 não perturbe por número (não trava a lista se demorar)
+    fetch(SERVER_URL + '/settings/silencio').then(r => r.json()).then(j => { try { _silencioMapa = j && j.value ? (JSON.parse(j.value) || {}) : {}; } catch (_) { _silencioMapa = {}; } renderAccountsModal(accounts); }).catch(() => {});
     // Quantas mensagens saíram por número (não trava a lista se demorar)
     fetch(SERVER_URL + '/accounts/uso').then(r => r.json()).then(u => {
       if (u && typeof u === 'object' && !u.error) { _accUso = u; renderAccountsModal(accounts); }
@@ -3974,6 +3987,36 @@ async function loadAccounts() {
   } catch(e) {}
 }
 let _accUso = {};
+// 🌙 NÃO PERTURBE por número (v612): { [idDaConta]: { on, ini, fim, dias:[0..6] } } — guardado na conta (settings silencio)
+let _silencioMapa = {};
+function _silencioTxt(c) {
+  const dias = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+  const partes = [];
+  if (c.ini && c.fim && c.ini !== c.fim) partes.push(c.ini + '–' + c.fim);
+  if (Array.isArray(c.dias) && c.dias.length) partes.push(c.dias.map(d => dias[d]).join('/'));
+  return partes.join(' · ') || 'ligado';
+}
+async function silencioEditar(accId) {
+  const acc = (window._accountsById || {})[accId] || {};
+  const c = Object.assign({ on: false, ini: '20:00', fim: '08:00', dias: [0] }, _silencioMapa[accId] || {});
+  const dias = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  const campos = `
+    <label style="display:flex;gap:8px;align-items:center;font-size:13px;margin-bottom:10px"><input type="checkbox" id="sil-on" ${c.on ? 'checked' : ''}> Ligar o "não perturbe" neste número</label>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;margin-bottom:8px">Não envia das <input type="time" id="sil-ini" value="${escHtml(c.ini || '')}" style="padding:5px 7px;border:1px solid #d1d7db;border-radius:6px;font-family:inherit"> às <input type="time" id="sil-fim" value="${escHtml(c.fim || '')}" style="padding:5px 7px;border:1px solid #d1d7db;border-radius:6px;font-family:inherit"> <span style="color:#8696a0;font-size:11.5px">(deixe em branco para não usar horário)</span></div>
+    <div style="font-size:13px;margin-bottom:4px">Dias inteiros sem envio:</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">${dias.map((d, i) => `<label style="font-size:12.5px;display:flex;gap:4px;align-items:center;border:1px solid #e9edef;border-radius:8px;padding:4px 8px"><input type="checkbox" class="sil-dia" value="${i}" ${(c.dias || []).includes(i) ? 'checked' : ''}> ${d}</label>`).join('')}</div>
+    <div style="font-size:11.5px;color:#8696a0;line-height:1.5">Dentro da janela: os bots deste número ficam pausados até abrir, o gotejamento espera e o envio à mão pede confirmação. Horário de Brasília.</div>`;
+  const btns = `<button class="btn-cancel" onclick="_vdlgFecha(null)">Cancelar</button><button class="btn-save" onclick="_vdlgFecha({ on: document.getElementById('sil-on').checked, ini: document.getElementById('sil-ini').value, fim: document.getElementById('sil-fim').value, dias: [...document.querySelectorAll('.sil-dia:checked')].map(x => +x.value) })">Salvar</button>`;
+  const v = await _vdlgAbre({ titulo: '🌙 Não perturbe — ' + escHtml(acc.name || 'número'), texto: '', campos, botoes: btns });
+  if (!v) return;
+  if (v.on && !(v.ini && v.fim && v.ini !== v.fim) && !v.dias.length) { showToast('Escolha um horário ou pelo menos um dia.', 'warn'); return; }
+  _silencioMapa[accId] = v;
+  try {
+    await fetch(SERVER_URL + '/settings/silencio', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ value: JSON.stringify(_silencioMapa) }) });
+    showToast(v.on ? 'Não perturbe ligado: ' + _silencioTxt(v) : 'Não perturbe desligado', 'ok');
+  } catch (_) { showToast('Não consegui salvar', 'err'); }
+  try { renderAccountsModal(Object.values(window._accountsById || {})); } catch (_) {}
+}
 // Qualidade e limite diário vindos da Meta, em português
 function _accQualidade(q) {
   return { GREEN: ['Qualidade boa', '#00806a', '#e7f7ef', '#b7e4d3'],
@@ -4026,6 +4069,8 @@ function renderAccountsModal(accounts) {
     if (q)   chips.push(`<span style="background:${q[2]};border:1px solid ${q[3]};color:${q[1]};font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:10px">${q[0]}</span>`);
     if (lim) chips.push(`<span style="background:#f0f2f5;border:1px solid #e9edef;color:#54656f;font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:10px" title="Limite da Meta para este número">${escHtml(lim)}</span>`);
     if (uso) chips.push(`<span style="background:#f0f2f5;border:1px solid #e9edef;color:#54656f;font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:10px" title="Mensagens enviadas por este número">hoje ${uso.hoje} · 7 dias ${uso.semana}</span>`);
+    const sil = _silencioMapa[acc.id];
+    if (sil && sil.on) chips.push(`<span style="background:#eef2ff;border:1px solid #c7d2fe;color:#3730a3;font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:10px" title="Não perturbe: o número não envia nada nesse horário/dias">🌙 ${_silencioTxt(sil)}</span>`);
     const linhaChips = chips.length ? `<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:5px">${chips.join('')}</div>` : '';
     // IDs que a Meta e o n8n pedem — com botão de copiar
     const ids = [];
@@ -4043,6 +4088,7 @@ function renderAccountsModal(accounts) {
       </div>
       ${isEvo && acc.status !== 'connected' ? `<button class="btn-rename" style="color:#00a884" onclick="reconnectQR('${acc.id}')" title="Reconectar: gera um QR novo para ESTA conta (mantém leads, bots e nome)"><i class=ic-refresh></i> Reconectar</button>` : ''}
       ${!isEvo && acc.status !== 'connected' ? `<button class="btn-rename" style="color:#1877f2" onclick="ativarNumeroMeta('${acc.id}')" title="Diagnóstico e ativação do número na Meta (registra na Cloud API)"><i class=ic-zap></i> Ativar na Meta</button>` : ''}
+      <button class="btn-rename" onclick="silencioEditar('${acc.id}')" title="Não perturbe: horário e dias em que este número não envia nada (bots esperam, gotejamento espera, envio à mão pede confirmação)">🌙</button>
       <button class="btn-rename" onclick="openWaProfile('${acc.id}')" title="Perfil do número (foto, recado, descrição)"><i class=ic-user></i></button>
       <button class="btn-rename" onclick="renameAccount('${acc.id}')" title="Renomear conta"><i class=ic-pencil></i></button>
       <button class="btn-delete" onclick="deleteAccount('${acc.id}')" title="Remover conta"><i class=ic-trash></i></button>
@@ -4152,6 +4198,12 @@ async function addAccount() {
   const waba_id = (document.getElementById('acc-waba')?.value || '').trim();
   if (!name || !phone_number_id) return alert('Preencha o nome e o ID do número.');
   if (!token && !usar_token_de) return alert('Cole o token, ou escolha uma conta que já tem token guardado.');
+  // ✅ (v612) confere ANTES de ir à Meta: o Phone Number ID é só números (15–17 dígitos); o WABA ID também;
+  // o token da Meta começa com "EAA" e é comprido. Antes o erro só vinha depois de segundos, vindo da Meta.
+  if (!/^\d{10,20}$/.test(phone_number_id)) return alert('O Phone Number ID é só números (ex.: 1197112253494971). Confira: parece que você colou outra coisa — "' + phone_number_id.slice(0, 30) + '".');
+  if (waba_id && !/^\d{10,20}$/.test(waba_id)) return alert('O WABA ID é só números (ex.: 1457163523103379). Confira o que foi colado.');
+  if (token && !/^EAA[A-Za-z0-9]{40,}$/.test(token)) return alert('Esse token não parece um token da Meta (começa com "EAA" e tem mais de 100 letras). Gere de novo em Usuários do sistema e cole o token completo.');
+  if (Object.values(window._accountsById || {}).some(a => String(a.phone_number_id || '') === phone_number_id)) return alert('Esse Phone Number ID já está cadastrado na conta "' + (Object.values(window._accountsById).find(a => String(a.phone_number_id || '') === phone_number_id).name || '') + '".');
   // ⏳ O servidor confere o token na Meta, registra o número e inscreve o webhook (uns segundos):
   // a tela avisa na hora, em vez de parecer travada ("demora para a tela responder")
   const _btn = document.querySelector('button[onclick="addAccount()"]'); const _rot = _btn ? _btn.innerHTML : '';
@@ -4709,7 +4761,7 @@ function applyFilters() {
     const _fimIgual = (fone) => { const f = String(fone || '').replace(/\D/g, ''); return qDig.length >= 8 && f.length >= 8 && f.slice(-8) === qDig.slice(-8); };
     // 🔤 sem acento acha igual: "joao" acha "João", "simulacao" acha "simulação"
     const qSA = _buscaSemAcento(qt);
-    if (qt && !_buscaSemAcento(c.name).includes(qSA) && !c.phone?.includes(qt) && !(qDig.length >= 4 && String(c.phone || '').includes(qDig)) && !_fimIgual(c.phone)) return false;
+    if (qt && !_buscaSemAcento(c.name).includes(qSA) && !c.phone?.includes(qt) && !(qDig.length >= 4 && String(c.phone || '').includes(qDig)) && !_fimIgual(c.phone) && !(serverSearch && c.achou_na_nota)) return false; // (achou pela anotação: fica)
     if (stageId && c.stage_id !== stageId) return false;
     if (activeFilterTags.size > 0 && ![...activeFilterTags].every(t => (c.tags||[]).includes(t))) return false;
     if (dateFrom && c.last_message_at && c.last_message_at < dateFrom) return false;
@@ -5106,6 +5158,8 @@ function renderContacts(contacts) {
     const _naLista = window.matchMedia('(max-width: 768px)').matches && !document.body.classList.contains('mobile-chat-open');
     if (!_dig && _drafts[c.phone] && (c.phone !== currentPhone || _naLista))
       previewHtml = `<span style="color:#00a884;font-weight:600">Rascunho: </span>${escHtml(String(_drafts[c.phone]).slice(0, 60))}`;
+    // 📝 achado pela ANOTAÇÃO do lead (busca): mostra o trecho da anotação no lugar da prévia (v613)
+    if (!_dig && c.achou_na_nota && searchResults !== null) previewHtml = `<span style="color:#b45309;font-weight:600">Anotação: </span>${escHtml(String(c.achou_na_nota))}`;
     const isFav = !!c.favorite;
     return `<div class="contact-swipe-wrap" data-phone="${escHtml(c.phone)}">
       <div class="swipe-action read"><i class=ic-check></i><span>Lida</span></div>
@@ -13360,12 +13414,9 @@ function showQRPopup(filter, fromSearch) {
   if (si && !fromSearch) si.value = filter || '';
   // Fixadas () sempre primeiro — as que você mais usa ficam no topo
   const ordered = [...quickReplies].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
-  // Busca pelo atalho (título) PRIMEIRO; com 3+ letras, quem bate só no TEXTO da resposta entra
-  // em seguida (v611: "busca por conteúdo" — com muitas respostas, lembrar o atalho vira adivinhação)
-  const fq = String(filter || '').toLowerCase().trim();
-  const porTitulo = ordered.filter(r => !fq || String(r.title || '').toLowerCase().includes(fq));
-  const porTexto = (fq.length >= 3) ? ordered.filter(r => !porTitulo.includes(r) && String(r.message || '').toLowerCase().includes(fq)) : [];
-  const filtered = porTitulo.concat(porTexto);
+  // Busca SÓ pelo atalho (título): pelo texto da resposta aparecia coisa demais — ela (v612): "Não é
+  // para pesquisar pelo texto, somente pelo nome". (A busca por texto fica nas telas de Respostas e Modelos.)
+  const filtered = ordered.filter(r => !filter || r.title.toLowerCase().includes(filter.toLowerCase()));
   if (!filtered.length) {
     if (fromSearch) { // digitou algo sem resultado: mantém aberto para corrigir
       list.innerHTML = '<div style="padding:12px 14px;font-size:13px;color:#667781">Nenhum atalho com esse nome.</div>';
@@ -13385,7 +13436,7 @@ function showQRPopup(filter, fromSearch) {
     const short   = preview.length > 90 ? preview.substring(0, 90) + '…' : preview;
     const curto   = short.trim() ? escHtml(short) : '<i>' + escHtml(r.media_name || 'anexo') + ' — sem legenda</i>';
     return `<div class="qr-item" onclick="insertQRReply(${quickReplies.indexOf(r)})">
-      <div class="qr-item-title">${r.pinned ? '<i class=ic-pin></i> ' : ''}/${escHtml(r.title)}${r.media_url ? ' <i class=ic-clip title="Vai com anexo"></i>' : ''}${porTexto.includes(r) ? ' <span style="font-size:10.5px;color:#8696a0;font-weight:400">(pelo texto)</span>' : ''}</div>
+      <div class="qr-item-title">${r.pinned ? '<i class=ic-pin></i> ' : ''}/${escHtml(r.title)}${r.media_url ? ' <i class=ic-clip title="Vai com anexo"></i>' : ''}</div>
       <div class="qr-item-preview">${curto}</div>
     </div>`;
   }).join('');
@@ -13693,7 +13744,7 @@ function _sheetsBkpTxt(b) {
   const el = document.getElementById('cfg-sheets-bkp'); if (!el) return;
   if (!b) { el.textContent = 'Nenhum backup ainda.'; return; }
   const q = b.quando ? new Date(b.quando).toLocaleString('pt-BR') : '';
-  el.textContent = b.ok ? `Último backup ${q} (${b.motivo}): ${b.leads} lead(s), ${b.tarefas} tarefa(s).` : `Última tentativa ${q}: ${b.erro}`;
+  el.textContent = b.ok ? `Último backup ${q} (${b.motivo === 'diario' ? 'diário' : b.motivo}): ${b.leads} lead(s), ${b.tarefas} tarefa(s)${b.bots != null ? ', ' + b.bots + ' bot(s) e as configurações' : ''}. Roda sozinho todo dia às 6h.` : `Última tentativa ${q}: ${b.erro}`;
   el.style.color = b.ok ? '#00806a' : '#c0392b';
 }
 async function fazerBackupPlanilha(btn) {
@@ -15576,6 +15627,16 @@ async function baixarBackup(btn) {
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
     if (st) st.textContent = 'Backup baixado. Guarde o arquivo em lugar seguro.';
   } catch (e) { if (st) st.innerHTML = '<span style="color:#ef4444">Não consegui montar o backup: ' + escHtml(e.message || e) + '</span>'; }
+}
+// 💾 Backup DIÁRIO na planilha do Google (v612): as configurações ficam fora do Supabase; aqui volta de lá
+async function restaurarDaPlanilha() {
+  const ok = await vConfirm({ titulo: 'Restaurar da planilha', texto: 'As respostas rápidas, etiquetas, automações por etapa, gotejamento e planilha voltam para como estavam no último backup diário gravado na aba "FILAZ Configurações".\n\nConversas, leads, bots e etapas NÃO são tocados.', confirmar: 'Restaurar', perigo: true });
+  if (!ok) return;
+  const st = document.getElementById('cfg-backup-status');
+  try {
+    const d = await _apiJson(SERVER_URL + '/sheets/restaurar-config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    if (st) { st.style.color = '#00a884'; st.textContent = 'Pronto: ' + (d.restaurados || []).length + ' configuração(ões) voltaram do backup de ' + (d.quando ? new Date(d.quando).toLocaleString('pt-BR') : '?') + '.'; }
+  } catch (e) { if (st) { st.style.color = '#ef4444'; st.textContent = e.message || 'Não consegui restaurar da planilha.'; } }
 }
 async function restaurarBackup(input) {
   const f = input && input.files && input.files[0];
