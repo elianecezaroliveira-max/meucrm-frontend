@@ -1032,6 +1032,9 @@
     font-size:14px; text-decoration:none; opacity:0; transition:opacity .2s;
   }
   div:hover > .media-dl-btn { opacity:1; }
+  /* 📱 celular (v622): sem o ⤓ em cima da foto — ela: "no celular tira essa opção de baixar antes de clicar na
+     imagem" (lá o visualizador tem o ⤴ da folha nativa); no PC o ⤓ fica no menu da mensagem (Baixar) */
+  @media (hover: none) and (pointer: coarse) { .media-dl-btn { display: none !important; } }
   /* Link de download para áudio/vídeo/doc — botãozinho discreto com contorno */
   .media-dl-link {
     font-size:12px; color:#54656f; text-decoration:none;
@@ -2520,7 +2523,7 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v621</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v622</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3155,6 +3158,7 @@ window.addEventListener('load', initAuth);
   <div class="cm-item" onclick="msgMenuCopy()"><i class=ic-copy></i> Copiar</div>
   <div id="msg-menu-emails"></div><!-- "Copiar e-mail": só quando a mensagem tem e-mail -->
   <div class="cm-item" id="msg-menu-forward" onclick="msgMenuForward()"><i class=ic-send></i> Encaminhar</div>
+  <div class="cm-item" id="msg-menu-baixar" style="display:none" onclick="msgMenuBaixar()"><i class=ic-down></i> Baixar</div><!-- foto/vídeo/áudio/documento (v622) -->
   <div class="cm-item" id="msg-menu-pinmsg" onclick="msgMenuPinMsg()"><i class=ic-pin></i> Fixar</div>
   <div class="cm-item" id="msg-menu-starmsg" onclick="msgMenuStarMsg()"><i class=ic-star></i> Favoritar</div>
   <div class="cm-item" id="msg-menu-select" onclick="msgMenuSelect()"><i class=ic-task></i> Selecionar</div>
@@ -3405,7 +3409,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v621</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v622</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3479,7 +3483,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 621;
+const APP_VER = 622;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -6315,8 +6319,27 @@ function _msgEhQr(id) {
     return lista.length > 0 && lista.some(ehQr) && (lista.every(ehQr) || !currentAccountId);
   } catch (_) { return false; }
 }
+// ⤓ Baixar pelo menu da mensagem (v622): foto, vídeo, áudio e documento — no PC baixa; no celular abre a
+// folha nativa (Salvar imagem…), igual ao visualizador
+function _msgMidiaDe(id) {
+  const m = (currentMessages || []).find(x => String(x.id) === String(id));
+  if (!m || !m.media_id || !['image', 'video', 'audio', 'document'].includes(m.type)) return null;
+  const acct = encodeURIComponent(currentAccountId || '');
+  const mime = m.media_mime_type ? `&mime=${encodeURIComponent(m.media_mime_type)}` : '';
+  const url = `${SERVER_URL}/media-proxy/${encodeURIComponent(m.media_id)}?account_id=${acct}${mime}`;
+  const nome = m.type === 'image' ? 'imagem.jpg' : m.type === 'video' ? 'video.mp4' : m.type === 'audio' ? 'audio.ogg' : (m.filename || m.file_name || (String(m.content || '').match(/[^\s\[\]]+\.[a-z0-9]{2,5}/i) || [])[0] || 'arquivo');
+  return { m, url, nome };
+}
+async function msgMenuBaixar() {
+  const id = _msgMenuId; closeMsgMenu();
+  const md = _msgMidiaDe(id); if (!md) return;
+  const cel = window.matchMedia('(hover: none)').matches;
+  if (cel && navigator.share) return _fvShare(md.url, md.nome);
+  baixarMidia(md.url + '&download=1&filename=' + encodeURIComponent(md.nome), md.nome);
+}
 function _updateMsgMenuItems(id) {
   _msgMenuEmails(id);
+  { const b = document.getElementById('msg-menu-baixar'); if (b) b.style.display = _msgMidiaDe(id) ? '' : 'none'; }
   const item = document.getElementById('msg-menu-edit');
   if (!item) return;
   // NOTA INTERNA: só o que faz sentido para uma anotação sua. Ela não sai do
