@@ -2523,7 +2523,7 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v622</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v623</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3409,7 +3409,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v622</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v623</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3483,7 +3483,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 622;
+const APP_VER = 623;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -9989,8 +9989,15 @@ function _waMediaSize(w, h) {
   }
   return [dw, dh];
 }
-function _dimCss(id) {
-  const d = _dimGet(id); if (!d || !d[0] || !d[1]) return '';
+function _dimCss(id, m) {
+  let d = _dimGet(id);
+  // 📐 (v623) o servidor já sabe o tamanho da foto (media_w/media_h): o balão nasce certo mesmo na 1ª vez
+  // neste aparelho — ela: "arquivos e fotos mudam de tamanho antes de carregar no chat"
+  if ((!d || !d[0] || !d[1]) && m && m.media_w > 0 && m.media_h > 0) {
+    d = [m.media_w, m.media_h];
+    try { const all = window._vDims = window._vDims || JSON.parse(localStorage.getItem('vetra_dim') || '{}'); if (!all[String(id)]) { all[String(id)] = d; localStorage.setItem('vetra_dim', JSON.stringify(all)); } } catch (_) {}
+  }
+  if (!d || !d[0] || !d[1]) return '';
   const wh = _waMediaSize(d[0], d[1]);
   return `width:${wh[0]}px;height:${wh[1]}px;`;
 }
@@ -10303,7 +10310,7 @@ function _renderMessageContentBase(m) {
       const _midKey = String(m.media_id || m.id || '').replace(/['"<>]/g, '');
       // Legenda com a LARGURA DA FOTO (igual WhatsApp): quebra embaixo dela, sem alargar a bolha.
       // Largura já conhecida → usa; senão, a do espaço reservado (240px) — _dimAplica ajusta ao carregar.
-      const _legW = (String(_dimCss(_midKey)).match(/width:(\d+)px/) || [])[1] || 240;
+      const _legW = (String(_dimCss(_midKey, m)).match(/width:(\d+)px/) || [])[1] || 240;
       const caption = _legI ? `<div class="media-caption" style="max-width:${_legW}px">${waFormat(_legI)}</div>` : '';
       // Ordem de prioridade do endereço: MINIATURA local (instantânea, igual
       // WhatsApp) → prévia local recém-enviada → rede (1ª vez; gera a miniatura)
@@ -10311,8 +10318,8 @@ function _renderMessageContentBase(m) {
       const _srcImg = _th || (window._localPrev || {})[String(m.media_id)] || proxyUrl;
       return quotedHtml + `<div class="media-wrap">
         <div style="position:relative;display:inline-block">
-          <img src="${_srcImg}" class="msg-image${_dimCss(_midKey) ? '' : ' sem-medida'}" alt="Imagem" decoding="async"
-            loading="${_midiaJa(m.media_id) ? 'eager' : 'lazy'}" fetchpriority="${_midiaJa(m.media_id) ? 'high' : 'auto'}"${_th ? '' : ' crossorigin="anonymous"'} style="${_dimCss(_midKey)}"
+          <img src="${_srcImg}" class="msg-image${_dimCss(_midKey, m) ? '' : ' sem-medida'}" alt="Imagem" decoding="async"
+            loading="${_midiaJa(m.media_id) ? 'eager' : 'lazy'}" fetchpriority="${_midiaJa(m.media_id) ? 'high' : 'auto'}"${_th ? '' : ' crossorigin="anonymous"'} style="${_dimCss(_midKey, m)}"
             onload="_dimSave('${_midKey}',this);_dimAplica(this);_thumbSave('${_midKey}',this);_keepBottom(this)" onclick="verMidia('${proxyUrl}','img','Imagem')"
             onerror="this.parentElement.innerHTML='<span style=opacity:.6>[Imagem não disponível]</span>'" />
           <a href="#" class="media-dl-btn" title="Baixar imagem" onclick="event.preventDefault();event.stopPropagation();baixarMidia('${dlUrl}','imagem.jpg',this)"><i class=ic-down></i></a>
