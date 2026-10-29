@@ -2523,7 +2523,7 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v623</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v624</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3409,7 +3409,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v623</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v624</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3483,7 +3483,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 623;
+const APP_VER = 624;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -6030,7 +6030,7 @@ async function startVoiceRec() {
     _recRate = _recCtx.sampleRate;
     _recSrc  = _recCtx.createMediaStreamSource(_recStream);
     _recGain = _recCtx.createGain(); _recGain.gain.value = 0; // mudo: não ecoa no alto-falante
-    _recBufs = []; _recSecs = 0;
+    _recBufs = []; _recSecs = 0; _recPhone = currentPhone;
     // Captura na THREAD DE ÁUDIO (AudioWorklet): imune a travadas da interface.
     // A captura antiga (na thread principal) criava microfalhas inaudíveis em 1x
     // que o acelerador (1,5x/2x) do WhatsApp transformava em distorção.
@@ -6066,7 +6066,10 @@ async function startVoiceRec() {
       if (_recSecs % 8 === 0) notifyTyping('recording');
       const el = document.getElementById('rec-time');
       if (el) el.textContent = Math.floor(_recSecs / 60) + ':' + String(_recSecs % 60).padStart(2, '0');
-      if (_recSecs >= REC_MAX_SECS) stopVoiceRec(false); // envia ao atingir o limite
+      if (_recSecs >= REC_MAX_SECS) { // (v624) no limite vira PRÉVIA para você ouvir e enviar — nunca envia sozinho
+        window._recPaused = false; _recStopPreview(); const pnd = _recFinish(false);
+        if (pnd) { _recPending = pnd; _showRecReview(); showToast('Limite de 3 minutos: ouça e toque ➤ para enviar.', 'warn', 4000); }
+      }
     }, 1000);
     // Forma de onda AO VIVO (barrinhas acompanham sua voz, igual WhatsApp)
     const wv = document.getElementById('rec-wave'); if (wv) wv.innerHTML = '';
@@ -6112,6 +6115,25 @@ function _recTeardown() {
 }
 
 let _recPending = null; // áudio gravado aguardando revisão
+// 🎙️ (v624) Sair da conversa NO MEIO da gravação (ou com a prévia na tela): o áudio vira RASCUNHO daquela
+// conversa — nunca é enviado sozinho e nunca vai para outra conversa. Ao voltar, a prévia reaparece com
+// ▶ ouvir / 🗑 descartar / ➤ enviar. Ela: "precisa pausar o áudio e não enviar de forma alguma sem que eu clique".
+let _recPhone = null;      // conversa em que a gravação começou
+const _recDrafts = {};     // telefone → { blob, secs }
+function _recGuardaRascunho() {
+  const fone = _recPhone || currentPhone;
+  try {
+    if (_recCtx || _recBufs.length) { window._recPaused = false; _recStopPreview(); const pnd = _recFinish(false); if (pnd && fone) _recDrafts[fone] = pnd; }
+    if (_recPending && fone) { const au = document.getElementById('rec-review-audio'); if (au) au.pause(); _recDrafts[fone] = _recPending; _recPending = null; }
+  } catch (_) {}
+  _recPhone = null;
+  try { _recReviewHide(); } catch (_) {}
+}
+function _recRetomaRascunho(fone) {
+  const d = fone && _recDrafts[fone]; if (!d) return;
+  _recPending = d; _recPhone = fone;
+  try { _showRecReview(); } catch (_) {}
+}
 function _recFinish(cancel) {
   if (!_recCtx && !_recBufs.length) { _recUI(false); return null; }
   const bufs = _recBufs, rate = _recRate;
@@ -6222,11 +6244,11 @@ function _recReviewHide() {
 }
 function _recReviewDiscard() {
   const au = document.getElementById('rec-review-audio'); if (au) au.pause();
-  _recPending = null; _recReviewHide();
+  _recPending = null; if (currentPhone) delete _recDrafts[currentPhone]; _recPhone = null; _recReviewHide();
 }
 function _recReviewSend() {
   const au = document.getElementById('rec-review-audio'); if (au) au.pause();
-  const pnd = _recPending; _recPending = null; _recReviewHide();
+  const pnd = _recPending; _recPending = null; if (currentPhone) delete _recDrafts[currentPhone]; _recPhone = null; _recReviewHide();
   if (pnd) sendVoiceBlob(pnd.blob, pnd.secs);
 }
 async function sendVoiceBlob(blob, durationSecs) {
@@ -7836,6 +7858,8 @@ async function saveWaProfile() {
 async function selectContact(phone, name, accountId) {
   window._veioDasTarefas = false; // openTaskLead marca de novo logo depois
   _telaAtual('chat=' + phone);
+  // 🎙️ gravando (ou com prévia) em OUTRA conversa: vira rascunho de lá — nada é enviado
+  try { if (phone !== currentPhone && (_recCtx || _recBufs.length || _recPending)) _recGuardaRascunho(); } catch (_) {}
   // Modo SELEÇÃO EM MASSA: o toque marca/desmarca em vez de abrir a conversa
   if (window._selChats) {
     if (Date.now() - (window._selJustEntered || 0) < 600) return; // toque que iniciou o modo
@@ -8048,6 +8072,7 @@ async function selectContact(phone, name, accountId) {
   // Restaura o RASCUNHO desta conversa — AGORA, com o campo novo já montado
   const _din = document.getElementById('msg-input');
   if (_din) { _din.value = _drafts[phone] || ''; autoGrowMsgInput(_din); try { updateSendMicButtons(); } catch (_) {} }
+  try { if (_recDrafts[phone]) _recRetomaRascunho(phone); } catch (_) {} // 🎙️ áudio deixado nesta conversa volta como prévia
   // Reforço: se qualquer coisa limpar o campo logo depois, re-aplica o rascunho
   setTimeout(() => {
     const d2 = document.getElementById('msg-input');
@@ -9468,6 +9493,7 @@ function lpLoadMedia(phone){
 
 // Volta para sidebar no mobile
 function goBackToSidebar() {
+  try { if (_recCtx || _recBufs.length || _recPending) _recGuardaRascunho(); } catch (_) {} // 🎙️ áudio vira rascunho, não envia
   _clearUnreadMark(); // saiu da conversa: a divisória cumpriu o papel dela
   try { hideNewMsgPill(); } catch (_) {} // o aviso é da conversa — some em QUALQUER saída
   if (window._veioDasTarefas) { // veio da tela de Tarefas: volta para lá
@@ -23494,6 +23520,19 @@ async function openBotLauncher() {
   const menu = document.getElementById('bot-launcher-menu');
   if (!menu) return;
   _desligaNota('iniciar o bot');
+  // 📱 (v624) celular: a lista de bots abre numa janelinha (com busca), em vez de pôr "#" no campo e depender
+  // do popup acima do teclado — ela: "no celular quando clica no bot fica # em vez de aparecer as opções"
+  if (window.matchMedia('(hover: none)').matches) {
+    try {
+      const bots = await _botsParaAtalho();
+      if (!bots.length) { showToast('Nenhum bot ativo. Crie ou ative um na tela de Bots.', 'warn'); return; }
+      const esc = await vEscolha({ titulo: 'Iniciar bot', texto: 'Para este lead:', opcoes: bots.map(b => ({ v: String(b.id), t: ((typeof _botEhFav === 'function' && _botEhFav(b.id)) ? '★ ' : '') + (b.name || 'Bot') })) });
+      if (!esc) return;
+      const b = bots.find(x => String(x.id) === String(esc));
+      if (b) _escolheBotAtalho(String(b.id), b.name || 'Bot');
+    } catch (_) {}
+    return;
+  }
   try {
     const ta = document.getElementById('msg-input');
     const p = document.getElementById('qr-popup');
