@@ -2518,7 +2518,7 @@ window.addEventListener('load', initAuth);
 
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v616</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v619</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3400,7 +3400,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v616</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v619</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3474,7 +3474,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 616;
+const APP_VER = 619;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5737,8 +5737,9 @@ let _ditado = null; // { rec, base, finais, ativo }
 // Ela: "Várias vezes eu falo cortar e escreve portar". Guardado por pessoa (e-mail) no servidor e no aparelho.
 // Padrões (ela: "falo cortar e escreve portar"; "falo portada, ele entende cortada"). _DITAR_CORR_V sobe
 // quando entra padrão novo: ele é acrescentado à lista de quem já tinha a sua, sem apagar nada.
-const _DITAR_CORR_PADRAO = [{ de: 'portar', para: 'cortar' }, { de: 'cortada', para: 'portada' }, { de: 'cortado', para: 'portado' }, { de: 'sou gov', para: 'Sou Gov' }, { de: 'sougov', para: 'Sou Gov' }];
-const _DITAR_CORR_V = 3;
+// (v618) "averbar": o Chrome escreve "haver bar" / "a ver bar" (ela: 'É "averbar" e não "haver bar"') — e os parentes
+const _DITAR_CORR_PADRAO = [{ de: 'portar', para: 'cortar' }, { de: 'cortada', para: 'portada' }, { de: 'cortado', para: 'portado' }, { de: 'sou gov', para: 'Sou Gov' }, { de: 'sougov', para: 'Sou Gov' }, { de: 'haver bar', para: 'averbar' }, { de: 'a ver bar', para: 'averbar' }, { de: 'aver bar', para: 'averbar' }, { de: 'haver bação', para: 'averbação' }, { de: 'a ver bação', para: 'averbação' }, { de: 'haver bou', para: 'averbou' }, { de: 'haver bado', para: 'averbado' }, { de: 'haver bada', para: 'averbada' }, { de: 'haver bando', para: 'averbando' }, { de: 'cortou', para: 'portou' }, { de: 'cortaram', para: 'portaram' }, { de: 'cortamos', para: 'portamos' }]; // (v619: cortou → portou, como cortada/cortado)
+const _DITAR_CORR_V = 5;
 let _ditarCorr = null;
 function _ditarCorrChave() { return 'filaz_ditar_corr::' + String(window._userEmail || '').toLowerCase(); }
 function _ditarCorrLista() {
@@ -9752,6 +9753,7 @@ function _ensurePresenceWatch() {
   if (!window.visualViewport) return;
   const mob = () => window.matchMedia('(max-width: 768px)').matches;
   let raf = null, prevH = window.visualViewport.height, fullH = window.visualViewport.height;
+  const editavelEmFoco = () => { const e = document.activeElement; if (!e) return false; const t = e.tagName; return t === 'TEXTAREA' || t === 'SELECT' || e.isContentEditable || (t === 'INPUT' && !/^(checkbox|radio|button|submit|file|range|color)$/i.test(e.type || '')); };
   // REGRA DA ALTURA: o teclado é detectado comparando com a MAIOR altura já vista
   // (a tela cheia real) — no modo atual o iOS encolhe a própria janela junto com o
   // teclado, então comparar janela × área visível não funciona mais.
@@ -9761,7 +9763,10 @@ function _ensurePresenceWatch() {
     raf = requestAnimationFrame(() => {
       const vv = window.visualViewport;
       if (vv.height > fullH) fullH = vv.height; // aprende a tela cheia real
-      const tecladoAberto = (fullH - vv.height) > 60;
+      // 📱 (v617) Teclado aberto = área visível menor E um campo em foco. Ela (print do iPhone): a lista de
+      // conversas ficou cortada na metade com o teclado já fechado — o iOS não avisou (resize) a altura cheia
+      // de volta e o corpo ficou preso na altura do teclado. Sem campo em foco não existe teclado aberto.
+      const tecladoAberto = (fullH - vv.height) > 60 && editavelEmFoco();
       const dH = prevH - vv.height; prevH = vv.height;
       document.body.style.height = tecladoAberto ? (vv.height + 'px') : '';
       if (!tecladoAberto) document.body.style.transform = ''; // teclado fechou: sem compensação
@@ -9775,6 +9780,10 @@ function _ensurePresenceWatch() {
   // Re-verifica em TODA mudança possível (abrir app, girar, voltar do fundo…)
   window.addEventListener('resize', fitH);
   window.addEventListener('orientationchange', () => { fullH = 0; fitH(); }); // girou: reaprende
+  // campo perdeu o foco (teclado fechando): confere de novo em seguida, mesmo que o iOS não avise
+  document.addEventListener('focusout', () => { setTimeout(fitH, 250); setTimeout(fitH, 900); }, true);
+  // rede de segurança: corpo preso na altura do teclado sem nenhum campo em foco → solta
+  setInterval(() => { if (document.body.style.height && !editavelEmFoco()) fitH(); }, 1000);
   document.addEventListener('visibilitychange', fitH);
   // TRAVA: a página nunca sai do 0,0 — qualquer empurrão do iOS é anulado NO MESMO instante
   function pin() {
