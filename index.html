@@ -2516,10 +2516,14 @@ window.addEventListener('load', initAuth);
   </div>
 </div>
 
+<!-- ⛔ faixa da PARADA GERAL -->
+<div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v619</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v620</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
+  <!-- ⛔ PARAR TUDO (v620): bots e gotejamento param na hora; Retomar só por administrador -->
+  <button id="btn-parar-tudo" onclick="paradaGeral(true)" title="Para na hora todos os bots e o gotejamento. Nada é enviado até você retomar." style="background:#fff;color:#c0392b;border:1px solid #e57373;border-radius:14px;font-weight:700;padding:4px 10px;font-size:12px;cursor:pointer;font-family:inherit">⛔ Parar tudo</button>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
   <button id="btn-pipeline" onclick="openPipeline()">
@@ -2551,6 +2555,7 @@ window.addEventListener('load', initAuth);
   <div class="mpm-item" data-adm onclick="mnavGo(openBotsList)"><i class=ic-bot></i> Bots</div>
   <div class="mpm-item" id="mm-ia" data-adm style="display:none" onclick="mnavGo(openFaqPage)"><i class=ic-ai></i> IA</div>
   <div class="mpm-item" data-adm onclick="mnavGo(openAutomationPanel)"><i class=ic-auto></i> Automação</div>
+  <div class="mpm-item" onclick="mnavGo(function(){ paradaGeral(true); })" style="color:#c0392b;font-weight:700">⛔ Parar tudo (bots e gotejamento)</div>
   <div class="mpm-sep"></div>
   <div class="mpm-item" onclick="mnavGo(openTemplates)"><i class=ic-doc></i> Modelos</div>
   <div class="mpm-item" onclick="mnavGo(openQRManager)"><i class=ic-zap></i> Respostas rápidas</div>
@@ -3400,7 +3405,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v619</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v620</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3474,7 +3479,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 619;
+const APP_VER = 620;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5738,8 +5743,8 @@ let _ditado = null; // { rec, base, finais, ativo }
 // Padrões (ela: "falo cortar e escreve portar"; "falo portada, ele entende cortada"). _DITAR_CORR_V sobe
 // quando entra padrão novo: ele é acrescentado à lista de quem já tinha a sua, sem apagar nada.
 // (v618) "averbar": o Chrome escreve "haver bar" / "a ver bar" (ela: 'É "averbar" e não "haver bar"') — e os parentes
-const _DITAR_CORR_PADRAO = [{ de: 'portar', para: 'cortar' }, { de: 'cortada', para: 'portada' }, { de: 'cortado', para: 'portado' }, { de: 'sou gov', para: 'Sou Gov' }, { de: 'sougov', para: 'Sou Gov' }, { de: 'haver bar', para: 'averbar' }, { de: 'a ver bar', para: 'averbar' }, { de: 'aver bar', para: 'averbar' }, { de: 'haver bação', para: 'averbação' }, { de: 'a ver bação', para: 'averbação' }, { de: 'haver bou', para: 'averbou' }, { de: 'haver bado', para: 'averbado' }, { de: 'haver bada', para: 'averbada' }, { de: 'haver bando', para: 'averbando' }, { de: 'cortou', para: 'portou' }, { de: 'cortaram', para: 'portaram' }, { de: 'cortamos', para: 'portamos' }]; // (v619: cortou → portou, como cortada/cortado)
-const _DITAR_CORR_V = 5;
+const _DITAR_CORR_PADRAO = [{ de: 'portar', para: 'cortar' }, { de: 'cortada', para: 'portada' }, { de: 'cortado', para: 'portado' }, { de: 'sou gov', para: 'Sou Gov' }, { de: 'sougov', para: 'Sou Gov' }, { de: 'haver bar', para: 'averbar' }, { de: 'a ver bar', para: 'averbar' }, { de: 'aver bar', para: 'averbar' }, { de: 'haver bação', para: 'averbação' }, { de: 'a ver bação', para: 'averbação' }, { de: 'haver bou', para: 'averbou' }, { de: 'haver bado', para: 'averbado' }, { de: 'haver bada', para: 'averbada' }, { de: 'haver bando', para: 'averbando' }, { de: 'cortou', para: 'portou' }, { de: 'cortaram', para: 'portaram' }, { de: 'cortamos', para: 'portamos' }, { de: 'azeite', para: 'aceite' }, { de: 'azeites', para: 'aceites' }]; // (v619: cortou → portou; v620: azeite → aceite)
+const _DITAR_CORR_V = 6;
 let _ditarCorr = null;
 function _ditarCorrChave() { return 'filaz_ditar_corr::' + String(window._userEmail || '').toLowerCase(); }
 function _ditarCorrLista() {
@@ -8176,8 +8181,9 @@ function abrirArquivo(url, tipo, nome) {
           <button onclick="event.stopPropagation();fvZoom(1)" title="Aumentar (Ctrl +)" style="background:#202c33;color:#e9edef;border:none;border-radius:8px;width:30px;height:28px;font-size:16px;cursor:pointer">+</button>
         </span>
         <button id="fv-copiar" onclick="event.stopPropagation();fvCopiarTextoPdf(this)" title="Copiar todo o texto do PDF (ou selecione um trecho com o mouse e Ctrl+C)" style="display:none;background:#202c33;color:#e9edef;border:none;border-radius:8px;height:28px;padding:0 10px;font-size:12.5px;cursor:pointer;font-family:inherit;margin-right:6px">Copiar texto</button>
-        <span id="fv-share" style="display:none"></span>
-        <span id="fv-baixar" style="display:none"></span>
+        <!-- ⤓ (v620) Salvar/compartilhar no visualizador, igual ao WhatsApp: no celular a folha nativa (Salvar imagem…); no PC baixa -->
+        <span id="fv-share" title="Compartilhar ou salvar (folha do celular)" style="display:none;cursor:pointer;font-size:20px;padding:2px 8px;line-height:1">⤴</span>
+        <span id="fv-baixar" title="Salvar no aparelho" style="display:none;cursor:pointer;font-size:20px;padding:2px 8px;line-height:1">⤓</span>
       </div>
       <div id="fv-body" style="flex:1;overflow:auto;-webkit-overflow-scrolling:touch;padding:10px;touch-action:pan-x pan-y">
         <div id="fv-zoom" style="transform-origin:0 0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:100%"></div>
@@ -8201,9 +8207,10 @@ function abrirArquivo(url, tipo, nome) {
   try { const zc = document.getElementById('fv-zoomctl'); if (zc) zc.style.display = window.matchMedia('(hover: none)').matches ? 'none' : 'inline-flex'; const rb = document.getElementById('fv-roda'); if (rb) rb.style.display = zc && zc.style.display === 'none' ? 'none' : ''; _fvRodaPinta(); } catch (_) {}
   document.getElementById('fv-nome').textContent = nome || 'Arquivo';
   const fvBx = document.getElementById('fv-baixar');
-  if (fvBx) fvBx.onclick = () => baixarMidia(url.includes('download=1') ? url : url + '&download=1&filename=' + encodeURIComponent(nome || 'arquivo'), nome || 'arquivo');
+  if (fvBx) fvBx.onclick = (ev) => { ev && ev.stopPropagation(); baixarMidia(url.includes('download=1') ? url : url + '&download=1&filename=' + encodeURIComponent(nome || 'arquivo'), nome || 'arquivo'); };
   const fvSh = document.getElementById('fv-share');
-  if (fvSh) fvSh.onclick = () => _fvShare(url, nome || 'arquivo');
+  if (fvSh) fvSh.onclick = (ev) => { ev && ev.stopPropagation(); _fvShare(url, nome || 'arquivo'); };
+  _fvBotoesSalvar();
   const body = document.getElementById('fv-zoom');
   body.innerHTML = '<span style="color:#8696a0;font-size:13px;margin-top:36px">Abrindo…</span>';
   if (tipo !== 'img') { _fvFotos = []; _fvIdx = -1; } // navegação ‹ › é só para fotos
@@ -8332,8 +8339,9 @@ function _fvNav(dir) {
   const f = _fvFotos[_fvIdx];
   const nm = document.getElementById('fv-nome'); if (nm) nm.textContent = f.nome || 'Foto';
   const bx = document.getElementById('fv-baixar');
-  if (bx) bx.onclick = () => baixarMidia(f.url + '&download=1&filename=' + encodeURIComponent('imagem.jpg'), 'imagem.jpg');
-  const sh = document.getElementById('fv-share'); if (sh) sh.onclick = () => _fvShare(f.url, 'imagem.jpg');
+  if (bx) bx.onclick = (ev) => { ev && ev.stopPropagation(); baixarMidia(f.url + '&download=1&filename=' + encodeURIComponent('imagem.jpg'), 'imagem.jpg'); };
+  const sh = document.getElementById('fv-share'); if (sh) sh.onclick = (ev) => { ev && ev.stopPropagation(); _fvShare(f.url, 'imagem.jpg'); };
+  _fvBotoesSalvar();
   _fvPintaFoto(f.url);
 }
 // Teclado (PC) e arrastar o dedo para o lado (celular) também trocam de foto
@@ -8591,6 +8599,17 @@ function fecharArquivo() {
   if (_fvDoc) { try { _fvDoc.destroy(); } catch (_) {} _fvDoc = null; }
   _fvZoomReset();
 }
+// ⤓ Quais botões de salvar aparecem no visualizador (v620 — ela: "quero a opção de baixar foto pelo celular,
+// igual o WhatsApp faz"): celular com folha nativa → ⤴ (Salvar imagem, WhatsApp, e-mail…); PC → ⤓ baixa direto.
+function _fvBotoesSalvar() {
+  try {
+    const cel = window.matchMedia('(hover: none)').matches;
+    const sh = document.getElementById('fv-share'), bx = document.getElementById('fv-baixar');
+    const temFolha = !!(navigator.share);
+    if (sh) sh.style.display = (cel && temFolha) ? 'inline-block' : 'none';
+    if (bx) bx.style.display = (cel && temFolha) ? 'none' : 'inline-block';
+  } catch (_) {}
+}
 // ⤴️ Compartilhar o arquivo pela folha NATIVA do iPhone (WhatsApp, e-mail, salvar…)
 async function _fvShare(url, nome) {
   try {
@@ -8598,7 +8617,9 @@ async function _fvShare(url, nome) {
       try {
         const r = await fetch(url);
         const bl = await r.blob();
-        const f = new File([bl], nome || 'arquivo', { type: bl.type || 'application/octet-stream' });
+        // nome com extensão (o iPhone só oferece "Salvar imagem" quando reconhece o arquivo)
+        let nm = String(nome || 'arquivo'); if (!/\.[a-z0-9]{2,5}$/i.test(nm)) { const ext = String(bl.type || '').split('/')[1]; if (ext) nm += '.' + ext.replace('jpeg', 'jpg').replace(/[^a-z0-9]/gi, ''); }
+        const f = new File([bl], nm, { type: bl.type || 'application/octet-stream' });
         if (navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f] }); return; }
       } catch (_) {}
       await navigator.share({ url });
@@ -19159,10 +19180,40 @@ async function toggleBotAtivo(id, on, el) {
   try {
     const r = await fetch(SERVER_URL + '/bots/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ active: !!on }) });
     if (!r.ok) throw new Error('falha');
-    showToast(on ? 'Bot ativado' : 'Bot desativado', on ? 'ok' : '', 2200);
+    const d = await r.json().catch(() => ({}));
+    // (v620) desligar o bot ENCERRA o que ele estava fazendo — a tela diz quantas execuções pararam
+    showToast(on ? 'Bot ativado' : ('Bot desativado' + (d && d.encerradas ? ' — ' + d.encerradas + ' execução(ões) em andamento encerrada(s)' : ' — nada estava em andamento')), on ? 'ok' : 'warn', 4000);
     openBotsList();
   } catch (_) { alert('Não consegui alterar o bot.'); if (el) el.checked = !on; }
 }
+// ⛔ PARAR TUDO / Retomar (v620)
+async function paradaGeral(ligar) {
+  if (ligar) {
+    const ok = await vConfirm({ titulo: '⛔ Parar tudo', texto: 'Todos os bots e o gotejamento param NA HORA. Nada é enviado até você clicar em Retomar (na faixa vermelha no alto da tela).\n\nO que já estava em andamento fica estacionado e continua de onde parou quando você retomar — sem reenviar o que já saiu.', confirmar: 'Parar tudo agora', perigo: true });
+    if (!ok) return;
+  } else {
+    const ok = await vConfirm({ titulo: '▶ Retomar', texto: 'Os bots e o gotejamento voltam a enviar normalmente.', confirmar: 'Retomar' });
+    if (!ok) return;
+  }
+  try {
+    const r = await fetch(SERVER_URL + '/parada', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ on: !!ligar }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { showToast(d.error || 'Não consegui', 'err'); return; }
+    showToast(ligar ? '⛔ Tudo parado. Nada será enviado até você retomar.' : '▶ Envios retomados.', ligar ? 'err' : 'ok', 4000);
+  } catch (_) { showToast('Não consegui falar com o servidor', 'err'); }
+  _paradaAtualiza();
+}
+async function _paradaAtualiza() {
+  try {
+    const d = await (await fetch(SERVER_URL + '/parada')).json();
+    const f = document.getElementById('faixa-parada'), b = document.getElementById('btn-parar-tudo');
+    if (!f) return;
+    f.style.display = d && d.on ? '' : 'none';
+    if (d && d.on) { const x = document.getElementById('faixa-parada-desde'); if (x) x.textContent = d.desde ? 'desde ' + new Date(d.desde).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) + (d.por ? ' por ' + d.por : '') : ''; }
+    if (b) b.style.display = d && d.on ? 'none' : '';
+  } catch (_) {}
+}
+setTimeout(_paradaAtualiza, 4000); setInterval(_paradaAtualiza, 60000);
 function _tempoRel(iso) {
   if (!iso) return 'nunca';
   const d = (Date.now() - new Date(iso).getTime()) / 1000;
