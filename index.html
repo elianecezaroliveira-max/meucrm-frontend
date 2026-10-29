@@ -2520,10 +2520,8 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v620</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v621</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
-  <!-- ⛔ PARAR TUDO (v620): bots e gotejamento param na hora; Retomar só por administrador -->
-  <button id="btn-parar-tudo" onclick="paradaGeral(true)" title="Para na hora todos os bots e o gotejamento. Nada é enviado até você retomar." style="background:#fff;color:#c0392b;border:1px solid #e57373;border-radius:14px;font-weight:700;padding:4px 10px;font-size:12px;cursor:pointer;font-family:inherit">⛔ Parar tudo</button>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
   <button id="btn-pipeline" onclick="openPipeline()">
@@ -2555,7 +2553,6 @@ window.addEventListener('load', initAuth);
   <div class="mpm-item" data-adm onclick="mnavGo(openBotsList)"><i class=ic-bot></i> Bots</div>
   <div class="mpm-item" id="mm-ia" data-adm style="display:none" onclick="mnavGo(openFaqPage)"><i class=ic-ai></i> IA</div>
   <div class="mpm-item" data-adm onclick="mnavGo(openAutomationPanel)"><i class=ic-auto></i> Automação</div>
-  <div class="mpm-item" onclick="mnavGo(function(){ paradaGeral(true); })" style="color:#c0392b;font-weight:700">⛔ Parar tudo (bots e gotejamento)</div>
   <div class="mpm-sep"></div>
   <div class="mpm-item" onclick="mnavGo(openTemplates)"><i class=ic-doc></i> Modelos</div>
   <div class="mpm-item" onclick="mnavGo(openQRManager)"><i class=ic-zap></i> Respostas rápidas</div>
@@ -3108,9 +3105,12 @@ window.addEventListener('load', initAuth);
       <button class="pf-topbtn" onclick="abrirRegistroAutomacao()" title="O que a automação fez nos últimos dias">Registro</button>
       <button onclick="closeAutomationPanel()" style="background:none;border:none;font-size:20px;color:#667781;cursor:pointer">✕</button>
     </div>
-    <div class="auto-tabs">
+    <div class="auto-tabs" style="align-items:center">
       <button class="auto-tab on" data-t="regras" onclick="autoTab('regras')">Regras por etapa</button>
       <button class="auto-tab" data-t="drip" onclick="autoTab('drip')">Gotejamento</button>
+      <span style="flex:1"></span>
+      <!-- ⛔ PARAR TUDO (v621: fica aqui, na Automação — ela não quis o botão solto no topo do CRM) -->
+      <button id="btn-parar-tudo" onclick="paradaGeral(true)" title="Para na hora todos os bots e o gotejamento. Nada é enviado até você retomar." style="background:#fff;color:#c0392b;border:1px solid #e57373;border-radius:14px;font-weight:700;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit;margin-right:8px">⛔ Parar tudo</button>
     </div>
     <!-- ⏳ GOTEJAMENTO: mover leads aos poucos entre etapas (substitui o fluxo do n8n) -->
     <div id="auto-drip" style="display:none;background:#fff;padding:14px 18px;flex:1;overflow:auto">
@@ -3405,7 +3405,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v620</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v621</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3479,7 +3479,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 620;
+const APP_VER = 621;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -17495,6 +17495,7 @@ function autoTab(t) {
   if (t === 'drip') dripCarregar();
 }
 async function openAutomationPanel() {
+  try { _paradaAtualiza(); } catch (_) {} // o botão ⛔ Parar tudo reflete o estado atual
   _telaAtual('automacao');
   document.getElementById('auto-overlay').style.display = 'flex';
   autoTab('regras');
