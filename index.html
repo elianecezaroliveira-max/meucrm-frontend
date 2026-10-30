@@ -438,7 +438,10 @@
   .vdlg-perigo:hover { background: #c0392b !important; }
   .vdlg-lista { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
   .vdlg-op { display: flex; align-items: center; gap: 10px; text-align: left; background: #f7f8fa; border: 1px solid #e9edef; border-radius: 10px; padding: 11px 13px; font-size: 14px; font-family: inherit; color: #131c20; cursor: pointer; }
-  .vdlg-op:hover { background: #eef7f4; border-color: #00a884; }
+  /* (v625) o destaque verde só com mouse de verdade: no celular o iOS "congela" o :hover depois do toque e a
+     opção ficava marcada mesmo sem o dedo (ela viu no "Iniciar bot") */
+  @media (hover: hover) and (pointer: fine) { .vdlg-op:hover { background: #eef7f4; border-color: #00a884; } }
+  .vdlg-op:active { background: #eef7f4; }
   .saude-sec { padding: 8px 0; border-bottom: 1px solid #f0f2f5; line-height: 1.5; }
   .saude-sec:last-child { border-bottom: 0; }
   body.dark .saude-sec { border-color: #2a3942; }
@@ -456,7 +459,7 @@
   body.dark #vdlg-text, body.dark #vdlg-campos label { color: #8696a0; }
   body.dark #vdlg-campos input, body.dark #vdlg-campos select, body.dark #vdlg-campos textarea { background: #2a3942; border-color: #2a3942; color: #e9edef; }
   body.dark .vdlg-op { background: #202c33; border-color: #2a3942; color: #e9edef; }
-  body.dark .vdlg-op:hover { background: #2a3942; }
+  @media (hover: hover) and (pointer: fine) { body.dark .vdlg-op:hover { background: #2a3942; } }
   /* Celular: a caixa fica no ALTO da tela (não no centro) — com o teclado aberto o centro
      fica atrás do teclado e o campo "Nova etiqueta" sumia na hora de digitar */
   @media (max-width: 768px) { #vdlg-box { max-width: 100%; } #vdlg-overlay.open { align-items: flex-start; padding-top: max(14px, env(safe-area-inset-top)); } #vdlg-box { max-height: calc(100% - 28px); } }
@@ -2523,7 +2526,7 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v624</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v625</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3409,7 +3412,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v624</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v625</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3483,7 +3486,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 624;
+const APP_VER = 625;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
