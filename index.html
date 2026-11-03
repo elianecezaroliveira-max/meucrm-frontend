@@ -2527,7 +2527,7 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v626</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v627</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3413,7 +3413,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v626</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v627</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3487,7 +3487,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 626;
+const APP_VER = 627;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5543,6 +5543,9 @@ async function _iaSugPede(phone, chave, forcar) {
     if (forcar) showToast(d && d.motivo ? 'Sem sugestão: ' + (_limite ? 'IA ocupada (limite de uso por minuto)' : d.motivo.slice(0, 160)) : 'Sem sugestão agora', 'erro');
     let _txt;
     if (!d) _txt = 'o servidor não respondeu — tento de novo em 20 s';
+    // (v627) cota GRÁTIS do dia do Gemini acabou (20 pedidos/dia por modelo): o servidor explica e diz a
+    // hora da volta; se for definitivo, a tela para de pedir a cada 20 s (não adianta)
+    else if (d.cota_dia) _txt = String(d.motivo || '') + (_definitivo ? '' : ' — tento de novo em 20 s');
     else if (_limite) _txt = 'IA ocupada (limite de uso do provedor) — tento de novo em 20 s';
     else if (_mot) _txt = _mot.slice(0, 150) + (_mot.length > 150 ? '…' : '') + (_definitivo ? '' : ' — tento de novo em 20 s');
     else _txt = 'a IA não teve o que sugerir para esta fala';
@@ -19353,6 +19356,14 @@ async function openFaqPage(){
     area.innerHTML = '<div style="color:#ef4444;padding:20px">Erro ao carregar. Verifique a conexão com o servidor.</div>';
   }
 }
+// 📅 (v627) cota do dia esgotada em algum provedor (plano grátis do Gemini: 20 pedidos/dia por modelo)
+function _iaCotaHtml(cota) {
+  if (!Array.isArray(cota) || !cota.length) return '';
+  const hora = iso => { try { return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).replace(':', 'h'); } catch (_) { return ''; } };
+  const g = cota.filter(x => x.provedor === 'gemini');
+  const txt = g.length ? 'Gemini: cota grátis do dia esgotada (' + g.map(x => x.modelo.replace(/^gemini-/, '')).join(' e ') + ') — volta às ' + hora(g[0].ate) + '. Até lá as sugestões saem pelo Groq (limite menor). Para não acabar mais, ative o faturamento do projeto no Google AI Studio.' : cota.map(x => x.provedor + ' ' + x.modelo + ': esgotado até ' + hora(x.ate)).join(' · ');
+  return '<div style="margin-top:6px;font-size:12px;color:#b45309;background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:6px 8px">📅 ' + escHtml(txt) + '</div>';
+}
 // 🏆 placar: de tudo que a IA sugeriu, quanto foi aproveitado
 function _iaPlacarHtml(pl) {
   if (!pl || !pl.dias7) return '';
@@ -19576,6 +19587,7 @@ function faqRender(){
       + '</div>'
       + '<div style="margin-top:8px;font-size:12px;color:#667781">Memória: estilo ' + (m.estilo ? '✓' : '—') + ' · fluxo ' + (m.fluxo ? '✓' : '—') + ' · ' + (m.exemplos || 0) + ' exemplos (' + (m.aprendidos || 0) + ' aprendidos no uso)' + (m.novidades ? ' · ' + m.novidades + ' novidade(s)' : '')
       + (p.chave === false && _souDev() ? ' · <span style="color:#c0392b">falta a chave da IA no servidor (GEMINI_API_KEY, OPENAI_API_KEY ou GROQ_API_KEY)</span>' : '') + '</div>'
+      + _iaCotaHtml(p.cota)
       + _iaPlacarHtml(p.placar)
       + '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'
       + '<input type="file" id="ia-mem-arq" multiple accept=".md,.jsonl,.txt" style="display:none" onchange="iaMemImporta(this.files);this.value=\'\'">'
