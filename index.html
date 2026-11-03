@@ -2527,7 +2527,7 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v628</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v629</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3413,7 +3413,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v628</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v629</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3487,7 +3487,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 628;
+const APP_VER = 629;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4244,8 +4244,12 @@ async function addAccount() {
   // com "já está cadastrado" e não havia outro jeito de colar o token novo.
   const _jaTem = Object.values(window._accountsById || {}).find(a => String(a.phone_number_id || '') === phone_number_id);
   if (_jaTem) {
-    if (!token) return alert('Esse número já é a conta "' + _jaTem.name + '". Para trocar o token dela, cole o token novo no campo Token.');
-    const ok = await vConfirm({ titulo: '🔑 Trocar o token da conta "' + _jaTem.name + '"?', texto: 'Esse Phone Number ID já é a conta "' + _jaTem.name + '". O token novo vai substituir o antigo; nome, leads, bots e histórico continuam iguais.', confirmar: 'Trocar o token' });
+    if (!token && !usar_token_de) return alert('Esse número já é a conta "' + _jaTem.name + '". Para trocar o token dela, cole o token novo no campo Token (ou escolha de qual conta usar o token).');
+    // (v629) também vale "usar o token de outra conta" — avisa quando a outra conta é de OUTRA WABA (o token
+    // dela só serve se o usuário do sistema tiver acesso às duas)
+    const _fonte = usar_token_de ? (window._accountsById || {})[usar_token_de] : null;
+    const _outraWaba = !!(_fonte && _fonte.waba_id && _jaTem.waba_id && String(_fonte.waba_id) !== String(_jaTem.waba_id));
+    const ok = await vConfirm({ titulo: '🔑 Trocar o token da conta "' + _jaTem.name + '"?', texto: 'Esse Phone Number ID já é a conta "' + _jaTem.name + '". ' + (_fonte ? 'O token guardado na conta "' + _fonte.name + '" passa a valer para ela' + (_outraWaba ? ' — atenção: a "' + _fonte.name + '" é de OUTRA WABA; só funciona se o usuário do sistema desse token tiver acesso à WABA da "' + _jaTem.name + '"' : '') + '.' : 'O token novo vai substituir o antigo.') + ' Nome, leads, bots e histórico continuam iguais.', confirmar: 'Trocar o token' });
     if (!ok) return;
   }
   // ⏳ O servidor confere o token na Meta, registra o número e inscreve o webhook (uns segundos):
