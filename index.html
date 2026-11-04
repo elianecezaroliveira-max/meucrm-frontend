@@ -2527,7 +2527,7 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v629</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v630</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2628,7 +2628,7 @@ window.addEventListener('load', initAuth);
     <button id="btn-close-pipeline" onclick="closePipeline()" title="Fechar">✕</button>
   </div>
   <div id="pipeline-filter-panel">
-    <div><label>Nome do lead</label><input class="pf-input" id="pf-name" placeholder="Buscar..." oninput="applyPipelineFilter()"></div>
+    <div><label>Nome ou número do lead</label><input class="pf-input" id="pf-name" placeholder="Nome, (DD) 9XXXX-XXXX ou só os dígitos" oninput="applyPipelineFilter()"></div>
     <div><label>Etapa do funil</label><select class="pf-input" id="pf-stage" onchange="applyPipelineFilter()"><option value="">Todas as etapas</option></select></div>
     <div><label>Conta (WhatsApp)</label><select class="pf-input" id="pf-account" onchange="applyPipelineFilter()"><option value="">Todas as contas</option></select></div>
     <div><label>Tarefas</label><select class="pf-input" id="pf-task" onchange="applyPipelineFilter()"><option value="">Todas</option><option value="open">Com tarefa em aberto</option><option value="overdue">Com tarefa em atraso</option><option value="done">Com tarefa concluída</option><option value="none">Sem tarefas</option></select></div>
@@ -3413,7 +3413,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v629</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v630</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3487,7 +3487,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 629;
+const APP_VER = 630;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -19069,8 +19069,20 @@ function togglePFTag(tag) {
   populatePipelineFilterTags(); applyPipelineFilter();
 }
 
+// 📞 (v630) o filtro do funil aceita o número em QUALQUER formato: "(47) 98447-5771", "47 98447 5771",
+// "+55 47…", sem o 55, com ou sem o nono dígito — compara só os dígitos, nas formas em que o banco guarda
+// (igual à busca do chat). Antes só achava se os dígitos fossem exatamente os guardados.
+function _pfFormasDoNumero(txt) {
+  const dig = String(txt || '').replace(/\D/g, '');
+  if (dig.length < 4 || dig.length < String(txt || '').replace(/\s/g, '').length * 0.5) return null; // não é número
+  const formas = new Set([dig, dig.replace(/^55/, '')]);
+  for (const p of [...formas]) { if (/^\d{2}9\d{8}$/.test(p)) formas.add(p.slice(0, 2) + p.slice(3)); if (/^\d{10}$/.test(p)) formas.add(p.slice(0, 2) + '9' + p.slice(2)); }
+  if (dig.length >= 8) formas.add(dig.slice(-8));
+  return [...formas].filter(f => f.length >= 4);
+}
 function applyPipelineFilter() {
   const name = (document.getElementById('pf-name')?.value||'').toLowerCase();
+  const _formas = _pfFormasDoNumero(name);
   const stage = document.getElementById('pf-stage')?.value||'';
   const account = document.getElementById('pf-account')?.value||'';
   const taskMode = document.getElementById('pf-task')?.value||'';
@@ -19078,7 +19090,7 @@ function applyPipelineFilter() {
   const dateTo = document.getElementById('pf-date-to')?.value||'';
   const nowIso = new Date().toISOString();
   const filtered = pipelineContacts.filter(c => {
-    if (name && !c.name?.toLowerCase().includes(name) && !c.phone?.includes(name)) return false;
+    if (name && !c.name?.toLowerCase().includes(name) && !c.phone?.includes(name) && !(_formas && _formas.some(f => String(c.phone || '').includes(f)))) return false;
     // Etapa do funil
     if (stage === '__none__') { if (c.stage_id) return false; }
     else if (stage && c.stage_id !== stage) return false;
