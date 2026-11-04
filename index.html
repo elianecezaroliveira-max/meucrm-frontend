@@ -2531,7 +2531,7 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v632</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v634</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3417,7 +3417,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v632</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v634</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3491,7 +3491,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 632;
+const APP_VER = 634;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5211,8 +5211,9 @@ function renderContacts(contacts) {
     const _naLista = window.matchMedia('(max-width: 768px)').matches && !document.body.classList.contains('mobile-chat-open');
     if (!_dig && _drafts[c.phone] && (c.phone !== currentPhone || _naLista))
       previewHtml = `<span style="color:#00a884;font-weight:600">Rascunho: </span>${escHtml(String(_drafts[c.phone]).slice(0, 60))}`;
-    // 📝 achado pela ANOTAÇÃO do lead (busca): mostra o trecho da anotação no lugar da prévia (v613)
-    if (!_dig && c.achou_na_nota && searchResults !== null) previewHtml = `<span style="color:#b45309;font-weight:600">Anotação: </span>${escHtml(String(c.achou_na_nota))}`;
+    // 📝 achado pela ANOTAÇÃO do lead (busca): a prévia continua sendo a última mensagem (ela: "não era para
+    // aparecer anotações na prévia" — v634); só um 📝 ao lado do nome diz que foi achado pela anotação
+    const _notaAchada = (!_dig && c.achou_na_nota && searchResults !== null) ? `<span title="Achado pela anotação: ${escHtml(String(c.achou_na_nota).slice(0, 120))}" style="font-size:12px;margin-left:4px;opacity:.75">📝</span>` : '';
     const isFav = !!c.favorite;
     return `<div class="contact-swipe-wrap" data-phone="${escHtml(c.phone)}">
       <div class="swipe-action read"><i class=ic-check></i><span>Lida</span></div>
@@ -5221,7 +5222,7 @@ function renderContacts(contacts) {
       <div class="contact-avatar" style="${_avatarCor(c.name||c.phone)}">${escHtml((c.name||'?')[0].toUpperCase())}${c.avatar ? `<img src="${SERVER_URL}/avatar/${encodeURIComponent(String(c.avatar).split('/').pop())}" loading="lazy" alt="" onerror="this.remove()">` : ''}</div>
       <div class="contact-info">
         <div class="contact-row-top">
-          <div class="contact-name">${escHtml(_nomeOuTel(c.name, c.phone))}${c.pinned?'<span style="font-size:11px;margin-left:3px"><i class=ic-pin></i></span>':''}${c.muted?'<span style="font-size:12px;margin-left:3px;opacity:.6"><i class=ic-mute></i></span>':''}${c.responsavel ? '<span class="resp-chip" title="Responsável: ' + escHtml(c.responsavel) + '">' + escHtml(_nomeAutor(c.responsavel).split(' ')[0]) + '</span>' : ''}${c.blocked ? '<span class="resp-chip" style="background:#fdecea;color:#a93226" title="Contato bloqueado">bloqueado</span>' : ''}</div>
+          <div class="contact-name">${escHtml(_nomeOuTel(c.name, c.phone))}${_notaAchada}${c.pinned?'<span style="font-size:11px;margin-left:3px"><i class=ic-pin></i></span>':''}${c.muted?'<span style="font-size:12px;margin-left:3px;opacity:.6"><i class=ic-mute></i></span>':''}${c.responsavel ? '<span class="resp-chip" title="Responsável: ' + escHtml(c.responsavel) + '">' + escHtml(_nomeAutor(c.responsavel).split(' ')[0]) + '</span>' : ''}${c.blocked ? '<span class="resp-chip" style="background:#fdecea;color:#a93226" title="Contato bloqueado">bloqueado</span>' : ''}</div>
           <div class="contact-time">${timeStr}</div>
         </div>
         <div class="contact-preview-row">
@@ -9371,18 +9372,43 @@ async function lpApagaFotoNota(id) {
   } catch (_) { showToast('Não consegui apagar a foto', 'err'); }
 }
 function lpNotaFoto(phone) { const i = document.getElementById('lp-notes-arq'); if (i) i.click(); }
+// 📐 (v633) "Está demorando para guardar a foto": o print colado (Ctrl+V) vinha como PNG de vários MB e subia
+// inteiro em base64. Agora a foto é ENCOLHIDA no próprio aparelho antes de subir: lado maior até 1600 px,
+// JPEG 0,85 (um print de 4 MB vira ~200 KB). Se a imagem já é pequena (até 350 KB), vai como está.
+const _FOTO_NOTA_MAX_PX = 1600, _FOTO_NOTA_LEVE = 350 * 1024;
+async function _fotoEncolhida(f) {
+  const original = async () => ({ b64: await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = rej; r.readAsDataURL(f); }), mime: f.type || 'image/png', nome: f.name || ('anotacao-' + Date.now() + '.png') });
+  if (/gif|svg/.test(f.type || '')) return original();
+  try {
+    const url = URL.createObjectURL(f);
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    const maior = Math.max(img.naturalWidth || 1, img.naturalHeight || 1);
+    if (f.size <= _FOTO_NOTA_LEVE && maior <= _FOTO_NOTA_MAX_PX) { URL.revokeObjectURL(url); return original(); } // já é leve e pequena: vai como está
+    const esc = Math.min(1, _FOTO_NOTA_MAX_PX / maior);
+    const w = Math.max(1, Math.round((img.naturalWidth || 1) * esc)), h = Math.max(1, Math.round((img.naturalHeight || 1) * esc));
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    const cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, w, h); cx.drawImage(img, 0, 0, w, h);
+    URL.revokeObjectURL(url);
+    const b64 = cv.toDataURL('image/jpeg', 0.85);
+    if (b64.length < 50 || b64.length >= f.size * 1.37) return original(); // (não ficou menor: vai a original)
+    return { b64, mime: 'image/jpeg', nome: String(f.name || 'anotacao').replace(/\.[a-z0-9]+$/i, '') + '.jpg', w, h };
+  } catch (_) { return original(); }
+}
 async function _lpSobeFotosNota(phone, arquivos) {
   const lista = Array.from(arquivos || []).filter(f => f && /^image\//.test(f.type || ''));
   if (!phone || !lista.length) return;
   const st = document.getElementById('lp-notes-status');
   if (st) st.textContent = 'Guardando foto…';
-  let ok = 0;
+  let ok = 0, n = 0;
   for (const f of lista) {
+    n++;
     try {
       if (f.size > 16 * 1024 * 1024) { showToast('Foto muito grande (máx. 16 MB).', 'warn'); continue; }
-      const b64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = rej; r.readAsDataURL(f); });
+      if (st) st.textContent = 'Guardando foto' + (lista.length > 1 ? ' ' + n + ' de ' + lista.length : '') + '… (preparando)';
+      const foto = await _fotoEncolhida(f);
+      if (st) st.textContent = 'Guardando foto' + (lista.length > 1 ? ' ' + n + ' de ' + lista.length : '') + '… (enviando)';
       const r = await fetch(SERVER_URL + '/notes', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, account_id: null, content: _LP_FOTO_MARCA, /* foto das Anotações não pertence a número nenhum */ arquivo: b64, mime: f.type || 'image/png', filename: f.name || ('anotacao-' + Date.now() + '.png') }) });
+        body: JSON.stringify({ phone, account_id: null, content: _LP_FOTO_MARCA, /* foto das Anotações não pertence a número nenhum */ arquivo: foto.b64, mime: foto.mime, filename: foto.nome }) });
       const d = await r.json().catch(() => ({}));
       if (r.ok && !d.error) ok++; else showToast(d.error || 'Não consegui guardar a foto', 'err');
     } catch (_) { showToast('Erro ao ler a foto', 'err'); }
