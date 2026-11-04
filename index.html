@@ -2531,7 +2531,7 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v631</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v632</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3417,7 +3417,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v631</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v632</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3491,7 +3491,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 631;
+const APP_VER = 632;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -22419,6 +22419,14 @@ async function loadBotMsgAccounts(node){
     if(nm && node.config.account_id){
       const a=(Array.isArray(accs)?accs:[]).find(x=>x.id===node.config.account_id);
       if(a) nm.textContent = a.name + (a.phone_display?` (${a.phone_display})`:'');
+    }
+    // 🔒 (v632) número que NÃO é desta conta (fluxo copiado de outro cliente — caso do "63" no SIAPE2, 04/11):
+    // avisa em vermelho e mostra a lista para trocar; o servidor não envia por ele nem deixa salvar assim
+    if (node.config.account_id && !(Array.isArray(accs)?accs:[]).some(x=>x.id===node.config.account_id)) {
+      const wrap = document.getElementById('cfg-msg-acct-wrap'); const inh = document.getElementById('cfg-msg-inh');
+      if (inh) inh.style.display = 'none'; if (wrap) wrap.style.display = 'block';
+      if (wrap && !document.getElementById('cfg-msg-acct-alheio')) wrap.insertAdjacentHTML('afterbegin', '<div id="cfg-msg-acct-alheio" style="margin:0 0 8px;font-size:12.5px;color:#b91c1c;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:8px 10px">⚠️ Este passo está com um número que <b>não é desta conta</b> do FILAZ (veio copiado de outro cliente). O servidor <b>não envia</b> por ele. Escolha um número seu abaixo e salve.</div>');
+      sel.style.borderColor = '#ef4444';
     }
   }catch(_){ sel.innerHTML='<option value="">Erro ao carregar contas</option>'; }
 }
