@@ -2531,7 +2531,7 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v634</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v635</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3417,7 +3417,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v634</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v635</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3491,7 +3491,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 634;
+const APP_VER = 635;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -13953,7 +13953,7 @@ async function preverSheets() {
     window._sheetsPrev = j;
     const linhas = (j.itens || []).map(it => `<tr class="${it.situacao === 'existe' ? 'sh-existe' : ''}" style="border-bottom:1px solid #f0f2f5;${it.situacao === 'existe' && j.ja_existem ? 'display:none' : ''}">
         <td style="padding:5px 6px;color:#8696a0;font-size:11px">${it.linha}</td>
-        <td style="padding:5px 6px">${escHtml(it.name)}</td>
+        <td style="padding:5px 6px">${escHtml(it.name)}${it.situacao === 'existe' && it.nome_atual ? `<div style="font-size:10.5px;color:#8696a0">hoje: ${escHtml(it.nome_atual)}${j.atualizar_etapa ? ' → vai mudar' : ' (não muda)'}</div>` : ''}</td>
         <td style="padding:5px 6px;font-family:monospace;font-size:12px">${escHtml(it.phone)}</td>
         <td style="padding:5px 6px">${escHtml(it.etapa)}${it.situacao === 'existe' && it.etapa_atual ? `<div style="font-size:10.5px;color:#8696a0">hoje em: ${escHtml(it.etapa_atual)}${j.atualizar_etapa ? ' → vai mudar' : ' (não muda)'}</div>` : ''}</td>
         <td style="padding:5px 6px;color:${cor[it.situacao] || '#131c20'};font-weight:600;white-space:nowrap">${rot[it.situacao] || it.situacao}</td>
@@ -14009,7 +14009,7 @@ function _sheetsResumoHtml(j, pular) {
   for (const it of (j.itens || [])) { if (it.situacao !== 'novo' && !(atualiza && it.situacao === 'existe')) continue; const k = (it.etapa || '').trim() || 'sem etapa'; c[k] = (c[k] || 0) + 1; }
   const e = Object.entries(c).sort((a, b) => b[1] - a[1]);
   const porEtapa = e.length ? `<div id="sheets-por-etapa" style="margin-bottom:6px"><b>Por etapa:</b> ${e.map(([k, n]) => escHtml(k) + ' <b>' + n + '</b>').join(' · ')}</div>` : '';
-  const exist = pular ? `${j.ja_existem} já existem (fora desta importação)` : `${j.ja_existem} já existem${j.atualizar_etapa ? ' (terão a etapa atualizada)' : ' (não serão mexidos)'}`;
+  const exist = pular ? `${j.ja_existem} já existem (fora desta importação)` : `${j.ja_existem} já existem${j.atualizar_etapa ? ' (terão a etapa e o nome atualizados pela planilha)' : ' (não serão mexidos)'}`;
   return porEtapa + `<b>${j.total}</b> linha(s) na planilha · <span style="color:#00a884;font-weight:700">${j.novos} novos</span> · <span style="color:#8696a0">${exist}</span>${j.invalidos ? ` · <span style="color:#ef4444">${j.invalidos} telefone(s) inválido(s)</span>` : ''}${j.sem_etapa ? ` · <span style="color:#b45309">${j.sem_etapa} com ID de etapa não encontrado (entram sem etapa)</span>` : ''}${j.truncado ? ' · mostrando as primeiras 500' : ''}`;
 }
 function _sheetsPularMuda(pular) {
