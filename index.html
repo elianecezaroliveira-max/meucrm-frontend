@@ -2531,7 +2531,7 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v637</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v638</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3417,7 +3417,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v637</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v638</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3491,7 +3491,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 637;
+const APP_VER = 638;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5782,8 +5782,8 @@ let _ditado = null; // { rec, base, finais, ativo }
 // Padrões (ela: "falo cortar e escreve portar"; "falo portada, ele entende cortada"). _DITAR_CORR_V sobe
 // quando entra padrão novo: ele é acrescentado à lista de quem já tinha a sua, sem apagar nada.
 // (v618) "averbar": o Chrome escreve "haver bar" / "a ver bar" (ela: 'É "averbar" e não "haver bar"') — e os parentes
-const _DITAR_CORR_PADRAO = [{ de: 'portar', para: 'cortar' }, { de: 'cortada', para: 'portada' }, { de: 'cortado', para: 'portado' }, { de: 'sou gov', para: 'Sou Gov' }, { de: 'sougov', para: 'Sou Gov' }, { de: 'haver bar', para: 'averbar' }, { de: 'a ver bar', para: 'averbar' }, { de: 'aver bar', para: 'averbar' }, { de: 'haver bação', para: 'averbação' }, { de: 'a ver bação', para: 'averbação' }, { de: 'haver bou', para: 'averbou' }, { de: 'haver bado', para: 'averbado' }, { de: 'haver bada', para: 'averbada' }, { de: 'haver bando', para: 'averbando' }, { de: 'cortou', para: 'portou' }, { de: 'cortaram', para: 'portaram' }, { de: 'cortamos', para: 'portamos' }, { de: 'azeite', para: 'aceite' }, { de: 'azeites', para: 'aceites' }]; // (v619: cortou → portou; v620: azeite → aceite)
-const _DITAR_CORR_V = 6;
+const _DITAR_CORR_PADRAO = [{ de: 'portar', para: 'cortar' }, { de: 'cortada', para: 'portada' }, { de: 'cortado', para: 'portado' }, { de: 'sou gov', para: 'Sou Gov' }, { de: 'sougov', para: 'Sou Gov' }, { de: 'sou golpe', para: 'Sou Gov' }, { de: 'sou gol', para: 'Sou Gov' }, { de: 'sou golf', para: 'Sou Gov' }, { de: 'sol gov', para: 'Sou Gov' }, { de: 'haver bar', para: 'averbar' }, { de: 'a ver bar', para: 'averbar' }, { de: 'aver bar', para: 'averbar' }, { de: 'haver bação', para: 'averbação' }, { de: 'a ver bação', para: 'averbação' }, { de: 'haver bou', para: 'averbou' }, { de: 'haver bado', para: 'averbado' }, { de: 'haver bada', para: 'averbada' }, { de: 'haver bando', para: 'averbando' }, { de: 'cortou', para: 'portou' }, { de: 'cortaram', para: 'portaram' }, { de: 'cortamos', para: 'portamos' }, { de: 'azeite', para: 'aceite' }, { de: 'azeites', para: 'aceites' }]; // (v619: cortou → portou; v620: azeite → aceite; v638: "sou golpe" → Sou Gov)
+const _DITAR_CORR_V = 7;
 let _ditarCorr = null;
 function _ditarCorrChave() { return 'filaz_ditar_corr::' + String(window._userEmail || '').toLowerCase(); }
 function _ditarCorrLista() {
