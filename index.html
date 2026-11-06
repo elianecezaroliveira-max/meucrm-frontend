@@ -2531,7 +2531,7 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v636</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v637</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3417,7 +3417,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v636</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v637</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3491,7 +3491,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 636;
+const APP_VER = 637;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -17398,11 +17398,20 @@ function openSendTemplate() {
   if (!currentPhone || !currentAccountId) return alert('Selecione uma conversa primeiro.');
   document.getElementById('send-tmpl-overlay').classList.add('open');
   try { const b = document.getElementById('tmpl-send-busca'); if (b) b.value = ''; } catch (_) {}
+  _tmplSendLimpa(); // (v637) nada do lead anterior: variáveis, modelo escolhido e botão Enviar zerados
   loadApprovedTemplates();
+}
+// (v637) A janela "Enviar modelo" ficava com a variável do lead ANTERIOR ("Jose") até ela clicar num modelo
+// — e o Enviar ficava verde. Agora abre sempre limpa; o nome só entra quando ela escolhe o modelo.
+function _tmplSendLimpa() {
+  selectedTemplate = null;
+  try { const va = document.getElementById('tmpl-vars-area'); if (va) { va.style.display = 'none'; va.innerHTML = ''; } } catch (_) {}
+  try { document.getElementById('btn-send-tmpl').disabled = true; } catch (_) {}
+  try { document.querySelectorAll('#tmpl-select-list .tmpl-select-item.selected').forEach(i => i.classList.remove('selected')); } catch (_) {}
 }
 function closeSendTemplate() {
   document.getElementById('send-tmpl-overlay').classList.remove('open');
-  selectedTemplate = null;
+  _tmplSendLimpa();
 }
 // Busca no "Enviar modelo": pelo nome (apelido ou nome da Meta) e pelo TEXTO do modelo
 function _tmplSendFiltra() {
