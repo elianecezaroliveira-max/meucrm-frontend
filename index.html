@@ -2559,7 +2559,7 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v641</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v643</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3445,7 +3445,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v641</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v643</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3519,7 +3519,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 641;
+const APP_VER = 643;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4182,10 +4182,32 @@ async function ativarNumeroMeta(accountId) {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin })
     });
     const j = await r.json();
+    if (j.error && j.precisa_verificar) return verificarNumeroMeta(accountId, pin); // (v643) SMS/ligação pelo próprio FILAZ
     if (j.error) return alert('Não deu certo:\n\n' + j.error);
     alert('Número registrado na Meta!' + (j.status ? '\nStatus agora: ' + j.status : '') + '\n\nSe ainda aparecer "Pendente", é a aprovação do NOME DE EXIBIÇÃO (leva até 48h).');
     await loadAccounts();
   } catch (_) { alert('Erro ao ativar o número.'); }
+}
+// 📲 (v643) A Meta pediu para verificar o número de novo (acontece quando outro sistema, ex. Kommo, desregistra o
+// número): pede o código por SMS ou ligação, ela digita, o servidor confere e registra — sem ir ao Gerenciador.
+async function verificarNumeroMeta(accountId, pin) {
+  const sms = await vConfirm({ titulo: 'Verificar o número na Meta', texto: 'A Meta pede para verificar este número de novo antes de ativar (isso acontece quando outro sistema desconecta o número). Como você quer receber o código de 6 dígitos?', confirmar: 'Por SMS', cancelar: 'Por ligação' });
+  const metodo = sms ? 'SMS' : 'VOICE';
+  try {
+    const r1 = await fetch(SERVER_URL + '/accounts/' + accountId + '/pedir-codigo', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ metodo }) });
+    const j1 = await r1.json();
+    if (j1.error) return alert('Não deu certo:\n\n' + j1.error);
+  } catch (_) { return alert('Erro ao pedir o código.'); }
+  const code = await vPrompt({ titulo: 'Código da Meta', texto: (sms ? 'A Meta mandou um SMS' : 'A Meta vai ligar') + ' para o número do WhatsApp com um código de 6 dígitos. Digite aqui:', rotulo: 'Código', dica: '123456' });
+  if (code === null) return;
+  try {
+    const r2 = await fetch(SERVER_URL + '/accounts/' + accountId + '/verificar-codigo', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: String(code || '').trim(), pin: pin || '' }) });
+    const j2 = await r2.json();
+    if (j2.error) return alert('Não deu certo:\n\n' + j2.error);
+    if (j2.registrado) alert('Número verificado e registrado na Meta!' + (j2.status ? '\nStatus agora: ' + j2.status : ''));
+    else alert('Número verificado, mas o registro falhou:\n' + (j2.erro_registro || '') + '\n\nTente "Ativar na Meta" de novo (confira o PIN de verificação em duas etapas).');
+    await loadAccounts();
+  } catch (_) { alert('Erro ao verificar o código.'); }
 }
 
 // Reconecta uma conta QR desconectada: gera QR novo para a MESMA conta
@@ -5741,6 +5763,28 @@ async function iaIgnoraSalva(btn) {
   try { await _faqPutSetting('ia_fones_teste', v); if (_iaPag) _iaPag.fones_ignorados = v; showToast('Salvo — a IA deixa essas conversas de lado e apaga o que tinha aprendido nelas.', 'ok'); }
   catch (e) { showToast('Não consegui salvar: ' + (e.message || e), 'err'); }
   if (btn) { btn.disabled = false; btn.textContent = 'Salvar'; }
+}
+// 🪪 (v642) fichas de formalização por banco × convênio
+let _iaFichasLista = [];
+function iaFichasPinta(lista) {
+  if (Array.isArray(lista)) _iaFichasLista = lista.map(f => ({ banco: String(f.banco || ''), convenio: String(f.convenio || 'TODOS').toUpperCase(), como: String(f.como || '') }));
+  const el = document.getElementById('ia-fichas'); if (!el) return;
+  if (!_iaFichasLista.length) { el.innerHTML = '<div style="font-size:12px;color:#8696a0;padding:4px 0">Nenhuma ficha ainda. Ex.: Banco Pan · SIAPE · "aceite pelo link do banco, depois autorização no Sou Gov (Autorizações ▸ Consignado)".</div>'; return; }
+  const opc = v => ['SIAPE', 'INSS', 'TODOS'].map(c => `<option value="${c}" ${v === c ? 'selected' : ''}>${c === 'TODOS' ? 'SIAPE e INSS' : c}</option>`).join('');
+  el.innerHTML = _iaFichasLista.map((f, i) => `<div class="ia-ficha" data-i="${i}" style="display:grid;grid-template-columns:150px 130px 1fr auto;gap:6px;align-items:start;margin-bottom:6px">`
+    + `<input placeholder="Banco (ex.: Pan)" value="${escHtml(f.banco)}" oninput="_iaFichasLista[${i}].banco=this.value" style="background:#f0f2f5;border:1px solid #e0e4e6;border-radius:8px;padding:7px 9px;font-size:13px;color:#131c20">`
+    + `<select onchange="_iaFichasLista[${i}].convenio=this.value" style="background:#f0f2f5;border:1px solid #e0e4e6;border-radius:8px;padding:7px 6px;font-size:13px;color:#131c20">${opc(f.convenio)}</select>`
+    + `<textarea rows="2" placeholder="Como formaliza neste banco e convênio (passo a passo, do seu jeito)" oninput="_iaFichasLista[${i}].como=this.value" style="background:#f0f2f5;border:1px solid #e0e4e6;border-radius:8px;padding:7px 9px;font-size:13px;color:#131c20;font-family:inherit;resize:vertical">${escHtml(f.como)}</textarea>`
+    + `<button class="btn-secondary" title="Tirar esta ficha" onclick="iaFichaTira(${i})">✕</button></div>`).join('');
+}
+function iaFichaNova() { _iaFichasLista.push({ banco: '', convenio: 'SIAPE', como: '' }); iaFichasPinta(); const el = document.querySelector('#ia-fichas .ia-ficha:last-child input'); if (el) el.focus(); }
+function iaFichaTira(i) { _iaFichasLista.splice(i, 1); iaFichasPinta(); }
+async function iaFichasSalva(btn) {
+  const lista = _iaFichasLista.map(f => ({ banco: String(f.banco || '').trim().slice(0, 60), convenio: String(f.convenio || 'TODOS').toUpperCase(), como: String(f.como || '').trim().slice(0, 1200) })).filter(f => f.como);
+  if (btn) { btn.disabled = true; btn.textContent = 'Salvando…'; }
+  try { await _faqPutSetting('ia_fichas', JSON.stringify(lista)); if (_iaPag) _iaPag.fichas = lista; showToast('Fichas salvas — a IA passa a seguir na próxima sugestão.', 'ok'); }
+  catch (e) { showToast('Não consegui salvar: ' + (e.message || e), 'err'); }
+  if (btn) { btn.disabled = false; btn.textContent = 'Salvar fichas'; }
 }
 async function iaBancosSalva(btn) {
   const inp = document.getElementById('ia-bancos-in'); if (!inp) return;
@@ -19775,6 +19819,11 @@ function faqRender(){
       + '<div style="margin-top:12px;border-top:1px solid #e9edef;padding-top:10px"><b style="font-size:13px">🏦 Bancos para onde porto hoje</b>'
       + '<div style="font-size:12px;color:#667781;margin:2px 0 6px">A IA só cita o banco que aparece na própria conversa do cliente e nunca copia o banco dos exemplos antigos. Aqui você diz para onde está portando agora.</div>'
       + '<div style="display:flex;gap:6px"><input id="ia-bancos-in" value="' + escHtml(p.bancos || '') + '" placeholder="ex.: Paraná Banco, Safra e Facta (não porto mais para o BRB)" style="flex:1;background:#f0f2f5;border:1px solid #e0e4e6;border-radius:8px;padding:8px 10px;font-size:13px;color:#131c20"><button class="btn-secondary" onclick="iaBancosSalva(this)">Salvar</button></div></div>'
+      // 🪪 (v642) formalização por banco × convênio (SIAPE/INSS): a IA segue a ficha do caso
+      + '<div style="margin-top:12px;border-top:1px solid #e9edef;padding-top:10px"><b style="font-size:13px">🪪 Formalização por banco e convênio (SIAPE / INSS)</b>'
+      + '<div style="font-size:12px;color:#667781;margin:2px 0 6px">A formalização muda conforme o banco portado e se o cliente é SIAPE ou INSS (Sou Gov, aceite no link, desbloqueio…). Escreva aqui como é em cada caso: a IA descobre o convênio pela etiqueta, pelo nome do lead ("Fulano SIAPE"), pelas notas ou pela conversa, acha o banco citado na conversa e segue a ficha certa — e nunca mistura o passo de um no outro.</div>'
+      + '<div id="ia-fichas"></div>'
+      + '<div style="display:flex;gap:6px;margin-top:6px"><button class="btn-secondary" onclick="iaFichaNova()">+ Ficha</button><button class="btn-secondary" onclick="iaFichasSalva(this)">Salvar fichas</button></div></div>'
       // 🚫 conversas que a IA ignora (suporte do banco, marido…): sem sugestão e sem aprender
       + '<div style="margin-top:12px;border-top:1px solid #e9edef;padding-top:10px"><b style="font-size:13px">🚫 Números que a IA ignora</b>'
       + '<div style="font-size:12px;color:#667781;margin:2px 0 6px">Nessas conversas a IA não sugere nada e não aprende com o que é dito (ex.: suporte do banco, família, seu número de teste). Separe por vírgula.</div>'
@@ -19807,7 +19856,7 @@ function faqRender(){
       + '<button class="iat-tab" onclick="iaTreinoMidia(\'foto\')" title="O cliente mandou uma foto">📷 Foto</button><button class="iat-tab" onclick="iaTreinoMidia(\'doc\')" title="O cliente mandou um arquivo (PDF…)">📄 Documento</button><button class="iat-tab" onclick="iaTreinoMidia(\'audio\')" title="O cliente mandou um áudio (você escreve o que ele falou)">🎤 Áudio</button></div>'
       + '<div id="ia-treino-msg" style="font-size:12px;color:#667781;margin-top:6px"></div></div>'
       + '</div>';
-    setTimeout(iaExtrasCarrega, 0); setTimeout(iaTreinoPinta, 0);
+    setTimeout(iaExtrasCarrega, 0); setTimeout(iaTreinoPinta, 0); setTimeout(() => iaFichasPinta(Array.isArray(p.fichas) ? p.fichas : []), 0);
   }
   // interruptor geral
   html += '<div class="faq-master">'
