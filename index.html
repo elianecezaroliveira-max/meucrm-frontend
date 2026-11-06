@@ -574,6 +574,15 @@
   /* ENVIAR TEMPLATE */
   #send-tmpl-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; align-items: center; justify-content: center; }
   #send-tmpl-overlay.open { display: flex; }
+  /* (v641) Copiar modelos de outra conta */
+  #tmpl-copiar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2100; /* (acima da tela de Modelos, z 2000) */ align-items: center; justify-content: center; }
+  #tmpl-copiar-overlay.open { display: flex; }
+  #tmpl-copiar-modal { background: #f0f2f5; border-radius: 12px; width: 520px; max-width: 95vw; padding: 22px; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; }
+  #tmpl-copiar-lista { overflow-y: auto; flex: 1; min-height: 0; margin: 8px 0; }
+  .tmpl-copiar-item { display: flex; gap: 10px; align-items: flex-start; padding: 9px 11px; background: #e9edef; border-radius: 8px; margin-bottom: 6px; cursor: pointer; font-size: 13px; }
+  .tmpl-copiar-item input { margin-top: 3px; }
+  .tmpl-copiar-item .tcp { color: #667781; font-size: 12px; margin-top: 2px; }
+  .tmpl-copiar-res { font-size: 13px; padding: 6px 0; border-bottom: 1px solid #e9edef; }
   /* O botão ENVIAR fica SEMPRE visível: quem rola é a LISTA de modelos, não o modal */
   #send-tmpl-modal { background: #f0f2f5; border-radius: 12px; width: 500px; max-width: 95vw; padding: 24px; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; }
   #tmpl-select-list { overflow-y: auto; -webkit-overflow-scrolling: touch; flex: 1; min-height: 0; }
@@ -2307,6 +2316,7 @@ window.addEventListener('load', initAuth);
             <option value="PAUSED">Pausados</option>
           </select>
           <button class="pf-topbtn" onclick="abrirEscondidos()" title="Modelos escondidos e apagados">Escondidos</button>
+          <button class="pf-topbtn" onclick="abrirCopiarModelos()" title="Trazer modelos de outra conta sua para esta">Copiar de outra conta</button>
           <select id="tmpl-ordem" onchange="renderTemplateList(allTemplates)"
             style="background:#fff;border:1px solid #e9edef;color:#131c20;padding:8px 10px;border-radius:8px;font-size:13px;font-family:inherit;cursor:pointer">
             <option value="status">Aprovados primeiro</option>
@@ -2433,6 +2443,24 @@ window.addEventListener('load', initAuth);
 </div>
 
 <!-- MODAL ENVIAR TEMPLATE -->
+<!-- (v641) COPIAR MODELOS DE OUTRA CONTA -->
+<div id="tmpl-copiar-overlay">
+  <div id="tmpl-copiar-modal">
+    <h3 style="font-size:16px;font-weight:600;margin:0 0 6px">Copiar modelos de outra conta</h3>
+    <p style="font-size:12.5px;color:#667781;margin:0 0 10px">Os modelos ficam na conta (WABA) da Meta — quando um número muda de conta, eles não vão junto. Aqui o FILAZ cria na conta de destino os modelos que você marcar, com o mesmo texto, botões e apelido. A Meta aprova de novo (costuma levar minutos). Cabeçalho com foto/vídeo/documento precisa ser criado à mão.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:13px">
+      <label style="display:flex;align-items:center;gap:6px">De: <select id="tmpl-copiar-de" onchange="_tmplCopiarLista()" style="background:#fff;border:1px solid #e9edef;border-radius:8px;padding:6px 8px;font-size:13px;font-family:inherit"></select></label>
+      <span>→ para: <b id="tmpl-copiar-para-nome"></b></span>
+      <label style="margin-left:auto;display:flex;align-items:center;gap:5px;font-size:12.5px;color:#667781"><input type="checkbox" id="tmpl-copiar-todos" onchange="_tmplCopiarMarcaTodos(this.checked)"> marcar todos</label>
+    </div>
+    <div id="tmpl-copiar-lista"><p style="color:#667781;font-size:13px">Escolha a conta de origem.</p></div>
+    <div id="tmpl-copiar-resultado" style="display:none;max-height:30vh;overflow:auto"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:12px;flex-shrink:0">
+      <button class="btn-cancel" onclick="fecharCopiarModelos()">Fechar</button>
+      <button class="btn-save" id="tmpl-copiar-btn" onclick="copiarModelosSelecionados()" disabled>Copiar</button>
+    </div>
+  </div>
+</div>
 <div id="send-tmpl-overlay">
   <div id="send-tmpl-modal">
     <h3>Enviar Modelo</h3>
@@ -2531,7 +2559,7 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v639</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v641</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3417,7 +3445,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v639</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v641</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3491,7 +3519,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 639;
+const APP_VER = 641;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -12266,14 +12294,20 @@ try {
   });
 } catch (_) {}
 
-// 🔑 Chave do assistente do Windows: a sessão do Supabase que o FILAZ já guarda (access + refresh);
-// o assistente renova sozinho, igual ao app. Só sai para a área de transferência dela.
-function filazCopiaChaveAssistente(btn) {
-  let o = null; try { const k = Object.keys(localStorage).find(k => /^sb-.*-auth-token$/.test(k)); o = k ? JSON.parse(localStorage.getItem(k) || 'null') : null; } catch (_) {}
-  if (!o || !o.access_token) { showToast('Não achei a sessão — saia e entre de novo no FILAZ.', 'erro'); return; }
-  const chave = JSON.stringify({ access_token: o.access_token, refresh_token: o.refresh_token || null, expires_at: o.expires_at || 0, email: (o.user && o.user.email) || window._userEmail || '' });
+// 🔑 Chave do assistente do Windows. (v640) Era a sessão do Supabase (access + refresh): quando o FILAZ no
+// navegador renovava a sessão, o refresh guardado no assistente morria e ele ficava "a chave venceu" toda hora.
+// Agora a chave é o TOKEN DE INTEGRAÇÃO da conta (Configurações ▸ Integração): não vence, e vale para o
+// servidor direto (cabeçalho X-Api-Token). Só sai para a área de transferência dela.
+async function filazCopiaChaveAssistente(btn) {
   const ok = () => { if (btn) { btn.textContent = 'Copiada ✓ — cole no assistente'; setTimeout(() => { btn.textContent = 'Copiar chave de acesso do assistente'; }, 4000); } };
-  try { navigator.clipboard.writeText(chave).then(ok, () => { window.prompt('Copie a chave:', chave); }); } catch (_) { window.prompt('Copie a chave:', chave); }
+  let tok = '';
+  try {
+    const d = await (await fetch(SERVER_URL + '/integration/token')).json(); tok = d && d.token || '';
+    if (!tok) { const g = await (await fetch(SERVER_URL + '/integration/token', { method: 'POST' })).json(); tok = g && g.token || ''; }
+  } catch (_) {}
+  if (!tok) { showToast('Não consegui gerar a chave — confira a conexão com o servidor.', 'erro'); return; }
+  const chave = JSON.stringify({ api_token: tok, email: window._userEmail || '' });
+  try { await navigator.clipboard.writeText(chave); ok(); } catch (_) { window.prompt('Copie a chave:', chave); }
 }
 // 📵 iOS ignora o user-scalable=no: bloqueia o beliscão fora do visualizador de arquivos
 (function () {
@@ -16756,6 +16790,74 @@ function populateTmplAccounts() {
 }
 
 function onTmplAccountChange() { loadTemplates(); }
+
+// ── (v641) Copiar modelos de OUTRA conta (o número mudou de WABA e os modelos ficaram para trás) ──
+let _tmplCopiarOrigem = [];
+function abrirCopiarModelos() {
+  const para = document.getElementById('tmpl-list-account-id');
+  if (!para || !para.value) { showToast('Escolha primeiro a conta de destino (a lista de cima).', 'erro'); return; }
+  const de = document.getElementById('tmpl-copiar-de');
+  const opts = [...para.options].filter(o => o.value && o.value !== para.value);
+  if (!opts.length) { showToast('Você só tem uma conta da API — não há de onde copiar.', 'erro'); return; }
+  de.innerHTML = '<option value="">Escolha a conta de origem…</option>' + opts.map(o => `<option value="${escHtml(o.value)}">${escHtml(o.textContent)}</option>`).join('');
+  document.getElementById('tmpl-copiar-para-nome').textContent = para.options[para.selectedIndex] ? para.options[para.selectedIndex].textContent : '';
+  document.getElementById('tmpl-copiar-lista').innerHTML = '<p style="color:#667781;font-size:13px">Escolha a conta de origem.</p>';
+  const res = document.getElementById('tmpl-copiar-resultado'); res.style.display = 'none'; res.innerHTML = '';
+  document.getElementById('tmpl-copiar-todos').checked = false;
+  document.getElementById('tmpl-copiar-btn').disabled = true; document.getElementById('tmpl-copiar-btn').textContent = 'Copiar';
+  _tmplCopiarOrigem = [];
+  document.getElementById('tmpl-copiar-overlay').classList.add('open');
+}
+function fecharCopiarModelos() { document.getElementById('tmpl-copiar-overlay').classList.remove('open'); }
+async function _tmplCopiarLista() {
+  const de = document.getElementById('tmpl-copiar-de').value;
+  const el = document.getElementById('tmpl-copiar-lista');
+  _tmplCopiarOrigem = []; _tmplCopiarConta();
+  if (!de) { el.innerHTML = '<p style="color:#667781;font-size:13px">Escolha a conta de origem.</p>'; return; }
+  el.innerHTML = '<p style="color:#667781;font-size:13px">Lendo os modelos da conta de origem…</p>';
+  try {
+    const r = await fetch(SERVER_URL + '/templates?account_id=' + encodeURIComponent(de));
+    const lista = await r.json();
+    if (!Array.isArray(lista)) throw new Error(lista.error || 'Erro');
+    const jaTem = new Set((Array.isArray(allTemplates) ? allTemplates : []).map(t => String(t.name || '').toLowerCase() + '|' + String(t.language || '').toLowerCase()));
+    const peso = { APPROVED: 0, PENDING: 1, PAUSED: 2, REJECTED: 3 };
+    _tmplCopiarOrigem = (await _semOcultos(lista)).sort((a, b) => ((peso[a.status] ?? 9) - (peso[b.status] ?? 9)) || String(tmplNome(a)).localeCompare(String(tmplNome(b)), 'pt-BR'));
+    if (!_tmplCopiarOrigem.length) { el.innerHTML = '<p style="color:#667781;font-size:13px">Essa conta não tem modelos.</p>'; return; }
+    el.innerHTML = _tmplCopiarOrigem.map((t, i) => {
+      const body = (t.components || []).find(c => c.type === 'BODY');
+      const midia = (t.components || []).some(c => c.type === 'HEADER' && String(c.format || 'TEXT').toUpperCase() !== 'TEXT');
+      const existe = jaTem.has(String(t.name || '').toLowerCase() + '|' + String(t.language || '').toLowerCase());
+      const trava = existe || midia;
+      return `<label class="tmpl-copiar-item" style="${trava ? 'opacity:.6' : ''}"><input type="checkbox" data-i="${i}" ${trava ? 'disabled' : ''} onchange="_tmplCopiarConta()"><div style="flex:1;min-width:0"><b>${escHtml(tmplNome(t))}</b> <span style="font-size:11px;color:#667781">${escHtml(t.language || '')} · ${escHtml(t.category || '')} · ${escHtml(t.status || '')}</span>${existe ? ' <span style="font-size:11px;color:#00a884">já existe no destino</span>' : ''}${midia ? ' <span style="font-size:11px;color:#a04d00">cabeçalho com mídia — criar à mão</span>' : ''}<div class="tcp">${escHtml(String(body ? body.text : '').slice(0, 140))}</div></div></label>`;
+    }).join('');
+  } catch (e) { el.innerHTML = `<p style="color:#ef4444;font-size:13px">${escHtml(e.message)}</p>`; }
+}
+function _tmplCopiarMarcaTodos(v) { document.querySelectorAll('#tmpl-copiar-lista input[type=checkbox]:not(:disabled)').forEach(c => { c.checked = !!v; }); _tmplCopiarConta(); }
+function _tmplCopiarConta() {
+  const n = document.querySelectorAll('#tmpl-copiar-lista input[type=checkbox]:checked').length;
+  const b = document.getElementById('tmpl-copiar-btn'); if (!b) return;
+  b.disabled = !n; b.textContent = n ? 'Copiar ' + n + ' modelo' + (n > 1 ? 's' : '') : 'Copiar';
+}
+async function copiarModelosSelecionados() {
+  const de = document.getElementById('tmpl-copiar-de').value, para = document.getElementById('tmpl-list-account-id').value;
+  const nomes = [...document.querySelectorAll('#tmpl-copiar-lista input[type=checkbox]:checked')].map(c => _tmplCopiarOrigem[Number(c.dataset.i)]).filter(Boolean).map(t => t.name);
+  if (!de || !para || !nomes.length) return;
+  const b = document.getElementById('tmpl-copiar-btn'); b.disabled = true; b.textContent = 'Copiando…';
+  const res = document.getElementById('tmpl-copiar-resultado');
+  try {
+    const r = await fetch(SERVER_URL + '/templates/copiar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ de, para, nomes }) });
+    const d = await r.json();
+    if (!r.ok || d.error) throw new Error(d.error || 'HTTP ' + r.status);
+    res.style.display = 'block';
+    res.innerHTML = `<div style="font-size:13px;font-weight:600;margin:6px 0">${d.copiados} de ${nomes.length} copiado${d.copiados === 1 ? '' : 's'} para ${escHtml(d.para || '')} — a Meta vai analisar (em análise até aprovar)</div>` +
+      (d.resultados || []).map(x => `<div class="tmpl-copiar-res">${x.ok ? '✅' : x.jaExiste ? '↩' : '❌'} <b>${escHtml(x.nome)}</b>${x.ok ? (x.apelido ? ' <span style="color:#667781">(apelido "' + escHtml(x.apelido) + '")</span>' : '') : ' <span style="color:#a04d00">' + escHtml(x.erro || '') + '</span>'}</div>`).join('');
+    showToast(d.copiados ? d.copiados + ' modelo(s) copiado(s). A Meta vai aprovar de novo.' : 'Nenhum modelo foi copiado — veja o motivo em cada um.', d.copiados ? 'ok' : 'erro');
+    await carregarApelidosModelos(true);
+    loadTemplates();
+    _tmplCopiarLista();
+  } catch (e) { res.style.display = 'block'; res.innerHTML = `<p style="color:#ef4444;font-size:13px">${escHtml(e.message)}</p>`; }
+  finally { _tmplCopiarConta(); }
+}
 
 async function loadTemplates() {
   const accountId = document.getElementById('tmpl-list-account-id')?.value || document.getElementById('tmpl-account-id')?.value || document.getElementById('account-select').value;
