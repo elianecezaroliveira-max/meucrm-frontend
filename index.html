@@ -2559,7 +2559,7 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v646</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v647</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3445,7 +3445,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v646</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v647</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3519,7 +3519,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 646;
+const APP_VER = 647;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -22051,6 +22051,7 @@ function _renderBotListInterno(){
   // (nós já foram desenhados antes das arestas, para medir as âncoras)
   applyBotTransform();
   setupBotCanvasPanZoom();
+  try { _botPintaAvisoSoltos(); } catch (_) {} // (v647)
 }
 
 // Rodízio de números e Aguardar resposta: cada opção vira UMA LINHA dentro do
@@ -22248,6 +22249,7 @@ function _botAlcanceRecolhido() {
   const dentro = new Set(); const fila = [];
   _botColapsados.forEach(k => {
     const i = k.lastIndexOf('::'); const nid = k.slice(0, i), lbl = k.slice(i + 2);
+    if (lbl === '__solto__') { fila.push(nid); return; } // (v647) sequência SOLTA escondida: o passo apagado tinha essa saída recolhida
     botEdges.filter(e => e.from_node_id === nid && _botNrmLbl(e.label) === lbl).forEach(e => fila.push(e.to_node_id));
   });
   while (fila.length) {
@@ -22309,6 +22311,21 @@ function _botVemDoInicio(alvo) {
   return false;
 }
 // Revela um passo escondido: reabre TODAS as saídas recolhidas que o escondem
+// (v647) Sequências soltas escondidas (passo apagado com saída recolhida): aviso no quadro com botão para mostrar
+function _botSoltosEscondidos() { return [..._botColapsados].filter(k => k.endsWith('::__solto__')).map(k => k.slice(0, -'::__solto__'.length)).filter(id => botNodes.some(n => n.id === id)); }
+function botMostraSoltos() { [..._botColapsados].forEach(k => { if (k.endsWith('::__solto__')) _botColapsados.delete(k); }); _salvaColapsados(); _botEncaixaDobrados(); renderBotList(); }
+function _botPintaAvisoSoltos() {
+  const wrap = document.getElementById('bot-canvas-wrap'); if (!wrap) return;
+  let el = document.getElementById('bot-soltos-aviso');
+  const ids = _botSoltosEscondidos();
+  if (!ids.length) { if (el) el.remove(); return; }
+  if (!el) { el = document.createElement('div'); el.id = 'bot-soltos-aviso'; el.style.cssText = 'position:absolute;top:12px;left:12px;z-index:5;display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #94a3b8;border-radius:18px;padding:6px 8px 6px 12px;font-size:13px;color:#54656f;box-shadow:0 1px 4px rgba(0,0,0,.08)'; wrap.appendChild(el); }
+  const qtd = _botOcultos().size;
+  const txt = '🙈 ' + ids.length + (ids.length === 1 ? ' sequência solta escondida' : ' sequências soltas escondidas') + (qtd ? ' (' + qtd + ' passo' + (qtd === 1 ? '' : 's') + ')' : '');
+  if (el.dataset.txt === txt) return; // o quadro redesenha o tempo todo: não recria o botão à toa
+  el.dataset.txt = txt;
+  el.innerHTML = txt + ' <button type="button" class="btn-secondary" style="padding:3px 10px;border-radius:14px;font-size:12px" onclick="botMostraSoltos()">Mostrar</button>';
+}
 function botRevelaNo(id) {
   const tira = [];
   _botColapsados.forEach(k => {
@@ -23180,7 +23197,17 @@ function _botMarcaSolto(id) {
   try { if (id && !_botOcultos().has(id)) _botSoltosVisiveis.add(id); } catch (_) {}
 }
 function deleteNode(id) {
-  try { botEdges.filter(e => e.from_node_id === id).forEach(e => _botMarcaSolto(e.to_node_id)); } catch (_) {}
+  // (v647) Ela (09/11): apagou um rodízio de números com saídas RECOLHIDAS e clicou em Organizar — tudo o que
+  // estava escondido atrás dele saiu do oculto. O que estava escondido continua escondido: o passo seguinte de
+  // cada saída recolhida vira uma "sequência solta escondida" (chave passo::__solto__), com um botão para mostrar.
+  try {
+    const oc = _botOcultos();
+    botEdges.filter(e => e.from_node_id === id).forEach(e => {
+      if (_botColapsados.has(id + '::' + _botNrmLbl(e.label)) && oc.has(e.to_node_id)) _botColapsados.add(e.to_node_id + '::__solto__');
+      else if (oc.has(e.to_node_id)) { /* escondido por outro caminho: continua regido por ele */ }
+      else _botMarcaSolto(e.to_node_id);
+    });
+  } catch (_) {}
   botNodes = botNodes.filter(n=>n.id!==id);
   botEdges = botEdges.filter(e=>e.from_node_id!==id && e.to_node_id!==id);
   try { [..._botColapsados].forEach(k => { if (k.startsWith(id + '::')) _botColapsados.delete(k); }); _salvaColapsados(); } catch (_) {}
