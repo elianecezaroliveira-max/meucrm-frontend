@@ -2572,7 +2572,7 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v648</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v649</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3458,7 +3458,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v648</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v649</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3532,7 +3532,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 648;
+const APP_VER = 649;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -11136,7 +11136,7 @@ async function loadMessages(phone, scroll = true, opt = null) {
             const mp = g.media_mime_type ? `&mime=${encodeURIComponent(g.media_mime_type)}` : '';
             const u = `${SERVER_URL}/media-proxy/${encodeURIComponent(g.media_id)}?account_id=${acctA}${mp}`;
             const kA = String(g.media_id || g.id || '').replace(/['"<>]/g, '');
-            const srcA = _thumbGet(kA) || u; // miniatura local = aparece na hora
+            const srcA = _thumbGet(kA) || (window._localPrev || {})[String(g.media_id)] || u; // miniatura local (ou a foto que acabou de sair) = aparece na hora
             const _rz = _razAlb[gi];
             const _fit = (!_todasPano && _rz && (_rz > 2.2 || _rz < 0.45)) ? 'contain' : 'cover'; // extrema no meio das outras: inteira, sem cortar
             // O selo +N não pode "comer" o toque (antes o clique nele não abria a foto)
@@ -12813,6 +12813,28 @@ async function confirmMediaSend() {
   // Duas ou mais fotos/vídeos = um LOTE: no WhatsApp do lead chegam grudadas (álbum)
   const _lote = lista.length > 1 ? { id: 'alb-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7), total: lista.length,
     fotos: lista.filter(f => f.type.startsWith('image/')).length, videos: lista.filter(f => f.type.startsWith('video/')).length } : null;
+  // (v649) Ela (09/11): "quando envio 2 ele envia uma por vez e aparece separada no chat e depois junta". Só fotos,
+  // 2 ou mais: desenha UMA grade (igual a bolha de álbum de verdade) já no primeiro segundo, com as fotos locais;
+  // cada foto deixa de ganhar bolha própria. No fim, a bolha real entra no lugar (mesmas fotos, sem piscar).
+  let _albPrev = null;
+  if (_lote && _lote.fotos === lista.length && lista.length >= 2 && currentPhone === _alvo.phone) {
+    try {
+      const area = document.getElementById('messages-area');
+      if (area) {
+        const _q = lista.length, _mostra = _q === 3 ? 3 : Math.min(_q, 4), sobra = _q - _mostra;
+        const urls = lista.map(f => URL.createObjectURL(f));
+        const tiles = urls.slice(0, _mostra).map((u, gi) => `<span class="alb-t"><img src="${u}" decoding="async" onload="_albAjusta(this)" style="width:100%;height:100%;object-fit:cover;border-radius:6px;display:block;background:rgba(0,0,0,.06)">${(gi === _mostra - 1 && sobra > 0) ? `<span style="position:absolute;inset:0;background:rgba(11,20,26,.55);color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:600;border-radius:6px;pointer-events:none">+${sobra}</span>` : ''}</span>`).join('');
+        const horaAgora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        _albPrev = document.createElement('div');
+        _albPrev.className = 'msg outbound'; _albPrev.setAttribute('data-previa-album', '1');
+        _albPrev.innerHTML = `<div class="alb alb-${Math.min(_q, 4)}">${tiles}</div>${caption ? `<div class="media-caption">${waFormat(caption)}</div>` : ''}<div class="time">${horaAgora} <span class="msg-ticks pending">${TICK_CLOCK}</span></div>`;
+        _albPrev._urls = urls;
+        area.appendChild(_albPrev); area.scrollTop = area.scrollHeight;
+        _lote.previaUnica = true;
+        previas.push({ el: _albPrev, mid: null, album: true });
+      }
+    } catch (_) { _albPrev = null; if (_lote) delete _lote.previaUnica; }
+  }
   for (let i = 0; i < lista.length; i++) {
     _respFoto = (i === 0) ? _resp : null;
     const r = await _sendOneFile(lista[i], i === lista.length - 1 ? caption : '', true, _lote ? { ..._lote, idx: i } : undefined, _alvo);
@@ -12821,6 +12843,7 @@ async function confirmMediaSend() {
   }
   if (algumOk) markAsRead(_alvo.phone, true); // só marca como lida se ALGO foi enviado de verdade — e a conversa DO ENVIO
   previas.forEach(p => { try {
+    if (p.album) return; // (v649) a grade provisória sai no fim; a real usa as mesmas fotos locais (_localPrev)
     // Entrega cada foto JÁ DECODIFICADA para a bolha real adotar (não pisca).
     // A prévia FICA NA TELA: a reconciliação a troca pela real no MESMO quadro
     const hm = p.el.querySelector('img,video');
@@ -13336,7 +13359,9 @@ async function _sendOneFile(file, caption, semRecarga, lote, alvo) {
   const area = currentPhone === _fone ? document.getElementById('messages-area') : null; // saiu da conversa: sem bolha na outra
   let optDiv = null;
   let uLocal = null; // prévia local — depois vira a imagem da mensagem real (não pisca)
-  if (area) {
+  const _semBolha = !!(lote && lote.previaUnica); // (v649) o lote já desenhou UMA grade com todas as fotos
+  if (_semBolha && (file.type.startsWith('image/') || file.type.startsWith('video/'))) uLocal = URL.createObjectURL(file);
+  if (area && !_semBolha) {
     const div = document.createElement('div');
     optDiv = div;
     div.className = 'msg outbound';
