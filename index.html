@@ -2572,7 +2572,7 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v649</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v650</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3458,7 +3458,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v649</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v650</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3532,7 +3532,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 649;
+const APP_VER = 650;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3961,6 +3961,7 @@ function launchFBSignup() {
 
   // Callback separado (sem async) para o FB.login
   function fbLoginCallback(response) {
+    status.style.display = ''; // (v650) o "limpa status" acima escondia a faixa em linha — e a classe (loading/success/error) não conseguia mostrá-la de volta
     if (response.authResponse) {
       const code = response.authResponse.code;
       btn.disabled = true;
@@ -3979,10 +3980,11 @@ function launchFBSignup() {
           status.textContent = data.error;
         } else {
           const count = data.accounts ? data.accounts.length : 0;
-          status.className = 'success';
-          status.textContent = count + ' número(s) vinculado(s) com sucesso!';
+          const pul = Array.isArray(data.pulados) ? data.pulados : []; // (v650) números que já são de outro login: não mexidos
+          status.className = pul.length ? 'error' : 'success';
+          status.textContent = count + ' número(s) vinculado(s) com sucesso!' + (pul.length ? ' ' + pul.length + ' número(s) já estão em outro login do FILAZ e não foram mexidos: ' + pul.map(function(x){ return x.nome ? x.nome + ' (' + x.numero + ')' : x.numero; }).join(', ') + '.' : '');
           loadAccounts();
-          setTimeout(function() { status.style.display = 'none'; }, 4000);
+          if (!pul.length) setTimeout(function() { status.style.display = 'none'; }, 4000);
         }
         btn.disabled = false;
       })
