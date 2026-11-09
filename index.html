@@ -2559,7 +2559,7 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v643</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v645</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3445,7 +3445,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v643</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v645</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3519,7 +3519,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 643;
+const APP_VER = 645;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5767,12 +5767,12 @@ async function iaIgnoraSalva(btn) {
 // 🪪 (v642) fichas de formalização por banco × convênio
 let _iaFichasLista = [];
 function iaFichasPinta(lista) {
-  if (Array.isArray(lista)) _iaFichasLista = lista.map(f => ({ banco: String(f.banco || ''), convenio: String(f.convenio || 'TODOS').toUpperCase(), como: String(f.como || '') }));
+  if (Array.isArray(lista)) _iaFichasLista = lista.map(f => ({ banco: String(f.banco || ''), convenio: String(f.convenio || 'TODOS').toUpperCase(), como: String(f.como || ''), origem: f.origem || '', em: f.em || '' }));
   const el = document.getElementById('ia-fichas'); if (!el) return;
   if (!_iaFichasLista.length) { el.innerHTML = '<div style="font-size:12px;color:#8696a0;padding:4px 0">Nenhuma ficha ainda. Ex.: Banco Pan · SIAPE · "aceite pelo link do banco, depois autorização no Sou Gov (Autorizações ▸ Consignado)".</div>'; return; }
   const opc = v => ['SIAPE', 'INSS', 'TODOS'].map(c => `<option value="${c}" ${v === c ? 'selected' : ''}>${c === 'TODOS' ? 'SIAPE e INSS' : c}</option>`).join('');
   el.innerHTML = _iaFichasLista.map((f, i) => `<div class="ia-ficha" data-i="${i}" style="display:grid;grid-template-columns:150px 130px 1fr auto;gap:6px;align-items:start;margin-bottom:6px">`
-    + `<input placeholder="Banco (ex.: Pan)" value="${escHtml(f.banco)}" oninput="_iaFichasLista[${i}].banco=this.value" style="background:#f0f2f5;border:1px solid #e0e4e6;border-radius:8px;padding:7px 9px;font-size:13px;color:#131c20">`
+    + `<div><input placeholder="Banco (ex.: Pan)" value="${escHtml(f.banco)}" oninput="_iaFichasLista[${i}].banco=this.value" style="width:100%;box-sizing:border-box;background:#f0f2f5;border:1px solid #e0e4e6;border-radius:8px;padding:7px 9px;font-size:13px;color:#131c20">${f.origem === 'aprendida' ? '<div style="font-size:10.5px;color:#00a884;margin-top:2px">🧠 aprendida sozinha' + (f.em ? ' em ' + escHtml(String(f.em).split('-').reverse().join('/')) : '') + '</div>' : ''}</div>`
     + `<select onchange="_iaFichasLista[${i}].convenio=this.value" style="background:#f0f2f5;border:1px solid #e0e4e6;border-radius:8px;padding:7px 6px;font-size:13px;color:#131c20">${opc(f.convenio)}</select>`
     + `<textarea rows="2" placeholder="Como formaliza neste banco e convênio (passo a passo, do seu jeito)" oninput="_iaFichasLista[${i}].como=this.value" style="background:#f0f2f5;border:1px solid #e0e4e6;border-radius:8px;padding:7px 9px;font-size:13px;color:#131c20;font-family:inherit;resize:vertical">${escHtml(f.como)}</textarea>`
     + `<button class="btn-secondary" title="Tirar esta ficha" onclick="iaFichaTira(${i})">✕</button></div>`).join('');
@@ -5780,11 +5780,29 @@ function iaFichasPinta(lista) {
 function iaFichaNova() { _iaFichasLista.push({ banco: '', convenio: 'SIAPE', como: '' }); iaFichasPinta(); const el = document.querySelector('#ia-fichas .ia-ficha:last-child input'); if (el) el.focus(); }
 function iaFichaTira(i) { _iaFichasLista.splice(i, 1); iaFichasPinta(); }
 async function iaFichasSalva(btn) {
-  const lista = _iaFichasLista.map(f => ({ banco: String(f.banco || '').trim().slice(0, 60), convenio: String(f.convenio || 'TODOS').toUpperCase(), como: String(f.como || '').trim().slice(0, 1200) })).filter(f => f.como);
+  const lista = _iaFichasLista.map(f => ({ banco: String(f.banco || '').trim().slice(0, 60), convenio: String(f.convenio || 'TODOS').toUpperCase(), como: String(f.como || '').trim().slice(0, 1200), ...(f.origem ? { origem: f.origem, em: f.em || null } : {}) })).filter(f => f.como);
   if (btn) { btn.disabled = true; btn.textContent = 'Salvando…'; }
   try { await _faqPutSetting('ia_fichas', JSON.stringify(lista)); if (_iaPag) _iaPag.fichas = lista; showToast('Fichas salvas — a IA passa a seguir na próxima sugestão.', 'ok'); }
   catch (e) { showToast('Não consegui salvar: ' + (e.message || e), 'err'); }
   if (btn) { btn.disabled = false; btn.textContent = 'Salvar fichas'; }
+}
+// 🧠 (v644) varredura: a IA aprende as fichas com o que ela já explicou nos últimos 90 dias
+async function iaFichasVarrer(btn) {
+  const st = document.getElementById('ia-fichas-varre');
+  if (btn) btn.disabled = true;
+  try {
+    const r = await fetch(SERVER_URL + '/ia/fichas/varrer', { method: 'POST' }); const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    if (st) st.textContent = 'Lendo as conversas…';
+    const olha = async () => {
+      let s2 = {}; try { s2 = await (await fetch(SERVER_URL + '/ia/fichas/varrer/status')).json(); } catch (_) {}
+      if (st) st.textContent = (s2.rodando ? 'Lendo as conversas… ' : 'Pronto: ') + (s2.conversas || 0) + ' conversa(s), ' + (s2.aprendidas || 0) + ' ficha(s) aprendida(s)' + (s2.erro ? ' — ' + s2.erro : '');
+      if (s2.rodando) { setTimeout(olha, 2500); return; }
+      if (btn) btn.disabled = false;
+      try { const d2 = await (await fetch(SERVER_URL + '/ia/status')).json(); if (Array.isArray(d2.fichas)) { if (_iaPag) _iaPag.fichas = d2.fichas; iaFichasPinta(d2.fichas); } } catch (_) {}
+    };
+    setTimeout(olha, 1500);
+  } catch (e) { if (st) st.textContent = 'Não deu: ' + (e.message || e); if (btn) btn.disabled = false; }
 }
 async function iaBancosSalva(btn) {
   const inp = document.getElementById('ia-bancos-in'); if (!inp) return;
@@ -16842,8 +16860,12 @@ function abrirCopiarModelos() {
   if (!para || !para.value) { showToast('Escolha primeiro a conta de destino (a lista de cima).', 'erro'); return; }
   const de = document.getElementById('tmpl-copiar-de');
   const opts = [...para.options].filter(o => o.value && o.value !== para.value);
-  if (!opts.length) { showToast('Você só tem uma conta da API — não há de onde copiar.', 'erro'); return; }
   de.innerHTML = '<option value="">Escolha a conta de origem…</option>' + opts.map(o => `<option value="${escHtml(o.value)}">${escHtml(o.textContent)}</option>`).join('');
+  // (v645) o número mudou de WABA (caso do 101): os modelos ficaram na WABA antiga desta MESMA conta
+  fetch(SERVER_URL + '/accounts/' + encodeURIComponent(para.value) + '/waba-antigo').then(r => r.json()).then(d => {
+    if (d && d.waba_antigo && document.getElementById('tmpl-copiar-overlay').classList.contains('open')) { const o = document.createElement('option'); o.value = 'antiga'; o.textContent = 'WABA antiga desta conta (' + d.waba_antigo + ') — o número mudou de WABA'; de.insertBefore(o, de.options[1] || null); }
+  }).catch(() => {});
+  if (!opts.length) showToast('Você só tem uma conta da API; se o número mudou de WABA, a opção "WABA antiga" aparece na lista.', 'erro');
   document.getElementById('tmpl-copiar-para-nome').textContent = para.options[para.selectedIndex] ? para.options[para.selectedIndex].textContent : '';
   document.getElementById('tmpl-copiar-lista').innerHTML = '<p style="color:#667781;font-size:13px">Escolha a conta de origem.</p>';
   const res = document.getElementById('tmpl-copiar-resultado'); res.style.display = 'none'; res.innerHTML = '';
@@ -16860,7 +16882,7 @@ async function _tmplCopiarLista() {
   if (!de) { el.innerHTML = '<p style="color:#667781;font-size:13px">Escolha a conta de origem.</p>'; return; }
   el.innerHTML = '<p style="color:#667781;font-size:13px">Lendo os modelos da conta de origem…</p>';
   try {
-    const r = await fetch(SERVER_URL + '/templates?account_id=' + encodeURIComponent(de));
+    const r = await fetch(SERVER_URL + (de === 'antiga' ? '/templates?account_id=' + encodeURIComponent(document.getElementById('tmpl-list-account-id').value) + '&waba=antiga' : '/templates?account_id=' + encodeURIComponent(de)));
     const lista = await r.json();
     if (!Array.isArray(lista)) throw new Error(lista.error || 'Erro');
     const jaTem = new Set((Array.isArray(allTemplates) ? allTemplates : []).map(t => String(t.name || '').toLowerCase() + '|' + String(t.language || '').toLowerCase()));
@@ -19821,9 +19843,9 @@ function faqRender(){
       + '<div style="display:flex;gap:6px"><input id="ia-bancos-in" value="' + escHtml(p.bancos || '') + '" placeholder="ex.: Paraná Banco, Safra e Facta (não porto mais para o BRB)" style="flex:1;background:#f0f2f5;border:1px solid #e0e4e6;border-radius:8px;padding:8px 10px;font-size:13px;color:#131c20"><button class="btn-secondary" onclick="iaBancosSalva(this)">Salvar</button></div></div>'
       // 🪪 (v642) formalização por banco × convênio (SIAPE/INSS): a IA segue a ficha do caso
       + '<div style="margin-top:12px;border-top:1px solid #e9edef;padding-top:10px"><b style="font-size:13px">🪪 Formalização por banco e convênio (SIAPE / INSS)</b>'
-      + '<div style="font-size:12px;color:#667781;margin:2px 0 6px">A formalização muda conforme o banco portado e se o cliente é SIAPE ou INSS (Sou Gov, aceite no link, desbloqueio…). Escreva aqui como é em cada caso: a IA descobre o convênio pela etiqueta, pelo nome do lead ("Fulano SIAPE"), pelas notas ou pela conversa, acha o banco citado na conversa e segue a ficha certa — e nunca mistura o passo de um no outro.</div>'
+      + '<div style="font-size:12px;color:#667781;margin:2px 0 6px">A formalização muda conforme o banco portado e se o cliente é SIAPE ou INSS (Sou Gov, aceite no link, desbloqueio…). <b>Você não precisa preencher:</b> a IA aprende sozinha — cada vez que você explica a formalização a um cliente, ela resume a regra daquele banco e convênio aqui (marcada como "aprendida"). Pode corrigir o texto; o que você escrever à mão vale mais que o aprendido. Ela descobre o convênio pela etiqueta, pelo nome do lead ("Fulano SIAPE"), pelas notas ou pela conversa, e o banco pelo que é citado na conversa.</div>'
       + '<div id="ia-fichas"></div>'
-      + '<div style="display:flex;gap:6px;margin-top:6px"><button class="btn-secondary" onclick="iaFichaNova()">+ Ficha</button><button class="btn-secondary" onclick="iaFichasSalva(this)">Salvar fichas</button></div></div>'
+      + '<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap"><button class="btn-secondary" onclick="iaFichaNova()">+ Ficha</button><button class="btn-secondary" onclick="iaFichasSalva(this)">Salvar fichas</button><button class="btn-secondary" onclick="iaFichasVarrer(this)" title="Lê o que você já explicou aos clientes nos últimos 90 dias e monta as fichas">🧠 Aprender com as conversas antigas</button><span id="ia-fichas-varre" style="font-size:12px;color:#667781;align-self:center"></span></div></div>'
       // 🚫 conversas que a IA ignora (suporte do banco, marido…): sem sugestão e sem aprender
       + '<div style="margin-top:12px;border-top:1px solid #e9edef;padding-top:10px"><b style="font-size:13px">🚫 Números que a IA ignora</b>'
       + '<div style="font-size:12px;color:#667781;margin:2px 0 6px">Nessas conversas a IA não sugere nada e não aprende com o que é dito (ex.: suporte do banco, família, seu número de teste). Separe por vírgula.</div>'
