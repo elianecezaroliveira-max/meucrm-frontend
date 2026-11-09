@@ -269,6 +269,19 @@
   .anx-mais { width: 92px; height: 92px; border-radius: 10px; border: 1.5px dashed #b9c0c6; display: flex; align-items: center; justify-content: center; color: #667781; font-size: 26px; cursor: pointer; background: #fff; flex: none; }
   .anx-mais:hover { border-color: #00a884; color: #00a884; }
   .anx-dica { width: 100%; font-size: 12px; color: #667781; padding: 0 2px; }
+  /* (v648) PRÉVIA GRANDE no computador (igual WhatsApp): a foto escolhida ocupa a área das mensagens
+     enquanto a bandeja fica embaixo; clicar numa miniatura troca a foto grande */
+  #anexo-grande { display: none; position: absolute; left: 0; right: 0; z-index: 6; background: #e9edef; flex-direction: column; align-items: center; justify-content: center; }
+  #anexo-grande.on { display: flex; }
+  #anexo-grande .ag-x { position: absolute; top: 12px; left: 14px; width: 36px; height: 36px; border-radius: 50%; border: none; background: rgba(11,20,26,.06); color: #54656f; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  #anexo-grande .ag-x:hover { background: rgba(11,20,26,.14); }
+  #anexo-grande .ag-nome { position: absolute; top: 20px; left: 60px; right: 60px; text-align: center; font-size: 13px; color: #54656f; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #anexo-grande img, #anexo-grande video { max-width: calc(100% - 48px); max-height: calc(100% - 72px); object-fit: contain; border-radius: 6px; box-shadow: 0 2px 10px rgba(0,0,0,.12); margin-top: 28px; }
+  .anx-t { cursor: pointer; }
+  .anx-t.sel { border: 2px solid #00a884; box-shadow: 0 0 0 2px #e7f7ef; }
+  body.dark #anexo-grande { background: #0b141a; }
+  body.dark #anexo-grande .ag-x { background: rgba(255,255,255,.08); color: #e9edef; }
+  body.dark #anexo-grande .ag-nome { color: #aebac1; }
   body.dark .anx-t { background: #202c33; border-color: #2a3942; }
   body.dark .anx-mais { background: #111b21; border-color: #3b4a54; }
   #input-wrap { flex: 1; display: flex; align-items: center; background: #ffffff; border: 1px solid #e3e6ea; border-radius: 24px; overflow: hidden; min-width: 0; position: relative; }
@@ -2559,7 +2572,7 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v647</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v648</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3445,7 +3458,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v647</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v648</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3519,7 +3532,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 647;
+const APP_VER = 648;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -8080,6 +8093,7 @@ async function selectContact(phone, name, accountId) {
       <div id="notes-status"></div>
     </div>
     <div id="messages-area"></div>
+    <div id="anexo-grande"></div><!-- (v648) prévia grande da foto antes de enviar (computador) -->
     <div id="day-float"></div>
     <div id="bot-run-banner">
       <span>Bot ativo:</span>
@@ -12599,12 +12613,13 @@ function _renderAnexosTray() {
   if (!tray) return;
   try { (tray._urls || []).forEach(u => URL.revokeObjectURL(u)); } catch (_) {}
   tray._urls = [];
+  if (_anxSel >= _previewList.length) _anxSel = _previewList.length - 1; if (_anxSel < 0) _anxSel = 0;
   tray.innerHTML = _previewList.map((f, i) => {
     const url = URL.createObjectURL(f); tray._urls.push(url);
     const ehVideo = f.type.startsWith('video/');
-    return `<div class="anx-t" title="${escHtml(f.name || '')}">
+    return `<div class="anx-t${i === _anxSel ? ' sel' : ''}" title="${escHtml(f.name || '')}" onclick="_anxEscolhe(${i})">
       ${ehVideo ? `<video src="${url}" muted playsinline></video><span class="anx-vid"><i class=ic-video></i></span>` : `<img src="${url}" alt="">`}
-      <span class="anx-x" onclick="_rmPreview(${i})" title="Tirar esta foto">✕</span></div>`;
+      <span class="anx-x" onclick="event.stopPropagation();_rmPreview(${i})" title="Tirar esta foto">✕</span></div>`;
   }).join('') +
     `<div class="anx-mais" onclick="document.getElementById('file-input').click()" title="Adicionar mais fotos">+</div>` +
     `<div class="anx-dica">${_previewList.length === 1 ? 'Escreva a legenda no campo abaixo (ou envie sem legenda)' : _previewList.length + ' arquivos — a legenda vai no último'} · Enter envia · Esc cancela</div>`;
@@ -12612,13 +12627,40 @@ function _renderAnexosTray() {
   _trayAtiva = true;
   if (inp) { inp.placeholder = 'Legenda (opcional)'; setTimeout(() => { try { inp.focus({ preventScroll: true }); } catch (_) {} }, 40); }
   updateSendMicButtons();
+  _anexoGrandePinta(); // (v648) a foto escolhida em tamanho grande, sobre as mensagens (igual WhatsApp)
 }
+// (v648) Ela (09/11): "quando eu coloco uma imagem para enviar eu gostaria que ficasse igual no WhatsApp, no CRM
+// fica muito pequena" — a miniatura de 92px era tudo o que aparecia. Agora a foto escolhida ocupa a área das
+// mensagens (a bandeja embaixo continua para trocar/tirar/adicionar); ✕ cancela tudo; a legenda segue no campo.
+let _anxSel = 0;
+function _anxEscolhe(i) { _anxSel = i; _renderAnexosTray(); }
+function _anexoGrandePinta() {
+  const ag = document.getElementById('anexo-grande'), ma = document.getElementById('messages-area');
+  if (!ag || !ma) return;
+  const f = _previewList[_anxSel];
+  if (!f || !_trayAtiva) { _anexoGrandeFecha(); return; }
+  try { if (ag._url) URL.revokeObjectURL(ag._url); } catch (_) {}
+  const url = URL.createObjectURL(f); ag._url = url;
+  const ehVideo = f.type.startsWith('video/');
+  ag.innerHTML = `<button class="ag-x" onclick="closeMediaPreview()" title="Cancelar envio (Esc)">✕</button>
+    <div class="ag-nome">${escHtml(f.name || '')}${_previewList.length > 1 ? ' · ' + (_anxSel + 1) + ' de ' + _previewList.length : ''}</div>
+    ${ehVideo ? `<video src="${url}" controls playsinline></video>` : `<img src="${url}" alt="">`}`;
+  ag.style.top = ma.offsetTop + 'px'; ag.style.height = ma.offsetHeight + 'px';
+  ag.classList.add('on');
+}
+function _anexoGrandeFecha() {
+  const ag = document.getElementById('anexo-grande'); if (!ag) return;
+  try { if (ag._url) URL.revokeObjectURL(ag._url); } catch (_) {} ag._url = null;
+  ag.innerHTML = ''; ag.classList.remove('on');
+}
+window.addEventListener('resize', () => { try { if (_trayAtiva) _anexoGrandePinta(); } catch (_) {} });
 function _fechaAnexosTray() {
   const tray = document.getElementById('anexos-tray');
   const inp = document.getElementById('msg-input');
   if (tray) { try { (tray._urls || []).forEach(u => URL.revokeObjectURL(u)); } catch (_) {} tray._urls = []; tray.innerHTML = ''; tray.classList.remove('on'); }
   if (inp && _trayAtiva) inp.placeholder = 'Mensagem';
   _trayAtiva = false;
+  try { _anexoGrandeFecha(); } catch (_) {} // (v648)
   try { updateSendMicButtons(); } catch (_) {}
 }
 // Esc com a bandeja aberta = cancela as fotos
