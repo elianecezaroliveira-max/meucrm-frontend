@@ -2580,7 +2580,7 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v657</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v658</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3467,7 +3467,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v657</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v658</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3541,7 +3541,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 657;
+const APP_VER = 658;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -4131,7 +4131,10 @@ function renderAccountsModal(accounts) {
   }
   el.innerHTML = accounts.map(acc => {
     const isEvo = acc.type === 'evolution';
-    const badge = isEvo
+    // 💻 (v658) conta "PC": as conversas do WhatsApp instalado no PC dela, trazidas pelo FILAZ Assistente
+    const badge = acc.pc
+      ? '<span style="background:#54656f;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;margin-left:6px;">PC</span>'
+      : isEvo
       ? '<span style="background:#25d366;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;margin-left:6px;">QR</span>'
       : '<span style="background:#1877f2;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;margin-left:6px;">API</span>';
     // Indicador de conexão (vem do servidor: QR em tempo real, API com cache de 5 min)
@@ -4142,7 +4145,9 @@ function renderAccountsModal(accounts) {
         : acc.status === 'disconnected'
           ? `<span style="color:#ef4444;font-size:11px;font-weight:600;margin-left:8px" title="${escHtml(acc.status_motivo || '')}">● Desconectada${acc.status_motivo ? ' — ' + escHtml(acc.status_motivo) : ''}</span>`
           : '';
-    const sub = isEvo
+    const sub = acc.pc
+      ? 'WhatsApp instalado no PC — pelo FILAZ Assistente' + (acc.assistente_aberto ? ' · assistente aberto' : ' · assistente fechado (abra para enviar por aqui)')
+      : isEvo
       ? (acc.phone_display ? `${acc.phone_display}` : 'WhatsApp Pessoal')
       : (acc.phone_display || '');
     // Qualidade / limite diário (só a API oficial) + quanto saiu por este número
@@ -4174,7 +4179,7 @@ function renderAccountsModal(accounts) {
       ${!isEvo && acc.status !== 'connected' ? `<button class="btn-rename" style="color:#1877f2" onclick="ativarNumeroMeta('${acc.id}')" title="Diagnóstico e ativação do número na Meta (registra na Cloud API)"><i class=ic-zap></i> Ativar na Meta</button>` : ''}
       ${!isEvo ? `<button class="btn-rename" onclick="trocarTokenDaConta('${acc.id}')" title="Trocar o token da Meta desta conta (quando vence ou a Meta recusa: 'Token desta conta inválido ou vencido')">🔑</button>` : ''}
       <button class="btn-rename" onclick="silencioEditar('${acc.id}')" title="Não perturbe: horário e dias em que este número não envia nada (bots esperam, gotejamento espera, envio à mão pede confirmação)">🌙</button>
-      <button class="btn-rename" onclick="openWaProfile('${acc.id}')" title="Perfil do número (foto, recado, descrição)"><i class=ic-user></i></button>
+      ${acc.pc ? '' : `<button class="btn-rename" onclick="openWaProfile('${acc.id}')" title="Perfil do número (foto, recado, descrição)"><i class=ic-user></i></button>`}
       <button class="btn-rename" onclick="renameAccount('${acc.id}')" title="Renomear conta"><i class=ic-pencil></i></button>
       <button class="btn-delete" onclick="deleteAccount('${acc.id}')" title="Remover conta"><i class=ic-trash></i></button>
     </div>`;
@@ -9204,6 +9209,7 @@ function _nomeOuTel(nome, phone) {
   return n ? n : fmtPhoneBR(phone);
 }
 function fmtPhoneBR(raw) {
+  if (/^0000\d{12}$/.test(String(raw || ''))) return 'WhatsApp do PC (sem número)'; // 💻 (v658) contato só com nome no WhatsApp do PC
   let p = _tel9(raw);
   if (p.startsWith('55') && p.length >= 12) p = p.slice(2);
   if (p.length === 11) return `(${p.slice(0,2)}) ${p.slice(2,7)}-${p.slice(7)}`;
@@ -9976,6 +9982,8 @@ function _ensurePresenceWatch() {
         return;
       }
       el.classList.remove('janela-conta'); // QR: presença (online/digitando) aparece normal
+      // 💻 (v658) conta PC: sai pelo WhatsApp instalado no PC — o assistente só envia com a conversa aberta lá
+      if (acc.pc) { el.textContent = 'WhatsApp do PC — para enviar daqui, deixe esta conversa aberta lá'; el.style.color = '#54656f'; el.style.display = 'block'; return; }
       const r = await fetch(SERVER_URL + '/presence?phone=' + encodeURIComponent(currentPhone) + '&account_id=' + encodeURIComponent(_accIdSel || currentAccountId));
       const d = await r.json();
       let t = '';
@@ -18876,6 +18884,7 @@ function cardHTML(c) {
 }
 
 function formatPhone(p) {
+  if (/^0000\d{12}$/.test(String(p || ''))) return 'WhatsApp do PC (sem número)'; // 💻 (v658)
   p = _tel9(p); // o 9 do celular volta antes de formatar
   if (!p) return '';
   if (p.startsWith('55') && p.length === 13) return `+55 (${p.slice(2,4)}) ${p.slice(4,9)}-${p.slice(9)}`;
