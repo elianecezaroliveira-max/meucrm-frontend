@@ -1,4 +1,4 @@
-// FILAZ Service Worker v32 — SÓ NOTIFICAÇÕES PUSH.
+// FILAZ Service Worker v33 — SÓ NOTIFICAÇÕES PUSH.
 // SEM cache de página e SEM interceptar requisições: o navegador busca o site
 // direto do servidor em todo carregamento — a versão nova SEMPRE aparece.
 
@@ -62,9 +62,17 @@ self.addEventListener('push', (event) => {
       if (data.sumir_ms > 0) { if (data.sumir_ms > 10) await new Promise(r => setTimeout(r, Math.min(10000, data.sumir_ms))); try { const ns = await self.registration.getNotifications({ tag: data.tag || 'vetra' }); for (const n of ns) n.close(); } catch (_) {} }
       return;
     }
-    return _mostraPush(data);
+    // ⏱️ (v33) confirma ao servidor que ESTE aparelho recebeu o aviso (mede onde o aviso atrasa). Vai em paralelo com
+    // a notificação e nunca a segura: se a confirmação falhar, o aviso aparece do mesmo jeito.
+    return Promise.all([_mostraPush(data), _confirmaRecebido(data)]);
   })());
 });
+function _confirmaRecebido(data) {
+  try {
+    if (!data || !data.pid || !/^https:\/\//.test(String(data.ack || ''))) return Promise.resolve();
+    return fetch(data.ack, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pid: data.pid }), keepalive: true }).then(() => {}, () => {});
+  } catch (_) { return Promise.resolve(); }
+}
 
 async function _acertaContador(data) {
   try {
