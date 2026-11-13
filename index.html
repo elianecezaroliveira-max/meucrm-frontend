@@ -2580,7 +2580,7 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v656</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v657</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3467,7 +3467,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v656</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v657</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3541,7 +3541,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 656;
+const APP_VER = 657;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -9466,6 +9466,7 @@ function lpFotoNotaVer(url) {
     else { j.style.right = '16px'; j.style.top = '72px'; j.style.width = '440px'; j.style.height = Math.round(window.innerHeight * 0.6) + 'px'; }
   }
   document.getElementById('lp-foto-flut-img').src = url;
+  j.dataset.fone = currentPhone || ''; // (v657) a janelinha é DESTE cliente: sai da tela quando ela sai do chat dele
   j.style.display = 'flex';
 }
 function _lpFotoFlutGuarda() { const j = document.getElementById('lp-foto-flut'); if (!j || j.style.display === 'none') return; try { localStorage.setItem('filaz_lp_foto_flut', JSON.stringify({ l: j.offsetLeft, t: j.offsetTop, w: j.offsetWidth, h: j.offsetHeight })); } catch (_) {} }
@@ -16191,6 +16192,9 @@ function _telaFechou() {
 // o app volta para onde estava em vez de cair sempre no Chat
 function _telaAtual(nome) {
   try { history.replaceState(null, '', location.pathname + location.search + (nome ? '#' + nome : '')); } catch (_) {}
+  // 🖼️ (v657) Ela (12/11, print): a foto da simulação do Sevirino continuava aberta na tela de Tarefas — "esse cartão
+  // da simulação só pode aparecer no chat do cliente". Saiu do chat DELE (outra tela ou outro cliente) → a janelinha fecha.
+  try { const jf = document.getElementById('lp-foto-flut'); if (jf && jf.style.display !== 'none' && nome !== 'chat=' + (jf.dataset.fone || '')) lpFotoNotaFecha(); } catch (_) {}
   // Trilho acompanha a tela (inclusive quando a tela é reaberta ao recarregar)
   try {
     const mapa = { pipeline: 'pipe', tarefas: 'tasks', bots: 'bots', ia: 'ia', automacao: 'auto', modelos: 'tmpl', respostas: 'quick', tags: 'tags', contas: 'acc', config: 'cfg', avisos: 'notice', relatorios: 'rel' };
