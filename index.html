@@ -2580,7 +2580,7 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v659</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v660</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3467,7 +3467,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v659</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v660</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3541,7 +3541,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 659;
+const APP_VER = 660;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5626,6 +5626,7 @@ function _iaSugAvalia(phone, msgs) {
   // pedido anterior desta fala falhou (ex.: servidor reiniciando no DEPLOY)? espera 20 s e tenta de novo
   if (_iaSugFalhas[chave] && Date.now() - _iaSugFalhas[chave] < 20000) { _iaSugPinta(); return; }
   _iaSugFeitas.add(chave);
+  _iaSugPinta(); // (v660) fala nova do lead: a sugestão da fala anterior sai da tela já, sem esperar a nova chegar
   clearTimeout(_iaSugTimer);
   // 1,5 s de folga: o lead costuma mandar duas ou três mensagens seguidas
   _iaSugTimer = setTimeout(() => _iaSugPede(phone, chave, false), 1500);
@@ -5670,7 +5671,8 @@ async function _iaSugPede(phone, chave, forcar) {
   itens = itens.map(it => { if (it.tipo !== 'texto') return it; const o = _iaSugTorto(it.texto); if (!o) return it; if (o.rapida) { const r = (quickReplies || []).find(q => String(q.title || '').toLowerCase().replace(/^\//, '') === o.rapida); return r ? { tipo: 'rapida', atalho: String(r.title).toLowerCase(), texto: r.message || '', previa: String(r.message || '').replace(/\s+/g, ' ').slice(0, 90), anexo: !!r.media_url } : null; } return null; }).filter(Boolean);
   if (!itens.length) { _iaSugPinta(); return; }
   const rotulo = it => it.tipo === 'rapida' ? '[rapida: /' + it.atalho + ']' : it.tipo === 'bot' ? '[bot: ' + it.nome + ']' : it.texto; // como a memória registra
-  _iaSug = { phone, chave, itens, msgs: itens.map(rotulo), usadas: new Set(), noCampo: null, enviadas: [], lead: d.lead || [], contexto: d.contexto || [], transcricoes: Array.isArray(d.transcricoes) ? d.transcricoes : [], explicacao: d.explicacao || null };
+  _iaSug = { phone, chave, itens, msgs: itens.map(rotulo), usadas: new Set(), noCampo: null, enviadas: [], lead: d.lead || [], contexto: d.contexto || [], transcricoes: Array.isArray(d.transcricoes) ? d.transcricoes : [], explicacao: d.explicacao || null,
+    minhas: currentPhone === phone ? _iaSugMinhasDepois() : 0 }; // (v660) o que eu já tinha mandado quando ela chegou — ver _iaSugVelha
   _iaSugPinta();
 }
 function _iaSugTorto(s) {
@@ -5680,9 +5682,30 @@ function _iaSugTorto(s) {
   return null;
 }
 let _iaSugVazia = null; // { phone, chave, motivo } — a última fala do lead ficou SEM sugestão
+// (v660) Ela (23/11): "Olha essa sugestão, eu tinha acabado de enviar o aceite" — a sugestão na tela ("Aguardo seu retorno
+// para enviar o aceite") era a da fala ANTERIOR do lead: ela respondeu do jeito dela (mandou o aceite), o cartão ficou
+// lá, o lead falou de novo e a sugestão velha continuou aparecendo embaixo da fala nova até a nova chegar.
+// A sugestão é de UMA fala do lead. Sai da tela (continua valendo para o aprendizado) quando:
+//  • o lead já falou de novo — a nova está a caminho;
+//  • eu já respondi do meu jeito, sem usar nenhuma das sugeridas — por aqui, pelo WhatsApp do PC ou pelo celular
+//    (se usei parte, o que sobrou continua à mão; se pedi outra no ↻, a nova aparece).
+function _iaSugMinhasDepois() { // quantas mensagens minhas há depois da última fala do lead
+  const reais = (currentMessages || []).filter(m => m && m.type !== 'note');
+  let n = 0; for (let i = reais.length - 1; i >= 0 && reais[i].direction === 'outbound'; i--) n++;
+  return n;
+}
+function _iaSugVelha() {
+  if (!_iaSug || _iaSug.phone !== currentPhone) return false;
+  const reais = (currentMessages || []).filter(m => m && m.type !== 'note');
+  let ultLead = null; for (let i = reais.length - 1; i >= 0; i--) { if (reais[i].direction !== 'outbound') { ultLead = reais[i]; break; } }
+  const ch = String(_iaSug.chave || '');
+  if (ultLead && !/\|denovo$/.test(ch) && ch !== _iaSug.phone + '|' + ultLead.id) return true;
+  if (_iaSug.usadas.size || _iaSug.noCampo != null) return false;
+  return !!(_iaSug.enviadas.length || _iaSugMinhasDepois() > (_iaSug.minhas || 0));
+}
 function _iaSugPinta() {
   const bar = document.getElementById('ia-sug-bar'); if (!bar) return;
-  if (!_iaSug || _iaSug.phone !== currentPhone || _iaSug.fechado || !_iaSugSobrou()) {
+  if (!_iaSug || _iaSug.phone !== currentPhone || _iaSug.fechado || !_iaSugSobrou() || _iaSugVelha()) {
     // sem sugestão para a última fala do lead: cartão curto com o motivo e o ↻ (some quando eu respondo)
     const reais = (currentMessages || []).filter(m => m && m.type !== 'note'); const ult = reais[reais.length - 1];
     if (_iaSugVazia && _iaSugVazia.phone === currentPhone && ult && ult.direction !== 'outbound' && _iaSugVazia.chave === currentPhone + '|' + ult.id && _iaSugAtiva()) {
@@ -11786,8 +11809,77 @@ function voiceSeek(id, ev){
 }
 
 // ── Reações (emoji) ──
-let _reactTone = localStorage.getItem('reactTone') || '';
+// 🎨 (v660) UM tom de pele para tudo: seletor da conversa, reações, respostas rápidas e bots.
+// Ela (23/11): "Várias vezes o emoji no PC volta a ficar com a cor amarela, sendo que eu já defini a cor antes".
+// O tom ficava só no navegador, e em DOIS lugares (reações no localStorage; o seletor num banco próprio dele): quando o
+// Chrome limpa os dados do site, tudo voltava ao amarelo. Agora fica na CONTA (PUT /prefs/emoji), por pessoa, e volta
+// sozinho ao abrir o FILAZ — junto com os "usados recentemente".
 const REACT_TONES = ['', '🏻', '🏼', '🏽', '🏾', '🏿'];
+function _emojiTomLocal() {
+  try {
+    const v = localStorage.getItem('vetra_emoji_tom');
+    if (v !== null && v !== '') { const n = parseInt(v, 10); if (n >= 0 && n <= 5) return n; }
+    const i = REACT_TONES.indexOf(localStorage.getItem('reactTone') || ''); return i > 0 ? i : null; // (escolha antiga, só das reações)
+  } catch (_) { return null; }
+}
+let _emojiTomN = _emojiTomLocal(); // null = ainda não escolheu
+let _reactTone = REACT_TONES[_emojiTomN || 0];
+function _emojiTom() { return _emojiTomN || 0; }
+// mãos e gestos que aceitam tom (os da tabela de reserva e das reações)
+const _EMOJI_COM_TOM = new Set(['👋','🤚','✋','👌','🤌','🤏','✌','🤞','🫰','🤟','🤘','🤙','👈','👉','👆','👇','☝','👍','👎','✊','👊','🤛','🤜','👏','🙌','👐','🤲','🙏','💪']);
+function _emojiComTom(e) {
+  const t = _emojiTom(); if (!t || !e) return e;
+  const base = String(e).replace(/️/g, '');
+  return _EMOJI_COM_TOM.has(base) ? base + REACT_TONES[t] : e;
+}
+function _emojiPrefsEnvia(corpo) { try { fetch(SERVER_URL + '/prefs/emoji', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) }).catch(() => {}); } catch (_) {} }
+let _emojiTomT = null;
+// origem: 'seletor' = ela escolheu no próprio seletor (ele já está no tom) · 'servidor' = veio da conta (não regrava lá)
+function _emojiTomDefine(n, origem) {
+  n = parseInt(n, 10); if (!(n >= 0 && n <= 5)) return;
+  const mudou = _emojiTomN !== n;
+  _emojiTomN = n; _reactTone = REACT_TONES[n];
+  try { localStorage.setItem('vetra_emoji_tom', String(n)); localStorage.setItem('reactTone', _reactTone); } catch (_) {}
+  if (origem !== 'seletor') { try { _emojiTomNoSeletor(); } catch (_) {} }
+  if (mudou && origem !== 'servidor') { clearTimeout(_emojiTomT); _emojiTomT = setTimeout(() => _emojiPrefsEnvia({ tom: n }), 600); }
+}
+// O seletor da conversa guarda o tom dele num banco do navegador (que pode ter sido limpo) e só lê quando é montado:
+// se estiver diferente do tom dela, grava o certo e tira/põe o seletor para ele reler.
+let _emojiTomAcertando = false;
+function _emojiTomNoSeletor() {
+  const p = (typeof emojiPickerInstance !== 'undefined') ? emojiPickerInstance : null;
+  if (!p || _emojiTomN == null || _emojiTomAcertando) return;
+  let db = null; try { db = p.database; } catch (_) {}
+  if (!db || typeof db.getPreferredSkinTone !== 'function') return; // o seletor de fora ainda não carregou
+  _emojiTomAcertando = true;
+  const alvo = _emojiTomN;
+  db.getPreferredSkinTone().then(atual => {
+    if (atual === alvo) return;
+    return db.setPreferredSkinTone(alvo).then(() => {
+      const pai = p.parentNode; if (!pai) return;
+      const prox = p.nextSibling; pai.removeChild(p);
+      setTimeout(() => { try { if (pai.isConnected) pai.insertBefore(p, prox && prox.parentNode === pai ? prox : null); } catch (_) {} }, 0);
+    });
+  }).catch(() => {}).then(() => { _emojiTomAcertando = false; });
+}
+let _emojiRecT = null;
+function _emojiRecentesSalva() { // os "usados recentemente" também vão para a conta (alguns segundos depois do último emoji)
+  clearTimeout(_emojiRecT);
+  _emojiRecT = setTimeout(() => {
+    let l = []; try { l = JSON.parse(localStorage.getItem('vetra_emoji_recent') || '[]') || []; } catch (_) {}
+    if (Array.isArray(l) && l.length) _emojiPrefsEnvia({ recentes: l.slice(0, 18) });
+  }, 4000);
+}
+// Ao abrir o FILAZ: o que está guardado na conta vale; se a conta ainda não tem e este navegador tem, guarda na conta.
+function _emojiPrefsDoServidor(p) {
+  if (!p || typeof p !== 'object') return; // servidor antigo: fica como está
+  if (p.tom != null) _emojiTomDefine(p.tom, 'servidor');
+  else if (_emojiTomN != null) _emojiPrefsEnvia({ tom: _emojiTomN });
+  let loc = []; try { loc = JSON.parse(localStorage.getItem('vetra_emoji_recent') || '[]') || []; } catch (_) {}
+  const doServ = Array.isArray(p.recentes) ? p.recentes.filter(x => typeof x === 'string' && x).slice(0, 18) : [];
+  if ((!Array.isArray(loc) || !loc.length) && doServ.length) { try { localStorage.setItem('vetra_emoji_recent', JSON.stringify(doServ)); } catch (_) {} try { _pintaEmojiRecentes(); } catch (_) {} }
+  else if (Array.isArray(loc) && loc.length && !doServ.length) _emojiPrefsEnvia({ recentes: loc.slice(0, 18) });
+}
 const REACT_TONEABLE = ['👍','🙏','👏']; // emojis que aceitam tom de pele
 function _reactEmojiList(){
   const base=['👍','❤️','😂','😮','😢','🙏','🔥','👏'];
@@ -11807,7 +11899,7 @@ function _renderReactBody(msgId){
           <div style="display:flex;gap:4px;align-items:center;justify-content:center;margin-top:5px;padding-top:5px;border-top:1px solid #e9edef">${tones}</div>`;
 }
 function setReactTone(tn, msgId){
-  _reactTone=tn; localStorage.setItem('reactTone', tn);
+  _emojiTomDefine(Math.max(0, REACT_TONES.indexOf(tn))); // (v660) o mesmo tom vale no seletor da conversa e fica na conta
   const pop=document.getElementById('react-picker');
   if(pop) pop.innerHTML=_renderReactBody(msgId);
 }
@@ -12488,6 +12580,8 @@ function toggleEmojiPicker(e) {
     emojiPickerInstance.setAttribute('locale', 'pt');
     emojiPickerInstance.setAttribute('skin-tone-emoji', '👋');
     emojiPickerInstance.addEventListener('emoji-click', (evt) => { _insereEmoji(evt.detail.unicode); });
+    // (v660) ela escolheu o tom aqui: vale também nas reações e fica guardado na conta
+    emojiPickerInstance.addEventListener('skin-tone-change', (evt) => { try { _emojiTomDefine(evt.detail && evt.detail.skinTone, 'seletor'); } catch (_) {} });
     // A barra de "favoritos" própria do seletor (por frequência) sai — em baixo
     // fica a NOSSA linha de "usados recentemente" (o último usado sempre primeiro)
     try {
@@ -12499,6 +12593,7 @@ function toggleEmojiPicker(e) {
   // A barra de digitação é remontada a cada conversa aberta: o seletor tem de
   // ser recolocado no quadro NOVO, senão abre uma caixa vazia.
   if (emojiPickerInstance.parentNode !== wrap) wrap.appendChild(emojiPickerInstance);
+  try { _emojiTomNoSeletor(); } catch (_) {} // (v660) o seletor abre no tom dela, mesmo se o navegador esqueceu
   if (!wrap.querySelector('#emoji-recentes')) {
     const rec = document.createElement('div'); rec.id = 'emoji-recentes'; wrap.appendChild(rec);
   }
@@ -12528,7 +12623,7 @@ function _emojiReserva(wrap) {
     cx = document.createElement('div');
     cx.id = 'emoji-reserva';
     cx.style.cssText = 'width:300px;max-width:78vw;height:280px;overflow-y:auto;background:#fff;border:1px solid #e9edef;border-radius:12px 12px 0 0;padding:8px;display:grid;grid-template-columns:repeat(8,1fr);gap:2px;box-sizing:border-box';
-    cx.innerHTML = _EMOJI_RESERVA.map(e => `<button type="button" title="${escHtml(e)}" onclick="_insereEmoji('${_jsAttr(e)}')" style="background:none;border:none;font-size:21px;line-height:1;padding:5px 0;cursor:pointer;border-radius:6px">${escHtml(e)}</button>`).join('');
+    cx.innerHTML = _EMOJI_RESERVA.map(_emojiComTom).map(e => `<button type="button" title="${escHtml(e)}" onclick="_insereEmoji('${_jsAttr(e)}')" style="background:none;border:none;font-size:21px;line-height:1;padding:5px 0;cursor:pointer;border-radius:6px">${escHtml(e)}</button>`).join('');
     wrap.insertBefore(cx, wrap.firstChild);
   }
   // Se o seletor de fora chegar depois, ele assume o lugar
@@ -12538,6 +12633,7 @@ function _emojiReserva(wrap) {
       customElements.whenDefined('emoji-picker').then(() => {
         const w = document.getElementById('emoji-picker-wrap');
         if (w) { const c = w.querySelector('#emoji-reserva'); if (c) c.remove(); if (emojiPickerInstance) emojiPickerInstance.style.display = ''; }
+        try { _emojiTomNoSeletor(); } catch (_) {}
       });
     }
   } catch (_) {}
@@ -12557,6 +12653,7 @@ function _insereEmoji(emoji) {
     lista = [emoji].concat(lista.filter(x => x !== emoji)).slice(0, 18);
     localStorage.setItem('vetra_emoji_recent', JSON.stringify(lista));
   } catch (_) {}
+  try { _emojiRecentesSalva(); } catch (_) {}
   _pintaEmojiRecentes();
   // Não fecha o picker automaticamente — usuário pode escolher mais
 }
@@ -12564,7 +12661,7 @@ function _insereEmoji(emoji) {
 // leve que abre junto do botão e insere onde o cursor está
 function _emojiRecentes() {
   let lista = []; try { lista = JSON.parse(localStorage.getItem('vetra_emoji_recent') || '[]') || []; } catch (_) {}
-  return lista.length ? lista : ['🙏', '👍', '😊', '❤️', '😂', '🙌', '✅', '😍', '🥰'];
+  return lista.length ? lista : ['🙏', '👍', '😊', '❤️', '😂', '🙌', '✅', '😍', '🥰'].map(_emojiComTom);
 }
 function _emojiGuardaRecente(emoji) {
   try {
@@ -12572,6 +12669,7 @@ function _emojiGuardaRecente(emoji) {
     lista = [emoji].concat(lista.filter(x => x !== emoji)).slice(0, 18);
     localStorage.setItem('vetra_emoji_recent', JSON.stringify(lista));
   } catch (_) {}
+  try { _emojiRecentesSalva(); } catch (_) {}
 }
 function _insereEmojiEm(taId, emoji, depois) {
   const ta = document.getElementById(taId); if (!ta || !emoji) return;
@@ -12588,7 +12686,7 @@ function _emojiMiniPinta(mini, taId) {
   const rec = _emojiRecentes().slice(0, 9);
   const bt = e => `<button type="button" onclick="_insereEmojiEm('${taId}','${_jsAttr(e)}')" style="background:none;border:none;font-size:21px;line-height:1;padding:4px;cursor:pointer;border-radius:6px">${escHtml(e)}</button>`;
   mini.innerHTML = `<div style="font-size:11px;color:#667781;padding:2px 4px 4px">Recentes</div><div style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:6px;border-bottom:1px solid #e9edef;padding-bottom:6px">${rec.map(bt).join('')}</div>`
-    + `<div style="display:grid;grid-template-columns:repeat(8,1fr);gap:2px">${_EMOJI_RESERVA.map(bt).join('')}</div>`;
+    + `<div style="display:grid;grid-template-columns:repeat(8,1fr);gap:2px">${_EMOJI_RESERVA.map(_emojiComTom).map(bt).join('')}</div>`;
 }
 function abrirEmojiPara(taId, btn, ev) {
   try { if (ev) ev.stopPropagation(); } catch (_) {}
@@ -12611,7 +12709,7 @@ function abrirEmojiPara(taId, btn, ev) {
 function _pintaEmojiRecentes() {
   const el = document.getElementById('emoji-recentes'); if (!el) return;
   let lista = []; try { lista = JSON.parse(localStorage.getItem('vetra_emoji_recent') || '[]') || []; } catch (_) {}
-  if (!lista.length) lista = ['🙏','👍','😊','❤️','😂','🙌','✅','😍','🥰'];
+  if (!lista.length) lista = ['🙏','👍','😊','❤️','😂','🙌','✅','😍','🥰'].map(_emojiComTom);
   el.innerHTML = '<span class="er-lab">Recentes</span>' + lista.slice(0, 9).map(e => `<button type="button" onclick="_insereEmoji('${_jsAttr(e)}')">${escHtml(e)}</button>`).join('');
 }
 
@@ -14467,6 +14565,7 @@ async function _carregaAcesso() {
     const t = r.headers.get('content-type') || '';
     if (r.ok && t.indexOf('json') >= 0) {
       const d = await r.json();
+      try { _emojiPrefsDoServidor(d && d.emoji); } catch (_) {} // (v660) tom de pele e emojis recentes guardados na conta
       if (d && d.papel) window._acesso = { papel: d.papel, fornecedor: !!d.fornecedor, plano: d.plano || null, dono: d.dono || null, email: d.email || null, liberado: d.liberado !== false, portaria: !!d.portaria, teste_gratis: d.teste_gratis || null, leads: d.leads || null, carregado: true };
     }
   } catch (_) {}
