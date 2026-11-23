@@ -2580,7 +2580,7 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v658</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v659</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3467,7 +3467,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v658</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v659</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3541,7 +3541,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 658;
+const APP_VER = 659;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -17963,7 +17963,7 @@ async function openAutomationPanel() {
 let _dripRegras = [], _dripCont = {}, _dripJanela = {}, _dripAgora = '';
 // ⏸ (v652) Ela (10/11): "pausar apenas o número que está com muitas falhas, em vez de parar o bot todo". O servidor
 // (v436) tira só esse número do rodízio; aqui aparecem os números fora, o botão para devolver e a escolha do modo.
-let _dripFora = [], _dripFalhasModo = 'numero', _dripForaPorRegra = {};
+let _dripFora = [], _dripFalhasModo = 'numero', _dripForaPorRegra = {}, _dripBotsPorRegra = {};
 function _dripForaRender() {
   const el = document.getElementById('drip-numeros-fora'); if (!el) return;
   const hm = iso => { try { return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); } catch (_) { return ''; } };
@@ -17994,6 +17994,7 @@ async function dripCarregar() {
     _dripRegras = Array.isArray(j.regras) ? j.regras : []; _dripCont = j.contagens || {}; _dripJanela = j.janela || {}; _dripAgora = j.agora_brasilia || '';
     _dripFora = Array.isArray(j.numeros_fora) ? j.numeros_fora : []; _dripFalhasModo = j.falhas_modo === 'regra' ? 'regra' : 'numero'; // (v652)
     _dripForaPorRegra = j.fora_por_regra || {}; // (v653)
+    _dripBotsPorRegra = j.bots_por_regra || {}; // (v659) quantos números tem o bot de cada regra
   } catch (_) {
     // Falha de rede: MANTÉM o que já estava na tela (antes sumia tudo e parecia
     // que as regras tinham sido apagadas)
@@ -18042,6 +18043,14 @@ function dripRender() {
     // (v653) números do rodízio desta regra fora (muitas falhas): o servidor divide o intervalo só pelos que rodam
     const _foraR = Math.max(0, parseInt((_dripForaPorRegra || {})[r.id], 10) || 0);
     const _numEf = Math.max(1, (r.numeros || 1) - _foraR);
+    // (v659) ela (23/11): "Quero que mostre aqui a quantidade de números que tem em cada bot" — vem do rodízio do próprio
+    // bot que a etapa de destino dispara (não do número digitado na regra); se os dois não batem, fica em laranja
+    const _botsR = ((_dripBotsPorRegra || {})[r.id] || []).map(b => {
+      const dif = !!b.rodizio && (r.numeros || 1) !== b.numeros;
+      const dica = (b.nomes && b.nomes.length ? 'Números no rodízio deste bot: ' + b.nomes.join(', ') : (b.rodizio ? 'Números no rodízio deste bot' : 'Este bot não tem rodízio: envia por um número só'))
+        + (dif ? ' — a regra está dividindo o intervalo por ' + (r.numeros || 1) + ' (ajuste no lápis se quiser igualar)' : '');
+      return ` · <span class="drip-bot" data-bot="${escHtml(String(b.id || ''))}" title="${escHtml(dica)}" style="color:${dif ? '#b45309' : '#00806a'};white-space:nowrap">bot ${escHtml(b.nome || 'Bot')}: <b>${parseInt(b.numeros, 10) || 1}</b> ${(parseInt(b.numeros, 10) || 1) === 1 ? 'número' : 'números'}</span>`;
+    }).join('');
     const nx = r.next_at ? new Date(r.next_at) : null;
     const dias = (r.dias && r.dias.length && r.dias.length < 7) ? r.dias.map(d => ['dom','seg','ter','qua','qui','sex','sáb'][d]).join('/') : 'todo dia';
     let st = '';
@@ -18063,7 +18072,7 @@ function dripRender() {
         ${(emAndamento || !!r.manual || (pendente && !rodando)) ? `<button onclick="dripParar(${i})" title="Parar: encerra o disparo manual e zera o progresso (nenhum lead volta)" style="background:#fff;color:#c0392b;border:1px solid #f1b0a7;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">■ Parar</button>` : ''}
         <button onclick="dripAuto(${i}, ${r.agendado ? 'false' : 'true'})" title="${r.agendado ? 'Desligar o disparo automático (dias/horários)' : 'Ligar o disparo automático nos dias/horários da regra'}" style="background:${r.agendado ? '#e7f7ef' : '#fff'};color:${r.agendado ? '#00806a' : '#667781'};border:1px solid ${r.agendado ? '#00a884' : '#d1d7db'};border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">Automático: ${r.agendado ? 'ligado' : 'desligado'}</button>
         <b style="color:#131c20">${escHtml(r.nome || 'Regra ' + (i + 1))}</b>
-        <span style="color:#54656f">${escHtml(stName[r.de] || '?')} → <b>${escHtml(stName[r.para] || '?')}</b> · 1 lead a cada ${Math.round(r.min_seg / _numEf / 60 * 10) / 10}–${Math.round(r.max_seg / _numEf / 60 * 10) / 10} min${_foraR ? ` <span style="color:#b45309" title="Números do rodízio fora por muitas falhas não contam: o intervalo é dividido só pelos que estão rodando">(${_foraR} fora do rodízio → divide por ${_numEf})</span>` : ''}${(r.numeros || 1) > 1 ? ` <span title="O intervalo de ${Math.round(r.min_seg / 60 * 10) / 10}–${Math.round(r.max_seg / 60 * 10) / 10} min é por número" style="color:#00806a">(${r.numeros} números)</span>` : ''}${r.dias && r.dias.length && r.dias.length < 7 ? ' · ' + r.dias.map(d => ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d]).join(', ') : ''}${r.hora_ini || r.hora_fim ? ' · ' + (r.hora_ini || '00:00') + '–' + (r.hora_fim || 'até esvaziar') : ''}</span>
+        <span style="color:#54656f">${escHtml(stName[r.de] || '?')} → <b>${escHtml(stName[r.para] || '?')}</b> · 1 lead a cada ${Math.round(r.min_seg / _numEf / 60 * 10) / 10}–${Math.round(r.max_seg / _numEf / 60 * 10) / 10} min${_foraR ? ` <span style="color:#b45309" title="Números do rodízio fora por muitas falhas não contam: o intervalo é dividido só pelos que estão rodando">(${_foraR} fora do rodízio → divide por ${_numEf})</span>` : ''}${(r.numeros || 1) > 1 ? ` <span title="O intervalo de ${Math.round(r.min_seg / 60 * 10) / 10}–${Math.round(r.max_seg / 60 * 10) / 10} min é por número" style="color:#00806a">(${r.numeros} números)</span>` : ''}${_botsR}${r.dias && r.dias.length && r.dias.length < 7 ? ' · ' + r.dias.map(d => ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d]).join(', ') : ''}${r.hora_ini || r.hora_fim ? ' · ' + (r.hora_ini || '00:00') + '–' + (r.hora_fim || 'até esvaziar') : ''}</span>
         <span style="flex:1;color:#667781;font-size:11.5px">${st}</span>
         <button onclick="dripEditar(${i})" title="Editar" style="background:#fff;border:1px solid #e9edef;border-radius:8px;padding:5px 9px;cursor:pointer;font-size:13px;margin-left:6px"><i class=ic-pencil></i></button>
         <button onclick="dripRemover(${i})" title="Remover" style="background:#fff;border:1px solid #f1b0a7;border-radius:8px;padding:5px 9px;color:#ef4444;cursor:pointer;font-size:13px;margin-left:8px">✕</button>
