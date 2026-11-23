@@ -2580,7 +2580,7 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v661</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v662</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3467,7 +3467,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v661</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v662</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3541,7 +3541,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 661;
+const APP_VER = 662;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -8416,6 +8416,11 @@ function abrirArquivo(url, tipo, nome) {
       <div id="fv-top" style="display:flex;align-items:center;gap:10px;padding:calc(8px + env(safe-area-inset-top)) 14px 8px;background:#111b21;color:#e9edef;flex-shrink:0">
         <span onclick="fecharArquivo()" title="Fechar (Esc)" style="cursor:pointer;font-size:24px;padding:2px 10px;line-height:1">‹</span>
         <span id="fv-nome" style="flex:1;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+        <!-- ↺ ↻ (v662) Girar a foto — ela (23/11), com um documento fotografado de lado: "Coloque a opção de girar a foto" -->
+        <span id="fv-giroctl" style="display:none;align-items:center;gap:2px;margin-right:6px">
+          <button id="fv-girar-esq" onclick="event.stopPropagation();fvGirar(-1)" title="Girar para a esquerda (Shift + R)" style="background:#202c33;color:#e9edef;border:none;border-radius:8px;width:34px;height:28px;font-size:17px;line-height:1;cursor:pointer">↺</button>
+          <button id="fv-girar-dir" onclick="event.stopPropagation();fvGirar(1)" title="Girar para a direita (R)" style="background:#202c33;color:#e9edef;border:none;border-radius:8px;width:34px;height:28px;font-size:17px;line-height:1;cursor:pointer">↻</button>
+        </span>
         <button id="fv-roda" onclick="event.stopPropagation();fvRodaTroca()" style="display:none;background:#202c33;color:#e9edef;border:none;border-radius:8px;height:28px;padding:0 8px;font-size:12px;cursor:pointer;margin-right:8px">🖱 roda: zoom</button>
         <span id="fv-zoomctl" style="display:none;align-items:center;gap:2px;margin-right:6px">
           <button onclick="event.stopPropagation();fvZoom(-1)" title="Diminuir (Ctrl −)" style="background:#202c33;color:#e9edef;border:none;border-radius:8px;width:30px;height:28px;font-size:16px;cursor:pointer">−</button>
@@ -8457,6 +8462,7 @@ function abrirArquivo(url, tipo, nome) {
   body.innerHTML = '<span style="color:#8696a0;font-size:13px;margin-top:36px">Abrindo…</span>';
   if (tipo !== 'img') { _fvFotos = []; _fvIdx = -1; } // navegação ‹ › é só para fotos
   { const cp = document.getElementById('fv-copiar'); if (cp) cp.style.display = tipo === 'pdf' ? '' : 'none'; }
+  { const gc = document.getElementById('fv-giroctl'); if (gc) gc.style.display = tipo === 'img' ? 'inline-flex' : 'none'; } // girar é só para foto
   if (tipo === 'img') {
     // Lista das fotos DESTA conversa para navegar com ‹ › (e setas do teclado)
     const semR = u => String(u).split('&_r=')[0];
@@ -8566,12 +8572,56 @@ function _fvPintaFoto(url) {
   const seta = (lado, dir, mostra) => mostra
     ? `<span onclick="event.stopPropagation();_fvNav(${dir})" style="position:fixed;${lado}:6px;top:50%;transform:translateY(-50%);width:40px;height:40px;border-radius:50%;background:rgba(0,0,0,.45);color:#fff;font-size:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:5;user-select:none">${dir < 0 ? '‹' : '›'}</span>`
     : '';
+  // (v662) foto que ela já girou abre girada: fica invisível só até carregar (sem piscar de lado)
   body.innerHTML =
-    `<img src="${url}" style="max-width:100%;max-height:calc(100vh - 78px);max-height:calc(100dvh - 78px);width:auto;height:auto;object-fit:contain;border-radius:4px">` +
+    `<img class="fv-foto" data-url="${escHtml(String(url).split('&_r=')[0])}" onload="_fvGiroAplica()" onerror="this.style.opacity=''" src="${url}" style="${_FV_FOTO_CSS}${_fvGiroDe(url) ? ';opacity:0' : ''}">` +
     seta('left', -1, tem && _fvIdx > 0) +
     seta('right', 1, tem && _fvIdx < _fvFotos.length - 1) +
     (tem ? `<span style="position:fixed;bottom:calc(10px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:rgba(0,0,0,.45);color:#fff;font-size:12px;border-radius:12px;padding:3px 10px;z-index:5">${_fvIdx + 1} de ${_fvFotos.length}</span>` : '');
 }
+// ↺ ↻ GIRAR A FOTO (v662) — ela (23/11), com um documento fotografado de lado: "Coloque a opção de girar a foto".
+// Gira só na tela (o arquivo salvo/baixado continua o original), de 90 em 90 graus. O giro de cada foto fica
+// lembrado neste navegador (as últimas 300), então o documento reabre do jeito que ela deixou. A foto girada
+// entra numa caixa com o tamanho JÁ girado — assim caber na tela, zoom e arrastar funcionam como numa foto normal.
+const _FV_FOTO_CSS = 'max-width:100%;max-height:calc(100vh - 78px);max-height:calc(100dvh - 78px);width:auto;height:auto;object-fit:contain;border-radius:4px';
+let _fvGiros = null;
+function _fvGiroChave(url) { const u = String(url || '').split('&_r=')[0]; const m = /\/media-proxy\/([^?&#]+)/.exec(u); return m ? m[1] : u.slice(-120); }
+function _fvGirosMapa() {
+  if (_fvGiros) return _fvGiros;
+  _fvGiros = {};
+  try { const o = JSON.parse(localStorage.getItem('filaz_fv_giros') || '{}'); if (o && typeof o === 'object' && !Array.isArray(o)) _fvGiros = o; } catch (_) {}
+  return _fvGiros;
+}
+function _fvGiroDe(url) { const g = Number(_fvGirosMapa()[_fvGiroChave(url)]) || 0; return (g === 90 || g === 180 || g === 270) ? g : 0; }
+function fvGirar(dir) {
+  const im = document.querySelector('#fv-zoom img.fv-foto'); if (!im) return;
+  const url = im.dataset.url || im.src, k = _fvGiroChave(url), m = _fvGirosMapa();
+  const g = (_fvGiroDe(url) + (dir < 0 ? 270 : 90)) % 360;
+  delete m[k]; if (g) m[k] = g; // a mexida mais recente vai para o fim da fila
+  try { const ks = Object.keys(m); while (ks.length > 300) delete m[ks.shift()]; localStorage.setItem('filaz_fv_giros', JSON.stringify(m)); } catch (_) {}
+  _fvZoomReset(); // girou: volta a 100% e mostra a foto inteira
+  _fvGiroAplica();
+}
+function _fvGiroAplica() {
+  const im = document.querySelector('#fv-zoom img.fv-foto'); if (!im) return;
+  const g = _fvGiroDe(im.dataset.url || im.src);
+  let cx = im.parentElement && im.parentElement.classList.contains('fv-giro-cx') ? im.parentElement : null;
+  if (!g || !im.naturalWidth || !im.naturalHeight) { // em pé (ou ainda carregando): exatamente como sempre foi
+    if (cx) cx.replaceWith(im);
+    im.style.cssText = _FV_FOTO_CSS + (g && !im.complete ? ';opacity:0' : '');
+    return;
+  }
+  const b = document.getElementById('fv-body');
+  const W = Math.max(80, ((b && b.clientWidth) || window.innerWidth) - 20), H = Math.max(80, window.innerHeight - 78);
+  const deitada = g === 90 || g === 270;
+  const lw = deitada ? im.naturalHeight : im.naturalWidth, lh = deitada ? im.naturalWidth : im.naturalHeight; // tamanho já girada
+  const s = Math.min(1, W / lw, H / lh); // cabe na tela, sem esticar além do tamanho real (igual à foto em pé)
+  const dw = Math.round(lw * s), dh = Math.round(lh * s);
+  if (!cx) { cx = document.createElement('div'); cx.className = 'fv-giro-cx'; im.replaceWith(cx); cx.appendChild(im); }
+  cx.style.cssText = `position:relative;flex-shrink:0;width:${dw}px;height:${dh}px`;
+  im.style.cssText = `position:absolute;left:50%;top:50%;width:${deitada ? dh : dw}px;height:${deitada ? dw : dh}px;max-width:none;max-height:none;border-radius:4px;transform:translate(-50%,-50%) rotate(${g}deg)`;
+}
+window.addEventListener('resize', () => { try { const ov = document.getElementById('file-viewer'); if (ov && ov.style.display !== 'none') _fvGiroAplica(); } catch (_) {} });
 function _fvNav(dir) {
   if (!_fvFotos.length) return;
   const novo = _fvIdx + dir;
@@ -8596,6 +8646,8 @@ document.addEventListener('keydown', (e) => {
     fvZoom(e.key === '0' ? 0 : (e.key === '-' || e.key === '_') ? -1 : 1);
     return;
   }
+  // (v662) R gira a foto para a direita; Shift + R para a esquerda
+  if ((e.key === 'r' || e.key === 'R') && !e.ctrlKey && !e.metaKey && !e.altKey && document.querySelector('#fv-zoom img.fv-foto')) { e.preventDefault(); fvGirar(e.shiftKey ? -1 : 1); return; }
   if (!_fvFotos.length) return;
   if (e.key === 'ArrowLeft') _fvNav(-1);
   else if (e.key === 'ArrowRight') _fvNav(1);
