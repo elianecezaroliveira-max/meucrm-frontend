@@ -2580,7 +2580,7 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v663</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v665</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3358,11 +3358,20 @@ window.addEventListener('load', initAuth);
   <div id="rel-topbar">
     <button class="btn-secondary" onclick="closeRelatorios()">← Voltar</button>
     <h2>Relatórios</h2>
-    <select id="rel-periodo" onchange="carregaRelatorios()" style="background:var(--rel-cartao);border:1px solid var(--rel-borda);color:var(--rel-tinta);border-radius:8px;padding:7px 10px;font-size:13px;font-family:inherit;outline:none">
-      <option value="7">Últimos 7 dias</option>
+    <!-- (v664) ela (23/11): "Eu quero poder escolher entre as janelas dos dias… queria ver só os de hoje e não consigo" -->
+    <select id="rel-periodo" onchange="relPeriodoMudou()" style="background:var(--rel-cartao);border:1px solid var(--rel-borda);color:var(--rel-tinta);border-radius:8px;padding:7px 10px;font-size:13px;font-family:inherit;outline:none">
+      <option value="hoje">Hoje</option>
+      <option value="ontem">Ontem</option>
+      <option value="7" selected>Últimos 7 dias</option>
       <option value="15">Últimos 15 dias</option>
       <option value="30">Últimos 30 dias</option>
+      <option value="mes">Este mês</option>
+      <option value="datas">Escolher datas…</option>
     </select>
+    <span id="rel-datas" style="display:none;align-items:center;gap:6px;font-size:12.5px;color:var(--rel-tinta)">
+      de <input type="date" id="rel-de" onchange="relPeriodoMudou(true)" style="background:var(--rel-cartao);border:1px solid var(--rel-borda);color:var(--rel-tinta);border-radius:8px;padding:6px 8px;font-size:13px;font-family:inherit;outline:none">
+      até <input type="date" id="rel-ate" onchange="relPeriodoMudou(true)" style="background:var(--rel-cartao);border:1px solid var(--rel-borda);color:var(--rel-tinta);border-radius:8px;padding:6px 8px;font-size:13px;font-family:inherit;outline:none">
+    </span>
     <button class="btn-secondary" onclick="carregaRelatorios(true)" title="Buscar os números de novo">Atualizar</button>
   </div>
   <div id="rel-corpo">Carregando…</div>
@@ -3467,7 +3476,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v663</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v665</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3541,7 +3550,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 663;
+const APP_VER = 665;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -15717,13 +15726,44 @@ function _relBarra(x, y, w, h, r) {
   return `M${x} ${y + h} L${x} ${y + rr} Q${x} ${y} ${x + rr} ${y} L${x + w - rr} ${y} Q${x + w} ${y} ${x + w} ${y + rr} L${x + w} ${y + h} Z`;
 }
 let _relDados = null, _relComoTabela = false;
+// (v664) O período do topo: Hoje, Ontem, Últimos 7/15/30 dias, Este mês ou "Escolher datas…" (de/até).
+// Devolve { de, ate, q } — q é o que vai para o servidor (os "últimos N dias" continuam indo como ?dias=N).
+function _relPeriodo() {
+  const v = String((document.getElementById('rel-periodo') || {}).value || '7');
+  const hoje = _relDiaBrt();
+  if (v === 'hoje') return { de: hoje, ate: hoje, q: 'de=' + hoje + '&ate=' + hoje };
+  if (v === 'ontem') { const o = _relDiaBrt(Date.now() - 86400000); return { de: o, ate: o, q: 'de=' + o + '&ate=' + o }; }
+  if (v === 'mes') { const i = hoje.slice(0, 8) + '01'; return { de: i, ate: hoje, q: 'de=' + i + '&ate=' + hoje }; }
+  if (v === 'datas') {
+    let a = (document.getElementById('rel-de') || {}).value || '', b = (document.getElementById('rel-ate') || {}).value || '';
+    if (!a && !b) return null; // ainda não escolheu
+    if (!a) a = b; if (!b) b = a; if (a > b) { const x = a; a = b; b = x; }
+    return { de: a, ate: b, q: 'de=' + a + '&ate=' + b };
+  }
+  const n = Math.max(1, parseInt(v, 10) || 7);
+  return { de: _relDiaBrt(Date.now() - (n - 1) * 86400000), ate: hoje, q: 'dias=' + n };
+}
+// trocou o período do topo: mostra/esconde as duas datas, leva o mesmo período para o cartão dos disparos e recarrega
+function relPeriodoMudou(dasDatas) {
+  const sel = document.getElementById('rel-periodo'), cx = document.getElementById('rel-datas');
+  const datas = !!sel && sel.value === 'datas';
+  if (cx) cx.style.display = datas ? 'inline-flex' : 'none';
+  if (datas && !dasDatas) { // acabou de escolher "Escolher datas…": começa em hoje, para ela só ajustar
+    const a = document.getElementById('rel-de'), b = document.getElementById('rel-ate'), hoje = _relDiaBrt();
+    if (a && !a.value) a.value = hoje; if (b && !b.value) b.value = hoje;
+    if (a) a.max = hoje; if (b) b.max = hoje;
+  }
+  const p = _relPeriodo(); if (!p) return;
+  _relDispDe = p.de; _relDispAte = p.ate; // o cartão "Disparos por número" acompanha (e continua podendo ser mudado nele)
+  carregaRelatorios();
+}
 async function carregaRelatorios(forcar) {
   const el = document.getElementById('rel-corpo'); if (!el) return;
-  const dias = (document.getElementById('rel-periodo') || {}).value || '7';
+  const per = _relPeriodo() || { q: 'dias=7' };
   el.innerHTML = '<div class="rel-vazio">Somando os números…</div>';
   _relDisp = null; // (v663) abrir ou atualizar os Relatórios conta os disparos de novo (as datas escolhidas ficam)
   try {
-    _relDados = await _apiJson(SERVER_URL + '/relatorios?dias=' + dias + (forcar ? '&t=' + Date.now() : ''));
+    _relDados = await _apiJson(SERVER_URL + '/relatorios?' + per.q + (forcar ? '&t=' + Date.now() : ''));
   } catch (e) {
     el.innerHTML = '<div class="rel-card"><div style="color:#ef4444;font-size:13px">' + escHtml(e.message || 'Não consegui carregar os relatórios.') + '</div></div>';
     return;
@@ -18311,20 +18351,38 @@ function dripRender() {
     else if (l.phone) st += ` · parou depois de ${escHtml(l.name || l.phone)}${l.motivo ? ' (' + (l.motivo === 'manual' ? 'disparo manual' : 'automático') + ')' : ''}`;
     if (l.erro) st += ` · <span style="color:#ef4444">${escHtml(l.erro)}</span>`;
     if ((r.manual || r.agendado) && _origensLigadas[r.de] > 1) st += ` · <span style="color:#b45309" title="Outra regra ligada também puxa leads desta mesma etapa — juntas elas movem o dobro">outra regra usa a mesma fila</span>`;
-    return `<div style="background:#f7f8fa;border:1px solid #e9edef;border-radius:8px;padding:7px 10px;margin-bottom:6px;font-size:12.5px">
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    // (v665) Ela (23/11), com as três regras cada uma numa linha só (botões, rota, ritmo, bot, dias, horário e situação
+    // tudo emendado): "Está muito bagunçado essas informações." Agora cada regra é um cartão em 4 faixas:
+    //   1) nome + rota (de → para) e, à direita, editar/remover
+    //   2) três caixinhas com rótulo: Ritmo · Dias e horário · Números do bot
+    //   3) a situação (rodando, aguardando o horário, concluído…)
+    //   4) os botões (Iniciar/Pausar, Parar, Automático) + a barra + "N movidos · N na fila"
+    // Os textos são os mesmos de antes — só mudaram de lugar.
+    const _rot = t => `<div style="font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#8696a0;margin-bottom:2px">${t}</div>`;
+    const _cx = (t, corpo) => `<div class="drip-cx" style="background:#fff;border:1px solid #e9edef;border-radius:8px;padding:6px 10px;min-width:0">${_rot(t)}<div style="color:#131c20;font-size:12.5px;line-height:1.4">${corpo}</div></div>`;
+    const _ritmoTxt = `1 lead a cada ${Math.round(r.min_seg / _numEf / 60 * 10) / 10}–${Math.round(r.max_seg / _numEf / 60 * 10) / 10} min${_foraR ? ` <span style="color:#b45309" title="Números do rodízio fora por muitas falhas não contam: o intervalo é dividido só pelos que estão rodando">(${_foraR} fora do rodízio → divide por ${_numEf})</span>` : ''}${(r.numeros || 1) > 1 ? ` <span title="O intervalo de ${Math.round(r.min_seg / 60 * 10) / 10}–${Math.round(r.max_seg / 60 * 10) / 10} min é por número" style="color:#00806a">(${r.numeros} números)</span>` : ''}`;
+    const _temDias = !!(r.dias && r.dias.length && r.dias.length < 7), _temHora = !!(r.hora_ini || r.hora_fim);
+    const _quandoTxt = (_temDias ? r.dias.map(d => ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d]).join(', ') : 'Todos os dias') + (_temHora ? ' · ' + (r.hora_ini || '00:00') + '–' + (r.hora_fim || 'até esvaziar') : '');
+    const _botsTxt = _botsR.replace(/^ · /, '').replace(/<\/span> · <span/g, '</span><br><span');
+    return `<div class="drip-regra" style="background:#f7f8fa;border:1px solid #e9edef;border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12.5px">
+      <div class="drip-topo" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <b class="drip-nome" style="color:#131c20;font-size:14px">${escHtml(r.nome || 'Regra ' + (i + 1))}</b>
+        <span class="drip-rota" style="color:#54656f;flex:1;min-width:120px">${escHtml(stName[r.de] || '?')} → <b>${escHtml(stName[r.para] || '?')}</b></span>
+        <button onclick="dripEditar(${i})" title="Editar" style="background:#fff;border:1px solid #e9edef;border-radius:8px;padding:5px 9px;cursor:pointer;font-size:13px"><i class=ic-pencil></i></button>
+        <button onclick="dripRemover(${i})" title="Remover" style="background:#fff;border:1px solid #f1b0a7;border-radius:8px;padding:5px 9px;color:#ef4444;cursor:pointer;font-size:13px">✕</button>
+      </div>
+      <div class="drip-dados" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px;margin-top:8px">
+        ${_cx('Ritmo', _ritmoTxt)}
+        ${_cx('Dias e horário', _quandoTxt)}
+        ${_botsTxt ? _cx('Números do bot', _botsTxt) : ''}
+      </div>
+      <div class="drip-situacao" style="margin-top:8px;color:#667781;font-size:12px;line-height:1.45">${st}</div>
+      <div class="drip-acoes" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px">
         ${soAguardando ? '<span style="background:#e7f7ef;color:#00806a;border:1px solid #c8ecd9;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;white-space:nowrap">● Ligado</span>' : `<button onclick="dripToggle(${i}, ${podeDesligar ? 'false' : 'true'})" title="${podeDesligar ? 'Pausar tudo (manual e automático); o progresso fica guardado' : (pendente ? 'Retomar de onde parou (ignora dia/horário)' : 'Começar agora, do zero (ignora dia/horário)')}" style="background:${podeDesligar ? '#fff' : '#00a884'};color:${podeDesligar ? '#b45309' : '#fff'};border:1px solid ${podeDesligar ? '#f0c27a' : '#00a884'};border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">${podeDesligar ? '❚❚ Pausar' : (pendente ? '▶ Retomar' : '▶ Iniciar')}</button>`}
         ${(emAndamento || !!r.manual || (pendente && !rodando)) ? `<button onclick="dripParar(${i})" title="Parar: encerra o disparo manual e zera o progresso (nenhum lead volta)" style="background:#fff;color:#c0392b;border:1px solid #f1b0a7;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">■ Parar</button>` : ''}
         <button onclick="dripAuto(${i}, ${r.agendado ? 'false' : 'true'})" title="${r.agendado ? 'Desligar o disparo automático (dias/horários)' : 'Ligar o disparo automático nos dias/horários da regra'}" style="background:${r.agendado ? '#e7f7ef' : '#fff'};color:${r.agendado ? '#00806a' : '#667781'};border:1px solid ${r.agendado ? '#00a884' : '#d1d7db'};border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">Automático: ${r.agendado ? 'ligado' : 'desligado'}</button>
-        <b style="color:#131c20">${escHtml(r.nome || 'Regra ' + (i + 1))}</b>
-        <span style="color:#54656f">${escHtml(stName[r.de] || '?')} → <b>${escHtml(stName[r.para] || '?')}</b> · 1 lead a cada ${Math.round(r.min_seg / _numEf / 60 * 10) / 10}–${Math.round(r.max_seg / _numEf / 60 * 10) / 10} min${_foraR ? ` <span style="color:#b45309" title="Números do rodízio fora por muitas falhas não contam: o intervalo é dividido só pelos que estão rodando">(${_foraR} fora do rodízio → divide por ${_numEf})</span>` : ''}${(r.numeros || 1) > 1 ? ` <span title="O intervalo de ${Math.round(r.min_seg / 60 * 10) / 10}–${Math.round(r.max_seg / 60 * 10) / 10} min é por número" style="color:#00806a">(${r.numeros} números)</span>` : ''}${_botsR}${r.dias && r.dias.length && r.dias.length < 7 ? ' · ' + r.dias.map(d => ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][d]).join(', ') : ''}${r.hora_ini || r.hora_fim ? ' · ' + (r.hora_ini || '00:00') + '–' + (r.hora_fim || 'até esvaziar') : ''}</span>
-        <span style="flex:1;color:#667781;font-size:11.5px">${st}</span>
-        <button onclick="dripEditar(${i})" title="Editar" style="background:#fff;border:1px solid #e9edef;border-radius:8px;padding:5px 9px;cursor:pointer;font-size:13px;margin-left:6px"><i class=ic-pencil></i></button>
-        <button onclick="dripRemover(${i})" title="Remover" style="background:#fff;border:1px solid #f1b0a7;border-radius:8px;padding:5px 9px;color:#ef4444;cursor:pointer;font-size:13px;margin-left:8px">✕</button>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
-        <div style="flex:1;height:8px;background:#e9edef;border-radius:6px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${rodando ? '#00a884' : '#b0bec5'};border-radius:6px;transition:width .5s"></div></div>
-        <span style="font-size:11.5px;color:#54656f;white-space:nowrap"><b>${feitos}</b> movidos · <b>${rest === undefined ? '?' : rest}</b> na fila${total ? ' · ' + pct + '%' : ''}</span>
+        <div style="flex:1;min-width:140px;height:8px;background:#e9edef;border-radius:6px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${rodando ? '#00a884' : '#b0bec5'};border-radius:6px;transition:width .5s"></div></div>
+        <span class="drip-conta" style="font-size:12px;color:#54656f;white-space:nowrap"><b>${feitos}</b> movidos · <b>${rest === undefined ? '?' : rest}</b> na fila${total ? ' · ' + pct + '%' : ''}</span>
       </div>
     </div>`;
   }).join('');
