@@ -2580,7 +2580,7 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v660</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v661</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3467,7 +3467,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v660</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v661</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3541,7 +3541,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 660;
+const APP_VER = 661;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -5998,7 +5998,20 @@ function _ditarCorrige(t) {
 function _ditarDinheiro(t) {
   // "5 centavos" = ,05; "1532,5" (depois da vírgula) = ,50
   const fmt = (inteiro, cent, falado) => { const n = String(inteiro || '').replace(/\D/g, ''); if (!n) return null; const c = String(cent || '00'); return 'R$' + n.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',' + (falado ? c.padStart(2, '0') : c.padEnd(2, '0')).slice(-2); };
+  // (v661) Ela (23/11): ditou a parcela e saiu "apenas a parcela de 272 e 01 está apta" — "Deveria ser R$272,01".
+  // Centavos falados sem dizer "reais"/"centavos" ("duzentos e setenta e dois e zero um"). Vira dinheiro quando:
+  //  a) já vem com R$ ou "reais":  "R$ 272 e 01", "272 reais e 01";
+  //  b) os centavos vêm com zero na frente ("e 01", "e 05") — ninguém dita isso para outra coisa;
+  //  c) vem depois de palavra de valor, no singular: "parcela de 272 e 15", "valor liberado de 5869 e 35", "saldo de…".
+  // Nunca quando depois vem unidade ("120 e 84 meses", "8 e 10 parcelas", "10 e 15 dias") nem em "parcelas de 300 e 50"
+  // (plural = dois valores), dia/contrato/banco ("dias 30 e 01").
+  const UN = '(?!\\d)(?![.,]\\d)(?!\\s*(?:mes|mês|meses|vezes|x\\b|parcelas?|dias?|anos?|horas?|minutos?|%|por\\s+cento|contratos?|reais|real|centavos?)(?![\\p{L}\\p{N}]))';
+  const naoValor = /(?:\bdias?|\bentre|\b[àa]s|\bdas|\bn[ºo°]\.?|\bn[úu]meros?|\bcontratos?|\bbancos?|\bitem|\bitens|\bparcelas|\bvalores|\bsaldos)\s*$/i;
   return String(t || '')
+    .replace(new RegExp('\\b[rR]\\$\\s*(\\d[\\d.]*)\\s+e\\s+(\\d{2})' + UN, 'gu'), (m, i, c) => fmt(i, c, true) || m)
+    .replace(new RegExp('(\\d[\\d.]*)\\s+reais?\\s+e\\s+(\\d{2})' + UN, 'giu'), (m, i, c) => fmt(i, c, true) || m)
+    .replace(new RegExp('\\b((?:parcela|valor|saldo|troco|margem|total|desconto|diferença)\\s+(?:[\\p{L}]+\\s+){0,3}?de|liberação\\s+de|libera(?:do|da|r|ndo)?|liberou)\\s+(\\d[\\d.]*)\\s+e\\s+(\\d{2})' + UN, 'giu'), (m, antes, i, c) => { const v = fmt(i, c, true); return v ? antes + ' ' + v : m; })
+    .replace(new RegExp('(^|[^\\d.,$\\p{L}\\p{N}])(\\d[\\d.]*)\\s+e\\s+(0\\d)' + UN, 'gu'), (m, a, i, c, pos, tudo) => { if (naoValor.test(String(tudo).slice(0, pos + a.length))) return m; const v = fmt(i, c, true); return v ? a + v : m; })
     .replace(/(\d[\d.]*)(?:,(\d{1,2}))?\s+reais?(?:\s+e\s+(\d{1,2})\s+centavos?)?/gi, (m, i, c, c2) => fmt(i, c2 || c, !!c2) || m)
     .replace(/\b[rR]\$\s*(\d[\d.]*)(?:,(\d{1,2}))?/g, (m, i, c) => fmt(i, c) || m);
 }
