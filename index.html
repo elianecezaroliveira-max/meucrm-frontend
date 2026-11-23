@@ -2580,7 +2580,7 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v662</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v663</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3467,7 +3467,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v662</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v663</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3541,7 +3541,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 662;
+const APP_VER = 663;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -15721,6 +15721,7 @@ async function carregaRelatorios(forcar) {
   const el = document.getElementById('rel-corpo'); if (!el) return;
   const dias = (document.getElementById('rel-periodo') || {}).value || '7';
   el.innerHTML = '<div class="rel-vazio">Somando os números…</div>';
+  _relDisp = null; // (v663) abrir ou atualizar os Relatórios conta os disparos de novo (as datas escolhidas ficam)
   try {
     _relDados = await _apiJson(SERVER_URL + '/relatorios?dias=' + dias + (forcar ? '&t=' + Date.now() : ''));
   } catch (e) {
@@ -15745,6 +15746,7 @@ function desenhaRelatorios() {
     <div class="rel-tile"><b>${d.resposta && d.resposta.ate10_pct != null ? d.resposta.ate10_pct + '%' : '—'}</b><span>Respondidas em até 10 min</span><small>${d.sem_resposta && d.sem_resposta.n ? _relN(d.sem_resposta.n) + ' conversa(s) esperando resposta agora' : 'nenhuma conversa esperando resposta'}</small></div>
   </div>`;
 
+  html += _relDispCartao(); // 📤 (v663) disparos por número, com as datas dele — logo abaixo dos números do topo
   if (vazio) {
     html += `<div class="rel-card" id="rel-card-custos">
       <h3>Mensagens cobradas pela Meta</h3>
@@ -15754,6 +15756,7 @@ function desenhaRelatorios() {
     html += `<div class="rel-card"><div class="rel-vazio">Ainda não há movimento neste período.<br>Assim que as conversas começarem, os números aparecem aqui sozinhos.</div></div>`;
     el.innerHTML = html;
     carregaCustos();
+    carregaDisparos(true);
     return;
   }
   if (d.limitado) {
@@ -15820,6 +15823,84 @@ function desenhaRelatorios() {
   el.innerHTML = html;
   _relLigaDicas();
   carregaCustos();   // o cartão da conta da Meta tem o mês dele, carrega em separado
+  carregaDisparos(true); // 📤 o cartão dos disparos tem as datas dele
+}
+// 📤 DISPAROS POR NÚMERO (v663) — ela (23/11): "Eu quero um lugar onde eu consiga ver quantos disparos eu fiz de cada
+// número, sem contar os que deram erro… De tal dia a tal dia. Foram tantos disparos de tal número."
+// Cartão dos Relatórios com as DUAS datas dele (não segue o "Últimos 7 dias" do topo). Disparo = modelo enviado.
+let _relDisp = null, _relDispDe = '', _relDispAte = '', _relDispPorDia = false, _relDispErro = '', _relDispPed = 0;
+function _relDiaBrt(ms) { return new Date((ms == null ? Date.now() : ms) - 3 * 3600000).toISOString().slice(0, 10); }
+function _relDispCartao() {
+  if (!_relDispAte) { _relDispAte = _relDiaBrt(); _relDispDe = _relDiaBrt(Date.now() - 6 * 86400000); }
+  const inp = 'background:var(--rel-cartao);border:1px solid var(--rel-borda);color:var(--rel-tinta);border-radius:8px;padding:6px 8px;font-size:13px;font-family:inherit;outline:none';
+  return `<div class="rel-card" id="rel-card-disparos">
+    <h3>Disparos por número</h3>
+    <div class="rel-sub">Quantos modelos cada número enviou no período que você escolher. Os que deram erro não entram na conta.</div>
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:10px;font-size:12.5px;color:var(--rel-tinta2, var(--rel-tinta))">
+      <label>De <input type="date" id="rel-disp-de" value="${_relDispDe}" max="${_relDiaBrt()}" onchange="relDispDatas()" style="${inp}"></label>
+      <label>até <input type="date" id="rel-disp-ate" value="${_relDispAte}" max="${_relDiaBrt()}" onchange="relDispDatas()" style="${inp}"></label>
+      <button class="pf-topbtn" style="padding:5px 9px;font-size:11.5px" onclick="relDispAtalho('hoje')">Hoje</button>
+      <button class="pf-topbtn" style="padding:5px 9px;font-size:11.5px" onclick="relDispAtalho('ontem')">Ontem</button>
+      <button class="pf-topbtn" style="padding:5px 9px;font-size:11.5px" onclick="relDispAtalho('7')">7 dias</button>
+      <button class="pf-topbtn" style="padding:5px 9px;font-size:11.5px" onclick="relDispAtalho('mes')">Este mês</button>
+    </div>
+    <div id="rel-disparos"><div class="rel-vazio">Contando os disparos…</div></div>
+  </div>`;
+}
+function relDispAtalho(q) {
+  const hoje = _relDiaBrt();
+  if (q === 'hoje') { _relDispDe = hoje; _relDispAte = hoje; }
+  else if (q === 'ontem') { _relDispDe = _relDispAte = _relDiaBrt(Date.now() - 86400000); }
+  else if (q === 'mes') { _relDispDe = hoje.slice(0, 8) + '01'; _relDispAte = hoje; }
+  else { _relDispDe = _relDiaBrt(Date.now() - 6 * 86400000); _relDispAte = hoje; }
+  const a = document.getElementById('rel-disp-de'), b = document.getElementById('rel-disp-ate'); if (a) a.value = _relDispDe; if (b) b.value = _relDispAte;
+  carregaDisparos();
+}
+function relDispDatas() {
+  const a = (document.getElementById('rel-disp-de') || {}).value, b = (document.getElementById('rel-disp-ate') || {}).value;
+  if (!a || !b) return; // ainda digitando a data
+  _relDispDe = a <= b ? a : b; _relDispAte = a <= b ? b : a;
+  carregaDisparos();
+}
+async function carregaDisparos(soPinta) {
+  const el = document.getElementById('rel-disparos'); if (!el) return;
+  if (soPinta && _relDisp && _relDisp.de === _relDispDe && _relDisp.ate === _relDispAte) { desenhaDisparos(); return; } // a tela foi redesenhada: não busca de novo
+  const ped = ++_relDispPed;
+  el.innerHTML = '<div class="rel-vazio">Contando os disparos…</div>';
+  try {
+    const d = await _apiJson(SERVER_URL + '/relatorios/disparos?de=' + _relDispDe + '&ate=' + _relDispAte);
+    if (ped !== _relDispPed) return; // ela já trocou a data de novo
+    _relDisp = d; _relDispErro = '';
+  } catch (e) { if (ped !== _relDispPed) return; _relDisp = null; _relDispErro = e.message || 'Não consegui contar os disparos.'; }
+  desenhaDisparos();
+}
+function desenhaDisparos() {
+  const el = document.getElementById('rel-disparos'); if (!el) return;
+  if (_relDispErro) { el.innerHTML = '<div style="color:#ef4444;font-size:13px">' + escHtml(_relDispErro) + '</div>'; return; }
+  const d = _relDisp; if (!d) return;
+  const br = iso => String(iso || '').slice(8, 10) + '/' + String(iso || '').slice(5, 7) + '/' + String(iso || '').slice(0, 4);
+  const ns = d.numeros || [];
+  const periodo = d.de === d.ate ? 'em ' + br(d.de) : 'de ' + br(d.de) + ' a ' + br(d.ate);
+  let h = `<div style="font-size:13px;color:var(--rel-tinta);margin-bottom:8px"><b id="rel-disp-total" style="font-size:20px">${_relN(d.total)}</b> disparo(s) ${periodo}`
+    + (d.erros ? ` <span style="color:var(--rel-tinta3)">· ${_relN(d.erros)} com erro (fora da conta)</span>` : '') + '</div>';
+  if (d.limitado) h += '<div style="font-size:12px;color:#8c6d1f;background:#fff7e6;border:1px solid #ffd591;border-radius:8px;padding:6px 9px;margin-bottom:8px">Período muito grande: contei os 60 mil disparos mais antigos dele. Escolha menos dias para o número exato.</div>';
+  if (!ns.length) { el.innerHTML = h + '<div class="rel-vazio">Nenhum número de API cadastrado.</div>'; return; }
+  const nome = x => `<b>${escHtml(x.nome || '—')}</b>${x.numero && x.numero !== x.nome ? '<div style="font-size:10.5px;color:var(--rel-tinta3)">' + escHtml(x.numero) + '</div>' : ''}`;
+  if (!_relDispPorDia) {
+    h += `<table class="rel-tab" id="rel-disp-tab"><thead><tr><th>Número</th><th>Disparos</th><th>Com erro (não contam)</th></tr></thead>
+      <tbody>${ns.map(x => `<tr data-conta="${escHtml(String(x.chave))}"><td>${nome(x)}</td><td><b>${_relN(x.disparos)}</b></td><td style="color:var(--rel-tinta3)">${x.erros ? _relN(x.erros) : '—'}</td></tr>`).join('')}
+      <tr><td><b>Total</b></td><td><b>${_relN(d.total)}</b></td><td style="color:var(--rel-tinta3)">${d.erros ? _relN(d.erros) : '—'}</td></tr></tbody></table>`;
+  } else {
+    const cols = ns.filter(x => x.disparos > 0);
+    const dias = (d.dias || []).slice().reverse(); // o dia mais recente em cima
+    h += !cols.length ? '<div class="rel-vazio">Nenhum disparo neste período.</div>'
+      : `<div style="overflow-x:auto"><table class="rel-tab" id="rel-disp-tab-dia"><thead><tr><th>Dia</th>${cols.map(x => '<th>' + escHtml(x.nome || '—') + '</th>').join('')}<th>Total do dia</th></tr></thead>
+      <tbody>${dias.map(dd => `<tr data-dia="${dd.dia}"><td>${br(dd.dia)}</td>${cols.map(x => '<td>' + (dd.por && dd.por[x.chave] ? _relN(dd.por[x.chave]) : '<span style="color:var(--rel-tinta3)">—</span>') + '</td>').join('')}<td><b>${_relN(dd.total)}</b></td></tr>`).join('')}
+      <tr><td><b>Total</b></td>${cols.map(x => '<td><b>' + _relN(x.disparos) + '</b></td>').join('')}<td><b>${_relN(d.total)}</b></td></tr></tbody></table></div>`;
+  }
+  h += `<div style="display:flex;align-items:center;gap:10px;margin-top:8px"><button class="pf-topbtn" id="rel-disp-modo" style="padding:4px 9px;font-size:11.5px" onclick="_relDispPorDia=!_relDispPorDia;desenhaDisparos()">${_relDispPorDia ? 'Ver o total por número' : 'Ver dia a dia'}</button>
+    <span style="font-size:11.5px;color:var(--rel-tinta3)">Disparo = modelo enviado pelo número (bot, gotejamento ou à mão). Dias no horário de Brasília.</span></div>`;
+  el.innerHTML = h;
 }
 function _relGraficoDias(d) {
   const dias = d.por_dia || [];
