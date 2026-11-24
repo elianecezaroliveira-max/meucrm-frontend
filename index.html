@@ -1504,6 +1504,9 @@ body.dark .tt-grade { background:#111b21 }
   /* PRÉVIA DA FOTO: tela cheia e a legenda SEMPRE acima do teclado.
      A altura de verdade quem manda é o JS (área visível da tela). */
   #media-preview-overlay { padding: 0 !important; align-items: stretch !important; }
+  /* (v669) fundo escuro na TELA INTEIRA atrás da prévia: mesmo que ela esteja encolhida até o teclado, nunca aparece
+     uma faixa branca do app por baixo */
+  #media-preview-overlay::before { content: ''; position: fixed; inset: 0; background: #0b141a; z-index: -1; }
   #media-preview-overlay .mp-card { max-width: 100% !important; width: 100%; height: 100%; max-height: none !important; border-radius: 0 !important; background: #0b141a !important; }
   #media-preview-overlay .mp-top { border-bottom: none !important; background: rgba(11,20,26,.55); }
   #media-preview-overlay .mp-top b { color: #fff; }
@@ -2580,7 +2583,7 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v668</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v669</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3476,7 +3479,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v668</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v669</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3550,7 +3553,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 668;
+const APP_VER = 669;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -12431,6 +12434,13 @@ function _tiraTempQuandoChegar(tempEl, texto, tent) {
 // Legenda da foto/arquivo cresce com o texto (Shift+Enter = nova linha; Enter = enviar)
 // A prévia passa a ocupar exatamente a área VISÍVEL da tela. É isso que põe a
 // legenda acima do teclado; a foto fica com o que sobrar.
+// (v669) Ela (24/11): "às vezes eu tô na prévia e aparece uma parte branca na parte de baixo, parece que é algo do
+// teclado". A prévia (e o próprio app) encolhem até a borda do teclado, mas só voltavam ao tamanho cheio quando o
+// iPhone AVISAVA que o teclado fechou — e ele nem sempre avisa. Ficava a faixa de baixo descoberta (branca).
+// Regra nova, a mesma do corpo do app (v617): sem campo em foco não existe teclado aberto → tela cheia. E a
+// conferência é refeita quando o campo perde o foco, quando o app volta para a frente e, com a prévia aberta,
+// duas vezes por segundo.
+function _campoEmFoco() { const e = document.activeElement; if (!e) return false; const t = e.tagName; return t === 'TEXTAREA' || t === 'SELECT' || !!e.isContentEditable || (t === 'INPUT' && !/^(checkbox|radio|button|submit|file|range|color)$/i.test(e.type || '')); }
 function _mpAjustaTela() {
   const ov = document.getElementById('media-preview-overlay');
   if (!ov || ov.style.display !== 'flex') return;
@@ -12440,6 +12450,13 @@ function _mpAjustaTela() {
   if (!noCelular || !vv) { // computador: nada disso é preciso
     ov.style.top = '0'; ov.style.height = ''; ov.style.bottom = '0'; // '' desfazia o inset:0 e o fundo encolhia
     document.documentElement.style.removeProperty('--mp-img');
+    return;
+  }
+  if (!_campoEmFoco()) { // teclado fechado: a prévia ocupa a tela INTEIRA, diga o iPhone o que disser da área visível
+    ov.style.top = '0'; ov.style.height = ''; ov.style.bottom = '0';
+    const cheia = Math.max(window.innerHeight || 0, vv.height || 0);
+    const topo0 = ov.querySelector('.mp-top'), barra0 = ov.querySelector('.mp-bar');
+    document.documentElement.style.setProperty('--mp-img', Math.max(110, Math.round(cheia - ((topo0 && topo0.offsetHeight) || 44) - ((barra0 && barra0.offsetHeight) || 66) - 6)) + 'px');
     return;
   }
   ov.style.top = (vv.offsetTop || 0) + 'px';
@@ -12454,12 +12471,22 @@ function _mpLigaTeclado() {
   window._mpVV = () => _mpAjustaTela();
   window.visualViewport.addEventListener('resize', window._mpVV);
   window.visualViewport.addEventListener('scroll', window._mpVV);
+  // (v669) o iPhone nem sempre avisa que o teclado fechou: confere por conta própria enquanto a prévia está aberta
+  window._mpFoco = () => { setTimeout(window._mpVV || (() => {}), 250); setTimeout(() => { try { _mpAjustaTela(); } catch (_) {} }, 900); };
+  document.addEventListener('focusout', window._mpFoco, true);
+  document.addEventListener('focusin', window._mpFoco, true);
+  document.addEventListener('visibilitychange', window._mpVV);
+  window.addEventListener('resize', window._mpVV);
+  window._mpVigia = setInterval(() => { try { _mpAjustaTela(); } catch (_) {} }, 500);
 }
 function _mpDesligaTeclado() {
   if (window.visualViewport && window._mpVV) {
     window.visualViewport.removeEventListener('resize', window._mpVV);
     window.visualViewport.removeEventListener('scroll', window._mpVV);
   }
+  try { if (window._mpFoco) { document.removeEventListener('focusout', window._mpFoco, true); document.removeEventListener('focusin', window._mpFoco, true); } if (window._mpVV) { document.removeEventListener('visibilitychange', window._mpVV); window.removeEventListener('resize', window._mpVV); } } catch (_) {}
+  if (window._mpVigia) { clearInterval(window._mpVigia); window._mpVigia = null; }
+  window._mpFoco = null;
   window._mpVV = null;
   const ov = document.getElementById('media-preview-overlay');
   if (ov) { ov.style.top = '0'; ov.style.height = ''; ov.style.bottom = '0'; }
@@ -14017,7 +14044,9 @@ if (window.visualViewport) {
     const vv = window.visualViewport;
     const diff = window.innerHeight - vv.height;
     // Teclado aberto (diferença grande e sem zoom): app passa a ocupar só o espaço visível
-    if (diff > 100 && vv.scale === 1) {
+    // (v669) …e só com um campo em foco: sem isso o app ficava preso na altura do teclado depois de ele fechar
+    // (o iPhone nem sempre avisa) e sobrava uma faixa branca embaixo da lista de conversas
+    if (diff > 100 && vv.scale === 1 && _campoEmFoco()) {
       document.documentElement.style.setProperty('--appH', vv.height + 'px');
       window.scrollTo(0, 0); // impede o iOS de "empurrar" a página
       // Mantém a conversa colada no fim ao abrir o teclado
@@ -14030,6 +14059,11 @@ if (window.visualViewport) {
   };
   window.visualViewport.addEventListener('resize', _fitToKeyboard);
   window.visualViewport.addEventListener('scroll', _fitToKeyboard);
+  // (v669) confere de novo quando o campo perde o foco, quando o app volta e, se ficou preso sem campo em foco, a cada segundo
+  document.addEventListener('focusout', () => { setTimeout(_fitToKeyboard, 250); setTimeout(_fitToKeyboard, 900); }, true);
+  document.addEventListener('visibilitychange', _fitToKeyboard);
+  window.addEventListener('pageshow', _fitToKeyboard);
+  setInterval(() => { try { if (document.documentElement.style.getPropertyValue('--appH') && !_campoEmFoco()) _fitToKeyboard(); } catch (_) {} }, 1000);
 }
 
 function showQRPopup(filter, fromSearch) {
