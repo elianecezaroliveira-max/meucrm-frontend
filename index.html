@@ -2580,7 +2580,7 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v665</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v666</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3476,7 +3476,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v665</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v666</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3550,7 +3550,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 665;
+const APP_VER = 666;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -11959,11 +11959,35 @@ function _reactEmojiList(){
   const base=['👍','❤️','😂','😮','😢','🙏','🔥','👏'];
   return base.map(e => REACT_TONEABLE.includes(e) ? e + _reactTone : e);
 }
+// (v666) Ela (24/11), com um ❤️ numa mensagem e a barra de reações aberta: "Não consigo remover o emoji". Não havia como
+// saber qual era a reação atual, tocar nela de novo mandava a mesma reação outra vez (no WhatsApp isso TIRA), e o ✖ do
+// fim parecia só "fechar". Agora: a MINHA reação aparece marcada na barra, tocar nela de novo tira, e o ✖ vira
+// "✖ Tirar" quando há reação minha. (Reação do LEAD não é marcada: não é minha para tirar.)
+const _reacBase = s => String(s || '').replace(/[\u{1F3FB}-\u{1F3FF}️]/gu, ''); // sem tom de pele e sem o seletor de variação
+function _reacaoAtual(msgId) {
+  let emoji = '', minha = false;
+  try {
+    const el = document.querySelector(`[data-msg-id="${msgId}"]`); const b = el && el.querySelector('.msg-reaction');
+    emoji = b ? b.textContent.trim() : '';
+    if (emoji) {
+      const w = el.dataset.msgWamid || '';
+      const m = (currentMessages || []).find(x => x && x.reaction && (String(x.id) === String(msgId) || (w && x.wamid === w)));
+      minha = !m || m.reaction !== emoji || m.reaction_by !== 'contact'; // acabei de pôr (ainda não voltou do banco) ou o banco diz que é minha
+    }
+  } catch (_) {}
+  return { emoji, minha };
+}
 function _renderReactBody(msgId){
   const emojis=_reactEmojiList();
+  const at = _reacaoAtual(msgId);
+  const ehAtual = e => at.minha && !!at.emoji && _reacBase(e) === _reacBase(at.emoji);
   // Emojis GRANDES, no tamanho da barra de reação do WhatsApp
-  const row = emojis.map(e=>`<span style="cursor:pointer;font-size:31px;line-height:1;transition:transform .12s" ontouchstart="this.style.transform='scale(1.25)'" ontouchend="this.style.transform=''" onclick="reactMessage('${msgId}','${e}')">${e}</span>`).join('')
-    + `<span style="cursor:pointer;font-size:22px;color:#667781;padding:0 2px;line-height:1" title="Remover reação" onclick="reactMessage('${msgId}','')">✖</span>`;
+  const row = emojis.map(e=> ehAtual(e)
+      ? `<span class="react-atual" title="Sua reação — toque de novo para tirar" style="cursor:pointer;font-size:31px;line-height:1;transition:transform .12s;background:#d9fdd3;border-radius:50%;box-shadow:0 0 0 5px #d9fdd3" onclick="reactMessage('${msgId}','')">${e}</span>`
+      : `<span style="cursor:pointer;font-size:31px;line-height:1;transition:transform .12s" ontouchstart="this.style.transform='scale(1.25)'" ontouchend="this.style.transform=''" onclick="reactMessage('${msgId}','${e}')">${e}</span>`).join('')
+    + (at.minha && at.emoji
+      ? `<span class="react-tirar" style="cursor:pointer;font-size:13px;font-weight:700;color:#c0392b;background:#fdecea;border-radius:12px;padding:5px 9px;line-height:1;white-space:nowrap" title="Remover reação" onclick="reactMessage('${msgId}','')">✖ Tirar</span>`
+      : `<span style="cursor:pointer;font-size:22px;color:#667781;padding:0 2px;line-height:1" title="Remover reação" onclick="reactMessage('${msgId}','')">✖</span>`);
   const tones = REACT_TONES.map(tn=>{
     const sel = tn===_reactTone ? 'border:2px solid #00a884' : 'border:2px solid transparent';
     // A mãozinha JÁ pintada no tom: sozinho, o modificador de cor vira quadradinho
@@ -11994,6 +12018,8 @@ function openReactPicker(msgId, anchor){
 function _reactOutside(e){ if(!e.target.closest('#react-picker') && !e.target.closest('.msg-action-btn.react')) closeReactPicker(); }
 function closeReactPicker(){ const p=document.getElementById('react-picker'); if(p) p.remove(); document.removeEventListener('click',_reactOutside); }
 async function reactMessage(msgId, emoji){
+  // (v666) tocar na reação que JÁ é a minha = tirar (igual ao WhatsApp), venha o toque de onde vier
+  try { if (emoji) { const at = _reacaoAtual(msgId); if (at.minha && at.emoji && _reacBase(at.emoji) === _reacBase(emoji)) emoji = ''; } } catch (_) {}
   closeReactPicker();
   const el=document.querySelector(`[data-msg-id="${msgId}"]`);
   if(!el) return;
