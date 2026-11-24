@@ -2580,7 +2580,7 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v667</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v668</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3476,7 +3476,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v667</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v668</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3550,7 +3550,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 667;
+const APP_VER = 668;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -9823,8 +9823,32 @@ function goBackToSidebar() {
     [chat, side].forEach(el => { if (el) { el.style.transform = ''; el.style.transition = ''; } });
     active = false; horiz = false; chat = null; side = null; layout = null; dx = 0;
   };
+  // (v668) Ela (24/11), com a tela do celular parada pela METADE (lista de um lado, conversa do outro, barra do topo
+  // aparecendo): "Acontece isso direto no celular, normalmente quando eu entro e saio do app". O deslize de voltar
+  // começa na borda esquerda — a mesma que o iPhone usa para trocar de app. Quando o iPhone leva o gesto embora, a
+  // página não recebe o "soltei o dedo" e a tela ficava congelada no meio do arraste. Agora o arraste é DESFEITO
+  // (a conversa volta inteira) sempre que o app sai da frente ou volta, quando começa outro toque com um arraste
+  // esquecido, e — rede de segurança — se o dedo ficar 3 s sem se mexer no meio do arraste.
+  let ultMov = 0, vigia = 0;
+  const destrava = () => {
+    if (vigia) { clearInterval(vigia); vigia = 0; }
+    const l = document.getElementById('layout');
+    const preso = active || horiz || raf || (l && l.classList.contains('arrastando'));
+    if (!preso) return false;
+    if (raf) { cancelAnimationFrame(raf); raf = 0; }
+    if (l) l.classList.remove('arrastando');
+    try { document.body.classList.remove('voltando'); } catch (_) {}
+    ['chat-area', 'sidebar'].forEach(id => { const el = document.getElementById(id); if (el) { el.style.transform = ''; el.style.transition = ''; } });
+    active = false; horiz = false; chat = null; side = null; layout = null; dx = 0;
+    return true;
+  };
+  document.addEventListener('visibilitychange', destrava);
+  window.addEventListener('pagehide', destrava);
+  window.addEventListener('pageshow', destrava);
+  window.addEventListener('blur', destrava);
   document.addEventListener('touchstart', e => {
     if (!window.matchMedia('(hover: none)').matches) return; // gesto SÓ no celular
+    if (active || horiz) destrava(); // sobrou um arraste que nunca terminou: desfaz antes de começar outro
     layout = document.getElementById('layout');
     if (!layout || !layout.classList.contains('mobile-chat-open')) { layout = null; return; }
     const t = e.touches[0];
@@ -9844,11 +9868,14 @@ function goBackToSidebar() {
       horiz = true;
       layout.classList.add('arrastando'); // camada própria + CSS sai da frente
       document.body.classList.add('voltando'); // a barra do topo aparece JÁ
+      if (!vigia) vigia = setInterval(() => { if (horiz && Date.now() - ultMov > 3000) destrava(); else if (!horiz && !active) { clearInterval(vigia); vigia = 0; } }, 500);
     }
+    ultMov = Date.now();
     if (horiz) agenda(); // um desenho por quadro — nunca vários no mesmo
   }, { passive: true });
   const finish = () => {
     if (!active || !chat) return;
+    if (vigia) { clearInterval(vigia); vigia = 0; }
     if (!horiz) { limpa(); return; }
     if (raf) { cancelAnimationFrame(raf); raf = 0; }
     const w = larg();
