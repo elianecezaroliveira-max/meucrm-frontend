@@ -2580,7 +2580,7 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v666</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v667</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3476,7 +3476,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v666</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v667</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3550,7 +3550,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 666;
+const APP_VER = 667;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -23326,7 +23326,12 @@ function _tagsNodeSugg(nodeId, campo) {
   if (!inp || !box) return;
   const q = inp.value.trim().toLowerCase();
   const ja = _tagsNodeLista(nodeId, campo);
-  const achadas = (allTagsList || []).filter(t => !ja.includes(t) && (!q || t.toLowerCase().includes(q))).slice(0, 10);
+  // (v667) Ela (24/11), no passo "Gerenciar etiquetas" do bot: "Tem etiquetas que já existem mas não mostra aqui, por
+  // exemplo a INSS e a SIAPE". A lista parava nas 10 primeiras (em ordem: 03, 101, 11, 31…) e as de letra ficavam de
+  // fora, a não ser digitando. Agora mostra TODAS (a caixa já rola), com as que COMEÇAM pelo que foi digitado na frente.
+  let achadas = (allTagsList || []).filter(t => !ja.includes(t) && (!q || String(t).toLowerCase().includes(q)));
+  if (q) achadas = achadas.filter(t => String(t).toLowerCase().startsWith(q)).concat(achadas.filter(t => !String(t).toLowerCase().startsWith(q)));
+  achadas = achadas.slice(0, 500);
   _tagsNSug[campo] = achadas;
   let h = achadas.map((t, i) =>
     `<div onclick="_tagsNodePick('${nodeId}','${campo}',${i})" style="padding:7px 10px;background:#f0f2f5;border-radius:7px;font-size:13px;color:#131c20;cursor:pointer"><i class=ic-tag></i> ${escHtml(t)}</div>`).join('');
@@ -23335,6 +23340,7 @@ function _tagsNodeSugg(nodeId, campo) {
   if (q && !existe && campo === 'add')
     h += `<div onclick="_tagsNodeCriar('${nodeId}','add')" style="padding:7px 10px;background:#e7f7ef;border:1px dashed #00a884;border-radius:7px;font-size:13px;color:#00806a;font-weight:600;cursor:pointer">➕ Criar tag "${escHtml(inp.value.trim())}"</div>`;
   if (!h) h = `<div style="font-size:12px;color:#8696a0;padding:4px 2px">${q ? 'Nenhuma tag encontrada.' : 'Digite para pesquisar…'}</div>`;
+  else if (achadas.length > 5) h = `<div class="tags-node-conta" style="font-size:11px;color:#8696a0;padding:0 2px 2px">${achadas.length} etiqueta(s) — role a lista ou digite para achar</div>` + h;
   box.innerHTML = h;
 }
 function _tagsNodePick(nodeId, campo, i) { _tagsNodeAddTag(nodeId, campo, _tagsNSug[campo][i]); }
