@@ -1752,6 +1752,18 @@ i[class^="ic-"],i[class*=" ic-"]{display:inline-block;width:1.08em;height:1.08em
   @keyframes vToastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
   @keyframes vToastOut { to { opacity: 0; transform: translateY(8px); } }
   @media (max-width: 768px) { #v-toasts { bottom: 78px; } }
+
+  /* 📱 (v677) FAIXA ESCURA NO TOPO DO IPHONE — ela (25/11, print): "Olha esse risco no topo, no celular" (a faixa do relógio
+     ficou cinza #666 = branco com 60% de preto por cima). O iPhone (iOS 26) pinta a faixa do relógio com a COR DE FUNDO
+     de qualquer camada fixa de tela inteira que aparece — o fundo escurecido das janelinhas (rgba(0,0,0,.6)) — e às vezes
+     NÃO volta ao normal quando a janelinha fecha. No celular, o escurecido deixa de ser a cor de fundo da camada fixa:
+     ela fica transparente e o escuro vem de uma película por dentro (::before). Para quem olha é igual; para o iPhone não
+     há mais cor escura de camada fixa para copiar. No computador nada muda. */
+  @media (hover: none) and (pointer: coarse) {
+    #modal-overlay, #templates-overlay, #send-tmpl-overlay, #tmpl-copiar-overlay, #lead-overlay, #import-overlay, #media-overlay, #tasks-overlay, #qr-modal, #n8n-overlay, #tag-overlay, #tagmgr-overlay, #vdlg-overlay, #msg-info-box, #cfg-overlay, #msged-overlay, #not-overlay, #auto-overlay, #trem-overlay, #fw-overlay, #fav-overlay, #ag-overlay, #mobile-plus-backdrop { background: transparent !important; }
+    #modal-overlay::before, #templates-overlay::before, #send-tmpl-overlay::before, #tmpl-copiar-overlay::before, #lead-overlay::before, #import-overlay::before, #media-overlay::before, #tasks-overlay::before, #qr-modal::before, #n8n-overlay::before, #tag-overlay::before, #tagmgr-overlay::before, #vdlg-overlay::before, #msg-info-box::before, #cfg-overlay::before, #msged-overlay::before, #not-overlay::before, #auto-overlay::before, #trem-overlay::before, #fw-overlay::before, #fav-overlay::before, #ag-overlay::before, #mobile-plus-backdrop::before { content: ''; position: absolute; inset: 0; background: rgba(0,0,0,.5); z-index: -1; pointer-events: none; }
+    #mobile-plus-backdrop::before { background: rgba(0,0,0,.35); }
+  }
   /* ── Configurações em abas ── */
   #cfg-shell { display: flex; gap: 0; min-height: 420px; }
   #cfg-nav { width: 170px; flex-shrink: 0; border-right: 1px solid var(--v-line); padding: 6px 8px 6px 0; display: flex; flex-direction: column; gap: 2px; }
@@ -2599,7 +2611,7 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v676</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v677</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3497,7 +3509,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v676</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v677</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3571,7 +3583,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 676;
+const APP_VER = 677;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
