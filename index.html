@@ -741,7 +741,14 @@
   .tc2{background:#f1e8fb;color:#7c3aed;border:1px solid #c4b5fd}
   .tc3{background:#fbe8e8;color:#dc2626;border:1px solid #fca5a5}
   .tc4{background:#fbefe2;color:#ea580c;border:1px solid #fdba74}
-  .tc5{background:#e6f8ea;color:#16a34a;border:1px solid #86efac}
+  /* (v678) 12 cores bem diferentes entre si (a tc5 era um segundo verde, quase igual à tc0) — "tag INSS e SIAPE estão com a mesma cor" */
+  .tc5{background:#e0f5f8;color:#0e7490;border:1px solid #67d7e8}
+  .tc6{background:#fce7f3;color:#be185d;border:1px solid #f9a8d4}
+  .tc7{background:#fdf3c7;color:#92600a;border:1px solid #f5cf52}
+  .tc8{background:#e6e8fd;color:#4338ca;border:1px solid #a5b4fc}
+  .tc9{background:#f3e7de;color:#8a4a14;border:1px solid #d9a877}
+  .tc10{background:#edf7d6;color:#4d7c0f;border:1px solid #b6e05a}
+  .tc11{background:#eceff1;color:#455a64;border:1px solid #b0bec5}
   #tag-manager{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-left:4px;flex:1;min-width:0}
   #tag-add-input{background:#e9edef;border:1px dashed #d1d7db;color:#131c20;padding:3px 10px;border-radius:20px;font-size:12px;outline:none;width:100px}
   #tag-add-input::placeholder{color:#667781}
@@ -2611,7 +2618,7 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v677</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v678</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3509,7 +3516,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v677</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v678</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3583,7 +3590,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 677;
+const APP_VER = 678;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -9538,7 +9545,7 @@ function lpRenderTags(phone){
   if (!el || !c) return;
   const tags = c.tags || [];
   el.innerHTML = tags.length
-    ? tags.map(t => `<span class="lp-tag">${escHtml(t)} <span onclick="lpRemoveTag('${_jsAttr(phone)}','${_jsAttr(t)}')" style="cursor:pointer;font-weight:700">×</span></span>`).join('')
+    ? tags.map(t => `<span class="lp-tag ${_tagCor(t)}">${escHtml(t)} <span onclick="lpRemoveTag('${_jsAttr(phone)}','${_jsAttr(t)}')" style="cursor:pointer;font-weight:700">×</span></span>`).join('')
     : '<span style="color:#8696a0;font-size:12px">Nenhuma etiqueta</span>';
 }
 // 🏷 "＋ Add" nos detalhes do lead: abre a folha de etiquetas com TODAS as que já existem
@@ -16855,14 +16862,18 @@ async function editLeadName() {
 }
 
 // ── TAGS ──
-const TAG_COLORS = ['tc0','tc1','tc2','tc3','tc4','tc5'];
+const TAG_COLORS = ['tc0','tc1','tc2','tc3','tc4','tc5','tc6','tc7','tc8','tc9','tc10','tc11'];
 let allTagsList = [];
 // Cor da etiqueta vem do NOME (sempre a mesma em qualquer lugar). Se você
 // escolher uma cor no gerenciador, ela manda.
+// (v678) Ela (25/11, print): "tag INSS e SIAPE estão com a mesma cor". Eram 6 cores para 23 etiquetas (e os detalhes do
+// lead pintavam TODAS de verde). Agora são 12, e a cor automática é dada pelo servidor sem repetir enquanto houver cor
+// livre (GET /tags/cores, guardada na conta). A última lista de cores fica no aparelho: a tela já abre com as cores certas.
 let _tagCores = {};
+try { const g = JSON.parse(localStorage.getItem('filaz_tag_cores') || 'null'); if (g && typeof g === 'object' && !Array.isArray(g)) _tagCores = g; } catch (_) {}
 function _tagCor(nome) {
   const n = String(nome == null ? '' : nome);
-  if (_tagCores[n] != null) return TAG_COLORS[Math.max(0, Math.min(5, _tagCores[n]))];
+  if (_tagCores[n] != null) return TAG_COLORS[Math.max(0, Math.min(TAG_COLORS.length - 1, _tagCores[n] | 0))];
   let h = 0;
   const base = n.trim().toLowerCase();
   for (let i = 0; i < base.length; i++) h = (h * 31 + base.charCodeAt(i)) >>> 0;
@@ -16874,11 +16885,24 @@ function _tagNorm(t) {
     .replace(/\s+/g, ' ').trim().toLowerCase();
 }
 async function _carregaCoresTags() {
+  const antes = JSON.stringify(_tagCores);
   try {
-    const r = await fetch(SERVER_URL + '/tags/manage');
-    const l = await r.json();
-    if (Array.isArray(l)) { _tagCores = {}; l.forEach(t => { if (t.cor != null) _tagCores[t.name] = t.cor; }); }
-  } catch (_) {}
+    let novo = null;
+    const r = await fetch(SERVER_URL + '/tags/cores');
+    if (r.ok) { const m = await r.json(); if (m && typeof m === 'object' && !Array.isArray(m) && !m.error) novo = m; }
+    else if (r.status === 404) { // servidor antigo: as cores vêm junto com a lista do gerenciador
+      const l = await (await fetch(SERVER_URL + '/tags/manage')).json();
+      if (Array.isArray(l)) { novo = {}; l.forEach(t => { if (t.cor != null) novo[t.name] = t.cor; }); }
+    }
+    if (!novo) return;
+    _tagCores = novo;
+    try { localStorage.setItem('filaz_tag_cores', JSON.stringify(novo)); } catch (_) {}
+  } catch (_) { return; }
+  if (JSON.stringify(_tagCores) === antes) return;
+  // as cores mudaram: o que já está na tela é repintado (lista, detalhes do lead, funil)
+  try { renderContactsSmartUpdate(); } catch (_) {}
+  try { if (window._lpPhone || currentPhone) lpRenderTags(window._lpPhone || currentPhone); } catch (_) {}
+  try { const pv = document.getElementById('pipeline-view'); if (pv && pv.classList.contains('open')) applyPipelineFilter(); } catch (_) {}
 }
 
 async function loadAllTags() {
@@ -20854,7 +20878,10 @@ async function tagMgrCor(i, cor){
   if (cor == null) delete _tagCores[t.name]; else _tagCores[t.name] = cor;
   renderTagManager();
   try { await fetch(SERVER_URL + '/tags/cor', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name:t.name, cor }) }); }
-  catch(_) { showToast('Não consegui salvar a cor','err'); }
+  catch(_) { showToast('Não consegui salvar a cor','err'); return; }
+  // (v678) guarda no aparelho; "usar automática" = o servidor escolhe de novo uma cor livre
+  if (cor == null) { try { await _carregaCoresTags(); t.cor = _tagCores[t.name] != null ? _tagCores[t.name] : null; renderTagManager(); } catch (_) {} }
+  else { try { localStorage.setItem('filaz_tag_cores', JSON.stringify(_tagCores)); } catch (_) {} }
 }
 async function tagMgrRenomear(i){
   const t = _tagMgrList[i]; if(!t) return;
