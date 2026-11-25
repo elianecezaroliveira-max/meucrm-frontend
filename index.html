@@ -2599,7 +2599,7 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v675</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v676</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3497,7 +3497,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v675</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v676</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3571,7 +3571,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 675;
+const APP_VER = 676;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -3687,10 +3687,20 @@ async function init(url) {
 }
 
 // ── POLLING ──
-let _pollBusy = false, _pollDeNovo = false;
-async function _pollTick() {
-  if (_pollBusy) { _pollDeNovo = true; return; } _pollBusy = true;
-  try { await _pollTickInner(); } finally { _pollBusy = false; }
+// 🛟 (v676) A TELA NÃO PODE PARAR DE ATUALIZAR — ela (25/11): "Por que as mensagens não estão chegando para mim? Aparece
+// apenas a notificação no celular, mas na conversa e prévia não aparece" (estavam todas salvas no servidor; uma aba
+// nova mostrava tudo). Cada conferência espera a anterior terminar; se UM pedido ao servidor ficasse pendurado sem
+// resposta (o celular suspendeu o app, a rede oscilou, o servidor reiniciou no meio), a anterior nunca terminava e a
+// tela não atualizava mais até recarregar. Agora: (1) os pedidos da conferência têm prazo (ver o gancho do fetch
+// abaixo); (2) conferência presa há mais de 1 minuto é abandonada e outra começa; (3) ao VOLTAR para o app/aba, se a
+// conferência está presa há mais de 8 s, começa outra na hora.
+let _pollBusy = false, _pollDeNovo = false, _pollDesde = 0, _pollVez = 0;
+async function _pollTick(voltou) {
+  const limite = voltou ? (window._POLL_VOLTOU_MS || 8000) : (window._POLL_SOLTA_MS || 60000);
+  if (_pollBusy && Date.now() - _pollDesde > limite) _pollBusy = false; // a anterior nunca voltou: não espera mais por ela
+  if (_pollBusy) { _pollDeNovo = true; return; }
+  _pollBusy = true; _pollDesde = Date.now(); const vez = ++_pollVez;
+  try { await _pollTickInner(); } finally { if (vez === _pollVez) _pollBusy = false; }
   if (_pollDeNovo) { _pollDeNovo = false; setTimeout(() => { _pollTick().catch(() => {}); }, 50); }
 }
 // 🔔 CAMPAINHA: um pedido fica esperando no servidor e volta assim que algo é gravado
@@ -3787,6 +3797,19 @@ let _pollMsAtual = 0;
 (function () {
   const f = window.fetch.bind(window);
   window.fetch = async function (i, init) {
+    // 🛟 (v676) PRAZO nos pedidos da conferência periódica (lista de conversas, mensagens, quem está digitando, tarefas,
+    // não lidas): pedido que não volta em 45 s é cancelado — quem chamou trata como erro e a conferência seguinte roda.
+    // Sem isso, um pedido pendurado (celular suspendeu o app, rede oscilou) travava a atualização da tela para sempre.
+    // Só GET desses caminhos e só quando quem chamou não trouxe o próprio cancelamento; download de mídia e envio ficam de fora.
+    try {
+      if (typeof i === 'string' && SERVER_URL && i.startsWith(SERVER_URL) && typeof AbortController !== 'undefined'
+        && !(init && (init.signal || (init.method && String(init.method).toUpperCase() !== 'GET')))
+        && /^\/(contacts(\?|$)|messages\/|typing-list|nao-lidas|tasks(\?|\/|$))/.test(i.slice(SERVER_URL.length))) {
+        const ctl = new AbortController();
+        setTimeout(() => { try { ctl.abort(); } catch (_) {} }, window._PRAZO_BUSCA_MS || 45000); // (vale até o corpo terminar de chegar; resposta completa ignora)
+        init = Object.assign({}, init || {}, { signal: ctl.signal });
+      }
+    } catch (_) {}
     const r = await f(i, init);
     // 🌙 número em "não perturbe": o servidor responde 409 {silencio:true}; pergunta e reenvia com ?forcar=1
     try {
@@ -3826,8 +3849,11 @@ function _bancoAvisaNivel(n) {
 
 // Ao voltar para a aba, atualiza na mesma hora (compensa a pausa acima)
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden && SERVER_URL) _pollTick().catch(() => {});
+  if (!document.hidden && SERVER_URL) _pollTick(true).catch(() => {});
 });
+// (v676) o celular "descongela" o app sem avisar pela visibilidade: voltar à página também confere na hora
+window.addEventListener('pageshow', () => { try { if (!document.hidden && SERVER_URL && pollInterval) _pollTick(true).catch(() => {}); } catch (_) {} });
+window.addEventListener('online', () => { try { if (!document.hidden && SERVER_URL && pollInterval) _pollTick(true).catch(() => {}); } catch (_) {} });
 
 // Re-renderiza respeitando filtros ativos (usado pelo polling)
 function renderContactsSmartUpdate() {
