@@ -2618,7 +2618,7 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v678</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v679</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3516,7 +3516,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v678</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v679</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3590,7 +3590,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 678;
+const APP_VER = 679;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -23328,7 +23328,7 @@ function getNodePreview(node) {
     const parts=[]; if(a.length) parts.push('+'+a.join(', ')); if(r.length) parts.push('−'+r.join(', '));
     return parts.join('  ') || '(configure as tags)';
   }
-  if (node.type==='task') { const _tp = _tipoDe(cfg.tipo); const _tx = String(cfg.title || cfg.notes || '').trim(); const _cm = _tx.length > 50 ? _tx.substring(0, 50) + '…' : _tx; return (_tp ? _tp.nome : 'Tarefa') + (_cm ? ' — ' + _cm : ''); }
+  if (node.type==='task') { const _tp = _tipoDe(cfg.tipo); const _tx = String(cfg.title || cfg.notes || '').trim(); const _cm = _tx.length > 50 ? _tx.substring(0, 50) + '…' : _tx; const _pe = Array.isArray(cfg.tipo_pela_etiqueta) ? cfg.tipo_pela_etiqueta.map(i => (_tipoDe(i) || {}).nome).filter(Boolean) : []; return (_tp ? _tp.nome : 'Tarefa') + (_pe.length ? ' (ou ' + _pe.join(', ') + ' pela etiqueta)' : '') + (_cm ? ' — ' + _cm : ''); }
   if (node.type==='complete_task') return cfg.title_filter ? ('Concluir: "'+cfg.title_filter+'"') : 'Concluir todas as tarefas do lead';
   if (node.type==='business_hours') {
     const dn=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
@@ -24341,10 +24341,32 @@ function renderConfigPanel(node) {
       <label class="bot-cfg-label" style="margin-top:12px">Vencimento em (horas a partir de agora)</label>
       <input class="bot-cfg-input" type="number" min="0" id="cfg-task-due" value="${node.config.due_hours||0}" placeholder="0 = sem prazo" onchange="updateNodeConfig('${node.id}',{due_hours:parseFloat(this.value)||0})" />
       <label class="bot-cfg-label" style="margin-top:12px">Tipo da tarefa</label>
-      <input type="hidden" id="cfg-task-tipo" value="${escHtml(node.config.tipo||_tipoPadraoId())}"><div class="vd-tipos" id="cfg-task-tipo-chips">${_tipoChipsHtml('cfg-task-tipo', node.config.tipo||_tipoPadraoId())}</div>`;
+      <input type="hidden" id="cfg-task-tipo" value="${escHtml(node.config.tipo||_tipoPadraoId())}"><div class="vd-tipos" id="cfg-task-tipo-chips">${_tipoChipsHtml('cfg-task-tipo', node.config.tipo||_tipoPadraoId())}</div>
+      <label class="bot-cfg-label" style="margin-top:14px">Trocar o tipo pela etiqueta do lead <span style="color:#667781">(opcional)</span></label>
+      <div style="font-size:12px;color:#667781;line-height:1.4;margin-bottom:6px">Marque os tipos que a etiqueta pode escolher. Lead com a etiqueta <b>INSS</b> → tarefa do tipo <b>INSS</b>. Sem nenhuma das marcadas, vale o tipo de cima.</div>
+      <div id="cfg-task-tipo-tag" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+      <div id="cfg-task-tipo-tag-dica" style="font-size:12px;color:#667781;margin-top:6px"></div>`;
     document.getElementById('cfg-task-title').addEventListener('input', function(){ updateNodeConfig(node.id,{notes:this.value, title:''}); }); // a tarefa não tem mais nome: vira comentário
     document.getElementById('cfg-task-tipo').addEventListener('change', function(){ updateNodeConfig(node.id,{tipo:this.value||null}); });
-    if (!_tarefaTipos) _carregaTiposTarefa().then(() => _pintaTipoChips('cfg-task-tipo', (document.getElementById('cfg-task-tipo') || {}).value || ''));
+    // (v679) "quando a tag tiver INSS colocasse a tarefa com o tipo INSS… SIAPE… e se não tiver nenhuma, SIMULAR" (25/11)
+    // Só entram na lista os tipos que TÊM uma etiqueta com o mesmo nome; ela marca quais valem (na conta dela DIGITAR é
+    // etiqueta e tipo, e não é para virar o tipo da tarefa). Guardado no passo: tipo_pela_etiqueta = [ids dos tipos].
+    const _pintaTipoTag = () => {
+      const cx = document.getElementById('cfg-task-tipo-tag'), d = document.getElementById('cfg-task-tipo-tag-dica'); if (!cx || !d) return;
+      const n = x => String(x || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+      const tags = new Set((typeof getAllTags === 'function' ? getAllTags() : (allTagsList || [])).map(n));
+      const atual = Array.isArray(node.config.tipo_pela_etiqueta) ? node.config.tipo_pela_etiqueta.map(String) : [];
+      const casam = (_tarefaTipos || []).filter(t => t && t.id && (tags.has(n(t.nome)) || atual.includes(String(t.id))));
+      cx.innerHTML = casam.map(t => `<label style="display:inline-flex;align-items:center;gap:5px;border:1px solid ${atual.includes(String(t.id)) ? '#00a884' : '#d1d7db'};background:${atual.includes(String(t.id)) ? '#e7f7ef' : '#fff'};border-radius:14px;padding:4px 10px;font-size:12.5px;font-weight:600;color:#131c20;cursor:pointer"><input type="checkbox" data-tipo="${escHtml(String(t.id))}" ${atual.includes(String(t.id)) ? 'checked' : ''} style="width:auto;margin:0">${escHtml(t.nome)}</label>`).join('');
+      cx.querySelectorAll('input[type=checkbox]').forEach(inp => inp.addEventListener('change', () => {
+        const marcados = [...cx.querySelectorAll('input[type=checkbox]')].filter(x => x.checked).map(x => x.dataset.tipo);
+        updateNodeConfig(node.id, { tipo_pela_etiqueta: marcados.length ? marcados : null }); _pintaTipoTag();
+      }));
+      const nomes = casam.filter(t => atual.includes(String(t.id))).map(t => t.nome);
+      d.innerHTML = !casam.length ? '⚠ Nenhum tipo de tarefa tem o nome de uma etiqueta. Crie o tipo com o mesmo nome da etiqueta (ex.: INSS, SIAPE) em Tarefas ▸ tipos.'
+        : nomes.length ? 'Lead com a etiqueta ' + nomes.map(x => '<b>' + escHtml(x) + '</b>').join(' ou ') + ' → tarefa desse tipo. Os outros → o tipo de cima.' : '';
+    };
+    if (!_tarefaTipos) _carregaTiposTarefa().then(() => { _pintaTipoChips('cfg-task-tipo', (document.getElementById('cfg-task-tipo') || {}).value || ''); _pintaTipoTag(); }); else _pintaTipoTag();
     return;
   }
 
