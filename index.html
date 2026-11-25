@@ -2583,7 +2583,7 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v670</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v672</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3479,7 +3479,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v670</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v672</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3553,7 +3553,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 670;
+const APP_VER = 672;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -11991,7 +11991,9 @@ function _emojiPrefsDoServidor(p) {
 }
 const REACT_TONEABLE = ['👍','🙏','👏']; // emojis que aceitam tom de pele
 function _reactEmojiList(){
-  const base=['👍','❤️','😂','😮','😢','🙏','🔥','👏'];
+  let base=['👍','❤️','😂','😮','😢','🙏','🔥','👏'];
+  // (v672) conversa do WhatsApp do PC: a reação sai pela barra de reações de lá, que só tem os 6 primeiros
+  if (_conversaDoPC()) base = base.slice(0, 6);
   return base.map(e => REACT_TONEABLE.includes(e) ? e + _reactTone : e);
 }
 // (v666) Ela (24/11), com um ❤️ numa mensagem e a barra de reações aberta: "Não consigo remover o emoji". Não havia como
@@ -12035,6 +12037,12 @@ function setReactTone(tn, msgId){
   _emojiTomDefine(Math.max(0, REACT_TONES.indexOf(tn))); // (v660) o mesmo tom vale no seletor da conversa e fica na conta
   const pop=document.getElementById('react-picker');
   if(pop) pop.innerHTML=_renderReactBody(msgId);
+}
+// (v671) Ela (25/11, print): reagir numa conversa do WhatsApp do PC dava "WhatsApp QR desconectado — gere o QR novamente
+// em Contas". (v672) "Reação, faça": a reação vai para o FILAZ Assistente, que reage lá no WhatsApp do PC e responde se
+// deu certo (leva alguns segundos). Se não der, a reação some daqui e o motivo aparece.
+function _conversaDoPC(){
+  try { const a = (window._accountsById || {})[currentAccountId]; return !!(a && a.pc); } catch (_) { return false; }
 }
 function openReactPicker(msgId, anchor){
   closeReactPicker();
@@ -12081,7 +12089,7 @@ async function reactMessage(msgId, emoji){
   try{
     const res=await fetch(SERVER_URL+'/react',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({to:currentPhone, wamid, emoji, account_id:currentAccountId})});
-    if(!res.ok){ revert(); const d=await res.json().catch(()=>({})); alert('Erro ao reagir: '+(d.error||'Tente novamente')); return; }
+    if(!res.ok){ revert(); const d=await res.json().catch(()=>({})); if (d.pc) showToast(d.error || 'A reação não saiu pelo WhatsApp do PC.', 'err', 9000); else alert('Erro ao reagir: '+(d.error||'Tente novamente')); return; }
     await loadMessages(currentPhone, false); // confirma/normaliza com o banco
   }catch(e){ revert(); alert('Erro de rede ao reagir'); }
 }
