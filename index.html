@@ -2599,7 +2599,7 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v674</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v675</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3497,7 +3497,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v674</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v675</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3571,7 +3571,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 674;
+const APP_VER = 675;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -8947,7 +8947,7 @@ async function _fvShare(url, nome) {
         const r = await fetch(url);
         const bl = await r.blob();
         // nome com extensão (o iPhone só oferece "Salvar imagem" quando reconhece o arquivo)
-        let nm = String(nome || 'arquivo'); if (!/\.[a-z0-9]{2,5}$/i.test(nm)) { const ext = String(bl.type || '').split('/')[1]; if (ext) nm += '.' + ext.replace('jpeg', 'jpg').replace(/[^a-z0-9]/gi, ''); }
+        let nm = _nomeParaSalvar(nome || 'arquivo'); if (!/\.[a-z0-9]{2,5}$/i.test(nm)) { const ext = String(bl.type || '').split('/')[1]; if (ext) nm += '.' + ext.replace('jpeg', 'jpg').replace(/[^a-z0-9]/gi, ''); }
         const f = new File([bl], nm, { type: bl.type || 'application/octet-stream' });
         if (navigator.canShare && navigator.canShare({ files: [f] })) { await navigator.share({ files: [f] }); return; }
       } catch (_) {}
@@ -9082,8 +9082,7 @@ async function _albBaixaSel(ok) {
       if (!r.ok) throw new Error('HTTP ' + r.status);
       const bl = await r.blob();
       const ext = _albExt(g.mime || bl.type);
-      // SEM renomear: o mesmo nome de quando você baixa a foto sozinha. Se
-      // repetir, quem numera é o navegador (imagem.jpg, imagem (1).jpg…).
+      // (v675) o nome de cada foto é decidido na hora de salvar (_nomeParaSalvar): lead + data + hora, sem repetir.
       arqs.push({
         nome: 'imagem.' + ext,
         blob: bl.type ? bl : new Blob([bl], { type: 'image/' + (ext === 'jpg' ? 'jpeg' : ext) }),
@@ -9094,7 +9093,7 @@ async function _albBaixaSel(ok) {
     if (_albEhCelular() && navigator.canShare) {
       let cancelou = false;
       try {
-        const fs = arqs.map(a => new File([a.blob], a.nome, { type: a.blob.type || 'image/jpeg' }));
+        const fs = arqs.map(a => new File([a.blob], _nomeParaSalvar(a.nome), { type: a.blob.type || 'image/jpeg' }));
         if (navigator.canShare({ files: fs })) {
           ok.textContent = 'Abrindo…';
           await navigator.share({ files: fs, title: 'Fotos de ' + quem });
@@ -9131,7 +9130,7 @@ async function _baixaEmLote(arqs, aoProgredir) {
 function _albSalva(blob, nome) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = nome;
+  a.href = url; a.download = _nomeParaSalvar(nome);
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 8000);
 }
@@ -9288,16 +9287,44 @@ function _dvZoomAplica(){
 async function salvarArquivoComo(url, nome, el) {
   if (!window.showSaveFilePicker) return baixarMidia(url, nome, el);
   let alvo;
-  try { alvo = await window.showSaveFilePicker({ suggestedName: nome || 'arquivo' }); }
+  try { alvo = await window.showSaveFilePicker({ suggestedName: _nomeParaSalvar(nome || 'arquivo', true) }); }
   catch (e) { if (e && e.name === 'AbortError') return; return baixarMidia(url, nome, el); } // cancelou: não faz nada
   const txt = el ? el.textContent : '';
   try {
     if (el) el.textContent = 'Salvando…';
     const r = await fetch(url); if (!r.ok) throw new Error('HTTP ' + r.status);
     const w = await alvo.createWritable(); await w.write(await r.blob()); await w.close();
+    _nomeSalvoGuarda(alvo.name);
     if (el) el.textContent = txt;
     showCopyToast('Arquivo salvo');
   } catch (e) { if (el) el.textContent = txt; showToast('Não consegui salvar o arquivo', 'err'); }
+}
+// 💾 (v675) NOME DO ARQUIVO SALVO — ela (25/11): "na hora de salvar imagens elas estão sendo salvas com nomes iguais,
+// aí fica perguntando se eu quero renomear e substituir". Toda foto saía como "imagem.jpg" (vídeo "video.mp4", áudio
+// "audio.ogg"…). Agora:
+//   • nome genérico vira "<nome do lead> <dia-mês-ano> <hora>h<min>" + a extensão — ex.: "Amalia Rodrigues 25-11-2026 14h03.jpg";
+//   • nome que já foi salvo neste navegador (documento com nome próprio, ou outra foto no mesmo minuto) ganha " (2)", " (3)"…
+// Vale para foto, vídeo, áudio, figurinha e documento, um por um ou em lote.
+const _NOME_GENERICO = /^(imagem|foto|video|audio|figurinha|arquivo|documento)(\.[a-z0-9]{2,5})?$/i;
+function _nomeParaSalvar(nome, soSugere) {
+  const limpa = t => String(t || '').replace(/[\\/:*?"<>|\u0000-\u001f]/g, ' ').replace(/\s+/g, ' ').trim();
+  const n = limpa(nome) || 'arquivo';
+  const m = /^(.*?)(\.[a-z0-9]{2,5})?$/i.exec(n); let base = m[1] || 'arquivo'; const ext = m[2] || '';
+  if (_NOME_GENERICO.test(n)) {
+    let quem = ''; try { quem = limpa(currentName || currentPhone || '').replace(/[. ]+$/, '').slice(0, 60); } catch (_) {}
+    const d = new Date(), p = x => String(x).padStart(2, '0');
+    base = (quem || base) + ' ' + p(d.getDate()) + '-' + p(d.getMonth() + 1) + '-' + d.getFullYear() + ' ' + p(d.getHours()) + 'h' + p(d.getMinutes());
+  }
+  let usados = []; try { usados = JSON.parse(localStorage.getItem('filaz_nomes_salvos') || '[]'); if (!Array.isArray(usados)) usados = []; } catch (_) { usados = []; }
+  let fim = base + ext, k = 2;
+  while (usados.includes(fim.toLowerCase())) fim = base + ' (' + (k++) + ')' + ext;
+  if (soSugere) return fim; // ("Salvar como…": o nome só fica guardado se ela salvar de verdade)
+  usados.push(fim.toLowerCase());
+  try { localStorage.setItem('filaz_nomes_salvos', JSON.stringify(usados.slice(-400))); } catch (_) {}
+  return fim;
+}
+function _nomeSalvoGuarda(nome) {
+  try { const u = JSON.parse(localStorage.getItem('filaz_nomes_salvos') || '[]'); const l = Array.isArray(u) ? u : []; const n = String(nome || '').toLowerCase(); if (n && !l.includes(n)) { l.push(n); localStorage.setItem('filaz_nomes_salvos', JSON.stringify(l.slice(-400))); } } catch (_) {}
 }
 async function baixarMidia(url, nome, el) {
   try {
@@ -9307,7 +9334,7 @@ async function baixarMidia(url, nome, el) {
     const b = await r.blob();
     const u = URL.createObjectURL(b);
     const a = document.createElement('a');
-    a.href = u; a.download = nome || 'arquivo';
+    a.href = u; a.download = _nomeParaSalvar(nome || 'arquivo');
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(u), 4000);
     if (el) el.innerHTML = el._txt || '<i class=ic-down></i>';
