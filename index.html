@@ -712,11 +712,12 @@
   .card-checkbox.checked::after { content:'✓';color:white;font-size:12px;font-weight:700; }
   .col-select-all { background:none;border:none;color:#667781;font-size:11px;cursor:pointer;padding:2px 4px;border-radius:4px;white-space:nowrap; }
   .col-select-all:hover { color:#00a884; }
-  #bulk-action-bar { position:fixed;bottom:0;left:0;right:0;background:#f0f2f5;border-top:2px solid #00a884;padding:12px 20px;display:none;align-items:center;gap:12px;z-index:300;box-shadow:0 -4px 20px rgba(0,0,0,.4); }
+  /* (v673) a barra começa DEPOIS do trilho lateral (68px): com left:0 o trilho ficava por cima e escondia o número — "Porque não mostra quantos leads eu selecionei?" (25/11) */
+  #bulk-action-bar { position:fixed;bottom:0;left:68px;right:0;background:#f0f2f5;border-top:2px solid #00a884;padding:12px 20px;display:none;align-items:center;gap:12px;z-index:300;box-shadow:0 -4px 20px rgba(0,0,0,.4); }
   #bulk-action-bar.visible { display:flex; }
   /* Barra de seleção aberta: o quadro termina ACIMA dela (rolagem lateral sempre acessível) */
   #pipeline-view:has(#bulk-action-bar.visible) { bottom: 66px; }
-  #bulk-count { font-size:14px;font-weight:600;color:#131c20;flex:1; }
+  #bulk-count { font-size:14px;font-weight:600;color:#131c20;flex:1;white-space:nowrap; }
   .bulk-btn { padding:8px 16px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:background .2s; }
   .bulk-btn-move { background:#e9edef;color:#131c20; }
   .bulk-btn-move:hover { background:#d1d7db; }
@@ -1544,6 +1545,7 @@ body.dark .tt-grade { background:#111b21 }
   #side-rail { display: none !important; }
   #topbar, #layout { margin-left: 0 !important; }
   #pipeline-view { left: 0 !important; }
+  #bulk-action-bar { left: 0 !important; } /* (v673) no celular não há trilho */
   /* ── Botão "+" FLUTUANTE (estilo WhatsApp): a lista passa por baixo dele ── */
   #mobile-nav {
     display: block; position: fixed; left: auto; right: 16px;
@@ -2583,7 +2585,7 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v672</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v673</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3479,7 +3481,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v672</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v673</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3553,7 +3555,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 672;
+const APP_VER = 673;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
