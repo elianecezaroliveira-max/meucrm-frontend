@@ -727,8 +727,8 @@
   .bulk-btn-delete:hover { background:#3b1010; }
   #bulk-stage-sel { background:#e9edef;border:1px solid #d1d7db;color:#131c20;padding:7px 10px;border-radius:8px;font-size:13px;outline:none;cursor:pointer; }
   #bulk-stage-sel:focus { border-color:#00a884; }
-  #bulk-clear { background:none;border:none;color:#667781;cursor:pointer;font-size:20px;padding:0 4px; }
-  #bulk-clear:hover { color:#131c20; }
+  #bulk-clear { background:#fff;border:1px solid #d1d7db;color:#3b4a54;cursor:pointer;font-size:13px;font-weight:600;padding:8px 14px;border-radius:8px;font-family:inherit;white-space:nowrap; }
+  #bulk-clear:hover { color:#131c20;background:#f0f2f5; }
   #btn-pipeline { background: #e9edef; border: none; color: #131c20; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px; }
   #btn-pipeline:hover { background: #d1d7db; }
   /* TAGS */
@@ -1546,6 +1546,16 @@ body.dark .tt-grade { background:#111b21 }
   #topbar, #layout { margin-left: 0 !important; }
   #pipeline-view { left: 0 !important; }
   #bulk-action-bar { left: 0 !important; } /* (v673) no celular não há trilho */
+  /* (v674) no celular a barra de seleção cabia pela metade (Editar tags, Excluir e o ✕ ficavam fora da tela):
+     agora são duas linhas — "N leads selecionados" + Cancelar seleção; embaixo, Mover para + Editar tags + Excluir */
+  #bulk-action-bar { flex-wrap: wrap; gap: 8px; padding: 10px 12px; }
+  #bulk-count { order: 1; flex: 1 1 calc(100% - 150px); min-width: 0; overflow: hidden; text-overflow: ellipsis; } /* (com o Cancelar ao lado, enche a linha) */
+  #bulk-clear { order: 2; padding: 7px 10px; }
+  #bulk-stage-sel { order: 3; flex: 1 1 0; min-width: 0; }
+  #bulk-action-bar .bulk-btn-tags { order: 4; padding: 8px 10px; }
+  #bulk-action-bar .bulk-btn-delete { order: 5; padding: 8px 10px; }
+  #pipeline-view:has(#bulk-action-bar.visible) { bottom: 108px; }
+  #pipeline-sel-count { display: none !important; } /* no celular o número fica só na barra de baixo (o topo é estreito) */
   /* ── Botão "+" FLUTUANTE (estilo WhatsApp): a lista passa por baixo dele ── */
   #mobile-nav {
     display: block; position: fixed; left: auto; right: 16px;
@@ -1759,7 +1769,11 @@ i[class^="ic-"],i[class*=" ic-"]{display:inline-block;width:1.08em;height:1.08em
   /* Modo seleção do pipeline: botões compactos, contador em pílula */
   #pipeline-selall-btn, #pipeline-selall-all { padding: 6px 10px !important; font-size: 12px !important; background: #fff !important; color: var(--v-ink-2) !important; border: 1px solid #d1d7db !important; border-radius: 10px !important; }
   #pipeline-selall-btn:hover, #pipeline-selall-all:hover { background: var(--v-bg) !important; }
-  #pipeline-sel-count { font-size: 12px !important; padding: 5px 10px !important; }
+  #pipeline-sel-count { font-size: 12px !important; padding: 6px 11px !important; font-weight: 700; color: #00806a; background: #e7f7ef; border-radius: 12px; white-space: nowrap; }
+  #pipeline-sel-count.vazio { color: var(--v-ink-3); background: var(--v-bg); font-weight: 600; }
+  #pipeline-selall-btn, #pipeline-selall-all { cursor: pointer; font-weight: 600; font-family: inherit; white-space: nowrap; }
+  /* selecionando: "Cancelar seleção" fica marcado (borda escura) — é o botão que SAI do modo */
+  #pipeline-selall-btn.sel-on { border-color: #54656f !important; color: var(--v-ink) !important; }
   /* Configurações em tela cheia: conteúdo com largura de leitura */
   #cfg-panes { max-width: 780px; }
   /* ── Modelos: cartões ── */
@@ -2585,7 +2599,7 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v673</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v674</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -2668,9 +2682,11 @@ window.addEventListener('load', initAuth);
       </button>
     </div>
     <button id="pipeline-filter-btn" onclick="togglePipelineFilter()"><i class=ic-filter></i> Filtrar</button>
-    <button id="pipeline-selall-btn" onclick="togglePipeSelMode()" title="Ativa o modo de seleção de leads" style="background:#e7f7ef;border:1px solid #00a884;color:#00806a;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Selecionar</button>
-    <button id="pipeline-selall-all" onclick="selectAllInPipeline()" title="Seleciona/desmarca TODOS os leads visíveis (respeita o filtro ativo)" style="display:none;background:#e7f7ef;border:1px solid #00a884;color:#00806a;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Selecionar todos</button>
-    <span id="pipeline-sel-count" style="display:none;font-size:13px;font-weight:700;color:#00806a;background:#e7f7ef;border-radius:12px;padding:5px 11px;white-space:nowrap"></span>
+    <!-- (v674) "Às vezes acho meio confuso o selecionar/cancelar" (25/11): um botão só entra e sai da seleção, com o nome
+         do que faz ("Selecionar" → "Cancelar seleção"); o contador e o "Selecionar todos (N)" só aparecem selecionando -->
+    <span id="pipeline-sel-count" style="display:none"></span>
+    <button id="pipeline-selall-all" onclick="selectAllInPipeline()" title="Marca (ou desmarca) todos os leads que estão aparecendo — respeita o filtro" style="display:none">Selecionar todos</button>
+    <button id="pipeline-selall-btn" onclick="togglePipeSelMode()" title="Marcar leads para mover de etapa, editar tags, excluir ou exportar"><i class=ic-check></i> Selecionar</button>
     <button class="btn-primary" onclick="openNewLead()">＋ Novo lead</button>
     <button class="pf-topbtn" onclick="openImport()"><i class=ic-down></i> Importar</button>
     <div style="position:relative">
@@ -2683,7 +2699,7 @@ window.addEventListener('load', initAuth);
         <button class="cm-item" style="width:100%;text-align:left;background:none;border:none;font-family:inherit;color:#131c20" onclick="document.getElementById('pipe-more-menu').style.display='none';abrirConfigEm('ids')" title="Códigos usados por planilhas e integrações"><i class=ic-hash></i> Códigos das etapas</button>
       </div>
     </div>
-    <button id="btn-close-pipeline" onclick="closePipeline()" title="Fechar">✕</button>
+    <button id="btn-close-pipeline" onclick="closePipeline()" title="Fechar o Pipeline (voltar para as conversas)">✕</button>
   </div>
   <div id="pipeline-filter-panel">
     <div><label>Nome ou número do lead</label><input class="pf-input" id="pf-name" placeholder="Nome, (DD) 9XXXX-XXXX ou só os dígitos" oninput="applyPipelineFilter()"></div>
@@ -2704,7 +2720,7 @@ window.addEventListener('load', initAuth);
     </select>
     <button class="bulk-btn bulk-btn-tags" onclick="bulkEditTags()"><i class=ic-tag></i> Editar tags</button>
     <button class="bulk-btn bulk-btn-delete" onclick="bulkDeleteLeads()"><i class=ic-trash></i> Excluir</button>
-    <button id="bulk-clear" onclick="clearBulkSelection()" title="Cancelar seleção">✕</button>
+    <button id="bulk-clear" onclick="_sairSelecaoPipeline()" title="Sai da seleção e desmarca todos os leads">Cancelar seleção</button>
   </div>
 </div>
 
@@ -3481,7 +3497,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v673</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v674</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3555,7 +3571,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 673;
+const APP_VER = 674;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -19048,6 +19064,7 @@ function renderPipelineWith(contacts) {
   document.getElementById('pv-kanban')?.classList.toggle('active', !isList);
   document.getElementById('pv-list')?.classList.toggle('active', isList);
   if (isList) renderPipelineList(contacts); else renderKanbanWith(contacts);
+  try { _pipeSelBotoes(); } catch (_) {}
 }
 function renderPipelineList(contacts) {
   const el = document.getElementById('pipeline-list');
@@ -19520,12 +19537,40 @@ let _pipeSelMode = false;
 function togglePipeSelMode() {
   _pipeSelMode = !_pipeSelMode;
   if (!_pipeSelMode) selectedLeads.clear(); // sair limpa a seleção
-  updateBulkBar(); // atualiza barra + contador "N selecionados"
-  const b = document.getElementById('pipeline-selall-btn');
-  if (b) b.textContent = _pipeSelMode ? '✕ Cancelar' : 'Selecionar';
-  const all = document.getElementById('pipeline-selall-all');
-  if (all) all.style.display = _pipeSelMode ? '' : 'none';
+  updateBulkBar(); // atualiza barra + contador "N selecionados" + os botões do topo
   applyPipelineFilter(); // re-desenha respeitando o filtro ativo
+}
+// (v674) os botões da seleção, sempre de acordo com o estado — ela (25/11): "Às vezes acho meio confuso o
+// selecionar/cancelar". Antes: "Selecionar" virava "✕ Cancelar" ao lado do ✕ que fecha o Pipeline; na barra de baixo
+// havia OUTRO ✕ que desmarcava tudo mas continuava no modo; e na Lista dava para marcar sem o botão mudar.
+// Agora: fora do modo, só "Selecionar"; selecionando, "N selecionados" + "Selecionar todos (N)" (vira "Desmarcar todos")
+// + "Cancelar seleção" — o mesmo nome e o mesmo efeito no topo e na barra de baixo (desmarca tudo e sai).
+function _pipeVisiveis() {
+  const sel = pipelineView === 'list' ? '#pipeline-list .plist-row' : '.kanban-card';
+  return Array.from(document.querySelectorAll(sel)).map(c => c.dataset.phone).filter(Boolean);
+}
+function _pipeSelBotoes() {
+  const on = !!_pipeSelMode, n = selectedLeads.size;
+  const b = document.getElementById('pipeline-selall-btn');
+  if (b) {
+    b.innerHTML = on ? 'Cancelar seleção' : '<i class=ic-check></i> Selecionar';
+    b.classList.toggle('sel-on', on);
+    b.title = on ? 'Sai da seleção e desmarca todos os leads' : 'Marcar leads para mover de etapa, editar tags, excluir ou exportar';
+  }
+  const all = document.getElementById('pipeline-selall-all');
+  if (all) {
+    all.style.display = on ? '' : 'none';
+    if (on) {
+      const v = _pipeVisiveis(); const todos = v.length > 0 && v.every(p => selectedLeads.has(p));
+      all.textContent = todos ? 'Desmarcar todos' : 'Selecionar todos' + (v.length ? ' (' + v.length + ')' : '');
+    }
+  }
+  const psc = document.getElementById('pipeline-sel-count');
+  if (psc) {
+    psc.style.display = on ? '' : 'none';
+    psc.textContent = n ? n + ' selecionado' + (n === 1 ? '' : 's') : 'Marque os leads';
+    psc.classList.toggle('vazio', !n);
+  }
 }
 // Seleciona/desmarca TODOS os leads VISÍVEIS — como a tela desenhada já
 // obedece ao filtro ativo, o filtro é respeitado automaticamente
@@ -19550,14 +19595,9 @@ function selectAllInColumn(stageId) {
 
 function updateBulkBar() {
   try { _pipeEstadoGuarda(); } catch (_) {}
-  // Contador "N selecionados" ao lado dos botões (aparece no MODO de seleção)
-  const psc = document.getElementById('pipeline-sel-count');
-  if (psc) {
-    if (typeof _pipeSelMode !== 'undefined' && _pipeSelMode) {
-      psc.style.display = '';
-      psc.textContent = selectedLeads.size + ' selecionado' + (selectedLeads.size === 1 ? '' : 's');
-    } else psc.style.display = 'none';
-  }
+  // (v674) marcou um lead (na Lista as caixinhas estão sempre à vista) = está selecionando: o topo acompanha
+  try { if (selectedLeads.size > 0 && !_pipeSelMode) _pipeSelMode = true; } catch (_) {}
+  try { _pipeSelBotoes(); } catch (_) {}
   const bar = document.getElementById('bulk-action-bar');
   const count = document.getElementById('bulk-count');
   if (!bar) return;
