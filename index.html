@@ -1780,6 +1780,27 @@ i[class^="ic-"],i[class*=" ic-"]{display:inline-block;width:1.08em;height:1.08em
      a mesma camada fixa, opaca e da cor do cabeçalho, encostada no topo e por cima de tudo (janelinhas, escurecidos,
      visualizadores). O que o iPhone acha na beirada de cima é sempre ela, com a mesma cor — nada para copiar errado,
      nada que mude ao entrar/sair do chat. São 8 px; sobre os cabeçalhos (mesma cor) não se vê. */
+  /* 👁 (v682) ESPIAR A CONVERSA — ela (27/11, prints do WhatsApp): "você segura a prévia com o dedo e consegue ver a
+     mensagem sem entrar na conversa e confirmar a leitura. Queria isso no PC e no celular do FILAZ". O cartão abre junto
+     com o menu da conversa (toque longo no celular; botão direito ou "⋯" no computador). */
+  #espia-fundo { position: fixed; inset: 0; z-index: 690; background: rgba(11,20,26,.30); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
+  #espia { position: fixed; z-index: 695; flex-direction: column; background: #efeae2; border-radius: 14px; box-shadow: 0 10px 34px rgba(0,0,0,.32); overflow: hidden; transition: height .18s ease, width .18s ease; }
+  #espia-cab { display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 14px; background: #f0f2f5; border-bottom: 1px solid #e9edef; flex-shrink: 0; }
+  #espia-nome { flex: 1; min-width: 0; font-weight: 600; font-size: 14.5px; color: #111b21; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #espia-abrir { flex-shrink: 0; border: none; background: none; color: #00806a; font-weight: 700; font-size: 12.5px; padding: 6px 8px; border-radius: 8px; cursor: pointer; }
+  #espia-abrir:hover { background: rgba(0,128,106,.10); }
+  #espia-aviso { flex-shrink: 0; font-size: 11.5px; color: #54656f; background: #fff8e1; padding: 4px 12px; text-align: center; }
+  #espia-aviso:empty { display: none; }
+  #espia-msgs { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; padding: 6px 10px 10px; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+  #espia-msgs > :first-child { margin-top: auto; } /* poucas mensagens: ficam embaixo, como na conversa */
+  #espia-msgs .msg { max-width: 86%; font-size: 14px; line-height: 1.35; padding: 6px 9px; cursor: default; }
+  #espia-msgs .day-divider { align-self: center; }
+  #espia-msgs .espia-vazio { margin: auto; color: #8696a0; font-size: 13px; text-align: center; padding: 20px; }
+  #espia-msgs .espia-cit { border-left: 3px solid #06cf9c; background: rgba(11,20,26,.06); border-radius: 6px; padding: 3px 8px; margin-bottom: 4px; font-size: 12.5px; color: #54656f; max-height: 38px; overflow: hidden; }
+  #espia-msgs .espia-midia { color: #54656f; font-size: 13px; }
+  #espia-msgs .espia-img { display: block; max-width: 100%; max-height: 190px; border-radius: 6px; margin-bottom: 3px; background: #dfe5e7; min-height: 60px; min-width: 90px; object-fit: cover; }
+  #espia-msgs .espia-reac { position: absolute; bottom: -12px; right: 8px; background: #fff; border-radius: 10px; padding: 0 5px; font-size: 12px; box-shadow: 0 1px 2px rgba(0,0,0,.2); }
+  body.dark #espia { background: #0b141a; } body.dark #espia-cab { background: #202c33; border-color: #2a3942; } body.dark #espia-nome { color: #e9edef; } body.dark #espia-aviso { background: #2a2a1c; color: #c9c9a0; }
   #topo-guarda { display: none; }
   html.ios #topo-guarda { display: block; position: fixed; top: 0; left: 0; right: 0; height: 8px; background: #f0f2f5; z-index: 2147483647; }
   /* ── Configurações em abas ── */
@@ -2634,7 +2655,7 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v681</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v682</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3284,6 +3305,13 @@ window.addEventListener('load', initAuth);
 
 <!-- Menu "⋯" da conversa (marcar como lida / favoritar) -->
 <div id="contact-menu" style="display:none;position:fixed;z-index:700;background:#ffffff;border:1px solid #e9edef;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.25);min-width:190px;padding:4px"></div>
+<!-- 👁 (v682) ESPIAR a conversa: abre junto com o menu (segurar o dedo / botão direito) — mostra as mensagens SEM marcar como lida -->
+<div id="espia-fundo" style="display:none"></div>
+<div id="espia" style="display:none" role="dialog" aria-label="Espiar a conversa">
+  <div id="espia-cab"><span id="espia-nome"></span><button type="button" id="espia-abrir" onclick="_espiaAbrirConversa()">Abrir conversa</button></div>
+  <div id="espia-aviso"></div>
+  <div id="espia-msgs"></div>
+</div>
 
 <!-- Aviso de novas mensagens na conversa (estilo WhatsApp) -->
 <div id="new-msg-pill" onclick="scrollMsgsBottom()"
@@ -3532,7 +3560,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v681</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v682</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3606,7 +3634,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 681;
+const APP_VER = 682;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -7674,11 +7702,162 @@ function openContactMenu(ev, phone) {
   if (y + mh > window.innerHeight - 8 && acima >= 8) y = acima;
   menu.style.left = Math.max(8, Math.min(x, window.innerWidth  - mw - 8)) + 'px';
   menu.style.top  = Math.max(8, Math.min(y, window.innerHeight - mh - 8)) + 'px';
+  try { _espiaAbre(phone, ev); } catch (_) {} // 👁 (v682) o cartão com as mensagens abre junto — sem marcar como lida
 }
 function closeContactMenu() {
   const m = document.getElementById('contact-menu');
   if (m) m.style.display = 'none';
+  try { _espiaFecha(); } catch (_) {}
 }
+// ═══════════════════════════════════════════════════════════════════
+// 👁 (v682) ESPIAR A CONVERSA sem entrar nela — ela (27/11, com dois prints do WhatsApp do celular): "Sabe no celular do
+// WhatsApp que você segura a prévia com o dedo e consegue ver a mensagem sem entrar na conversa e confirmar a
+// leitura? Queria isso no PC e no celular do FILAZ" … "No celular é assim, abre grande e uma parte do menu embaixo,
+// se eu arrasto com o dedo em cima do menu ele aumenta".
+//   • abre JUNTO com o menu da conversa: toque longo no celular; botão direito ou "⋯" no computador;
+//   • mostra as últimas mensagens (as guardadas no aparelho na hora; busca as novas se houver) — só LÊ: não chama
+//     "marcar como lida", não confirma leitura para o cliente, não muda o contador nem a ordem da lista;
+//   • entrar de verdade só pelo botão "Abrir conversa" (aí sim vale como lida, como sempre);
+//   • celular: cartão grande em cima e o menu embaixo (rola); arrastar o menu para cima AUMENTA o menu e encolhe o
+//     cartão; arrastar para baixo volta.
+// ═══════════════════════════════════════════════════════════════════
+let _espiaFone = null, _espiaGrande = false, _espiaSeq = 0, _espiaEv = null;
+const _ESPIA_ROTULO = { image: '📷 Foto', video: '🎬 Vídeo', audio: '🎤 Áudio', document: '📄 Documento', sticker: 'Figurinha', location: '📍 Localização', contacts: '👤 Contato' };
+function _espiaHtml(msgs, c) {
+  const lista = (Array.isArray(msgs) ? msgs : []).filter(m => m && m.type !== 'reaction').slice(-50);
+  if (!lista.length) return '<div class="espia-vazio">Sem mensagens nesta conversa</div>';
+  // onde começam as NÃO LIDAS (só para mostrar a divisória — nada é marcado)
+  let iNL = -1; const nl = (c && c.unread_count) || 0;
+  if (nl > 0) {
+    const desde = c.first_unread_at ? (parseUTC(c.first_unread_at) || 0) : 0;
+    if (desde) iNL = lista.findIndex(m => m.direction === 'inbound' && (parseUTC(m.timestamp) || 0) >= desde - 1000);
+    if (iNL < 0) { let n = 0; for (let i = lista.length - 1; i >= 0 && n < nl; i--) if (lista[i].direction === 'inbound') { n++; iNL = i; } }
+  }
+  let out = '', dia = '', prev = '';
+  lista.forEach((m, i) => {
+    try {
+      const rot = formatDayLabel(m.timestamp);
+      if (rot !== dia) { dia = rot; prev = ''; out += '<div class="day-divider"><span>' + escHtml(rot) + '</span></div>'; }
+      if (i === iNL) { prev = ''; out += '<div class="day-divider"><span style="color:#00a884;font-weight:700">' + nl + (nl > 1 ? ' MENSAGENS NÃO LIDAS' : ' MENSAGEM NÃO LIDA') + '</span></div>'; }
+      const nota = m.type === 'note';
+      const dir = (m.direction === 'outbound' || nota) ? 'outbound' : 'inbound';
+      const tipo = String(m.type || 'text'), mime = String(m.media_mime_type || '');
+      let txt = m.content == null ? '' : String(m.content);
+      if (/^\[[^\]\n]{1,40}\]$/.test(txt.trim())) txt = ''; // "[Imagem recebida]", "[Foto]"… não é texto
+      let corpo = '';
+      if (m.quoted_content) corpo += '<div class="espia-cit">' + escHtml(String(m.quoted_content).replace(/\s+/g, ' ').slice(0, 140)) + '</div>';
+      if (m.forwarded) corpo += '<div style="font-size:11.5px;color:#8696a0;margin-bottom:3px;font-style:italic">↪ Encaminhada</div>';
+      const ehImg = tipo === 'image' || mime.startsWith('image/');
+      if (ehImg && m.media_id && tipo !== 'sticker') corpo += '<img class="espia-img" loading="lazy" alt="Foto" src="' + SERVER_URL + '/media-proxy/' + encodeURIComponent(m.media_id) + (mime ? '?mime=' + encodeURIComponent(mime) : '') + '">';
+      else if (_ESPIA_ROTULO[tipo]) {
+        let r = _ESPIA_ROTULO[tipo];
+        if (tipo === 'document' && (m.media_name || txt)) { r = '📄 ' + escHtml(String(m.media_name || txt).slice(0, 80)); if (!m.media_name) txt = ''; }
+        if (tipo === 'audio' && m.transcript) r += ' — <i>' + escHtml(String(m.transcript).slice(0, 400)) + '</i>';
+        corpo += '<div class="espia-midia">' + r + '</div>';
+      }
+      if (txt) corpo += '<div style="white-space:pre-wrap;word-break:break-word">' + waFormat(txt.length > 1200 ? txt.slice(0, 1200) + '…' : txt) + '</div>';
+      if (!corpo) corpo = '<div class="espia-midia">(' + escHtml(tipo) + ')</div>';
+      let tk = '';
+      if (dir === 'outbound' && !nota) {
+        if (m.status === 'read') tk = '<span class="msg-ticks read">' + TICK_TWO + '</span>';
+        else if (m.status === 'delivered') tk = '<span class="msg-ticks delivered">' + TICK_TWO + '</span>';
+        else if (m.status === 'failed') tk = '<span class="msg-ticks failed"><i class=ic-alert></i></span>';
+        else if (m.status === 'pending' && !m.wamid) tk = '<span class="msg-ticks pending">' + TICK_CLOCK + '</span>';
+        else tk = '<span class="msg-ticks sent">' + TICK_ONE + '</span>';
+      }
+      const grp = prev === dir; prev = dir;
+      out += '<div class="msg ' + dir + (grp ? ' grp' : '') + '" style="position:relative' + (nota ? ';background:#fff6d5;border:1px solid #f2e08a' : '') + (m.reaction ? ';margin-bottom:14px' : '') + '">'
+        + (nota ? '<div style="font-size:11px;color:#a07c00;font-weight:700;margin-bottom:2px">Nota interna</div>' : '')
+        + corpo + '<div class="time">' + _brtTime(parseUTC(m.timestamp)) + tk + '</div>'
+        + (m.reaction ? '<span class="espia-reac">' + escHtml(String(m.reaction)) + '</span>' : '') + '</div>';
+    } catch (_) {}
+  });
+  return out;
+}
+function _espiaPosiciona() {
+  const card = document.getElementById('espia'), menu = document.getElementById('contact-menu');
+  if (!card || !menu || card.style.display === 'none') return;
+  const W = window.innerWidth, H = window.innerHeight;
+  if (_ehCelular()) {
+    // cartão em cima, menu embaixo; "grande" = o menu inteiro (ou quase) e o cartão encolhido
+    const topo = 14, vao = 10, base = 12;
+    menu.style.maxHeight = 'none'; menu.style.overflowY = 'auto';
+    const mInteiro = menu.scrollHeight + 2;
+    const mVis = Math.min(mInteiro, Math.round(_espiaGrande ? H - topo - vao - base - Math.max(170, H * 0.28) : H * 0.34));
+    const hCard = Math.max(160, H - topo - vao - base - mVis);
+    card.style.left = '10px'; card.style.top = topo + 'px';
+    card.style.width = Math.round(_espiaGrande ? Math.max(210, (W - 20) * 0.62) : W - 20) + 'px';
+    card.style.height = hCard + 'px';
+    menu.style.left = '10px'; menu.style.top = (topo + hCard + vao) + 'px';
+    menu.style.maxHeight = mVis + 'px';
+  } else {
+    // computador: o menu fica onde nasceu; o cartão abre ao lado dele (de preferência à direita, por cima da conversa)
+    const mr = menu.getBoundingClientRect();
+    const w = Math.min(390, W - 24), h = Math.min(560, H - 24);
+    let x = mr.right + 10;
+    try { const sb = document.getElementById('sidebar'); if (sb) x = Math.max(x, sb.getBoundingClientRect().right + 10); } catch (_) {}
+    if (x + w > W - 8) x = (mr.left - w - 10 >= 8) ? mr.left - w - 10 : Math.max(8, W - w - 8);
+    const yRef = (_espiaEv && typeof _espiaEv.clientY === 'number') ? _espiaEv.clientY : mr.top;
+    card.style.left = x + 'px'; card.style.top = Math.max(12, Math.min(yRef - 140, H - h - 12)) + 'px';
+    card.style.width = w + 'px'; card.style.height = h + 'px';
+  }
+}
+function _espiaAbre(phone, ev) {
+  const card = document.getElementById('espia'), fundo = document.getElementById('espia-fundo'), area = document.getElementById('espia-msgs');
+  if (!card || !area || !phone) return;
+  const c = (allContacts || []).find(x => x.phone === phone) || (typeof searchResults !== 'undefined' && (searchResults || []).find(x => x.phone === phone)) || null;
+  _espiaFone = phone; _espiaGrande = false; _espiaEv = ev ? { clientX: ev.clientX, clientY: ev.clientY } : null;
+  const seq = ++_espiaSeq;
+  document.getElementById('espia-nome').textContent = (c && c.name) || (typeof formatPhone === 'function' ? formatPhone(phone) : phone);
+  const nl = (c && c.unread_count) || 0;
+  document.getElementById('espia-aviso').textContent = nl > 0 ? '👁 Só espiando — a conversa continua como não lida' : '';
+  const pinta = (msgs) => { area.innerHTML = _espiaHtml(msgs, c); area.scrollTop = area.scrollHeight; setTimeout(() => { if (seq === _espiaSeq) area.scrollTop = area.scrollHeight; }, 60); };
+  const guardadas = _msgsCacheLe(phone);
+  if (guardadas) pinta(guardadas); else area.innerHTML = '<div class="espia-vazio">Carregando…</div>';
+  card.style.display = 'flex';
+  if (fundo) fundo.style.display = _ehCelular() ? 'block' : 'none';
+  _espiaPosiciona();
+  // tem coisa mais nova do que a guardada (ou nada guardado)? busca — é só LEITURA: a mesma consulta que a lista já
+  // faz para adiantar as conversas; não marca nada como lido
+  const ult = guardadas ? _msgsCacheUltimo(phone) : -1, nova = c ? (parseUTC(c.last_message_at) || 0) : 0;
+  if (!guardadas || ult < 0 || nova > ult + 1000) {
+    fetch(SERVER_URL + '/messages/' + encodeURIComponent(phone) + '?limite=' + _MSGS_CACHE_N)
+      .then(r => r.ok ? r.json() : null)
+      .then(m => { if (!Array.isArray(m)) throw new Error('sem resposta'); if (m.length) { try { _msgsCacheGuarda(phone, m); } catch (_) {} } if (seq === _espiaSeq && _espiaFone === phone) pinta(m); })
+      .catch(() => { if (seq === _espiaSeq && _espiaFone === phone && !guardadas) area.innerHTML = '<div class="espia-vazio">Não deu para carregar as mensagens agora</div>'; });
+  }
+}
+function _espiaFecha() {
+  const card = document.getElementById('espia'), fundo = document.getElementById('espia-fundo'), menu = document.getElementById('contact-menu');
+  if (!card || card.style.display === 'none') { _espiaFone = null; return; }
+  card.style.display = 'none'; if (fundo) fundo.style.display = 'none';
+  if (menu) { menu.style.maxHeight = ''; menu.style.overflowY = ''; }
+  const area = document.getElementById('espia-msgs'); if (area) area.innerHTML = '';
+  _espiaFone = null; _espiaGrande = false; _espiaSeq++;
+}
+function _espiaAbrirConversa() {
+  if (Date.now() - _menuAbertoEm < 600) return; // o dedo ainda está saindo do toque longo: não entra sem querer
+  const fone = _espiaFone; if (!fone) return;
+  const c = (allContacts || []).find(x => x.phone === fone) || (typeof searchResults !== 'undefined' && (searchResults || []).find(x => x.phone === fone)) || {};
+  closeContactMenu();
+  selectContact(fone, c.name || '', c.account_id || '');
+}
+// celular: arrastar o MENU para cima aumenta o menu (e encolhe o cartão); para baixo, com o menu no começo, volta
+(function _espiaGestoDoMenu() {
+  const liga = () => {
+    const menu = document.getElementById('contact-menu'); if (!menu || menu._espiaGesto) return;
+    menu._espiaGesto = true;
+    let y0 = 0, on = false;
+    const noFim = () => { const a = document.getElementById('espia-msgs'); if (a) a.scrollTop = a.scrollHeight; };
+    const muda = (g) => { if (_espiaFone && _espiaGrande !== g) { _espiaGrande = g; _espiaPosiciona(); noFim(); setTimeout(noFim, 230); } }; // o cartão mudou de tamanho: continua mostrando as ÚLTIMAS mensagens
+    menu.addEventListener('touchstart', e => { on = !!_espiaFone && _ehCelular(); y0 = e.touches[0].clientY; }, { passive: true });
+    menu.addEventListener('touchmove', e => { if (!on) return; const dy = e.touches[0].clientY - y0; if (dy < -14) muda(true); else if (dy > 14 && menu.scrollTop <= 0) muda(false); }, { passive: true });
+    menu.addEventListener('scroll', () => { if (_espiaFone && _ehCelular() && menu.scrollTop > 4) muda(true); }, { passive: true });
+    menu.addEventListener('wheel', e => { if (_espiaFone && _ehCelular()) muda(e.deltaY > 0 ? true : (menu.scrollTop <= 0 ? false : _espiaGrande)); }, { passive: true });
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', liga); else liga();
+  window.addEventListener('resize', () => { try { if (_espiaFone) _espiaPosiciona(); } catch (_) {} });
+})();
 // ── SELEÇÃO EM MASSA de conversas (segurar o dedo na lista ou menu ⋯) ──
 window._selChats = null;
 function _selEntrar(ph) {
@@ -7761,7 +7940,7 @@ async function _selAplicar(acao) {
 })();
 document.addEventListener('click', e => {
   if (Date.now() - _menuAbertoEm < 500) return; // clique fantasma do toque longo: não fecha o menu que acabou de abrir
-  if (!e.target.closest('#contact-menu') && !e.target.closest('.contact-menu-btn')) closeContactMenu();
+  if (!e.target.closest('#contact-menu') && !e.target.closest('.contact-menu-btn') && !e.target.closest('#espia')) closeContactMenu(); // (v682) rolar/tocar no cartão de espiar não fecha
 });
 
 // ── SWIPE nas conversas (direita = marcar lida, esquerda = favoritar) ──
