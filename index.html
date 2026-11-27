@@ -2618,7 +2618,7 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v679</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v680</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3516,7 +3516,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v679</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v680</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3590,7 +3590,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 679;
+const APP_VER = 680;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
@@ -12819,6 +12819,17 @@ async function filazCopiaChaveAssistente(btn) {
 })();
 // ── EMOJI PICKER ──
 let emojiPickerInstance = null;
+// (v680) os textos do seletor em português (a pesquisa é em português: "casa", "coração", "sol", "feliz"…)
+const _EMOJI_PT = {
+  categoriesLabel: 'Categorias', emojiUnsupportedMessage: 'Seu navegador não mostra emojis coloridos.', favoritesLabel: 'Favoritos',
+  loadingMessage: 'Carregando…', networkErrorMessage: 'Não foi possível carregar os emojis.', regionLabel: 'Seletor de emoji',
+  searchDescription: 'Quando aparecerem os resultados, use as setas para cima e para baixo para escolher e Enter para inserir.',
+  searchLabel: 'Pesquisar (em português)', searchResultsLabel: 'Resultados da pesquisa',
+  skinToneDescription: 'Quando aberto, use as setas para cima e para baixo para escolher e Enter para confirmar.',
+  skinToneLabel: 'Escolha um tom de pele (agora: {skinTone})', skinTonesLabel: 'Tons de pele',
+  skinTones: ['Padrão', 'Claro', 'Claro médio', 'Médio', 'Escuro médio', 'Escuro'],
+  categories: { custom: 'Personalizados', 'smileys-emotion': 'Carinhas e emoções', 'people-body': 'Pessoas e corpo', 'animals-nature': 'Animais e natureza', 'food-drink': 'Comidas e bebidas', 'travel-places': 'Viagens e lugares', activities: 'Atividades', objects: 'Objetos', symbols: 'Símbolos', flags: 'Bandeiras' },
+};
 
 function toggleEmojiPicker(e) {
   e.stopPropagation();
@@ -12834,7 +12845,15 @@ function toggleEmojiPicker(e) {
   // Cria o seletor uma única vez (ele é reaproveitado entre as conversas)
   if (!emojiPickerInstance) {
     emojiPickerInstance = document.createElement('emoji-picker');
-    emojiPickerInstance.setAttribute('locale', 'pt');
+    // (v680) Ela (27/11, print do seletor com "Search"): "Você pesquisa em inglês ou em português?" — era em INGLÊS: o
+    // 'locale' só dava nome ao banco do navegador; os nomes dos emojis vinham da fonte padrão do seletor (em inglês) e
+    // "casa", "coração", "sol" não achavam nada. Agora a fonte é a de português (nomes e palavras-chave em pt; os atalhos
+    // vêm sem acento, então "coracao" e "coração" acham os dois) e os textos do seletor também. O banco muda de nome
+    // ('pt-BR') para já abrir com os dados novos; o antigo, com os dados em inglês, é apagado.
+    emojiPickerInstance.setAttribute('locale', 'pt-BR');
+    emojiPickerInstance.setAttribute('data-source', 'https://cdn.jsdelivr.net/npm/emoji-picker-element-data@^1/pt/cldr/data.json');
+    emojiPickerInstance.i18n = _EMOJI_PT;
+    try { indexedDB.deleteDatabase('emoji-picker-element-pt'); } catch (_) {}
     emojiPickerInstance.setAttribute('skin-tone-emoji', '👋');
     emojiPickerInstance.addEventListener('emoji-click', (evt) => { _insereEmoji(evt.detail.unicode); });
     // (v660) ela escolheu o tom aqui: vale também nas reações e fica guardado na conta
