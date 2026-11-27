@@ -1771,6 +1771,17 @@ i[class^="ic-"],i[class*=" ic-"]{display:inline-block;width:1.08em;height:1.08em
     #modal-overlay::before, #templates-overlay::before, #send-tmpl-overlay::before, #tmpl-copiar-overlay::before, #lead-overlay::before, #import-overlay::before, #media-overlay::before, #tasks-overlay::before, #qr-modal::before, #n8n-overlay::before, #tag-overlay::before, #tagmgr-overlay::before, #vdlg-overlay::before, #msg-info-box::before, #cfg-overlay::before, #msged-overlay::before, #not-overlay::before, #auto-overlay::before, #trem-overlay::before, #fw-overlay::before, #fav-overlay::before, #ag-overlay::before, #mobile-plus-backdrop::before { content: ''; position: absolute; inset: 0; background: rgba(0,0,0,.5); z-index: -1; pointer-events: none; }
     #mobile-plus-backdrop::before { background: rgba(0,0,0,.35); }
   }
+  /* 📱 (v681) A FAIXA VOLTOU — ela (27/11, print): "De novo essa faixa no celular, aparece quando eu saio de um chat".
+     Medido no print: a faixa do relógio estava na cor do cabeçalho (#f0f2f5) com ~50% de preto por cima — os 50% da
+     película da v677 (antes eram os 60% do fundo das janelinhas). Ou seja: tirar a cor de fundo não bastou; o iPhone
+     (iOS 26) pinta a faixa do relógio com o que ACHA na beirada de cima da tela dentro de uma camada fixa, e ainda tem
+     defeitos abertos no WebKit em que essa cor não é refeita quando a camada de cima muda (sai o cabeçalho do chat,
+     entra a barra FILAZ) — fica a cor velha ou uma sombra. Em vez de adivinhar camada por camada: no iPhone fica SEMPRE
+     a mesma camada fixa, opaca e da cor do cabeçalho, encostada no topo e por cima de tudo (janelinhas, escurecidos,
+     visualizadores). O que o iPhone acha na beirada de cima é sempre ela, com a mesma cor — nada para copiar errado,
+     nada que mude ao entrar/sair do chat. São 8 px; sobre os cabeçalhos (mesma cor) não se vê. */
+  #topo-guarda { display: none; }
+  html.ios #topo-guarda { display: block; position: fixed; top: 0; left: 0; right: 0; height: 8px; background: #f0f2f5; z-index: 2147483647; }
   /* ── Configurações em abas ── */
   #cfg-shell { display: flex; gap: 0; min-height: 420px; }
   #cfg-nav { width: 170px; flex-shrink: 0; border-right: 1px solid var(--v-line); padding: 6px 8px 6px 0; display: flex; flex-direction: column; gap: 2px; }
@@ -1902,6 +1913,11 @@ i[class^="ic-"],i[class*=" ic-"]{display:inline-block;width:1.08em;height:1.08em
 </style>
 </head>
 <body>
+<div id="topo-guarda" aria-hidden="true"></div>
+<script>
+  // 📱 (v681) iPhone: liga a faixa-guarda do topo (ver o CSS de #topo-guarda)
+  try { if (/iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) document.documentElement.classList.add('ios'); } catch (_) {}
+</script>
 <script>
   // Recarregou numa tela (Pipeline, Bots, Config…)? Esconde o chat desde o 1º quadro,
   // até a tela marcada reabrir — assim nada "pisca" no meio do caminho
@@ -2618,7 +2634,7 @@ window.addEventListener('load', initAuth);
 <div id="faixa-parada" style="display:none;background:#c0392b;color:#fff;font-size:13px;font-weight:700;padding:7px 14px;text-align:center;position:relative;z-index:50">⛔ PARADA GERAL: bots e gotejamento parados <span id="faixa-parada-desde" style="font-weight:500"></span> — nada é enviado. <button onclick="paradaGeral(false)" style="margin-left:10px;background:#fff;color:#c0392b;border:0;border-radius:12px;padding:3px 12px;font-weight:700;cursor:pointer;font-family:inherit">▶ Retomar</button></div>
 <!-- TOPBAR -->
 <div id="topbar">
-  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v680</span></h1>
+  <h1>FILAZ <span id="app-ver-badge" style="font-size:10px;font-weight:600;color:#8696a0;vertical-align:super" title="Versão do app" onclick="toggleDiag()">v681</span></h1>
   <span id="server-status"><span id="server-dot"></span><span id="server-url-label">não conectado</span></span>
   <button id="btn-push" onclick="enablePushNotifications()" title="Receber notificações de novas mensagens"
     style="display:none;background:#fff;color:#00806a;border:1px solid #00a884;border-radius:14px;font-weight:600;padding:4px 10px;font-size:12px"><i class=ic-bell></i> Ativar avisos</button>
@@ -3516,7 +3532,7 @@ window.addEventListener('load', initAuth);
     <label style="display:flex;align-items:center;gap:6px;color:#131c20;font-size:13px;cursor:pointer">
       <input type="checkbox" id="bot-active-check" checked /> Ativo
     </label>
-    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v680</span>
+    <span style="font-size:10px;color:#8696a0;font-weight:700" title="Versão do editor">v681</span>
     <button class="btn-secondary" onclick="organizeBot()" title="Reorganizar os nós automaticamente" style="margin-left:auto">Organizar</button>
     <button class="btn-primary" onclick="saveBotFlow()">Salvar</button>
   </div>
@@ -3590,7 +3606,7 @@ window.addEventListener('unhandledrejection', function (ev) {
 
 // ── ATUALIZAÇÃO AUTOMÁTICA: o app confere a cada 30s se há versão nova
 // publicada (version.txt) e se ATUALIZA SOZINHO — sem recarregar na mão.
-const APP_VER = 680;
+const APP_VER = 681;
 async function _checkAppUpdate() {
   try {
     const r = await fetch('/version.txt?_t=' + Date.now(), { cache: 'no-store' });
